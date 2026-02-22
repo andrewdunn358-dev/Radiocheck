@@ -5141,7 +5141,7 @@ from routers import (
     staff, organizations, resources, safeguarding, 
     callbacks, live_chat, notes, concerns,
     message_queue, ai_feedback, knowledge_base, compliance,
-    podcasts
+    podcasts, data_retention
 )
 
 # Core functionality routers
