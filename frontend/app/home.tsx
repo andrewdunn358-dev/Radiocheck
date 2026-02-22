@@ -300,6 +300,37 @@ export default function Index() {
             <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
 
+          {/* Staff On Duty Today */}
+          <View style={styles.staffOnDutyCard} data-testid="staff-on-duty">
+            <View style={styles.staffOnDutyHeader}>
+              <View style={[styles.cardIconContainer, { backgroundColor: '#dbeafe' }]}>
+                <Ionicons name="people" size={24} color="#3b82f6" />
+              </View>
+              <Text style={styles.staffOnDutyTitle}>Staff On Duty Today</Text>
+            </View>
+            <View style={styles.staffOnDutyStats}>
+              <View style={styles.staffStatItem}>
+                <View style={[styles.staffDot, { backgroundColor: '#22c55e' }]} />
+                <Text style={styles.staffStatLabel}>Counsellors</Text>
+                <Text style={styles.staffStatValue}>{staffOnDuty.counsellors}</Text>
+              </View>
+              <View style={styles.staffStatItem}>
+                <View style={[styles.staffDot, { backgroundColor: '#3b82f6' }]} />
+                <Text style={styles.staffStatLabel}>Peer Supporters</Text>
+                <Text style={styles.staffStatValue}>{staffOnDuty.peers}</Text>
+              </View>
+            </View>
+            {staffOnDuty.counsellors + staffOnDuty.peers > 0 ? (
+              <Text style={styles.staffAvailableText}>
+                <Ionicons name="checkmark-circle" size={14} color="#22c55e" /> Support available now
+              </Text>
+            ) : (
+              <Text style={styles.staffUnavailableText}>
+                <Ionicons name="time" size={14} color="#f59e0b" /> Check back soon for live support
+              </Text>
+            )}
+          </View>
+
           {/* Request a Callback - now below Friends & Family */}
           <TouchableOpacity 
             style={[styles.menuCard, styles.callbackCard]}
