@@ -290,3 +290,46 @@ async def register_push_token(user_id: str, push_token: str):
     )
     
     return {"success": True}
+
+
+@router.post("/send-reminders")
+async def send_shift_reminders():
+    """
+    Manually trigger shift reminder check.
+    This will send email reminders to staff with shifts in the next 24 hours.
+    
+    In production, this should be called by a cron job every 15 minutes:
+    */15 * * * * curl -X POST https://api.radiocheck.me/api/shifts/send-reminders
+    """
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+    
+    from shift_reminders import check_and_send_reminders
+    
+    result = await check_and_send_reminders()
+    return result
+
+
+@router.get("/reminder-status")
+async def get_reminder_status():
+    """Get status of sent reminders for auditing"""
+    db = get_database()
+    
+    # Get recent reminders
+    cursor = db.sent_reminders.find(
+        {},
+        {'_id': 0}
+    ).sort('sent_at', -1).limit(50)
+    
+    reminders = await cursor.to_list(length=50)
+    
+    # Get counts by type
+    count_24h = await db.sent_reminders.count_documents({'reminder_type': '24_hour'})
+    count_1h = await db.sent_reminders.count_documents({'reminder_type': '1_hour'})
+    
+    return {
+        'total_24h_reminders': count_24h,
+        'total_1h_reminders': count_1h,
+        'recent_reminders': reminders
+    }
