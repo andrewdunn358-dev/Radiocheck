@@ -55,8 +55,8 @@ export default function Index() {
         const today = new Date().toISOString().split('T')[0];
         const [shiftsRes, counsellorsRes, peersRes] = await Promise.all([
           fetch(`${API_URL}/api/shifts/`),
-          fetch(`${API_URL}/api/staff/counsellors`),
-          fetch(`${API_URL}/api/staff/peers`)
+          fetch(`${API_URL}/api/counsellors`),
+          fetch(`${API_URL}/api/peers`)
         ]);
         
         const shifts = await shiftsRes.json();
