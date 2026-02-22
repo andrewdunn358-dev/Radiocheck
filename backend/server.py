@@ -6324,11 +6324,19 @@ app.include_router(api_router)
 
 # Include modular routers from /routers directory
 from routers import (
+    auth, cms, shifts, buddy_finder,
     staff, organizations, resources, safeguarding, 
     callbacks, live_chat, notes, concerns,
     message_queue, ai_feedback, knowledge_base, compliance
 )
 
+# Core functionality routers
+app.include_router(auth.router, prefix="/api")
+app.include_router(cms.router, prefix="/api")
+app.include_router(shifts.router, prefix="/api")
+app.include_router(buddy_finder.router, prefix="/api")
+
+# Staff and organization management
 app.include_router(staff.router, prefix="/api")
 app.include_router(organizations.router, prefix="/api")
 app.include_router(resources.router, prefix="/api")
