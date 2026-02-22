@@ -50,7 +50,7 @@ async def fetch_rss_feed(url: str, timeout: float = 10.0) -> Optional[str]:
 
 
 def parse_youtube_rss(xml_content: str) -> Optional[dict]:
-    """Parse YouTube Atom feed and extract the latest video with thumbnail"""
+    """Parse YouTube Atom feed and extract the latest FULL video (not Shorts)"""
     try:
         root = ET.fromstring(xml_content)
         
@@ -61,62 +61,83 @@ def parse_youtube_rss(xml_content: str) -> Optional[dict]:
             'media': 'http://search.yahoo.com/mrss/'
         }
         
-        # Find the first entry (latest video)
-        entry = root.find('atom:entry', ns) or root.find('{http://www.w3.org/2005/Atom}entry')
-        if entry is None:
+        # Find ALL entries (to skip Shorts and find actual episodes)
+        entries = root.findall('atom:entry', ns) or root.findall('{http://www.w3.org/2005/Atom}entry')
+        if not entries:
             return None
         
-        # Extract video details
-        title_elem = entry.find('atom:title', ns) or entry.find('{http://www.w3.org/2005/Atom}title')
-        published_elem = entry.find('atom:published', ns) or entry.find('{http://www.w3.org/2005/Atom}published')
-        link_elem = entry.find('atom:link[@rel="alternate"]', ns) or entry.find('{http://www.w3.org/2005/Atom}link[@rel="alternate"]')
-        
-        # Get video ID from yt:videoId element
-        video_id_elem = entry.find('yt:videoId', ns) or entry.find('{http://www.youtube.com/xml/schemas/2015}videoId')
-        video_id = video_id_elem.text if video_id_elem is not None else None
-        
-        # Get thumbnail from media:group/media:thumbnail
-        media_group = entry.find('media:group', ns) or entry.find('{http://search.yahoo.com/mrss/}group')
-        thumbnail_url = None
-        description = None
-        
-        if media_group is not None:
-            thumbnail_elem = media_group.find('media:thumbnail', ns) or media_group.find('{http://search.yahoo.com/mrss/}thumbnail')
-            if thumbnail_elem is not None:
-                thumbnail_url = thumbnail_elem.get('url', '')
+        # Iterate through entries to find the first non-Short video
+        for entry in entries:
+            # Get video ID
+            video_id_elem = entry.find('yt:videoId', ns) or entry.find('{http://www.youtube.com/xml/schemas/2015}videoId')
+            video_id = video_id_elem.text if video_id_elem is not None else None
             
-            # Get description
-            desc_elem = media_group.find('media:description', ns) or media_group.find('{http://search.yahoo.com/mrss/}description')
-            if desc_elem is not None and desc_elem.text:
-                # Truncate description to first 200 chars
-                description = desc_elem.text[:200] + '...' if len(desc_elem.text) > 200 else desc_elem.text
+            if not video_id:
+                continue
+            
+            # Get the link to check if it's a Short
+            link_elem = entry.find('atom:link[@rel="alternate"]', ns) or entry.find('{http://www.w3.org/2005/Atom}link[@rel="alternate"]')
+            link = link_elem.get('href', '') if link_elem is not None else ''
+            
+            # Skip YouTube Shorts (they have /shorts/ in URL or short titles with hashtags)
+            if '/shorts/' in link:
+                continue
+            
+            # Get the title to check for Short indicators
+            title_elem = entry.find('atom:title', ns) or entry.find('{http://www.w3.org/2005/Atom}title')
+            title = title_elem.text if title_elem is not None else "Unknown Video"
+            
+            # Skip if title is very short (likely a Short) - full episodes usually have longer titles
+            # Also skip titles that are mostly hashtags
+            hashtag_count = title.count('#')
+            if len(title) < 30 and hashtag_count >= 2:
+                continue
+            
+            # This looks like a full video/podcast episode, extract details
+            published_elem = entry.find('atom:published', ns) or entry.find('{http://www.w3.org/2005/Atom}published')
+            
+            # Get thumbnail and description from media:group
+            media_group = entry.find('media:group', ns) or entry.find('{http://search.yahoo.com/mrss/}group')
+            thumbnail_url = None
+            description = None
+            
+            if media_group is not None:
+                thumbnail_elem = media_group.find('media:thumbnail', ns) or media_group.find('{http://search.yahoo.com/mrss/}thumbnail')
+                if thumbnail_elem is not None:
+                    thumbnail_url = thumbnail_elem.get('url', '')
+                
+                desc_elem = media_group.find('media:description', ns) or media_group.find('{http://search.yahoo.com/mrss/}description')
+                if desc_elem is not None and desc_elem.text:
+                    description = desc_elem.text[:200] + '...' if len(desc_elem.text) > 200 else desc_elem.text
+            
+            # Fallback thumbnail from video ID
+            if not thumbnail_url and video_id:
+                thumbnail_url = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+            
+            pub_date = published_elem.text if published_elem is not None else None
+            
+            # Parse the publication date
+            date_str = None
+            if pub_date:
+                try:
+                    parsed_date = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
+                    date_str = parsed_date.isoformat()
+                except Exception:
+                    date_str = pub_date
+            
+            return {
+                "title": title,
+                "date": date_str,
+                "link": f"https://www.youtube.com/watch?v={video_id}",  # Always use watch URL, not shorts
+                "video_id": video_id,
+                "thumbnail": thumbnail_url,
+                "description": description,
+                "type": "youtube"
+            }
         
-        # If no thumbnail from media:group, construct from video ID
-        if not thumbnail_url and video_id:
-            thumbnail_url = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+        # If all entries were Shorts, return None
+        return None
         
-        title = title_elem.text if title_elem is not None else "Unknown Video"
-        pub_date = published_elem.text if published_elem is not None else None
-        link = link_elem.get('href', '') if link_elem is not None else ''
-        
-        # Parse the publication date (YouTube uses ISO format)
-        date_str = None
-        if pub_date:
-            try:
-                parsed_date = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
-                date_str = parsed_date.isoformat()
-            except Exception:
-                date_str = pub_date
-        
-        return {
-            "title": title,
-            "date": date_str,
-            "link": link,
-            "video_id": video_id,
-            "thumbnail": thumbnail_url,
-            "description": description,
-            "type": "youtube"
-        }
     except ET.ParseError as e:
         logger.warning(f"Failed to parse YouTube XML: {e}")
     except Exception as e:
