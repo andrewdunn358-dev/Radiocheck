@@ -205,6 +205,56 @@ export default function SplashScreen() {
         </View>
       </ScrollView>
 
+      {/* Permission Request Modal */}
+      <Modal
+        visible={showPermissionModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPermissionModal(false)}
+      >
+        <View style={styles.permissionOverlay}>
+          <View style={styles.permissionModal}>
+            <View style={styles.permissionIconContainer}>
+              <Ionicons name="mic" size={48} color="#3b82f6" />
+            </View>
+            <Text style={styles.permissionTitle}>Enable Microphone</Text>
+            <Text style={styles.permissionDescription}>
+              Radio Check needs microphone access for peer-to-peer voice calls with other veterans.
+            </Text>
+            <View style={styles.permissionFeatures}>
+              <View style={styles.permissionFeature}>
+                <Ionicons name="call" size={20} color="#22c55e" />
+                <Text style={styles.permissionFeatureText}>Talk directly with peer supporters</Text>
+              </View>
+              <View style={styles.permissionFeature}>
+                <Ionicons name="people" size={20} color="#22c55e" />
+                <Text style={styles.permissionFeatureText}>Connect with fellow veterans</Text>
+              </View>
+              <View style={styles.permissionFeature}>
+                <Ionicons name="shield-checkmark" size={20} color="#22c55e" />
+                <Text style={styles.permissionFeatureText}>Your privacy is protected</Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={styles.permissionAllowButton}
+              onPress={handleAllowPermissions}
+            >
+              <Ionicons name="mic" size={20} color="#fff" />
+              <Text style={styles.permissionAllowText}>Allow Microphone</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.permissionSkipButton}
+              onPress={handleSkipPermissions}
+            >
+              <Text style={styles.permissionSkipText}>Maybe Later</Text>
+            </TouchableOpacity>
+            <Text style={styles.permissionNote}>
+              You can always enable this in Settings later.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
       {/* Cookie Notice */}
       {showCookieNotice && (
         <View style={styles.cookieNotice}>
