@@ -219,14 +219,18 @@ export default function PodcastsScreen() {
           {PODCASTS.map((podcast) => {
             const latestEp = latestEpisodes[podcast.id];
             
+            // Use local logo for Frankie's Pod, remote URLs for others
+            const logoSource = podcast.logo === 'local' 
+              ? FRANKIES_POD_LOGO 
+              : { uri: podcast.logo };
+            
             return (
               <View key={podcast.id} style={styles.podcastCard}>
                 {/* Header with Logo */}
                 <View style={styles.podcastHeader}>
                   <Image 
-                    source={{ uri: podcast.logo }} 
+                    source={logoSource} 
                     style={styles.podcastLogo}
-                    defaultSource={require('../assets/images/icon.png')}
                   />
                   <View style={styles.podcastInfo}>
                     <Text style={styles.podcastName} numberOfLines={2}>{podcast.name}</Text>
