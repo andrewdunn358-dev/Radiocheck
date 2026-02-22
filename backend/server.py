@@ -5140,7 +5140,8 @@ from routers import (
     auth, cms, shifts, buddy_finder,
     staff, organizations, resources, safeguarding, 
     callbacks, live_chat, notes, concerns,
-    message_queue, ai_feedback, knowledge_base, compliance
+    message_queue, ai_feedback, knowledge_base, compliance,
+    podcasts
 )
 
 # Core functionality routers
@@ -5148,6 +5149,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(cms.router, prefix="/api")
 app.include_router(shifts.router, prefix="/api")
 app.include_router(buddy_finder.router, prefix="/api")
+app.include_router(podcasts.router, prefix="/api")
 
 # Staff and organization management
 app.include_router(staff.router, prefix="/api")
