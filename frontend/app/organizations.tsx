@@ -92,21 +92,6 @@ export default function Organizations() {
             </Text>
           </View>
 
-          {/* Alcohol & Substance Support Card */}
-          <TouchableOpacity 
-            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#d97706' }}
-            onPress={() => router.push('/substance-support')}
-          >
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#451a03', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-              <FontAwesome5 name="wine-bottle" size={24} color="#d97706" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fcd34d', marginBottom: 2 }}>Alcohol & Substance Support</Text>
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Resources and AI support for recovery</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-
           {/* Loading State */}
           {isLoading ? (
             <View style={{ alignItems: 'center', padding: 40 }}>
