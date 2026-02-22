@@ -18,12 +18,12 @@
 4. ✅ **Updated self-care.tsx** - HUGO_AVATAR constant updated
 5. ✅ **Updated MongoDB** - cms_cards collection updated for Hugo cards
 
-**🟠 P1 - Backend Modularization (Phase 1 Done):**
+**🟠 P1 - Backend Modularization (Complete):**
 6. ✅ **Included all 4 missing routers** - auth, cms, shifts, buddy_finder now included
 7. ✅ **Added GDPR endpoints to auth.py router** - /my-data/export, DELETE /me, /my-data/categories
 8. ✅ **Backend now has 16 active routers** - All functional, API tested and working
-
-**Note:** Server.py still contains duplicate code for auth, cms, shifts, buddy-finder endpoints. FastAPI handles this by using the first registered route. Full cleanup (Phase 2) can be done later by removing duplicates from server.py.
+9. ✅ **Removed 1187 lines of duplicate code from server.py** - File reduced from 6374 to 5187 lines (19% reduction)
+10. ✅ **Fixed CMS router ObjectId serialization** - Proper MongoDB _id handling
 
 ### 🔄 Requires User Action
 
