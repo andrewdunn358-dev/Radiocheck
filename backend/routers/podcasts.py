@@ -50,7 +50,7 @@ async def fetch_rss_feed(url: str, timeout: float = 10.0) -> Optional[str]:
 
 
 def parse_youtube_rss(xml_content: str) -> Optional[dict]:
-    """Parse YouTube Atom feed and extract the latest video"""
+    """Parse YouTube Atom feed and extract the latest video with thumbnail"""
     try:
         root = ET.fromstring(xml_content)
         
@@ -62,17 +62,38 @@ def parse_youtube_rss(xml_content: str) -> Optional[dict]:
         }
         
         # Find the first entry (latest video)
-        entry = root.find('atom:entry', ns)
+        entry = root.find('atom:entry', ns) or root.find('{http://www.w3.org/2005/Atom}entry')
         if entry is None:
-            # Try without namespace
-            entry = root.find('{http://www.w3.org/2005/Atom}entry')
-            if entry is None:
-                return None
+            return None
         
         # Extract video details
         title_elem = entry.find('atom:title', ns) or entry.find('{http://www.w3.org/2005/Atom}title')
         published_elem = entry.find('atom:published', ns) or entry.find('{http://www.w3.org/2005/Atom}published')
         link_elem = entry.find('atom:link[@rel="alternate"]', ns) or entry.find('{http://www.w3.org/2005/Atom}link[@rel="alternate"]')
+        
+        # Get video ID from yt:videoId element
+        video_id_elem = entry.find('yt:videoId', ns) or entry.find('{http://www.youtube.com/xml/schemas/2015}videoId')
+        video_id = video_id_elem.text if video_id_elem is not None else None
+        
+        # Get thumbnail from media:group/media:thumbnail
+        media_group = entry.find('media:group', ns) or entry.find('{http://search.yahoo.com/mrss/}group')
+        thumbnail_url = None
+        description = None
+        
+        if media_group is not None:
+            thumbnail_elem = media_group.find('media:thumbnail', ns) or media_group.find('{http://search.yahoo.com/mrss/}thumbnail')
+            if thumbnail_elem is not None:
+                thumbnail_url = thumbnail_elem.get('url', '')
+            
+            # Get description
+            desc_elem = media_group.find('media:description', ns) or media_group.find('{http://search.yahoo.com/mrss/}description')
+            if desc_elem is not None and desc_elem.text:
+                # Truncate description to first 200 chars
+                description = desc_elem.text[:200] + '...' if len(desc_elem.text) > 200 else desc_elem.text
+        
+        # If no thumbnail from media:group, construct from video ID
+        if not thumbnail_url and video_id:
+            thumbnail_url = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
         
         title = title_elem.text if title_elem is not None else "Unknown Video"
         pub_date = published_elem.text if published_elem is not None else None
@@ -82,7 +103,6 @@ def parse_youtube_rss(xml_content: str) -> Optional[dict]:
         date_str = None
         if pub_date:
             try:
-                # YouTube format: 2026-02-20T00:00:13+00:00
                 parsed_date = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
                 date_str = parsed_date.isoformat()
             except Exception:
@@ -91,7 +111,11 @@ def parse_youtube_rss(xml_content: str) -> Optional[dict]:
         return {
             "title": title,
             "date": date_str,
-            "link": link
+            "link": link,
+            "video_id": video_id,
+            "thumbnail": thumbnail_url,
+            "description": description,
+            "type": "youtube"
         }
     except ET.ParseError as e:
         logger.warning(f"Failed to parse YouTube XML: {e}")
