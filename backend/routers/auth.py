@@ -268,3 +268,192 @@ async def remove_push_token(current_user: User = Depends(get_current_user)):
     )
     
     return {"message": "Push token removed"}
+
+
+# ==================================
+# GDPR Data Rights Endpoints
+# ==================================
+
+@router.get("/my-data/export")
+async def export_my_data(current_user: User = Depends(get_current_user)):
+    """
+    GDPR Article 15 - Right of Access
+    Export all personal data associated with the current user
+    """
+    db = get_database()
+    user_data = {
+        "request_date": datetime.utcnow().isoformat(),
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role,
+        "name": current_user.name,
+        "data_categories": {}
+    }
+    
+    # Get full user record
+    full_user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "password_hash": 0, "hashed_password": 0})
+    if full_user:
+        user_data["data_categories"]["account"] = full_user
+    
+    # Get buddy profile
+    buddy_profile = await db.buddy_profiles.find_one({"user_id": current_user.id}, {"_id": 0})
+    if buddy_profile:
+        user_data["data_categories"]["buddy_profile"] = buddy_profile
+    
+    # Get buddy messages (sent and received)
+    if buddy_profile:
+        profile_id = buddy_profile.get("id")
+        messages = await db.buddy_messages.find({
+            "$or": [{"from_profile_id": profile_id}, {"to_profile_id": profile_id}]
+        }, {"_id": 0}).to_list(1000)
+        if messages:
+            user_data["data_categories"]["buddy_messages"] = messages
+    
+    # Get shifts
+    shifts = await db.shifts.find({"user_id": current_user.id}, {"_id": 0}).to_list(500)
+    if shifts:
+        user_data["data_categories"]["shifts"] = shifts
+    
+    # Get callback requests
+    callbacks = await db.callback_requests.find({"user_id": current_user.id}, {"_id": 0}).to_list(100)
+    if callbacks:
+        user_data["data_categories"]["callback_requests"] = callbacks
+    
+    # Get notes authored by user
+    notes = await db.notes.find({"author_id": current_user.id}, {"_id": 0}).to_list(500)
+    if notes:
+        user_data["data_categories"]["notes"] = notes
+    
+    # Get concerns related to user
+    concerns = await db.concerns.find({"user_id": current_user.id}, {"_id": 0}).to_list(100)
+    if concerns:
+        user_data["data_categories"]["concerns"] = concerns
+    
+    # Get safeguarding alerts
+    alerts = await db.safeguarding_alerts.find({"user_id": current_user.id}, {"_id": 0}).to_list(100)
+    if alerts:
+        user_data["data_categories"]["safeguarding_alerts"] = alerts
+    
+    # Get counsellor/peer supporter profile if applicable
+    if current_user.role == "counsellor":
+        counsellor = await db.counsellors.find_one({"user_id": current_user.id}, {"_id": 0})
+        if counsellor:
+            user_data["data_categories"]["counsellor_profile"] = counsellor
+    elif current_user.role in ["peer", "peer_supporter"]:
+        peer = await db.peer_supporters.find_one({"user_id": current_user.id}, {"_id": 0})
+        if peer:
+            user_data["data_categories"]["peer_supporter_profile"] = peer
+    
+    return user_data
+
+
+@router.delete("/me")
+async def delete_my_account(current_user: User = Depends(get_current_user)):
+    """
+    GDPR Article 17 - Right to Erasure ("Right to be Forgotten")
+    Delete own account and all associated personal data
+    
+    Note: Some data may be retained for safeguarding/legal compliance
+    """
+    db = get_database()
+    user_id = current_user.id
+    deleted_data = {
+        "user_id": user_id,
+        "deletion_date": datetime.utcnow().isoformat(),
+        "deleted_records": {}
+    }
+    
+    # Delete buddy profile and associated messages
+    buddy_profile = await db.buddy_profiles.find_one({"user_id": user_id})
+    if buddy_profile:
+        profile_id = buddy_profile.get("id")
+        # Delete messages where user was sender or recipient
+        msg_result = await db.buddy_messages.delete_many({
+            "$or": [{"from_profile_id": profile_id}, {"to_profile_id": profile_id}]
+        })
+        deleted_data["deleted_records"]["buddy_messages"] = msg_result.deleted_count
+        
+        # Delete profile
+        await db.buddy_profiles.delete_one({"user_id": user_id})
+        deleted_data["deleted_records"]["buddy_profile"] = 1
+    
+    # Delete shifts
+    shifts_result = await db.shifts.delete_many({"user_id": user_id})
+    deleted_data["deleted_records"]["shifts"] = shifts_result.deleted_count
+    
+    # Delete callback requests (anonymize rather than delete for safeguarding)
+    await db.callback_requests.update_many(
+        {"user_id": user_id},
+        {"$set": {"user_id": "DELETED_USER", "name": "REDACTED", "phone": "REDACTED"}}
+    )
+    
+    # Delete notes
+    notes_result = await db.notes.delete_many({"author_id": user_id})
+    deleted_data["deleted_records"]["notes"] = notes_result.deleted_count
+    
+    # Anonymize concerns (retain for safeguarding)
+    await db.concerns.update_many(
+        {"user_id": user_id},
+        {"$set": {"user_id": "DELETED_USER"}}
+    )
+    
+    # Anonymize safeguarding alerts (legal retention requirement)
+    await db.safeguarding_alerts.update_many(
+        {"user_id": user_id},
+        {"$set": {"user_id": "DELETED_USER"}}
+    )
+    
+    # Delete counsellor/peer profile
+    await db.counsellors.delete_many({"user_id": user_id})
+    await db.peer_supporters.delete_many({"user_id": user_id})
+    
+    # Delete password reset tokens
+    await db.password_resets.delete_many({"user_id": user_id})
+    
+    # Finally delete user account
+    await db.users.delete_one({"id": user_id})
+    deleted_data["deleted_records"]["user_account"] = 1
+    
+    deleted_data["message"] = "Account and personal data deleted. Some anonymized records retained for safeguarding compliance."
+    return deleted_data
+
+
+@router.get("/my-data/categories")
+async def get_my_data_categories(current_user: User = Depends(get_current_user)):
+    """
+    Get summary of what data categories exist for the current user
+    Helps users understand what data we hold before requesting full export
+    """
+    db = get_database()
+    categories = []
+    
+    categories.append({"category": "account", "exists": True, "description": "Your account information"})
+    
+    buddy_profile = await db.buddy_profiles.find_one({"user_id": current_user.id})
+    categories.append({
+        "category": "buddy_profile", 
+        "exists": buddy_profile is not None,
+        "description": "Your Buddy Finder profile"
+    })
+    
+    if buddy_profile:
+        profile_id = buddy_profile.get("id")
+        msg_count = await db.buddy_messages.count_documents({
+            "$or": [{"from_profile_id": profile_id}, {"to_profile_id": profile_id}]
+        })
+        categories.append({
+            "category": "buddy_messages",
+            "exists": msg_count > 0,
+            "count": msg_count,
+            "description": "Messages sent/received via Buddy Finder"
+        })
+    
+    shift_count = await db.shifts.count_documents({"user_id": current_user.id})
+    categories.append({
+        "category": "shifts",
+        "exists": shift_count > 0,
+        "count": shift_count,
+        "description": "Your scheduled shifts"
+    })
+    
+    return {"user_id": current_user.id, "data_categories": categories}
