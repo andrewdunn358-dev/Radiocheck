@@ -7,208 +7,222 @@
 - MongoDB database
 - Static HTML admin and staff portals
 
-## Session Summary - February 22, 2026 (Latest)
+---
+
+## Session Summary - February 22-23, 2026 (Latest)
 
 ### ✅ Completed This Session
 
-**🔴 P0 - Hugo Avatar Update (Done):**
-1. ✅ **Generated new Hugo avatar** - Black man in late 20s with long dreads
-2. ✅ **Updated server.py** - AI_CHARACTERS definition with new avatar URL
-3. ✅ **Updated home.tsx** - FALLBACK_AI_TEAM with new avatar
-4. ✅ **Updated self-care.tsx** - HUGO_AVATAR constant updated
-5. ✅ **Updated MongoDB** - cms_cards collection updated for Hugo cards
+**🔴 P0 - GDPR AI Consent Modal Rollout (Complete):**
+1. ✅ **Created AIConsentModal component** - Reusable GDPR consent modal at `/frontend/src/components/AIConsentModal.tsx`
+2. ✅ **Implemented in sentry-chat.tsx** - Consent required before AI interaction
+3. ✅ **Implemented in hugo-chat.tsx** - Consent modal with character-specific name
+4. ✅ **Implemented in margie-chat.tsx** - Consent modal for substance support AI
+5. ✅ **Implemented in bob-chat.tsx** - Consent modal for peer support AI
+   - All AI chat screens now show disclosure:
+     - AI is not a trained counsellor
+     - What AI can/cannot do
+     - Privacy & data handling
+     - Crisis numbers (Samaritans 116 123, Combat Stress)
+     - Consent stored locally per character
 
-**🟠 P1 - Backend Modularization (Complete):**
-6. ✅ **Included all 4 missing routers** - auth, cms, shifts, buddy_finder now included
-7. ✅ **Added GDPR endpoints to auth.py router** - /my-data/export, DELETE /me, /my-data/categories
-8. ✅ **Backend now has 16 active routers** - All functional, API tested and working
-9. ✅ **Removed 1187 lines of duplicate code from server.py** - File reduced from 6374 to 5187 lines (19% reduction)
-10. ✅ **Fixed CMS router ObjectId serialization** - Proper MongoDB _id handling
+**🟠 P1 - Data Retention System (Complete):**
+6. ✅ **Created data_retention.py script** - `/backend/scripts/data_retention.py`
+   - Automated data cleanup per GDPR retention policies
+   - Supports --dry-run mode for testing
+   - Retention periods:
+     - Chat messages: 90 days (anonymize)
+     - Safeguarding alerts: 7 years (anonymize)
+     - Callback requests: 1 year (anonymize)
+     - Call logs: 1 year (anonymize)
+     - Panic alerts: 1 year (delete)
+     - Compliance logs: 2 years (delete)
 
-**🟢 Podcasts Section (New):**
-11. ✅ **Added Podcasts card to home page** - Above "Request a Callback"
-12. ✅ **Created podcasts.tsx** - New page with 8 curated veteran podcasts:
-    - Frankie's Pod: Uncorking the Unforgettable
-    - Tom Petch: Speed. Aggression. Surprise.
-    - The Old Paratrooper Podcast
-    - Beyond the Barracks
-    - Combat Stress 100 Podcast
-    - Military Veterans Podcast
-    - Talking with the Wounded
-    - Stray Voltage
-13. ✅ **Platform links** - Spotify, Apple Podcasts, YouTube links for each podcast
-14. ✅ **YouTube RSS feeds** - Auto-fetching latest episodes with thumbnails
-15. ✅ **In-app YouTube player** - Watch episodes without leaving the app
-16. ✅ **Shorts filtering** - Only shows full podcast episodes, not YouTube Shorts
+7. ✅ **Created data retention API router** - `/backend/routers/data_retention.py`
+   - `GET /api/admin/data-retention/status` - View policies & last cleanup report
+   - `POST /api/admin/data-retention/run` - Trigger cleanup (with dry_run option)
+   - `GET /api/admin/data-retention/reports` - Audit trail of cleanups
+   - `DELETE /api/admin/data-retention/user-data/{user_id}` - GDPR "Right to be Forgotten"
+   - `GET /api/admin/data-retention/gdpr-requests` - Log of deletion requests
 
-**🟣 Legal & Permissions (New):**
-17. ✅ **Settings page updated** - Added Legal & Your Rights section with links to:
-    - Privacy Policy
-    - Terms of Service
-    - Your Data Rights (GDPR)
-    - Safeguarding Policy
-18. ✅ **Created your-data-rights.tsx** - GDPR rights page with:
-    - Explanation of data rights (access, portability, rectification, erasure)
-    - Export My Data button
-    - Delete My Account button
-    - Clear Local Data button
-    - Data retention information
-19. ✅ **Created safeguarding.tsx** - Safeguarding policy page with:
-    - Emergency contact (999)
-    - Helpline numbers (Samaritans, Combat Stress, Veterans Gateway)
-    - AI limitations disclosure
-    - Confidentiality limits
-    - Report concerns information
-20. ✅ **First-launch microphone permission modal** - Requests mic access for P2P calls
+**🟢 Mood Tracking Enhancement (Complete):**
+8. ✅ **Added visual mood timeline graph** - `/frontend/app/mood.tsx`
+   - Interactive graph showing mood over time
+   - Y-axis: Mood emoji scale (😢 to 😊)
+   - Data points with mood color coding
+   - Trend indicator (📈 Improving / 📉 Declining / ➡️ Stable)
+   - X-axis: Date labels
+   - Period selector: 7 Days / 30 Days / All Time
 
-### 🔄 Requires User Action
+**🟣 Push Notifications for Shifts (Backend Ready):**
+9. ✅ **Shifts router has push notification infrastructure** - `/backend/routers/shifts.py`
+   - `send_push_notification()` - Expo push API integration
+   - Notifications sent on shift create/update/delete
+   - `POST /api/shifts/register-push-token` - Register user's push token
+   - Email notifications via Resend also available
+
+### 🔄 Pending User Action
 
 | Task | Action Required |
 |------|-----------------|
-| **Hugo Avatar** | Visible in app after next frontend load (hot reload) |
-| **Admin Portal** | Redeploy `/app/admin-site/` files to production (includes Compliance tab) |
-| **Staff Portal** | Redeploy `/app/staff-portal/` files to production |
-| **Mobile App** | Rebuild with Expo EAS if using production build |
+| **Push Notifications** | Install `expo-notifications` in frontend for token registration |
+| **Data Retention Cron** | Schedule `python scripts/data_retention.py` as daily cron job on production |
+| **Admin Portal** | Redeploy `/app/admin-site/` to see Compliance tab |
+
+---
+
+## Previous Session Work (Feb 22, 2026)
+
+### Completed:
+- ✅ Backend modularization (16 routers, 1187 lines removed from server.py)
+- ✅ Podcasts feature with YouTube integration
+- ✅ Hugo avatar update
+- ✅ Legal & permissions pages (data-rights, safeguarding-policy)
+- ✅ First-launch microphone permission modal
+- ✅ CMS ObjectId serialization fix
+
+---
+
+## Core Features
 
 ### User-Facing (Mobile App)
 - User authentication (JWT)
 - 7 AI chat personas with crisis detection (Tommy, Doris, Bob, Finch, Margie, Hugo, Rita)
-- **Knowledge Base Integration** - AI characters now use verified UK veteran information
+- **AI Consent Modal** - GDPR compliance before AI interaction
+- **Knowledge Base Integration** - AI uses verified UK veteran information
 - Staff availability calendar
-- Buddy Finder with peer matching and messaging
-- Message inbox
+- Buddy Finder with peer matching
+- **Mood Tracking with Graphs** - Historical view and trend analysis
 - Educational resources
+- Podcasts section (8 curated veteran podcasts)
 - Crisis/panic button (SOS)
 
 ### Admin Portal
-- Visual CMS Editor (WYSIWYG) - edit app content via phone preview
-- Logs & Analytics dashboard with Chart.js visualizations
-- Staff management (unified view)
-- Safeguarding alerts management
-- Prompt improvement workflow
-- **Test data cleanup endpoint** - Remove test counsellors/peer supporters
+- Visual CMS Editor (WYSIWYG)
+- Logs & Analytics dashboard
+- Staff management
+- Safeguarding alerts
+- **Data Retention Management** - GDPR compliance tools
+- Test data cleanup endpoint
 
 ### Staff Portal
-- Shift calendar and rota management
+- Shift calendar with notifications
 - Callback queue
 - Live chat rooms
 - Case notes
 
+---
+
 ## Technical Architecture
 
-### Backend Structure (Fully Modularized)
+### Backend Structure (17 Routers)
 ```
 /app/backend/
-├── server.py                    # Main entry + AI chat with Knowledge Base
-├── compliance.py                # Compliance models and helpers
-├── routers/                     # 16 modular API routers
+├── server.py                    # Main entry + AI chat
+├── routers/                     # 17 modular API routers
 │   ├── auth.py                  # Authentication + push tokens
 │   ├── cms.py                   # Content Management System
-│   ├── shifts.py                # Staff scheduling
-│   ├── compliance.py            # GDPR, BACP, audit logging, data protection
+│   ├── shifts.py                # Staff scheduling + push notifications
+│   ├── compliance.py            # GDPR, BACP, audit logging
+│   ├── data_retention.py        # NEW: Data retention management
 │   ├── buddy_finder.py          # Peer matching
-│   ├── staff.py                 # Counsellors/Peers
-│   ├── organizations.py         # Support orgs
-│   ├── resources.py             # Educational materials
-│   ├── safeguarding.py          # Alerts management
-│   ├── callbacks.py             # Callback requests
-│   ├── live_chat.py             # Chat rooms
-│   ├── notes.py                 # Staff notes
-│   ├── concerns.py              # Family concerns
-│   ├── message_queue.py         # Offline messaging
-│   ├── ai_feedback.py           # AI feedback system
-│   └── knowledge_base.py        # RAG for AI
-├── models/schemas.py            # Centralized Pydantic models
+│   ├── podcasts.py              # Podcast feeds
+│   └── ... (10 more routers)
+├── scripts/
+│   ├── data_retention.py        # NEW: Automated cleanup script
+│   └── migrate_encrypt_pii.py
+├── models/schemas.py            # Pydantic models
 └── services/database.py         # DB utilities
 ```
 
-## Session Work Summary (Feb 22, 2026)
+### Frontend Structure
+```
+/app/frontend/app/
+├── hugo-chat.tsx                # Updated: AI consent modal
+├── margie-chat.tsx              # Updated: AI consent modal
+├── bob-chat.tsx                 # Updated: AI consent modal
+├── sentry-chat.tsx              # Updated: AI consent modal
+├── mood.tsx                     # Updated: Mood timeline graph
+├── podcasts.tsx                 # YouTube integration
+├── your-data-rights.tsx         # GDPR rights
+└── safeguarding-policy.tsx      # Safety policy
 
-### Completed This Session:
+/app/frontend/src/components/
+└── AIConsentModal.tsx           # NEW: Reusable consent component
+```
 
-1. **AI Knowledge Base Integration** ✅
-   - AI characters now pull verified UK veteran info from knowledge base
-   - Seeded with 11 entries (benefits, mental health, housing, etc.)
-   - Endpoints: `/api/knowledge-base/*`
-
-2. **Logo Bug Fixed** ✅
-   - Fixed `source={{ uri: NEW_LOGO_URL }}` → `source={NEW_LOGO_URL}` in home.tsx
-
-3. **CMS Editor Improvements** ✅
-   - Fixed syntax error (extra `}`)
-   - Added dynamic page loading from API
-   - **Note:** Admin portal needs redeployment to production
-
-4. **Test Data Cleanup Endpoint** ✅
-   - `DELETE /api/admin/cleanup-test-data` - finds and removes test users
-   - Preview mode (default) shows what will be deleted
-   - Add `?confirm=true` to actually delete
-
-5. **GDPR/BACP Compliance Documentation** ✅
-   - Created `/app/docs/ROPA.md` - Record of Processing Activities
-   - Created `/app/docs/BACP_ETHICAL_FRAMEWORK_COMPLIANCE.md`
-   - Implementation checklists included
-
-6. **AI Testing Strategy** ✅
-   - Created `/app/docs/AI_TESTING_STRATEGY.md`
-   - Automated test scripts
-   - Load testing approach
-   - Regression test suite
-
-### Production Actions Required:
-
-1. **Redeploy Admin Portal**
-   - Copy `/app/admin-site/*` files to production
-   - CMS editor won't work until this is done
-   - See `/app/admin-site/DEPLOYMENT_GUIDE.md`
-
-2. **Clean Up Test Users**
-   ```bash
-   # Preview what will be deleted
-   curl -X DELETE "https://veterans-support-api.onrender.com/api/admin/cleanup-test-data" \
-     -H "Authorization: Bearer YOUR_TOKEN"
-   
-   # Actually delete (add ?confirm=true)
-   curl -X DELETE "https://veterans-support-api.onrender.com/api/admin/cleanup-test-data?confirm=true" \
-     -H "Authorization: Bearer YOUR_TOKEN"
-   ```
+---
 
 ## Remaining Tasks
 
-### High Priority
-- [ ] Add AI chat consent screen (BACP/GDPR requirement)
-- [ ] Implement audit logging for data access
-- [ ] Staff wellbeing features in Staff Portal
+### High Priority (P0)
+- [ ] Install expo-notifications for push token registration in frontend
+- [ ] Schedule data retention cron job in production
+- [ ] Cookie consent banner on admin portal & marketing website
 
-### Medium Priority
-- [ ] Accessibility review (screen readers, contrast)
-- [ ] Staff supervision request system
-- [ ] Cookie consent banner on website
+### Medium Priority (P1)
+- [ ] PHQ-9 / GAD-7 mental health screening tools
+- [ ] Create DPIA document for AI processing
+- [ ] "Report an Issue" button on settings page
+- [ ] Verify Compliance UI in Admin Portal
 
-### Future
-- [x] WebRTC audio calls (P2P working)
+### Future / Backlog
+- [ ] Consolidate AI chat screens into single reusable component (major refactor)
 - [ ] Welsh language support
+- [ ] Staff supervision request system
+- [ ] Structured CBT courses
+- [ ] App store assets (screenshots, marketing copy)
 
-## Key Files Changed This Session
-- `/app/backend/server.py` - Added knowledge base integration, cleanup endpoint
-- `/app/frontend/app/home.tsx` - Fixed logo source
-- `/app/admin-site/app.js` - Fixed syntax error, dynamic page loading
-- `/app/backend/routers/` - All 15 routers created
-- `/app/docs/` - New compliance and testing documentation
+---
 
 ## API Endpoints Summary
 
-### New Endpoints
-- `GET /api/knowledge-base/categories` - KB categories
-- `POST /api/knowledge-base/search` - Search KB
-- `GET /api/knowledge-base/context/{query}` - AI context
-- `POST /api/ai-feedback/thumbs` - Quick feedback
-- `GET /api/ai-feedback/summary` - Analytics
-- `GET /api/message-queue/stats` - Queue stats
-- `DELETE /api/admin/cleanup-test-data` - Remove test data
+### New Endpoints (This Session)
+- `GET /api/admin/data-retention/status` - Retention policy status
+- `POST /api/admin/data-retention/run?dry_run=true` - Run cleanup
+- `GET /api/admin/data-retention/reports` - Cleanup audit trail
+- `DELETE /api/admin/data-retention/user-data/{user_id}` - GDPR deletion
+- `GET /api/admin/data-retention/gdpr-requests` - Deletion request log
 
-### Existing Key Endpoints
+### Key Existing Endpoints
 - `POST /api/auth/login` - User login
 - `GET /api/auth/my-data/export` - GDPR data export
 - `DELETE /api/auth/me` - Account deletion
-- `POST /api/ai-buddies/chat` - AI chat (now with KB)
+- `POST /api/ai-buddies/chat` - AI chat with knowledge base
+- `GET /api/shifts/` - Get shifts
+- `POST /api/shifts/register-push-token` - Register push notifications
+
+---
+
+## Compliance Status
+
+### GDPR
+- ✅ AI consent modal (all chat screens)
+- ✅ Data export endpoint
+- ✅ Account deletion endpoint
+- ✅ Data retention script with policies
+- ✅ Right to be forgotten API
+- ⏳ Cookie consent banner (pending)
+
+### BACP
+- ✅ AI disclosure in consent modal
+- ✅ Crisis numbers prominently displayed
+- ✅ Safeguarding alerts system
+- ✅ Safeguarding policy page
+- ⏳ Complaints button (pending)
+
+---
+
+## Key Files Changed This Session
+- `/app/frontend/app/hugo-chat.tsx` - AI consent modal
+- `/app/frontend/app/margie-chat.tsx` - AI consent modal
+- `/app/frontend/app/bob-chat.tsx` - AI consent modal
+- `/app/frontend/app/mood.tsx` - Timeline graph enhancement
+- `/app/frontend/src/components/AIConsentModal.tsx` - Reusable component
+- `/app/backend/scripts/data_retention.py` - NEW: Cleanup script
+- `/app/backend/routers/data_retention.py` - NEW: Admin API
+- `/app/backend/server.py` - Added data_retention router
+
+---
+
+*Last Updated: February 23, 2026*
