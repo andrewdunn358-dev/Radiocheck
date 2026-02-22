@@ -9,97 +9,107 @@ The user wants to build Radio Check, a mental health and peer support applicatio
 -   Admin and Staff web portals for managing the application and its users.
 -   All portals and the app must be functional on both desktop and mobile devices.
 -   The admin portal needs a complete rewrite for a better user experience, including a comprehensive logging/analytics dashboard for calls, chats, and escalations.
+-   Implement compliance recommendations from BACP, GDPR, and ROPA documents.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a feature-rich MVP. Core functionalities like user authentication, WebRTC calls, AI chat with 7 personas (now enhanced with a RAG knowledge base), crisis detection, and a staff calendar are in place. The admin portal features a WYSIWYG CMS editor and an analytics dashboard. The backend has been partially modularized, with new routers created for most features. GDPR compliance, bot protection, and legal pages (Privacy Policy, ToS) have been implemented. The project's documentation has been significantly cleaned up and organized into a central  directory.
+The application is a feature-rich MVP. A major UI overhaul was just completed, addressing all of the user's layout and content requests across the home, peer-support, self-care, and family-friends pages. This included fixing AI character avatars, reordering components, and moving content between pages. Additionally, a new compliance module has been implemented, including a backend router for audit logging, new documentation for security procedures, and a Compliance tab in the admin portal for data review, although this new UI has not been visually verified.
 
 **Last working item**:
--   **Last item agent was working**: Addressing a batch of user-requested UI changes for the mobile app, including filtering AI personas on a specific page, updating a link on the splash screen, and re-arranging components on the home, peer-support, self-care, and family-friends pages.
+-   **Last item agent was working**: The user requested to change the avatar for the AI character 'Hugo' to a black guy late 20s long hair dreads. The agent initiated the  but was interrupted by the user clarification that they had not provided an image, leaving the task unfinished.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Frontend testing agent
+-   **Which testing method agent to use?**: screenshot tool
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-
--   **Issue 1**: CMS Visual Editor is non-functional on the user's production deployment. (P0)
--   **Issue 2**: A set of UI layout and content changes for the mobile app are partially complete. (P0)
--   **Issue 3**: Test users need to be removed from the production database. (P1)
--   **Issue 4**: The logo on the mobile app's home page was missing. (P1)
+-   **Issue 1**: Generate new avatar for 'Hugo' and update it across the application. (P0)
+-   **Issue 2**: The new Compliance tab in the admin portal has not been visually tested or verified. (P0)
+-   **Issue 3**: CMS Visual Editor is non-functional on the user's production deployment. (P1)
+-   **Issue 4**: Test users need to be removed from the production database. (P1)
 
 **Issues Detail**:
--   **Issue 1: CMS Visual Editor is non-functional on production**
-    -   **Attempted fixes**: The agent identified and fixed two root causes in : a hardcoded page dropdown was replaced with a dynamic API call, and a critical Javascript syntax error (an unclosed function brace) was corrected.
-    -   **Next debug checklist**: This issue is likely resolved, but the user must redeploy the static  files to their production server to see the fix. The next step is to inform the user of this requirement and confirm the fix.
-    -   **Why fix this issue and what will be achieved with the fix?**: The CMS is a critical feature for the admin user to manage in-app content. Fixing it is essential for the app's operation.
-    -   **Status**: USER VERIFICATION PENDING
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend (Manual verification by user on their production environment).
-
--   **Issue 2: Implement user's UI change requests**
-    -   **Attempted fixes**: The agent started working on the list of UI changes. It successfully updated a hyperlink on the splash screen (). The agent was about to modify  to filter the characters shown.
+-   **Issue 1: Generate and update Hugo's avatar**
+    -   **Attempted fixes**: The agent called the  but was stopped before completion.
     -   **Next debug checklist**:
-        -   Modify  to filter the fetched characters to show only 'Tommy' and 'Doris'.
-        -   Modify  to move Bob's card to the top, reformat a text block into a card, and remove an icon.
-        -   Modify  to move Hugo's card to the top.
-        -   Modify  to relocate the  and  cards and fix styling.
-        -   Modify  to reorder cards and remove redundant ones.
-    -   **Why fix this issue and what will be achieved with the fix?**: To align the app's UI with the user's explicit design and content hierarchy requirements.
+        1.  Call  with the prompt: An avatar of a black man in his late 20s with long dreads, friendly expression.
+        2.  Update the new image URL in  for the AI character definitions and the CMS seeding data.
+        3.  Update the MongoDB  collection in the  database to reflect the new URL for Hugo.
+        4.  Verify the change on the frontend ( and ) with a screenshot.
+    -   **Why fix this issue and what will be achieved with the fix?**: To fulfill a direct user request for character representation.
     -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: Y (Avatar issues have been a recurring theme).
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+
+-   **Issue 2: Verify new Compliance UI in Admin Portal**
+    -   **Attempted fixes**: The agent added a new Compliance tab to  and associated JS functions to  to fetch and display audit logs. However, the agent never took a screenshot to confirm the UI rendered correctly.
+    -   **Next debug checklist**:
+        1.  Log in to the admin portal.
+        2.  Take a screenshot of the admin portal.
+        3.  Click on the Compliance tab.
+        4.  Take a screenshot to verify the audit log table and data retention settings are displayed correctly.
+        5.  Test the functionality (e.g., search logs).
+    -   **Why fix this issue and what will be achieved with the fix?**: To confirm that the newly implemented GDPR/BACP compliance features are accessible and functional for the admin user.
+    -   **Status**: TESTING PENDING
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Frontend
 
--   **Issue 3: Clean up test users from production database**
-    -   **Attempted fixes**: Since direct database access is not possible, the agent created a secure admin endpoint () in . This allows an admin user to trigger the cleanup. The agent also created documentation for this.
-    -   **Next debug checklist**: Guide the user on how to use this new endpoint to perform the cleanup on their production environment.
-    -   **Why fix this issue and what will be achieved with the fix?**: To remove confusing test data from the live application before beta testing.
+-   **Issue 3: CMS Visual Editor is non-functional on production**
+    -   **Attempted fixes**: The agent previously identified and fixed two root causes in : a hardcoded dropdown and a Javascript syntax error.
+    -   **Next debug checklist**: The fix is complete in the codebase. The user must be informed that they need to redeploy the static  files to their production server to see the change.
+    -   **Why fix this issue and what will be achieved with the fix?**: The CMS is a critical feature for the admin user to manage in-app content.
     -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Backend (by user).
+    -   **Should Test frontend/backend/both after fix?**: None (User action required).
 
--   **Issue 4: Logo vanished from app's home page**
-    -   **Attempted fixes**: The agent located the bug in  where an  component's  prop was incorrectly formatted. The agent corrected the code from  to .
-    -   **Why fix this issue and what will be achieved with the fix?**: Restores critical branding to the app's main screen.
-    -   **Status**: RESOLVED
+-   **Issue 4: Clean up test users from production database**
+    -   **Attempted fixes**: An admin endpoint () was created in  to allow a secure cleanup.
+    -   **Next debug checklist**: Guide the user on how to call this new endpoint with their admin credentials to perform the cleanup on their production environment.
+    -   **Why fix this issue and what will be achieved with the fix?**: To remove confusing test data from the live application.
+    -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend (already fixed, user will see in next build).
+    -   **Should Test frontend/backend/both after fix?**: None (User action required).
 
 **In progress Task List**:
--   **Task 1: Complete UI change requests (P0)**
-    -   **Where to resume**: The agent should start by modifying  to apply the required character filter, then proceed to the other UI changes listed in Issue #2.
-    -   **What will be achieved with this?**: The app's user interface will be updated to match all of the user's latest requests, preparing it for the next round of testing.
+-   **Task 1: Complete Hugo Avatar Change (P0)**
+    -   **Where to resume**: Generate a new image for Hugo and propagate the URL throughout the backend, database, and frontend code.
+    -   **What will be achieved with this?**: The app's UI will be fully aligned with all of the user's latest requests.
     -   **Status**: IN PROGRESS
     -   **Should Test frontend/backend/both after fix?**: Frontend
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks**:
--   **(P0) Complete Backend Modularization**: Finish the migration of all endpoints from the monolithic  into the new router-based structure. This involves **deleting the old endpoint code from ** after verifying the routers are correctly integrated.
--   **(P1) Push Notifications for Shifts**: Implement the logic in  to trigger a push notification (using the user's registered token) when a shift is created or changed.
--   **(P1) Offline Message Queue Integration**: Fully integrate the newly created  router with the Buddy Finder messaging system to handle message delivery for offline users.
+-   **(P0) Complete Backend Modularization**: Finish migrating all endpoints from the monolithic  into the new router-based structure. This involves **deleting the old endpoint code from ** after verifying the routers are correctly integrated.
+-   **(P1) Implement remaining BACP Compliance Features**: Add conversation history download/clear for users, a staff wellbeing check-in feature, and a boundary training module.
+-   **(P1) Push Notifications for Shifts**: Implement logic in  to trigger a push notification when a shift is created or changed.
+-   **(P1) Offline Message Queue Integration**: Fully integrate the  router with the Buddy Finder messaging system.
 
 **Future Tasks**:
--   **(Refactor)** Create a single, reusable AI chat component in the React Native app to reduce code duplication.
--   **(Feature)** Implement WebRTC for peer-to-peer audio calls (Clarification needed on whether a 3rd party service like Metered.ca is required).
--   **(Feature)** Implement an automated testing strategy for the AI personas, as requested by the user.
--   **(Feature)** Build out the app store assets (screenshots, marketing copy) based on the  guide.
+-   **(Refactor)** Create a single, reusable AI chat component in the React Native app.
+-   **(Feature)** Implement WebRTC for peer-to-peer audio calls (Clarification needed on 3rd party service).
+-   **(Feature)** Implement an automated testing strategy for the AI personas.
+-   **(Feature)** Build out app store assets (screenshots, marketing copy).
 
 **Completed work in this session**
--   **Backend Features**: Implemented a Knowledge Base (RAG) system, an AI feedback mechanism, initiated an offline message queue, and added a push token registration endpoint.
--   **Backend Modularization (Initiated)**: Created over 10 new router files for various features and included them in the main .
--   **Documentation Overhaul**: Cleaned up and organized all project documentation from the root directory into a structured  folder.
--   **CMS Fix**: Repaired the admin portal's CMS by fixing a critical Javascript syntax error and making the page-selection dropdown dynamic.
--   **MVP Readiness**: Created comprehensive guides for production deployment () and MVP assessment ().
--   **Legal & Compliance**: Created Privacy Policy and Terms of Service pages, and enhanced the AI chat consent modal to be BACP-compliant.
--   **UI/UX Fixes**: Made the app's splash screen responsive, added favicons to the admin/staff portals, and fixed a missing logo on the home screen.
+-   **UI Overhaul**:
+    -   Generated new, unique avatars for 'Margie' and 'Hugo' and updated them in , , and the MongoDB CMS data to fix display errors.
+    -   Added 'Rita' to the Meet the AI Team grid on the home page.
+    -   Reorganized the , , and  pages by moving components to the top and removing/relocating cards as per user's request.
+    -   Created a new  page and linked it from the home page.
+    -   Removed redundant cards from the  and  pages.
+-   **Compliance Implementation**:
+    -   Created a new backend router () with endpoints for audit logging and data management.
+    -   Added a Compliance tab to the admin portal ( & ) to view this data.
+    -   Created  and  documents.
+    -   Updated , , and  to reflect implemented recommendations.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Incomplete Backend Modularization**
-    -   **Debug checklist**: The agent created new router files but failed to remove the original, now-redundant endpoint code from . The next step is to carefully remove this legacy code.
-    -   **Why to solve this issue and what will be achieved with this?**: Completing the refactor will significantly improve code maintainability, reduce complexity, and prevent potential bugs from duplicate route definitions.
+    -   **Debug checklist**: The agent has created over 10 router files in  but has not removed the original, now-duplicate endpoint code from . The next agent must identify and delete this legacy code.
+    -   **Why to solve this issue and what will be achieved with this?**: This is a critical code health issue. Removing the duplicate code will prevent routing conflicts, improve maintainability, and finalize the planned refactor.
     -   **Should Test frontend/backend/both after fix**: Backend
-    -   **Is recurring issue?**: N
+    -   **Is recurring issue?**: Y
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -112,78 +122,72 @@ The application is a feature-rich MVP. Core functionalities like user authentica
 -   **Frontend (Portals)**: Static HTML, CSS, JavaScript
 -   **Backend**: Python, FastAPI, Pydantic
 -   **Database**: MongoDB
--   **AI**: OpenAI GPT-4, RAG (Retrieval-Augmented Generation)
+-   **AI**: OpenAI GPT-4, RAG, Image Generation
 -   **Authentication**: JSON Web Tokens (JWT)
 
 **key DB schema**
 -   **KnowledgeBaseArticle**: {title, content, category, keywords}
 -   **AIFeedback**: {session_id, message_id, user_id, rating, comment}
 -   **QueuedMessage**: {recipient_id, sender_id, message, timestamp}
+-   **AuditLog**: {user_id, action, status, timestamp, ip_address, details} (New)
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : Multiple files in this directory require UI changes.
--   : Needs filtering logic.
--   : Major fixes were applied to resolve CMS issues.
--   : Contains new router inclusions and the incomplete legacy code.
--   : Contains all new and reorganized documentation.
+-   : Updated AI character definitions and included the new compliance router.
+-   , , , : Major UI reorganizations.
+-   : New file created.
+-   : Card removed.
+-   : New file for compliance endpoints.
+-    & : Added a new Compliance tab and its JS logic.
+-   : The location of the persisted MongoDB data which was manually updated. The database name is .
 
 **Areas that need refactoring**:
--   : This is the highest priority. The migration to routers must be completed by removing the original endpoint code from this file.
+-   : **CRITICAL**. The migration to routers must be completed by removing the original endpoint code from this file.
 -   The AI chat components in the frontend are duplicated and should be consolidated into a single reusable component.
 
 **key api endpoints**
--   : (POST) New endpoint to delete test users from the database.
--   : (GET) Searches the RAG knowledge base.
--   : (POST) Submits user feedback on an AI response.
--   : (POST) Registers a user's Expo push token.
+-   : (GET) Fetches audit logs for the admin portal. Requires admin auth.
+-   : (GET/POST) Manages data retention rules. Requires admin auth.
 
 **Critical Info for New Agent**
--   **Admin Portal is Static**: The user deploys the  and  files manually. All fixes to  (like the recent CMS fix) are not live until the user redeploys the files to their production server. You MUST communicate this clearly.
--   **Production DB is Separate**: You cannot directly modify the production database. For data cleanup, an API endpoint () has been provided for the user to trigger.
--   **Backend Refactor is CRITICAL but INCOMPLETE**: The agent created router files but did not complete the refactor by removing the old code from . This leaves the backend in a fragile state with duplicate logic. Completing this should be a top priority.
--   **Focus on MVP Prep**: The user's goal is to prepare the app for a private beta test. Prioritize bug fixes, user-requested UI tweaks, and tasks outlined in the  document.
+-   **Database is Persistent**: The MongoDB data is not in-memory; it's located at . The agent discovered the correct database name is . Any changes to data that appears on app load (like the AI Team) must be made directly to this database, as the seeding function only runs on an empty DB.
+-   **User Feedback is Specific**: The user provides detailed feedback, including screenshots. Pay close attention to these details, as the previous agent missed them initially, causing rework.
+-   **Admin Portal is Static**: Remind the user they must redeploy the  files to their production server to see any changes (like the new Compliance tab or the old CMS fix).
 
 **documents and test reports created in this job**
 -   
 -   
--   
--   
--    & 
--   All documentation was centralized under .
--   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: We need to clean up the GitHub md stuff. (Completed)
-2.  **User**: I can't sign in to the admin portal, it has a JS error. (Completed, pending user deployment)
-3.  **User**: The staff and admin portals need favicons. (Completed)
-4.  **User**: The splash screen is cut off on the app. (Completed)
-5.  **User**: How many concurrent WebRTC calls can we handle? (Answered)
-6.  **User**: We are not using Metered.ca. Can you explain production deployment on Render/Vercel and how to publish the mobile app? (Answered, docs created)
-7.  **User**: Is the app a viable MVP? How far off is it? How do we private test? (Answered, docs created)
-8.  **User**: OK, please do the critical MVP tasks you identified. (In progress/Completed)
-9.  **User**: Provided a list of UI bugs and layout changes for the mobile app. (In Progress)
-10. **User**: Clarified the CMS issue (visual editor not working) and the scope of the database cleanup (production Render DB). (Acknowledged, work started)
+1.  **User**: *Provides screenshot* look at this image margie and hugo have the wrong ones... you basically misse everything i told you to do. - Provided a detailed list of UI bugs and layout changes. (Completed)
+2.  **User**: need coverage for the BACP ethical complance... GDPR_AUDIT_REPORT.md... ropa.md - Requested implementation of recommendations from three compliance documents. (Completed)
+3.  **User**: on the peer-support remove the Talk to Another Veteran... - Requested removal of a specific card. (Completed)
+4.  **User**: on the organizations remove the alcohol substance support card - Requested removal of another card. (Completed)
+5.  **User**: the avatar for hugo chnage to a black guy late 20s long hair dreads - New avatar request. (In Progress)
+6.  **Agent**: *Calls image generation tool*.
+7.  **User**: i didnt give an image - Clarified that the agent should generate the image, not look for a user-provided one. (Pending Action)
 
 **Project Health Check:**
--   **Broken**: The admin portal was broken due to a JS syntax error. The agent has fixed the code, but the fix is **not live** until the user redeploys the static files.
+-   **Broken**: No. The application is running. The previously broken Admin Portal CMS has been fixed in the code, but is pending user verification on their deployment.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
 -   **OpenAI GPT-4**: For AI chat personas (requires user-provided key).
+-   **OpenAI Image Generation**: Used for generating AI character avatars.
 -   **Resend**: For email notifications (requires user-provided key).
--   **WebRTC**: P2P calls are implemented via a Socket.IO signaling server. No third-party TURN service is currently configured per user's request.
+-   **WebRTC**: P2P calls are implemented via a Socket.IO signaling server.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, it found a missing router inclusion which was then fixed.
+-   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: []
--   **Known regressions**: None.
+-   **Known regressions**: None. The new compliance UI in the admin portal is untested.
 
 **Credentials to test flow:**
--   Credentials can be obtained by using the registration flow on the app or web portals. Test credentials are not explicitly stored.
+-   Credentials can be obtained by using the registration flow on the app or web portals.
 
 **What agent forgot to execute**
--   The agent created new backend router files but **forgot to remove the original, corresponding endpoint code from **. This leaves a significant amount of legacy, duplicate code and means the backend modularization refactor is critically incomplete.</analysis>
+-   **Backend Modularization Cleanup**: The agent has repeatedly failed to complete the backend refactor by removing the old, duplicate endpoint code from . This remains a critical pending task.
+-   **Visual Verification of Admin Portal**: The agent implemented a new Compliance tab in the static admin portal but never took a screenshot to verify it rendered correctly.</analysis>
