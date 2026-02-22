@@ -173,27 +173,47 @@ def parse_rss_latest_episode(xml_content: str) -> Optional[dict]:
 
 
 async def refresh_episode_cache():
-    """Refresh the episode cache by fetching all RSS feeds"""
+    """Refresh the episode cache by fetching YouTube and podcast RSS feeds"""
     global _episode_cache, _cache_timestamp
     
     new_cache = {}
     
-    # Fetch all feeds concurrently
-    tasks = []
+    # First, try YouTube feeds (more up to date)
+    youtube_tasks = []
+    youtube_ids = []
+    
+    for podcast_id, feed_url in YOUTUBE_FEEDS.items():
+        youtube_tasks.append(fetch_rss_feed(feed_url))
+        youtube_ids.append(podcast_id)
+    
+    youtube_results = await asyncio.gather(*youtube_tasks, return_exceptions=True)
+    
+    for podcast_id, result in zip(youtube_ids, youtube_results):
+        if isinstance(result, str) and result:
+            episode = parse_youtube_rss(result)
+            if episode:
+                new_cache[podcast_id] = episode
+                logger.info(f"Cached latest YouTube video for {podcast_id}: {episode['title']}")
+    
+    # Then, fetch podcast RSS feeds for those not on YouTube or as fallback
+    podcast_tasks = []
     podcast_ids = []
     
     for podcast_id, feed_url in PODCAST_FEEDS.items():
-        tasks.append(fetch_rss_feed(feed_url))
-        podcast_ids.append(podcast_id)
+        # Only fetch if not already cached from YouTube
+        if podcast_id not in new_cache:
+            podcast_tasks.append(fetch_rss_feed(feed_url))
+            podcast_ids.append(podcast_id)
     
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    for podcast_id, result in zip(podcast_ids, results):
-        if isinstance(result, str) and result:
-            episode = parse_rss_latest_episode(result)
-            if episode:
-                new_cache[podcast_id] = episode
-                logger.info(f"Cached latest episode for {podcast_id}: {episode['title']}")
+    if podcast_tasks:
+        podcast_results = await asyncio.gather(*podcast_tasks, return_exceptions=True)
+        
+        for podcast_id, result in zip(podcast_ids, podcast_results):
+            if isinstance(result, str) and result:
+                episode = parse_rss_latest_episode(result)
+                if episode:
+                    new_cache[podcast_id] = episode
+                    logger.info(f"Cached latest podcast episode for {podcast_id}: {episode['title']}")
     
     _episode_cache = new_cache
     _cache_timestamp = datetime.utcnow()
