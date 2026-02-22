@@ -4523,3 +4523,78 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ===========================================
+// Cookie Consent Management
+// ===========================================
+
+function checkCookieConsent() {
+    const consent = localStorage.getItem('cookie_consent');
+    if (!consent) {
+        showCookieBanner();
+    }
+}
+
+function showCookieBanner() {
+    const banner = document.getElementById('cookie-banner');
+    if (banner) {
+        banner.classList.remove('hidden');
+    }
+}
+
+function hideCookieBanner() {
+    const banner = document.getElementById('cookie-banner');
+    if (banner) {
+        banner.classList.add('hidden');
+    }
+}
+
+function acceptAllCookies() {
+    const consent = {
+        essential: true,
+        analytics: true,
+        timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('cookie_consent', JSON.stringify(consent));
+    hideCookieBanner();
+    showNotification('Cookie preferences saved', 'success');
+}
+
+function showCookieSettings() {
+    const modal = document.getElementById('cookie-settings-modal');
+    if (modal) {
+        // Load saved preferences
+        const consent = JSON.parse(localStorage.getItem('cookie_consent') || '{}');
+        const analyticsCheckbox = document.getElementById('analytics-cookies');
+        if (analyticsCheckbox) {
+            analyticsCheckbox.checked = consent.analytics !== false;
+        }
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeCookieSettings() {
+    const modal = document.getElementById('cookie-settings-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function saveCookieSettings() {
+    const analyticsCheckbox = document.getElementById('analytics-cookies');
+    const consent = {
+        essential: true,
+        analytics: analyticsCheckbox ? analyticsCheckbox.checked : false,
+        timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('cookie_consent', JSON.stringify(consent));
+    closeCookieSettings();
+    hideCookieBanner();
+    showNotification('Cookie preferences saved', 'success');
+}
+
+// Check cookie consent on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Small delay to not interfere with login flow
+    setTimeout(checkCookieConsent, 1000);
+});
