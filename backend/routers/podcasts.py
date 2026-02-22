@@ -49,6 +49,58 @@ async def fetch_rss_feed(url: str, timeout: float = 10.0) -> Optional[str]:
     return None
 
 
+def parse_youtube_rss(xml_content: str) -> Optional[dict]:
+    """Parse YouTube Atom feed and extract the latest video"""
+    try:
+        root = ET.fromstring(xml_content)
+        
+        # YouTube uses Atom namespace
+        ns = {
+            'atom': 'http://www.w3.org/2005/Atom',
+            'yt': 'http://www.youtube.com/xml/schemas/2015',
+            'media': 'http://search.yahoo.com/mrss/'
+        }
+        
+        # Find the first entry (latest video)
+        entry = root.find('atom:entry', ns)
+        if entry is None:
+            # Try without namespace
+            entry = root.find('{http://www.w3.org/2005/Atom}entry')
+            if entry is None:
+                return None
+        
+        # Extract video details
+        title_elem = entry.find('atom:title', ns) or entry.find('{http://www.w3.org/2005/Atom}title')
+        published_elem = entry.find('atom:published', ns) or entry.find('{http://www.w3.org/2005/Atom}published')
+        link_elem = entry.find('atom:link[@rel="alternate"]', ns) or entry.find('{http://www.w3.org/2005/Atom}link[@rel="alternate"]')
+        
+        title = title_elem.text if title_elem is not None else "Unknown Video"
+        pub_date = published_elem.text if published_elem is not None else None
+        link = link_elem.get('href', '') if link_elem is not None else ''
+        
+        # Parse the publication date (YouTube uses ISO format)
+        date_str = None
+        if pub_date:
+            try:
+                # YouTube format: 2026-02-20T00:00:13+00:00
+                parsed_date = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
+                date_str = parsed_date.isoformat()
+            except Exception:
+                date_str = pub_date
+        
+        return {
+            "title": title,
+            "date": date_str,
+            "link": link
+        }
+    except ET.ParseError as e:
+        logger.warning(f"Failed to parse YouTube XML: {e}")
+    except Exception as e:
+        logger.warning(f"Error parsing YouTube feed: {e}")
+    
+    return None
+
+
 def parse_rss_latest_episode(xml_content: str) -> Optional[dict]:
     """Parse RSS feed and extract the latest episode"""
     try:
