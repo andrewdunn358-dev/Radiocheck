@@ -134,6 +134,60 @@ export default function Settings() {
           </View>
         </View>
 
+        {/* Legal & Your Rights Section */}
+        <Text style={styles.sectionTitle}>Legal & Your Rights</Text>
+        <View style={styles.settingsCard}>
+          <TouchableOpacity style={styles.settingRow} onPress={() => router.push('/privacy-policy')}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="document-text-outline" size={22} color={colors.textSecondary} />
+              <View>
+                <Text style={styles.settingLabel}>Privacy Policy</Text>
+                <Text style={styles.settingDescription}>How we collect and use your data</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={() => router.push('/terms-of-service')}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="newspaper-outline" size={22} color={colors.textSecondary} />
+              <View>
+                <Text style={styles.settingLabel}>Terms of Service</Text>
+                <Text style={styles.settingDescription}>Terms and conditions of use</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={() => router.push('/your-data-rights')}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="finger-print-outline" size={22} color={colors.textSecondary} />
+              <View>
+                <Text style={styles.settingLabel}>Your Data Rights (GDPR)</Text>
+                <Text style={styles.settingDescription}>Access, export, or delete your data</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={() => router.push('/safeguarding')}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="heart-outline" size={22} color={colors.textSecondary} />
+              <View>
+                <Text style={styles.settingLabel}>Safeguarding Policy</Text>
+                <Text style={styles.settingDescription}>How we keep you safe</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
         {/* Support Section */}
         <Text style={styles.sectionTitle}>Support</Text>
         <View style={styles.settingsCard}>
@@ -151,8 +205,8 @@ export default function Settings() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appVersion}>Veterans Support v1.0.0</Text>
-          <Text style={styles.appTagline}>Once in service, forever united</Text>
+          <Text style={styles.appVersion}>Radio Check v1.0.0</Text>
+          <Text style={styles.appTagline}>Supporting veterans, one connection at a time</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
