@@ -56,7 +56,7 @@ export default function Index() {
         const [shiftsRes, counsellorsRes, peersRes] = await Promise.all([
           fetch(`${API_URL}/api/shifts/`),
           fetch(`${API_URL}/api/counsellors`),
-          fetch(`${API_URL}/api/peers`)
+          fetch(`${API_URL}/api/peer-supporters`)
         ]);
         
         const shifts = await shiftsRes.json();
