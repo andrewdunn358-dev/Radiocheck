@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Linking, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Linking, Modal, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
+import YoutubePlayer from 'react-native-youtube-iframe';
 
 // Local podcast logos
 const FRANKIES_POD_LOGO = require('../assets/images/frankies-pod.png');
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Podcast {
   id: string;
@@ -26,6 +29,10 @@ interface LatestEpisode {
   title: string;
   date: string;
   link?: string;
+  video_id?: string;
+  thumbnail?: string;
+  description?: string;
+  type?: string;
 }
 
 const PODCASTS: Podcast[] = [
