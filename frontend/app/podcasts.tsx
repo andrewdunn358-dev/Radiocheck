@@ -5,6 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 
+// Local podcast logos
+const FRANKIES_POD_LOGO = require('../assets/images/frankies-pod.png');
+
 interface Podcast {
   id: string;
   name: string;
