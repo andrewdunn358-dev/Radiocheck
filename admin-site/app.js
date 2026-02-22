@@ -4598,3 +4598,214 @@ document.addEventListener('DOMContentLoaded', function() {
     // Small delay to not interfere with login flow
     setTimeout(checkCookieConsent, 1000);
 });
+
+// ===========================================
+// Staff Rota Functions
+// ===========================================
+
+let rotaCache = {
+    shifts: [],
+    staff: [],
+    lastLoaded: null
+};
+
+async function loadRotaData() {
+    try {
+        // Load shifts and staff in parallel
+        const [shiftsRes, counsellorsRes, peersRes] = await Promise.all([
+            fetch(`${API_URL}/api/shifts/`, { headers: getAuthHeaders() }),
+            fetch(`${API_URL}/api/staff/counsellors`, { headers: getAuthHeaders() }),
+            fetch(`${API_URL}/api/staff/peers`, { headers: getAuthHeaders() })
+        ]);
+        
+        const shifts = await shiftsRes.json();
+        const counsellors = await counsellorsRes.json();
+        const peers = await peersRes.json();
+        
+        // Combine staff with role info
+        const staff = [
+            ...counsellors.map(c => ({ ...c, role: 'counsellor' })),
+            ...peers.map(p => ({ ...p, role: 'peer' }))
+        ];
+        
+        rotaCache = {
+            shifts: shifts || [],
+            staff: staff,
+            lastLoaded: new Date()
+        };
+        
+        renderTodayShifts();
+        renderTomorrowShifts();
+        renderWeekView();
+        updateCoverageStats();
+        
+    } catch (error) {
+        console.error('Error loading rota data:', error);
+        showNotification('Failed to load rota data', 'error');
+    }
+}
+
+function getStaffById(userId) {
+    return rotaCache.staff.find(s => s.id === userId) || null;
+}
+
+function getStaffInitials(name) {
+    if (!name) return '?';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+}
+
+function renderShiftCard(shift, staff) {
+    const name = staff?.name || shift.user_name || 'Unassigned';
+    const role = staff?.role || 'staff';
+    const initials = getStaffInitials(name);
+    
+    return `
+        <div class="shift-card ${role}">
+            <div class="shift-card-header">
+                <div class="shift-avatar">${initials}</div>
+                <div>
+                    <div class="shift-name">${escapeHtml(name)}</div>
+                    <div class="shift-role">${role === 'counsellor' ? 'Counsellor' : 'Peer Supporter'}</div>
+                </div>
+            </div>
+            <div class="shift-time">
+                <i class="fas fa-clock"></i>
+                ${shift.start_time} - ${shift.end_time}
+            </div>
+        </div>
+    `;
+}
+
+function renderTodayShifts() {
+    const container = document.getElementById('today-shifts');
+    const today = new Date().toISOString().split('T')[0];
+    
+    const todayShifts = rotaCache.shifts.filter(s => s.date === today);
+    
+    if (todayShifts.length === 0) {
+        container.innerHTML = '<p class="no-shifts-text"><i class="fas fa-calendar-times"></i> No shifts scheduled for today</p>';
+        return;
+    }
+    
+    container.innerHTML = todayShifts.map(shift => {
+        const staff = getStaffById(shift.user_id);
+        return renderShiftCard(shift, staff);
+    }).join('');
+}
+
+function renderTomorrowShifts() {
+    const container = document.getElementById('tomorrow-shifts');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    const tomorrowShifts = rotaCache.shifts.filter(s => s.date === tomorrowStr);
+    
+    if (tomorrowShifts.length === 0) {
+        container.innerHTML = '<p class="no-shifts-text"><i class="fas fa-calendar-times"></i> No shifts scheduled for tomorrow</p>';
+        return;
+    }
+    
+    container.innerHTML = tomorrowShifts.map(shift => {
+        const staff = getStaffById(shift.user_id);
+        return renderShiftCard(shift, staff);
+    }).join('');
+}
+
+function renderWeekView() {
+    const container = document.getElementById('week-view');
+    const today = new Date();
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    let html = '';
+    
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const isToday = i === 0;
+        
+        const dayShifts = rotaCache.shifts.filter(s => s.date === dateStr);
+        
+        html += `
+            <div class="week-day ${isToday ? 'today' : ''}">
+                <div class="week-day-header">${dayNames[date.getDay()]}</div>
+                <div class="week-day-date">${date.getDate()}/${date.getMonth() + 1}</div>
+                <div class="week-day-shifts">
+                    ${dayShifts.length === 0 ? '<span style="color: var(--text-muted); font-size: 11px;">No shifts</span>' : 
+                        dayShifts.map(shift => {
+                            const staff = getStaffById(shift.user_id);
+                            const name = staff?.name || shift.user_name || '?';
+                            const role = staff?.role || 'staff';
+                            return `<div class="week-shift-pill ${role}" title="${name}: ${shift.start_time}-${shift.end_time}">${getStaffInitials(name)}</div>`;
+                        }).join('')
+                    }
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function updateCoverageStats() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayShifts = rotaCache.shifts.filter(s => s.date === today);
+    
+    // Count counsellors and peers for today
+    let counsellorsToday = 0;
+    let peersToday = 0;
+    
+    todayShifts.forEach(shift => {
+        const staff = getStaffById(shift.user_id);
+        if (staff?.role === 'counsellor') counsellorsToday++;
+        else if (staff?.role === 'peer') peersToday++;
+    });
+    
+    // Count total shifts this week
+    const weekStart = new Date();
+    const weekEnd = new Date();
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    
+    const weekShifts = rotaCache.shifts.filter(s => {
+        const shiftDate = new Date(s.date);
+        return shiftDate >= weekStart && shiftDate < weekEnd;
+    });
+    
+    // Check for coverage gaps (days with no shifts)
+    let gaps = 0;
+    for (let i = 0; i < 7; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayShifts = rotaCache.shifts.filter(s => s.date === dateStr);
+        if (dayShifts.length === 0) gaps++;
+    }
+    
+    // Update UI
+    document.getElementById('counsellors-today').textContent = counsellorsToday;
+    document.getElementById('peers-today').textContent = peersToday;
+    document.getElementById('total-shifts-week').textContent = weekShifts.length;
+    
+    const gapsCard = document.getElementById('coverage-gaps-card');
+    if (gaps > 0) {
+        gapsCard.style.display = 'block';
+        document.getElementById('coverage-gaps').textContent = gaps;
+    } else {
+        gapsCard.style.display = 'none';
+    }
+}
+
+// Load rota data when tab is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    const rotaTab = document.querySelector('[data-tab="rota"]');
+    if (rotaTab) {
+        rotaTab.addEventListener('click', function() {
+            setTimeout(loadRotaData, 100);
+        });
+    }
+});
