@@ -448,12 +448,6 @@ export default function PeerSupport() {
               <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            {/* Talk to Another Veteran card */}
-            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.title, { color: colors.text }]}>Talk to Another Veteran</Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Peer support from those who understand</Text>
-            </View>
-
             {/* View Available Veterans Button */}
             <TouchableOpacity 
               style={styles.primaryButton}
