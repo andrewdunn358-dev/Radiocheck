@@ -220,6 +220,20 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Swap Requests Section -->
+                <div class="rota-section">
+                    <h3 class="rota-section-title"><i class="fas fa-exchange-alt"></i> Swap Requests</h3>
+                    <div class="swap-tabs">
+                        <button class="swap-tab active" onclick="switchSwapTab('pending')" data-tab="pending">
+                            Needs Approval <span id="pending-swap-count" class="badge">0</span>
+                        </button>
+                        <button class="swap-tab" onclick="switchSwapTab('all')" data-tab="all">All Requests</button>
+                    </div>
+                    <div id="swap-requests-list" class="swap-requests">
+                        <p class="loading-text">Loading swap requests...</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Users Tab (hidden - merged into Staff) -->
