@@ -5,130 +5,108 @@
 
 ---
 
-## Session Summary - February 23, 2026 (Latest)
+## Session Summary - February 23, 2026 (Latest Update)
 
-### ✅ Completed This Session
+### ✅ Completed This Session (Latest Fork)
+
+**🔧 Production Deployment Fixes (Complete):**
+1. ✅ **API URL Failsafe** - Created `/frontend/src/config/api.ts`
+   - Prevents production builds from using preview URLs
+   - Automatically falls back to production backend if misconfigured
+   - Logs warnings when failsafe activates
+
+2. ✅ **Updated Frontend Files** to use safe API config:
+   - `ai-buddies.tsx` - AI Buddies page
+   - `ai-chat.tsx` - AI Chat component
+   - `podcasts.tsx` - Removed hardcoded preview URL
+   - `mental-health-screening.tsx` - Removed localhost fallback
+
+3. ✅ **Cron Job Helper** - Created `/backend/cron_runner.py`
+   - Simplifies Render cron job setup
+   - Handles path setup automatically
+   - Commands: `shift_reminders`, `data_retention`
+
+4. ✅ **Production Deployment Guide** - Created `/docs/PRODUCTION_DEPLOYMENT.md`
+   - Complete architecture overview
+   - Environment variables documentation
+   - Cron job setup instructions
+   - Troubleshooting guide
+
+**📋 Verified Working:**
+- Authentication flow (login, JWT tokens, protected endpoints)
+- AI Buddies (Tommy and Doris) displaying correctly
+- Mental Health Screening page
+- All API endpoints tested and passing
+
+---
+
+### Previously Completed
 
 **🩺 PHQ-9 / GAD-7 Mental Health Screening (Complete):**
-1. ✅ **New screen: `/mental-health-screening.tsx`**
-   - PHQ-9 (Depression) - 9 questions
-   - GAD-7 (Anxiety) - 7 questions
-   - Score interpretation with severity levels
-   - Warning messages for high scores
-   - **Share results with counsellor** feature
-   - Crisis helpline links for severe cases
-   - Results saved locally for history
-
-2. ✅ **Added to Self-Care Tools** - Mental Health Check card at top of list
+- PHQ-9 (Depression) - 9 questions
+- GAD-7 (Anxiety) - 7 questions
+- Score interpretation with severity levels
+- Share results with counsellor feature
+- Crisis helpline links for severe cases
 
 **🔄 Shift Swap / Cover Requests (Complete):**
-3. ✅ **New API router: `/backend/routers/shift_swaps.py`**
-   - `POST /api/shift-swaps/request` - Request cover
-   - `POST /api/shift-swaps/{id}/accept` - Accept (first come first served)
-   - `POST /api/shift-swaps/{id}/approve` - Admin approve/reject
-   - `GET /api/shift-swaps/pending` - Available swaps
-   - `GET /api/shift-swaps/needs-approval` - For admin
-   - Email notifications to all staff
+- Full API for shift swaps
+- Admin approval workflow
+- Staff portal integration
+- Email notifications
 
-4. ✅ **Admin Portal - Rota Tab** - Swap requests section with:
-   - "Needs Approval" tab with badge count
-   - "All Requests" history tab
-   - Approve/Reject buttons for admin
-
-5. ✅ **Staff Portal** - Cover Requests section:
-   - View available cover requests
-   - "I Can Cover" button to accept
-   - Request cover for own shifts
-
-**📊 Earlier Today:**
-- ✅ Staff Rota Dashboard (Admin + Staff portals)
-- ✅ Cookie consent banners
-- ✅ Report an Issue button
-- ✅ Email shift reminders
-- ✅ AI consent modals
-- ✅ Mood tracking graph
+**📊 Earlier Features:**
+- Staff Rota Dashboard (Admin + Staff portals)
+- Cookie consent banners
+- Report an Issue button
+- Email shift reminders
+- AI consent modals
+- Mood tracking graph
 
 ---
 
-## Shift Swap Flow
+## Production Deployment
 
+### Architecture
 ```
-1. Staff requests cover for their shift
-   ↓
-2. Email sent to ALL other staff
-   ↓
-3. First staff member to accept gets it
-   ↓
-4. Request goes to Admin for approval
-   ↓
-5. Admin approves/rejects
-   ↓
-6. If approved, shift is transferred
-   ↓
-7. Both staff notified by email
+Vercel (app.radiocheck.me)  →  Render (veterans-support-api.onrender.com)
+20i (admin.radiocheck.me)   →  Render
+20i (staff.radiocheck.me)   →  Render
 ```
 
----
+### Cron Jobs (Render)
+- **shift_reminders**: `cd backend && python cron_runner.py shift_reminders` (every 15 min)
+- **data_retention**: `cd backend && python cron_runner.py data_retention` (daily 3 AM)
 
-## New API Endpoints
-
-### Shift Swaps
-- `POST /api/shift-swaps/request` - Create swap request
-- `POST /api/shift-swaps/{id}/accept` - Accept request
-- `POST /api/shift-swaps/{id}/approve` - Admin decision
-- `POST /api/shift-swaps/{id}/cancel` - Cancel request
-- `GET /api/shift-swaps/` - All swaps (admin)
-- `GET /api/shift-swaps/pending` - Available to accept
-- `GET /api/shift-swaps/needs-approval` - Awaiting admin
-- `GET /api/shift-swaps/my-requests/{user_id}` - User's requests
-
----
-
-## Key Files Created/Updated
-
-### Frontend
-- `/app/frontend/app/mental-health-screening.tsx` - NEW
-- `/app/frontend/app/self-care.tsx` - Added screening link
-
-### Backend
-- `/app/backend/routers/shift_swaps.py` - NEW
-- `/app/backend/server.py` - Added shift_swaps router
-
-### Admin Portal
-- `/app/admin-site/index.html` - Swap requests section
-- `/app/admin-site/styles.css` - Swap styles
-- `/app/admin-site/app.js` - Swap functions
-
-### Staff Portal
-- `/app/staff-portal/index.html` - Cover requests section
-- `/app/staff-portal/styles.css` - Swap styles
-- `/app/staff-portal/app.js` - Swap functions
-
----
-
-## Production Deployment Checklist
-
-| Item | Action |
-|------|--------|
-| Admin Portal | Upload `/app/admin-site/*` |
-| Staff Portal | Upload `/app/staff-portal/*` |
-| Marketing Site | Upload `/app/website/*` |
-| Backend | Push to Render |
-| Cron Jobs | Set up on cron-job.org or Render |
+### Key Files for Deployment
+- `/frontend/src/config/api.ts` - API URL failsafe
+- `/backend/cron_runner.py` - Cron job runner
+- `/docs/PRODUCTION_DEPLOYMENT.md` - Full deployment guide
 
 ---
 
 ## Remaining Tasks
 
+### High Priority (P0)
+- [x] API URL failsafe for production - DONE
+- [x] Cron job setup helper - DONE
+
 ### Medium Priority (P1)
+- [ ] Push notifications integration
 - [ ] DPIA document for AI processing
-- [ ] Configure Expo push notifications
 
 ### Future / Backlog
-- [ ] SMS text reminders (Twilio)
 - [ ] Welsh language support
+- [ ] SMS text reminders (Twilio)
 - [ ] Structured CBT courses
-- [ ] Consolidate AI chat screens
+- [ ] Consolidate AI chat screens into reusable component
+
+---
+
+## Test Credentials
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@veteran.dbty.co.uk | ChangeThisPassword123! |
 
 ---
 
