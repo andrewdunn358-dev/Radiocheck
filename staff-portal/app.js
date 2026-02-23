@@ -948,6 +948,152 @@ async function resolveSafeguardingAlert(id) {
     }
 }
 
+// ============ SCREENING SUBMISSIONS ============
+
+// Load Screening Submissions (PHQ-9, GAD-7 results sent by users)
+async function loadScreeningSubmissions() {
+    try {
+        var submissions = await apiCall('/safeguarding/screening-submissions');
+        var pending = submissions.filter(function(s) { 
+            return s.status === 'pending' || s.status === 'reviewed'; 
+        });
+        
+        renderScreeningSubmissions(pending);
+        var pendingCount = submissions.filter(function(s) { return s.status === 'pending'; }).length;
+        document.getElementById('screening-count').textContent = pendingCount || '';
+        
+        // Add visual indicator for high severity
+        var section = document.getElementById('screening-section');
+        var highSeverity = pending.filter(function(s) { return s.severity === 'high'; });
+        if (highSeverity.length > 0) {
+            section.classList.add('has-urgent');
+        } else {
+            section.classList.remove('has-urgent');
+        }
+        
+    } catch (error) {
+        console.error('Error loading screening submissions:', error);
+    }
+}
+
+// Render Screening Submissions
+function renderScreeningSubmissions(submissions) {
+    var container = document.getElementById('screening-list');
+    
+    if (submissions.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-clipboard-check"></i><p>No pending screening results</p></div>';
+        return;
+    }
+    
+    container.innerHTML = submissions.map(function(sub) {
+        // Parse the details to extract score info
+        var detailsLines = sub.details.split('\n');
+        var scoreInfo = detailsLines.find(function(l) { return l.includes('Score:'); }) || '';
+        var levelInfo = detailsLines.find(function(l) { return l.includes('Level:'); }) || '';
+        var userMessage = detailsLines.find(function(l) { return l.includes('User Message:'); }) || '';
+        
+        // Severity badge color
+        var severityColor = sub.severity === 'high' ? '#dc2626' : (sub.severity === 'medium' ? '#f59e0b' : '#22c55e');
+        var severityIcon = sub.severity === 'high' ? 'exclamation-triangle' : (sub.severity === 'medium' ? 'exclamation-circle' : 'info-circle');
+        
+        // Status badge
+        var statusBadge = sub.status === 'pending' ? 
+            '<span class="badge warning"><i class="fas fa-clock"></i> Pending</span>' :
+            '<span class="badge info"><i class="fas fa-eye"></i> Reviewed</span>';
+        
+        // Action buttons
+        var actions = '';
+        if (sub.status === 'pending') {
+            actions = '<button class="btn btn-info btn-sm" onclick="markScreeningReviewed(\'' + sub.id + '\')"><i class="fas fa-eye"></i> Mark Reviewed</button>';
+        }
+        actions += '<button class="btn btn-success btn-sm" onclick="markScreeningContacted(\'' + sub.id + '\')"><i class="fas fa-phone"></i> Contacted</button>';
+        actions += '<button class="btn btn-primary btn-sm" onclick="resolveScreening(\'' + sub.id + '\')"><i class="fas fa-check"></i> Resolve</button>';
+        
+        // Time formatting
+        var timeAgo = formatTimeAgo(new Date(sub.created_at));
+        
+        return '<div class="card screening-card ' + (sub.severity === 'high' ? 'urgent' : '') + '">' +
+            '<div class="card-header">' +
+                '<div class="card-title">' +
+                    '<i class="fas fa-clipboard-check" style="color:' + severityColor + '"></i> ' +
+                    '<strong>' + escapeHtml(sub.user_name || 'Anonymous') + '</strong>' +
+                '</div>' +
+                statusBadge +
+            '</div>' +
+            '<div class="card-body">' +
+                '<div class="screening-info">' +
+                    '<span class="badge" style="background-color:' + severityColor + '"><i class="fas fa-' + severityIcon + '"></i> ' + sub.severity.toUpperCase() + ' SEVERITY</span>' +
+                    '<span class="screening-time"><i class="fas fa-clock"></i> ' + timeAgo + '</span>' +
+                '</div>' +
+                '<div class="screening-details">' +
+                    '<p><strong>' + scoreInfo + '</strong></p>' +
+                    '<p>' + levelInfo + '</p>' +
+                    (userMessage && userMessage !== 'User Message: No additional message provided.' ? 
+                        '<div class="user-message"><i class="fas fa-quote-left"></i> ' + escapeHtml(userMessage.replace('User Message: ', '')) + '</div>' : '') +
+                '</div>' +
+                (sub.assigned_to_name ? '<div class="assigned-to"><i class="fas fa-user"></i> Assigned to: ' + escapeHtml(sub.assigned_to_name) + '</div>' : '') +
+                (sub.staff_notes ? '<div class="staff-notes"><i class="fas fa-sticky-note"></i> Notes: ' + escapeHtml(sub.staff_notes) + '</div>' : '') +
+            '</div>' +
+            '<div class="card-actions">' + actions + '</div>' +
+        '</div>';
+    }).join('');
+}
+
+// Mark screening as reviewed
+async function markScreeningReviewed(id) {
+    try {
+        await apiCall('/safeguarding/screening-submissions/' + id + '/status?status=reviewed&assigned_to=' + encodeURIComponent(currentUser.id) + '&assigned_to_name=' + encodeURIComponent(currentUser.name), { method: 'PATCH' });
+        showNotification('Marked as reviewed');
+        loadScreeningSubmissions();
+    } catch (error) {
+        showNotification('Failed: ' + error.message, 'error');
+    }
+}
+
+// Mark screening as contacted
+async function markScreeningContacted(id) {
+    var notes = prompt('Contact notes (optional - how did you contact them?):');
+    
+    try {
+        var url = '/safeguarding/screening-submissions/' + id + '/status?status=contacted';
+        if (notes) {
+            url += '&notes=' + encodeURIComponent(notes);
+        }
+        await apiCall(url, { method: 'PATCH' });
+        showNotification('Marked as contacted');
+        loadScreeningSubmissions();
+    } catch (error) {
+        showNotification('Failed: ' + error.message, 'error');
+    }
+}
+
+// Resolve screening submission
+async function resolveScreening(id) {
+    var notes = prompt('Resolution notes (optional - what was the outcome?):');
+    
+    try {
+        var url = '/safeguarding/screening-submissions/' + id + '/status?status=resolved';
+        if (notes) {
+            url += '&notes=' + encodeURIComponent(notes);
+        }
+        await apiCall(url, { method: 'PATCH' });
+        showNotification('Screening resolved');
+        loadScreeningSubmissions();
+    } catch (error) {
+        showNotification('Failed: ' + error.message, 'error');
+    }
+}
+
+// Format time ago helper
+function formatTimeAgo(date) {
+    var seconds = Math.floor((new Date() - date) / 1000);
+    
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + ' min ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+    return Math.floor(seconds / 86400) + ' days ago';
+}
+
 // ============ LIVE CHAT FUNCTIONALITY ============
 
 var activeLiveChats = [];
