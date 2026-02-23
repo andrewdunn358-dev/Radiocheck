@@ -2093,11 +2093,7 @@ async function loadSwapRequests() {
     try {
         const currentUser = JSON.parse(localStorage.getItem('staff_user') || '{}');
         
-        const response = await fetch(`${CONFIG.API_URL}/api/shift-swaps/pending`, {
-            headers: getAuthHeaders ? getAuthHeaders() : {}
-        });
-        
-        const swaps = await response.json();
+        const swaps = await apiCall('/shift-swaps/pending');
         
         // Filter out user's own requests
         swapData.pending = swaps.filter(s => s.requester_id !== currentUser.id);
