@@ -4,11 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
-
-const API_URL = Platform.select({
-  web: process.env.EXPO_PUBLIC_BACKEND_URL || '',
-  default: process.env.EXPO_PUBLIC_BACKEND_URL || ''
-});
+import { API_URL } from '../src/config/api';
 
 interface Organization {
   id: string;

@@ -13,11 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
-
-const API_URL = Platform.select({
-  web: process.env.EXPO_PUBLIC_BACKEND_URL || '',
-  default: process.env.EXPO_PUBLIC_BACKEND_URL || ''
-});
+import { API_URL } from '../src/config/api';
 
 interface Counsellor {
   id: string;
