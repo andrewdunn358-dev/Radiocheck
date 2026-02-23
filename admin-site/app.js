@@ -5015,7 +5015,7 @@ async function approveSwap(swapId, approved) {
     try {
         const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
         
-        const response = await fetch(`${API_URL}/api/shift-swaps/${swapId}/approve`, {
+        const response = await fetch(`${CONFIG.API_URL}/api/shift-swaps/${swapId}/approve`, {
             method: 'POST',
             headers: {
                 ...getAuthHeaders(),
