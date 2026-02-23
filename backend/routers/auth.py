@@ -75,6 +75,45 @@ def require_role(*required_roles: str):
     return role_checker
 
 
+@router.get("/debug-jwt")
+async def debug_jwt():
+    """Debug endpoint to check JWT configuration - REMOVE IN PRODUCTION"""
+    secret = get_jwt_secret()
+    return {
+        "secret_length": len(secret),
+        "secret_first_10": secret[:10] if len(secret) > 10 else secret,
+        "secret_last_10": secret[-10:] if len(secret) > 10 else secret,
+        "is_default": secret == "your-secret-key-change-in-production",
+        "env_var_set": os.getenv("JWT_SECRET_KEY") is not None
+    }
+
+
+@router.post("/test-token")
+async def test_token():
+    """Create and immediately verify a token to test JWT is working"""
+    secret = get_jwt_secret()
+    
+    # Create token
+    test_data = {"sub": "test-user-123", "exp": datetime.utcnow() + timedelta(minutes=5)}
+    token = jwt.encode(test_data, secret, algorithm=ALGORITHM)
+    
+    # Immediately decode it
+    try:
+        decoded = jwt.decode(token, secret, algorithms=[ALGORITHM])
+        return {
+            "success": True,
+            "token_created": token[:50] + "...",
+            "decoded_sub": decoded.get("sub"),
+            "secret_length": len(secret)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "secret_length": len(secret)
+        }
+
+
 @router.post("/seed-admin")
 async def seed_admin():
     """Create initial admin user if none exists - ONE TIME USE ONLY"""
