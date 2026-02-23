@@ -221,11 +221,29 @@ export default function SubstanceSupport() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.quickHelpBtn, styles.quickHelpBtnSecondary]}
-            onPress={() => Linking.openURL('tel:08089177650')}
-            data-testid="aa-call-btn"
+            onPress={() => Linking.openURL('tel:08088020133')}
+            data-testid="gamcare-call-btn"
           >
             <Ionicons name="call" size={20} color="#f59e0b" />
-            <Text style={[styles.quickHelpBtnText, styles.quickHelpBtnTextSecondary]}>AA Helpline{'\n'}0800 917 7650</Text>
+            <Text style={[styles.quickHelpBtnText, styles.quickHelpBtnTextSecondary]}>GamCare{'\n'}0808 802 0133</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.quickHelpButtons, { marginTop: 10 }]}>
+          <TouchableOpacity 
+            style={[styles.quickHelpBtn, { backgroundColor: '#16a34a' }]}
+            onPress={() => Linking.openURL('tel:08009177650')}
+            data-testid="aa-call-btn"
+          >
+            <Ionicons name="call" size={20} color="#fff" />
+            <Text style={styles.quickHelpBtnText}>AA Helpline{'\n'}0800 917 7650</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.quickHelpBtn, { backgroundColor: '#2563eb' }]}
+            onPress={() => Linking.openURL('tel:03001236600')}
+            data-testid="frank-call-btn"
+          >
+            <Ionicons name="call" size={20} color="#fff" />
+            <Text style={styles.quickHelpBtnText}>FRANK (Drugs){'\n'}0300 123 6600</Text>
           </TouchableOpacity>
         </View>
       </View>
