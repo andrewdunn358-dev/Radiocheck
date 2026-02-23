@@ -101,15 +101,29 @@ async def login(credentials: UserLogin):
     db = get_database()
     user = await db.users.find_one({"email": credentials.email})
     
-    if not user or not verify_password(credentials.password, user["hashed_password"]):
+    if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    token = create_access_token({"sub": user["id"]})
+    # Check if user has required fields
+    if "hashed_password" not in user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    if not verify_password(credentials.password, user["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    # Ensure user has an ID (generate if missing for legacy users)
+    user_id = user.get("id") or str(user.get("_id", ""))
+    if not user_id:
+        import uuid
+        user_id = str(uuid.uuid4())
+        await db.users.update_one({"email": credentials.email}, {"$set": {"id": user_id}})
+    
+    token = create_access_token({"sub": user_id})
     redirect = "/staff" if user.get("role") in ["counsellor", "peer_supporter", "staff"] else None
     
     return TokenResponse(
         token=token,
-        user=User(id=user["id"], email=user["email"], role=user.get("role", "user"), name=user.get("name", "")),
+        user=User(id=user_id, email=user["email"], role=user.get("role", "user"), name=user.get("name", "")),
         redirect=redirect
     )
 
