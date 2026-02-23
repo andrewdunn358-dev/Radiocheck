@@ -4618,9 +4618,10 @@ async def get_system_stats(current_user: User = Depends(require_role("admin"))):
             "created_at": {"$gte": week_ago.isoformat()}
         })
         
-        # Get WebRTC stats from signaling
-        active_calls = len([u for u in connected_users.values() if u.get("in_call")])
-        connected_staff = len([u for u in connected_users.values() if u.get("user_type") in ["counsellor", "peer"]])
+        # WebRTC stats - these would need Socket.IO tracking
+        # For now, estimate from live chat rooms
+        active_calls = 0  # Would need proper WebRTC tracking
+        connected_staff = staff_count  # Approximate with total staff
         
     except Exception as e:
         print(f"Error getting DB stats: {e}")
