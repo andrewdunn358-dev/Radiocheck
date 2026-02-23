@@ -320,6 +320,7 @@ async function initPortal() {
         loadPanicAlerts();
         loadSafeguardingAlerts(false); // Initial load, no sound
         loadLiveChats(false); // Initial load, no sound
+        loadScreeningSubmissions(); // Load screening submissions
         startAlertPolling(); // Start real-time polling for safeguarding
         startLiveChatPolling(); // Start real-time polling for live chats
         updateSoundButton(); // Update sound toggle button
@@ -327,6 +328,7 @@ async function initPortal() {
         // Show sections
         document.getElementById('livechat-section').style.display = 'block';
         document.getElementById('safeguarding-section').style.display = 'block';
+        document.getElementById('screening-section').style.display = 'block';
     }
     
     // Auto-refresh every 30 seconds for callbacks/notes
@@ -335,6 +337,7 @@ async function initPortal() {
         loadNotes();
         if (role === 'counsellor' || role === 'admin' || role === 'peer') {
             loadPanicAlerts();
+            loadScreeningSubmissions(); // Also refresh screening submissions
             // Note: Safeguarding and live chats are polled separately with sound support
         }
     }, 30000);
