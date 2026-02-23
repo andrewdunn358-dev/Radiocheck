@@ -366,8 +366,36 @@ export default function SubstanceSupport() {
         </TouchableOpacity>
       ))}
 
-      <Text style={[styles.resourceGroupTitle, { marginTop: 24 }]}>General UK Support</Text>
-      {GENERAL_RESOURCES.map((resource, index) => (
+      <Text style={[styles.resourceGroupTitle, { marginTop: 24 }]}>Gambling Support</Text>
+      {GAMBLING_RESOURCES.map((resource, index) => (
+        <TouchableOpacity 
+          key={index}
+          style={[styles.resourceCard, resource.highlight && styles.resourceCardHighlight]}
+          onPress={() => resource.url && Linking.openURL(resource.url)}
+          data-testid={`gambling-${resource.name.toLowerCase().replace(/\s/g, '-')}`}
+        >
+          <View style={styles.resourceContent}>
+            <Text style={styles.resourceName}>{resource.name}</Text>
+            <Text style={styles.resourceDesc}>{resource.desc}</Text>
+            {resource.phone && (
+              <TouchableOpacity 
+                style={styles.resourcePhone}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  Linking.openURL(`tel:${resource.phone.replace(/\s/g, '')}`);
+                }}
+              >
+                <Ionicons name="call" size={14} color="#16a34a" />
+                <Text style={styles.resourcePhoneText}>{resource.phone}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+        </TouchableOpacity>
+      ))}
+
+      <Text style={[styles.resourceGroupTitle, { marginTop: 24 }]}>Alcohol & Drug Support</Text>
+      {ALCOHOL_DRUG_RESOURCES.map((resource, index) => (
         <TouchableOpacity 
           key={index}
           style={styles.resourceCard}
