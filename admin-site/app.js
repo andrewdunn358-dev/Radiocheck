@@ -213,7 +213,7 @@ async function handleLogin(e) {
         }
         
         // Save token and user
-        token = data.access_token;
+        token = data.token;
         currentUser = data.user;
         localStorage.setItem('auth_token', token);
         localStorage.setItem('current_user', JSON.stringify(currentUser));
