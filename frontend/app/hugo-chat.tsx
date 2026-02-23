@@ -20,9 +20,9 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AIConsentModal from '../src/components/AIConsentModal';
+import { API_URL } from '../src/config/api';
 
 const HUGO_AVATAR = 'https://static.prod-images.emergentagent.com/jobs/fba61e42-5a99-4622-a43b-84a14c5bcf87/images/7187a483ea030457c378a4933dc5d476b04b16d8ae15f0ff01e45912ba13042d.png';
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 interface AvailableStaff {
   counsellors: any[];
