@@ -4618,10 +4618,16 @@ async def get_system_stats(current_user: User = Depends(require_role("admin"))):
             "created_at": {"$gte": week_ago.isoformat()}
         })
         
-        # WebRTC stats - these would need Socket.IO tracking
-        # For now, estimate from live chat rooms
-        active_calls = 0  # Would need proper WebRTC tracking
-        connected_staff = staff_count  # Approximate with total staff
+        # Active calls - count from live chat rooms with active calls
+        active_calls = len([r for r in live_chat_rooms.values() if r.get("has_active_call")])
+        
+        # Connected staff - count staff who logged in within last 15 minutes
+        # This requires tracking last_active timestamp on login
+        fifteen_mins_ago = datetime.utcnow() - timedelta(minutes=15)
+        connected_staff = await db.users.count_documents({
+            "role": {"$in": ["counsellor", "peer", "admin"]},
+            "last_active": {"$gte": fifteen_mins_ago.isoformat()}
+        })
         
     except Exception as e:
         print(f"Error getting DB stats: {e}")
