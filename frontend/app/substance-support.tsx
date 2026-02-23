@@ -190,7 +190,7 @@ export default function SubstanceSupport() {
         <View style={styles.margieContent}>
           <Text style={styles.margieTitle}>Chat with Margie</Text>
           <Text style={styles.margieDesc}>
-            Non-judgemental AI support for alcohol and substance issues. Available 24/7.
+            Non-judgemental AI support for all addictions - alcohol, drugs, gambling, and more. Available 24/7.
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#fcd34d" />
@@ -201,8 +201,8 @@ export default function SubstanceSupport() {
         <Ionicons name="heart" size={48} color="#f59e0b" />
         <Text style={styles.heroTitle}>You're Not Alone</Text>
         <Text style={styles.heroText}>
-          Many serving personnel and veterans struggle with alcohol or substances. 
-          It often starts as a way to cope - to sleep, to forget, to fit in. 
+          Many serving personnel and veterans struggle with addiction - whether it's alcohol, drugs, gambling, or other compulsive behaviours. 
+          It often starts as a way to cope, to feel something, or to escape. 
           Recognising the problem is the hardest part. You've already shown courage.
         </Text>
       </View>
