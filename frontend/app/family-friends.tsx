@@ -515,18 +515,18 @@ export default function FamilyFriends() {
           </>
         )}
 
-        {/* Addiction & Substance Support */}
+        {/* Addiction Support */}
         {view === 'addiction' && (
           <>
-            <Text style={styles.sectionTitle}>Substance & Alcohol Support</Text>
+            <Text style={styles.sectionTitle}>Addictions Support</Text>
             <Text style={styles.sectionSubtitle}>
-              Specialist help for serving personnel and veterans dealing with addiction, alcoholism, or substance misuse.
+              Specialist help for serving personnel and veterans dealing with addiction - alcohol, drugs, gambling, and more.
             </Text>
 
             <View style={styles.infoCard}>
               <FontAwesome5 name="info-circle" size={18} color="#d97706" />
               <Text style={styles.infoText}>
-                Many in the armed forces turn to alcohol or substances to cope with trauma, pain, or the transition to civilian life. 
+                Many in the armed forces turn to alcohol, drugs, or gambling to cope with trauma, pain, or the transition to civilian life. 
                 Seeking help is a sign of strength, not weakness.
               </Text>
             </View>
