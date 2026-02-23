@@ -20,6 +20,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AIConsentModal from '../src/components/AIConsentModal';
+import { API_URL } from '../src/config/api';
 
 interface AvailableStaff {
   counsellors: any[];
@@ -27,7 +28,6 @@ interface AvailableStaff {
 }
 
 const BOB_AVATAR = 'https://static.prod-images.emergentagent.com/jobs/e42bf70a-a287-4141-b70d-0728db3b1a3c/images/5ccb4f3dba33762dc691a5023cd5a26342d43ef9a7e95308f48f38301df65f8c.png';
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 interface Message {
   id: string;
