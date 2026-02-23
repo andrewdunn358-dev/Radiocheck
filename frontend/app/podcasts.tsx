@@ -128,8 +128,8 @@ const PODCASTS: Podcast[] = [
   },
 ];
 
-// Backend URL for fetching latest episodes
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://veteran-buddy-hub.preview.emergentagent.com';
+// Backend URL for fetching latest episodes - using safe API config
+import { API_URL } from '../src/config/api';
 
 export default function PodcastsScreen() {
   const router = useRouter();

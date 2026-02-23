@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://veterans-support-api.onrender.com';
+import { API_URL } from '../src/config/api';
 
 interface Character {
   id: string;
