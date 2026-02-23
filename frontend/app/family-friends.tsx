@@ -17,8 +17,7 @@ import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
-
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+import { API_URL } from '../src/config/api';
 
 // Fallback data (used when CMS is unavailable)
 const FALLBACK_SIGNS_OF_CHANGE = [
