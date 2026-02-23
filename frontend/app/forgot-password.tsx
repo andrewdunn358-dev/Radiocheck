@@ -13,11 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
-const API_URL = Platform.select({
-  web: process.env.EXPO_PUBLIC_BACKEND_URL || '',
-  default: process.env.EXPO_PUBLIC_BACKEND_URL || ''
-});
+import { API_URL } from '../src/config/api';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
