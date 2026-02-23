@@ -39,52 +39,11 @@ export default function Index() {
   const styles = createStyles(colors);
   const [showAITeam, setShowAITeam] = useState(false);
   const [selectedMember, setSelectedMember] = useState<AITeamMember | null>(null);
-  const [staffOnDuty, setStaffOnDuty] = useState<{ counsellors: number; peers: number }>({ counsellors: 0, peers: 0 });
-  
-  const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
   
   // Fetch CMS content for the home page (AI team section)
   const { sections, isLoading } = useCMSContent('home');
   const aiTeamSection = getSection(sections, 'ai_team');
   const cmsAICards = aiTeamSection?.cards || [];
-  
-  // Fetch staff on duty count
-  useEffect(() => {
-    const fetchStaffOnDuty = async () => {
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const [shiftsRes, counsellorsRes, peersRes] = await Promise.all([
-          fetch(`${API_URL}/api/shifts/`),
-          fetch(`${API_URL}/api/counsellors`),
-          fetch(`${API_URL}/api/peer-supporters`)
-        ]);
-        
-        const shifts = await shiftsRes.json();
-        const counsellors = await counsellorsRes.json();
-        const peers = await peersRes.json();
-        
-        // Filter today's shifts
-        const todayShifts = (shifts || []).filter((s: any) => s.date === today);
-        
-        // Count by role
-        let counsellorCount = 0;
-        let peerCount = 0;
-        
-        todayShifts.forEach((shift: any) => {
-          const isCounsellor = counsellors.some((c: any) => c.id === shift.user_id);
-          const isPeer = peers.some((p: any) => p.id === shift.user_id);
-          if (isCounsellor) counsellorCount++;
-          else if (isPeer) peerCount++;
-        });
-        
-        setStaffOnDuty({ counsellors: counsellorCount, peers: peerCount });
-      } catch (error) {
-        console.log('Error fetching staff on duty:', error);
-      }
-    };
-    
-    fetchStaffOnDuty();
-  }, []);
   
   // Use CMS data if available, otherwise fall back to hardcoded
   
