@@ -118,14 +118,14 @@ const SELF_HELP_TIPS = [
   {
     id: 'track',
     icon: 'calendar-outline',
-    title: 'Track Your Intake',
-    desc: 'Keep a diary of what you drink or use. Seeing it written down can help you understand patterns.'
+    title: 'Track Your Behaviour',
+    desc: 'Keep a diary of when you drink, use, or gamble. Seeing patterns helps you understand triggers.'
   },
   {
     id: 'triggers',
     icon: 'flash-outline',
     title: 'Identify Your Triggers',
-    desc: 'What situations, emotions, or times of day make you reach for a drink? Understanding triggers is the first step to managing them.'
+    desc: 'What situations, emotions, or times make you reach for a drink, a bet, or a hit? Understanding triggers is the first step.'
   },
   {
     id: 'talk',
@@ -137,19 +137,25 @@ const SELF_HELP_TIPS = [
     id: 'routine',
     icon: 'time-outline',
     title: 'Build New Routines',
-    desc: 'Replace drinking time with something else - gym, walking, gaming, or any hobby that keeps your hands and mind busy.'
+    desc: 'Replace addictive behaviour with something else - gym, walking, gaming, or any hobby that keeps your hands and mind busy.'
   },
   {
     id: 'goals',
     icon: 'trophy-outline',
     title: 'Set Small Goals',
-    desc: 'Don\'t try to change everything at once. Start with alcohol-free days, then extend gradually.'
+    desc: 'Don\'t try to change everything at once. Start with small wins, then build up gradually.'
   },
   {
     id: 'avoid',
     icon: 'close-circle-outline',
     title: 'Avoid Temptation Early On',
-    desc: 'If pubs or certain mates are triggers, it\'s okay to take a break while you build your strength.'
+    desc: 'If pubs, betting shops, or certain mates are triggers, it\'s okay to take a break while you build strength.'
+  },
+  {
+    id: 'selfexclude',
+    icon: 'ban-outline',
+    title: 'Use Self-Exclusion',
+    desc: 'For gambling: sign up to GamStop to block yourself from UK betting sites. It works and it\'s free.'
   },
 ];
 
