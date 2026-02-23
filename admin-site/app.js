@@ -765,10 +765,11 @@ async function loadLogsData() {
     
     try {
         // Load all data in parallel
-        const [callsRes, chatsRes, safeguardingRes, callbacksRes, panicRes] = await Promise.all([
+        const [callsRes, chatsRes, safeguardingRes, screeningRes, callbacksRes, panicRes] = await Promise.all([
             apiCall(`/call-logs?days=${period}`).catch(() => ({ total_calls: 0, recent_logs: [] })),
             apiCall('/live-chat/rooms').catch(() => []),
             apiCall('/safeguarding-alerts').catch(() => []),
+            apiCall('/safeguarding/screening-submissions').catch(() => []),
             apiCall('/callbacks').catch(() => []),
             apiCall('/panic-alerts').catch(() => [])
         ]);
@@ -777,13 +778,14 @@ async function loadLogsData() {
         logsData.calls = callsRes.recent_logs || [];
         logsData.chats = chatsRes || [];
         logsData.safeguarding = safeguardingRes || [];
+        logsData.screening = screeningRes || [];
         logsData.callbacks = callbacksRes || [];
         logsData.panic = panicRes || [];
         
         // Update stats
         document.getElementById('stat-calls').textContent = callsRes.total_calls || 0;
         document.getElementById('stat-chats').textContent = logsData.chats.length;
-        document.getElementById('stat-escalations').textContent = logsData.safeguarding.length;
+        document.getElementById('stat-escalations').textContent = logsData.safeguarding.length + logsData.screening.filter(s => s.status === 'pending').length;
         document.getElementById('stat-panic').textContent = logsData.panic.length;
         
         // Render charts
