@@ -1971,3 +1971,145 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* Swap Requests Styles */
+.swap-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.swap-tab {
+    padding: 8px 16px;
+    border: none;
+    background: var(--background);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.swap-tab.active {
+    background: var(--primary);
+    color: white;
+}
+
+.swap-tab .badge {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.swap-requests {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.swap-card {
+    background: var(--background);
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid var(--border);
+}
+
+.swap-card.pending {
+    border-left: 4px solid var(--warning);
+}
+
+.swap-card.accepted {
+    border-left: 4px solid var(--primary);
+}
+
+.swap-card.approved {
+    border-left: 4px solid var(--success);
+}
+
+.swap-card.rejected {
+    border-left: 4px solid var(--error);
+}
+
+.swap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.swap-info h4 {
+    margin: 0 0 4px 0;
+    color: var(--text-primary);
+    font-size: 15px;
+}
+
+.swap-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.swap-status {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.swap-status.pending {
+    background: rgba(234, 179, 8, 0.1);
+    color: var(--warning);
+}
+
+.swap-status.accepted {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary);
+}
+
+.swap-status.approved {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
+}
+
+.swap-status.rejected {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+}
+
+.swap-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+}
+
+.swap-details span {
+    color: var(--text-secondary);
+}
+
+.swap-details strong {
+    color: var(--text-primary);
+}
+
+.swap-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.swap-actions .btn {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.no-swaps-text {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 24px;
+}
