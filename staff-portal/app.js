@@ -191,6 +191,13 @@ async function apiCall(endpoint, options) {
     var data = await response.json();
     
     if (!response.ok) {
+        // If token is invalid/expired, force re-login
+        if (response.status === 401) {
+            console.warn('Token invalid or expired, forcing re-login');
+            logout(true);
+            showNotification('Session expired. Please log in again.', 'error');
+            throw new Error('Session expired');
+        }
         throw new Error(data.detail || 'Request failed');
     }
     
