@@ -15,11 +15,18 @@
    - Automatically falls back to production backend if misconfigured
    - Logs warnings when failsafe activates
 
-2. ✅ **Updated Frontend Files** to use safe API config:
-   - `ai-buddies.tsx` - AI Buddies page
-   - `ai-chat.tsx` - AI Chat component
+2. ✅ **Updated ALL 20+ Frontend Files** to use safe API config:
+   - `counsellors.tsx`, `peer-support.tsx` - Contact pages
+   - `ai-buddies.tsx`, `ai-chat.tsx` - AI chat screens
+   - `tommy-chat.tsx`, `doris-chat.tsx`, `hugo-chat.tsx`, `bob-chat.tsx`, `margie-chat.tsx`, `sentry-chat.tsx` - Individual AI persona screens
+   - `organizations.tsx`, `resources.tsx` - Directory pages
+   - `family-friends.tsx` - Family support
+   - `counsellor-portal.tsx`, `peer-portal.tsx`, `admin.tsx` - Staff screens
+   - `mental-health-screening.tsx` - PHQ-9/GAD-7 screening
+   - `buddy-finder.tsx`, `live-chat.tsx`, `callback.tsx` - Communication features
+   - `your-data-rights.tsx`, `my-availability.tsx` - Settings
+   - `forgot-password.tsx`, `reset-password.tsx` - Auth flows
    - `podcasts.tsx` - Removed hardcoded preview URL
-   - `mental-health-screening.tsx` - Removed localhost fallback
 
 3. ✅ **Cron Job Helper** - Created `/backend/cron_runner.py`
    - Simplifies Render cron job setup
