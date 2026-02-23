@@ -352,6 +352,10 @@ export default function Settings() {
           <Text style={styles.appTagline}>Supporting veterans, one connection at a time</Text>
         </View>
       </ScrollView>
+      
+      {/* Modals */}
+      <ReportIssueModal />
+      <ContactModal />
     </SafeAreaView>
   );
 }
