@@ -464,3 +464,60 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 24,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 16,
+  },
+  optionText: {
+    flex: 1,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  optionDesc: {
+    fontSize: 13,
+  },
+  cancelBtn: {
+    alignItems: 'center',
+    padding: 16,
+    marginTop: 8,
+  },
+  cancelText: {
+    fontSize: 16,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+});
