@@ -2978,6 +2978,15 @@ async def delete_resource(
 @api_router.post("/resources/seed")
 async def seed_resources(current_user: User = Depends(require_role("admin"))):
     """Seed default resources for veterans (admin only)"""
+    return await _seed_resources_internal()
+
+@api_router.post("/resources/seed-public")
+async def seed_resources_public():
+    """Public endpoint to seed resources - for initial setup only"""
+    return await _seed_resources_internal()
+
+async def _seed_resources_internal():
+    """Internal function to seed resources"""
     default_resources = [
         {
             "title": "Understanding PTSD",
