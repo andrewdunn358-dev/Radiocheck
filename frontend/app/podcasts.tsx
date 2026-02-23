@@ -425,6 +425,19 @@ export default function PodcastsScreen() {
                 play={isPlaying}
                 videoId={playingVideo.videoId}
                 onChangeState={onStateChange}
+                webViewProps={{
+                  onMessage: (event: any) => {
+                    // Safely handle messages from the YouTube iframe
+                    try {
+                      const data = typeof event.nativeEvent.data === 'string' 
+                        ? JSON.parse(event.nativeEvent.data) 
+                        : event.nativeEvent.data;
+                      // Message parsed successfully
+                    } catch (e) {
+                      // Ignore non-JSON messages from the iframe
+                    }
+                  }
+                }}
               />
             </View>
           )}
