@@ -697,6 +697,138 @@
                 </div>
             </div>
 
+            <!-- Monitoring Tab -->
+            <div id="monitoring-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>System Monitoring</h2>
+                    <div class="tab-actions">
+                        <button class="btn btn-outline" onclick="refreshMonitoring()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Real-time Stats Cards -->
+                <div class="monitoring-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #3b82f6;">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-users">-</span>
+                            <span class="stat-label">Total Users</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #10b981;">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-connected-staff">-</span>
+                            <span class="stat-label">Staff Online</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #8b5cf6;">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-active-calls">-</span>
+                            <span class="stat-label">Active Calls</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #f59e0b;">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-ai-sessions">-</span>
+                            <span class="stat-label">AI Chats (24h)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #ef4444;">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-live-chats">-</span>
+                            <span class="stat-label">Live Chats</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #6366f1;">
+                            <i class="fas fa-phone-volume"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-pending-callbacks">-</span>
+                            <span class="stat-label">Pending Callbacks</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Server Health -->
+                <div class="monitoring-section">
+                    <h3><i class="fas fa-server"></i> Server Health</h3>
+                    <div class="server-health-grid">
+                        <div class="health-item">
+                            <span class="health-label">CPU Usage</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="cpu-progress" style="width: 0%"></div>
+                            </div>
+                            <span class="health-value" id="cpu-value">0%</span>
+                        </div>
+                        <div class="health-item">
+                            <span class="health-label">Memory Usage</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="memory-progress" style="width: 0%"></div>
+                            </div>
+                            <span class="health-value" id="memory-value">0%</span>
+                        </div>
+                        <div class="health-item">
+                            <span class="health-label">System Load</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="load-progress" style="width: 0%"></div>
+                            </div>
+                            <span class="health-value" id="load-value">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Capacity Info -->
+                <div class="monitoring-section">
+                    <h3><i class="fas fa-chart-pie"></i> Capacity</h3>
+                    <div class="capacity-info">
+                        <div class="capacity-item">
+                            <i class="fas fa-users"></i>
+                            <span>Max Concurrent Users: <strong>~75</strong></span>
+                        </div>
+                        <div class="capacity-item">
+                            <i class="fas fa-phone"></i>
+                            <span>Max Simultaneous Calls: <strong>~25</strong></span>
+                        </div>
+                        <div class="capacity-item">
+                            <i class="fas fa-robot"></i>
+                            <span>Max AI Chats: <strong>~50</strong></span>
+                        </div>
+                    </div>
+                    <p class="capacity-note">
+                        <i class="fas fa-info-circle"></i> 
+                        These are estimated limits for the current infrastructure. Consider upgrading if consistently hitting 70%+ capacity.
+                    </p>
+                </div>
+                
+                <!-- Last Updated -->
+                <div class="monitoring-footer">
+                    <span id="monitoring-last-updated">Last updated: -</span>
+                    <span class="auto-refresh-note">Auto-refreshes every 30 seconds</span>
+                </div>
+            </div>
+
             <!-- Settings Tab -->
             <div id="settings-tab" class="tab-content">
                 <div class="tab-header">
