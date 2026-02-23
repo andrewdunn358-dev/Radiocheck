@@ -257,6 +257,12 @@ async def login(credentials: UserLogin):
         user_id = str(uuid.uuid4())
         await db.users.update_one({"email": credentials.email}, {"$set": {"id": user_id}})
     
+    # Update last_active timestamp for monitoring
+    await db.users.update_one(
+        {"email": credentials.email}, 
+        {"$set": {"last_active": datetime.utcnow().isoformat()}}
+    )
+    
     token = create_access_token({"sub": user_id})
     redirect = "/staff" if user.get("role") in ["counsellor", "peer_supporter", "staff"] else None
     
