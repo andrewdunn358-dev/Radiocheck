@@ -234,7 +234,7 @@ export default function SubstanceSupport() {
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Why the Armed Forces Are at Higher Risk</Text>
         <Text style={styles.infoText}>
-          Serving personnel and veterans are significantly more likely to develop problems with alcohol and substances than civilians. This isn't weakness - it's often the result of:
+          Serving personnel and veterans are significantly more likely to develop addictions than civilians. This isn't weakness - it's often the result of:
         </Text>
         <View style={styles.reasonsList}>
           <View style={styles.reasonItem}>
@@ -260,6 +260,14 @@ export default function SubstanceSupport() {
           <View style={styles.reasonItem}>
             <Ionicons name="person-remove" size={18} color="#f59e0b" />
             <Text style={styles.reasonText}>Loss of identity and purpose</Text>
+          </View>
+          <View style={styles.reasonItem}>
+            <Ionicons name="game-controller" size={18} color="#f59e0b" />
+            <Text style={styles.reasonText}>Gambling: chasing the adrenaline rush</Text>
+          </View>
+          <View style={styles.reasonItem}>
+            <Ionicons name="cash" size={18} color="#f59e0b" />
+            <Text style={styles.reasonText}>Financial stress leading to risky behaviours</Text>
           </View>
         </View>
       </View>
