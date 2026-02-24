@@ -5,9 +5,26 @@
 
 ---
 
-## Session Summary - February 23, 2026 (Latest Update)
+## Session Summary - February 24, 2026 (Latest Update)
 
 ### ✅ Completed This Session (Latest Fork)
+
+**🐛 Bug Fix - Counsellor Status 422 Error (Complete):**
+- Fixed `PATCH /api/counsellors/{user_id}/status` endpoint returning 422 Unprocessable Content
+- **Root Cause**: Pydantic validation pattern `^(available|busy|off)$` didn't match UI values (`limited`, `unavailable`)
+- **Fix**: Updated `CounsellorStatusUpdate` model in `server.py` to accept `^(available|limited|unavailable)$`
+- **File Changed**: `/app/backend/server.py` line 1080
+
+**✅ Verified Working:**
+- Callback request flow - creates callback and shows success confirmation page
+- Staff portal can view all callbacks via `/api/callbacks`
+- Auto-refresh every 30 seconds in staff portal
+
+---
+
+## Session Summary - February 23, 2026
+
+### ✅ Completed That Session
 
 **🔧 Production Deployment Fixes (Complete):**
 1. ✅ **API URL Failsafe** - Created `/frontend/src/config/api.ts`
