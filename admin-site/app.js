@@ -4764,6 +4764,14 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(loadComplianceDashboard, 100);
         });
     }
+    
+    // Initialize beta testing tab
+    const betaTab = document.querySelector('[data-tab="beta"]');
+    if (betaTab) {
+        betaTab.addEventListener('click', function() {
+            setTimeout(loadBetaStats, 100);
+        });
+    }
 });
 
 // ===========================================
