@@ -628,19 +628,20 @@ export default function HugoChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Dynamic styles based on theme
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: colors.border,
   },
   backButton: {
     padding: 4,
@@ -658,7 +659,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 12,
@@ -671,25 +672,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#064e3b',
+    backgroundColor: isDark ? '#064e3b' : '#dcfce7',
     paddingVertical: 10,
     paddingHorizontal: 16,
     gap: 8,
   },
   saveBannerText: {
     fontSize: 13,
-    color: '#6ee7b7',
+    color: isDark ? '#6ee7b7' : '#166534',
     fontWeight: '500',
   },
   aiProfileCard: {
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     padding: 16,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 4,
     borderRadius: 14,
     gap: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   aiProfileAvatar: {
     width: 60,
@@ -704,7 +707,7 @@ const styles = StyleSheet.create({
   aiProfileName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   aiProfileRole: {
     fontSize: 13,
@@ -713,7 +716,7 @@ const styles = StyleSheet.create({
   },
   aiProfileDesc: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   messagesContainer: {
@@ -735,9 +738,11 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   hugoBubble: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     alignSelf: 'flex-start',
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   hugoLabel: {
     flexDirection: 'row',
@@ -763,7 +768,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   hugoText: {
-    color: '#e2e8f0',
+    color: colors.text,
   },
   disclaimer: {
     flexDirection: 'row',
@@ -771,32 +776,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   disclaimerText: {
     fontSize: 11,
-    color: '#64748b',
+    color: colors.textMuted,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#fff',
+    color: colors.text,
     maxHeight: 100,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   sendButton: {
     width: 44,
@@ -807,7 +816,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#475569',
+    backgroundColor: colors.textMuted,
   },
   modalOverlay: {
     flex: 1,
@@ -817,7 +826,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -831,13 +840,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginTop: 12,
     marginBottom: 8,
   },
   modalDescription: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
@@ -845,7 +854,7 @@ const styles = StyleSheet.create({
   privacyNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#064e3b',
+    backgroundColor: isDark ? '#064e3b' : '#dcfce7',
     padding: 12,
     borderRadius: 12,
     marginBottom: 20,
@@ -854,27 +863,27 @@ const styles = StyleSheet.create({
   privacyText: {
     flex: 1,
     fontSize: 13,
-    color: '#6ee7b7',
+    color: isDark ? '#6ee7b7' : '#166534',
     lineHeight: 18,
   },
   inputLabel: {
     alignSelf: 'flex-start',
     fontSize: 14,
     fontWeight: '600',
-    color: '#94a3b8',
+    color: colors.textSecondary,
     marginBottom: 8,
     marginTop: 8,
   },
   modalInput: {
     width: '100%',
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    color: '#fff',
+    color: colors.text,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   modalButton: {
     width: '100%',
@@ -885,7 +894,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   modalButtonDisabled: {
-    backgroundColor: '#475569',
+    backgroundColor: colors.textMuted,
   },
   modalButtonText: {
     fontSize: 16,
@@ -900,7 +909,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   safeguardingModal: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -913,13 +922,13 @@ const styles = StyleSheet.create({
   safeguardingTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginTop: 12,
     textAlign: 'center',
   },
   safeguardingText: {
     fontSize: 15,
-    color: '#94a3b8',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -930,11 +939,13 @@ const styles = StyleSheet.create({
   safeguardingOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     gap: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   safeguardingOptionContent: {
     flex: 1,
@@ -942,18 +953,18 @@ const styles = StyleSheet.create({
   safeguardingOptionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 2,
   },
   safeguardingOptionDesc: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: colors.textSecondary,
   },
   emergencyNote: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#451a03',
+    backgroundColor: isDark ? '#451a03' : '#fef3c7',
     padding: 12,
     borderRadius: 10,
     marginTop: 16,
@@ -961,7 +972,7 @@ const styles = StyleSheet.create({
   },
   emergencyNoteText: {
     fontSize: 14,
-    color: '#fcd34d',
+    color: isDark ? '#fcd34d' : '#92400e',
     fontWeight: '500',
   },
   safeguardingContinue: {
@@ -971,7 +982,7 @@ const styles = StyleSheet.create({
   },
   safeguardingContinueText: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textMuted,
     textDecorationLine: 'underline',
   },
   backToMain: {
@@ -982,7 +993,7 @@ const styles = StyleSheet.create({
   },
   backToMainText: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textMuted,
   },
   callbackForm: {
     marginTop: 8,
@@ -990,18 +1001,18 @@ const styles = StyleSheet.create({
   callbackInputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#94a3b8',
+    color: colors.textSecondary,
     marginBottom: 6,
     marginTop: 12,
   },
   callbackInput: {
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
     borderRadius: 10,
     padding: 14,
     fontSize: 15,
-    color: '#fff',
+    color: colors.text,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   submitCallbackButton: {
     backgroundColor: '#10b981',
@@ -1016,7 +1027,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   buttonDisabled: {
-    backgroundColor: '#475569',
+    backgroundColor: colors.textMuted,
   },
   successView: {
     alignItems: 'center',
@@ -1025,13 +1036,13 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginTop: 16,
     marginBottom: 12,
   },
   successText: {
     fontSize: 15,
-    color: '#94a3b8',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   successCloseButton: {
