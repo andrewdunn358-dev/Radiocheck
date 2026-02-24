@@ -1077,7 +1077,7 @@ class Counsellor(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class CounsellorStatusUpdate(BaseModel):
-    status: str = Field(..., pattern="^(available|busy|off)$")
+    status: str = Field(..., pattern="^(available|limited|unavailable)$")
     next_available: Optional[str] = None
 
 # Public (safe) response models - no sensitive data
