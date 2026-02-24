@@ -1293,6 +1293,189 @@ body {
     color: #e2e8f0;
 }
 
+.phone-content.light-theme {
+    background: #f5f7fa;
+    color: #1e293b;
+}
+
+.phone-loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: #64748b;
+}
+
+/* Edit Panel (Right Side) */
+.cms-edit-panel {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cms-edit-header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+}
+
+.cms-edit-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.cms-edit-header h3 i {
+    margin-right: 8px;
+}
+
+.cms-edit-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.edit-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.edit-placeholder i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--border-color);
+}
+
+.edit-placeholder p {
+    font-size: 16px;
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+}
+
+.edit-placeholder ul {
+    text-align: left;
+    display: inline-block;
+    font-size: 14px;
+}
+
+.edit-placeholder li {
+    margin-bottom: 8px;
+    padding-left: 8px;
+}
+
+/* Edit Form Styles */
+.edit-form-group {
+    margin-bottom: 20px;
+}
+
+.edit-form-group label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.edit-form-group input,
+.edit-form-group textarea,
+.edit-form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.edit-form-group input:focus,
+.edit-form-group textarea:focus,
+.edit-form-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.edit-form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Color Picker */
+.color-picker-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.color-picker-row input[type="color"] {
+    width: 50px;
+    height: 40px;
+    padding: 2px;
+    cursor: pointer;
+}
+
+.color-picker-row input[type="text"] {
+    flex: 1;
+}
+
+/* Icon Selector */
+.icon-selector {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.icon-option {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: var(--bg-card);
+    transition: all 0.2s;
+    font-size: 18px;
+    color: var(--text-secondary);
+}
+
+.icon-option:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.icon-option.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+/* Edit Actions */
+.edit-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.edit-actions .btn {
+    flex: 1;
+}
+
 /* Phone Preview Elements */
 .phone-section {
     background: #1e293b;
