@@ -114,16 +114,19 @@ Vercel (app.radiocheck.me)  →  Render (veterans-support-api.onrender.com)
 ### High Priority (P0)
 - [x] API URL failsafe for production - DONE
 - [x] Cron job setup helper - DONE
+- [x] Counsellor status 422 error fix - DONE (Feb 24)
 
 ### Medium Priority (P1)
 - [ ] Push notifications integration
 - [ ] DPIA document for AI processing
+- [ ] Verify Render cron job is working
 
 ### Future / Backlog
 - [ ] Welsh language support
 - [ ] SMS text reminders (Twilio)
 - [ ] Structured CBT courses
 - [ ] Consolidate AI chat screens into reusable component
+- [ ] Mood tracking enhancements (filtering, trend analysis)
 
 ---
 
@@ -134,4 +137,4 @@ Vercel (app.radiocheck.me)  →  Render (veterans-support-api.onrender.com)
 
 ---
 
-*Last Updated: February 23, 2026*
+*Last Updated: February 24, 2026*
