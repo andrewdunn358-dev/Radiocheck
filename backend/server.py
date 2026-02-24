@@ -2469,9 +2469,9 @@ async def create_counsellor(
 
 @api_router.get("/counsellors", response_model=List[Counsellor])
 async def get_counsellors(current_user: User = Depends(get_current_user)):
-    """Get all counsellors - Requires authentication (admin or counsellor)"""
-    if current_user.role not in ["admin", "counsellor"]:
-        raise HTTPException(status_code=403, detail="Access denied. Only admins and counsellors can view this.")
+    """Get all counsellors - Requires authentication (admin, counsellor, or peer)"""
+    if current_user.role not in ["admin", "counsellor", "peer"]:
+        raise HTTPException(status_code=403, detail="Access denied. Staff only.")
     counsellors = await db.counsellors.find().to_list(1000)
     # Decrypt sensitive fields when retrieving
     return [Counsellor(**decrypt_document('counsellors', c)) for c in counsellors]
