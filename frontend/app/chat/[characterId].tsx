@@ -201,7 +201,13 @@ export default function DynamicAIChat() {
   };
 
   const handleGoBack = () => {
-    router.back();
+    // Check if there's history to go back to
+    // If not (e.g., after page refresh), navigate to home
+    if (typeof window !== 'undefined' && window.history.length <= 1) {
+      router.replace('/home');
+    } else {
+      router.back();
+    }
   };
 
   const handleSetupEmail = async () => {
