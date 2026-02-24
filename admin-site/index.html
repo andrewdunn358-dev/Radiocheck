@@ -362,6 +362,106 @@
                 <div id="cms-list-view" class="cms-grid" style="display: none;"></div>
             </div>
 
+            <!-- Beta Testing Tab -->
+            <div id="beta-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Beta Testing Dashboard</h2>
+                    <div class="tab-actions">
+                        <button class="btn btn-primary" onclick="exportSurveyData()">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Beta Toggle -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-body" style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0; color: var(--text-color);"><i class="fas fa-flask" style="margin-right: 10px; color: #8b5cf6;"></i>Beta Testing Mode</h3>
+                            <p style="margin: 8px 0 0 0; color: var(--text-muted); font-size: 14px;">When enabled, users will see feedback surveys on the app</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="beta-toggle" onchange="toggleBetaMode(this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Survey Stats -->
+                <div id="beta-stats" class="stats-grid" style="margin-bottom: 24px;">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span id="beta-pre-count" class="stat-value">--</span>
+                            <span class="stat-label">Pre-Surveys</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #22c55e, #15803d);">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span id="beta-post-count" class="stat-value">--</span>
+                            <span class="stat-label">Post-Surveys</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span id="beta-completion-rate" class="stat-value">--%</span>
+                            <span class="stat-label">Completion Rate</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span id="beta-nps" class="stat-value">--</span>
+                            <span class="stat-label">NPS Score</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Improvement Metrics -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-body">
+                        <h3 style="margin: 0 0 16px 0; color: var(--text-color);"><i class="fas fa-chart-line" style="margin-right: 10px; color: #22c55e;"></i>User Improvement Metrics</h3>
+                        <div id="beta-improvement" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div style="background: var(--bg-color); padding: 16px; border-radius: 12px; text-align: center;">
+                                <div id="wellbeing-change" style="font-size: 28px; font-weight: 700; color: #22c55e;">--</div>
+                                <div style="color: var(--text-muted); font-size: 13px;">Wellbeing Change</div>
+                            </div>
+                            <div style="background: var(--bg-color); padding: 16px; border-radius: 12px; text-align: center;">
+                                <div id="anxiety-change" style="font-size: 28px; font-weight: 700; color: #22c55e;">--</div>
+                                <div style="color: var(--text-muted); font-size: 13px;">Anxiety Change</div>
+                            </div>
+                            <div style="background: var(--bg-color); padding: 16px; border-radius: 12px; text-align: center;">
+                                <div id="mood-change" style="font-size: 28px; font-weight: 700; color: #22c55e;">--</div>
+                                <div style="color: var(--text-muted); font-size: 13px;">Mood Change</div>
+                            </div>
+                        </div>
+                        <p style="margin: 16px 0 0 0; color: var(--text-muted); font-size: 13px; text-align: center;">
+                            Positive numbers indicate improvement from pre to post survey
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Recent Responses -->
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin: 0 0 16px 0; color: var(--text-color);"><i class="fas fa-comments" style="margin-right: 10px; color: #3b82f6;"></i>Recent Survey Responses</h3>
+                        <div id="beta-responses" style="max-height: 400px; overflow-y: auto;">
+                            <p style="color: var(--text-muted); text-align: center; padding: 20px;">Loading responses...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Calls Management Tab -->
             
             <!-- Compliance Tab -->
