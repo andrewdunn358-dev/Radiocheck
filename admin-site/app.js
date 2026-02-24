@@ -4609,28 +4609,27 @@ function openGenericModal(title, content) {
     setTimeout(() => modal.classList.add('active'), 10);
 }
 
-// Download compliance document as PDF
+// Download compliance document - direct link to static PDF
 function downloadDocument(filename) {
-    // Map old filenames to new document IDs
+    // Map old filenames to static PDF files
     const docMap = {
-        'ROPA.md': 'ROPA',
-        'BACP_ETHICAL_FRAMEWORK_COMPLIANCE.md': 'BACP_COMPLIANCE',
-        'GDPR_AUDIT_REPORT.md': 'GDPR_AUDIT',
-        'INCIDENT_RESPONSE_PLAN.md': 'INCIDENT_RESPONSE',
-        'SECURITY_REVIEW_SCHEDULE.md': 'SECURITY_SCHEDULE',
-        'SAFEGUARDING_DISCLAIMER.md': 'SAFEGUARDING'
+        'ROPA.md': 'docs/ROPA.pdf',
+        'BACP_ETHICAL_FRAMEWORK_COMPLIANCE.md': 'docs/BACP_Compliance.pdf',
+        'GDPR_AUDIT_REPORT.md': 'docs/GDPR_Audit_Report.pdf',
+        'INCIDENT_RESPONSE_PLAN.md': 'docs/Incident_Response_Plan.pdf',
+        'SECURITY_REVIEW_SCHEDULE.md': 'docs/Security_Review_Schedule.pdf',
+        'SAFEGUARDING_DISCLAIMER.md': 'docs/Safeguarding_Disclaimer.pdf'
     };
     
-    const docId = docMap[filename];
-    if (!docId) {
+    const pdfPath = docMap[filename];
+    if (!pdfPath) {
         showNotification(`Unknown document: ${filename}`, 'error');
         return;
     }
     
-    // Open PDF download in new tab
-    const downloadUrl = `${CONFIG.API_URL}/api/documents/download/${docId}`;
-    window.open(downloadUrl, '_blank');
-    showNotification(`Downloading ${filename.replace('.md', '.pdf')}...`, 'success');
+    // Direct download from static files
+    window.open(pdfPath, '_blank');
+    showNotification(`Opening ${pdfPath.split('/').pop()}...`, 'success');
 }
 
 // Escape HTML for security
