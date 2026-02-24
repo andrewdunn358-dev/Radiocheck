@@ -263,7 +263,7 @@ export default function SplashScreen() {
               data-testid="skip-microphone-btn"
             >
               <Text style={styles.permissionSkipText}>Maybe Later</Text>
-            </TouchableOpacity>
+            </Pressable>
             <Text style={styles.permissionNote}>
               You can always enable this in Settings later.
             </Text>
