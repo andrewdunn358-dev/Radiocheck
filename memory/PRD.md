@@ -162,6 +162,8 @@ Vercel (app.radiocheck.me)  →  Render (veterans-support-api.onrender.com)
 - [x] Counsellor status 422 error fix - DONE (Feb 24)
 - [x] CMS pages missing (self-care, family-friends) - DONE (Feb 24)
 - [x] AI Chat theme support - DONE (Feb 24) - Consolidated to unified component
+- [x] AI Consent Modal dark/light theme - DONE (Feb 24) - Modal now respects theme
+- [x] Back button after refresh fix - DONE (Feb 24) - Using safeGoBack utility
 
 ### Medium Priority (P1)
 - [ ] Push notifications integration
