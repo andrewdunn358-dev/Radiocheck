@@ -67,6 +67,10 @@ export default function HugoChatScreen() {
   const [showAIConsent, setShowAIConsent] = useState(false);
   const [hasAcceptedConsent, setHasAcceptedConsent] = useState(false);
 
+  // Create dynamic styles based on theme
+  const isDark = theme === 'dark';
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   useEffect(() => {
     checkAIConsent();
   }, []);
