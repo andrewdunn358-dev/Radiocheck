@@ -262,17 +262,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 12,
   },
-  hugoImageContainer: {
-    width: 60,
-    height: 60,
-  },
-  hugoImageWrapper: {
+  hugoAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#dcfce7',
-    justifyContent: 'center',
-    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#10b981',
   },
