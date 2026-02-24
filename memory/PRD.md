@@ -7,7 +7,33 @@
 
 ## Session Summary - February 24, 2026 (Latest Update)
 
-### ✅ Completed This Session (Latest Fork)
+### ✅ Completed This Session (Current Fork)
+
+**🎨 Dark/Light Theme Fix for AI Chats (Complete):**
+- Fixed `AIConsentModal.tsx` to properly respect dark/light theme
+- Updated `ThemeContext.tsx` to wait for theme to load before rendering children (prevents flash of light theme)
+- Consent modal now shows with correct theme colors in both light and dark modes
+
+**🔧 Back Button After Refresh Fix (Complete):**
+- Created `/app/frontend/src/utils/navigation.ts` with `safeGoBack` utility
+- When no browser history exists (after page refresh), navigates to `/home` instead of doing nothing
+- Updated `self-care.tsx` and `chat/[characterId].tsx` to use `Pressable` instead of `TouchableOpacity` for better web compatibility
+
+**🛠️ AI Character Lookup Improvement (Complete):**
+- Updated `getCharacter()` in `ai-characters.ts` to support name-based lookup
+- Now `/chat/finch` and `/chat/sentry` both correctly show the Finch character
+
+**📁 Files Changed:**
+- `/app/frontend/src/components/AIConsentModal.tsx` - Theme-aware consent modal
+- `/app/frontend/src/context/ThemeContext.tsx` - Added loading state
+- `/app/frontend/src/utils/navigation.ts` - NEW: Safe navigation utility
+- `/app/frontend/app/self-care.tsx` - Using Pressable and safeGoBack
+- `/app/frontend/app/chat/[characterId].tsx` - Using Pressable and safeGoBack
+- `/app/frontend/src/config/ai-characters.ts` - Enhanced character lookup
+
+---
+
+### ✅ Completed Previous Fork (Same Day)
 
 **🐛 Bug Fix - Counsellor Status 422 Error (Complete):**
 - Fixed `PATCH /api/counsellors/{user_id}/status` endpoint returning 422 Unprocessable Content
