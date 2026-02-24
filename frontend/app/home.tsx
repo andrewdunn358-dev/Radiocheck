@@ -97,6 +97,10 @@ export default function Index() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+      
+      {/* Beta Survey - Only shows when enabled in admin */}
+      {userId && <BetaSurvey userId={userId} />}
+      
       <ScrollView 
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
