@@ -86,12 +86,32 @@ export default function Index() {
     getOrCreateUserId();
   }, []);
   
-  // Fetch CMS content for the home page (AI team section)
+  // Fetch CMS content for the home page
   const { sections, isLoading } = useCMSContent('home');
+  
+  // Get menu section from CMS
+  const menuSection = getSection(sections, 'menu');
+  const cmsMenuCards = menuSection?.cards || [];
+  
+  // Get AI team section from CMS
   const aiTeamSection = getSection(sections, 'ai_team');
   const cmsAICards = aiTeamSection?.cards || [];
   
-  // Use CMS data if available, otherwise fall back to hardcoded
+  // Use CMS menu items if available, otherwise fall back to hardcoded
+  const menuItems: MenuItem[] = cmsMenuCards.length > 0
+    ? cmsMenuCards.map((card: CMSCard) => ({
+        title: card.title,
+        description: card.description || '',
+        icon: card.icon || 'apps',
+        color: card.color || '#3b82f6',
+        bgColor: card.bg_color || '#dbeafe',
+        route: card.route || card.external_url || '/',
+        isPrimary: card.is_primary || false,
+        isCallback: card.is_callback || false,
+      })).sort((a: MenuItem, b: MenuItem) => (a as any).order - (b as any).order)
+    : FALLBACK_MENU_ITEMS;
+  
+  // Use CMS AI team data if available, otherwise fall back to hardcoded
   
   // Use CMS data if available, otherwise fall back to hardcoded
   const aiTeam: AITeamMember[] = cmsAICards.length > 0 
