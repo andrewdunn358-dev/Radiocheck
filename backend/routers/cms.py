@@ -375,39 +375,6 @@ async def seed_cms_public(force: bool = False):
             "updated_at": now
         })
     
-    # Quick Actions section for Home
-    home_actions_section_id = str(uuid.uuid4())
-    sections.append({
-        "id": home_actions_section_id,
-        "page_slug": "home",
-        "title": "Quick Actions",
-        "type": "cards",
-        "order": 2,
-        "created_at": now,
-        "updated_at": now
-    })
-    
-    quick_actions = [
-        {"title": "Emergency Help", "description": "Crisis support numbers", "icon": "warning", "color": "#ef4444", "route": "/crisis", "order": 1},
-        {"title": "Talk to Someone", "description": "Request a callback", "icon": "call", "color": "#22c55e", "route": "/callback", "order": 2},
-        {"title": "Self-Care Tools", "description": "Exercises and resources", "icon": "heart", "color": "#3b82f6", "route": "/self-care", "order": 3},
-    ]
-    
-    for action in quick_actions:
-        cards.append({
-            "id": str(uuid.uuid4()),
-            "section_id": home_actions_section_id,
-            "title": action["title"],
-            "description": action["description"],
-            "icon": action["icon"],
-            "color": action["color"],
-            "route": action["route"],
-            "order": action["order"],
-            "is_visible": True,
-            "created_at": now,
-            "updated_at": now
-        })
-    
     # =====================
     # SELF-CARE PAGE
     # =====================
