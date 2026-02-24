@@ -3870,81 +3870,161 @@ function selectCard(cardId, sectionId, event) {
 // Render the edit panel based on element type
 function renderEditPanel(type, data) {
     const panel = document.getElementById('cms-edit-content');
+    const titleEl = document.getElementById('edit-panel-title');
     
     if (type === 'section') {
+        titleEl.innerHTML = '<i class="fas fa-layer-group"></i> Edit Section';
         panel.innerHTML = `
-            <div class="edit-field">
+            <div class="edit-form-group">
                 <label>Section Title</label>
-                <input type="text" id="edit-title" value="${data.title || ''}" onchange="updateField('title', this.value)">
+                <input type="text" id="edit-title" value="${escapeHtml(data.title || '')}" onchange="updateField('title', this.value)" placeholder="Enter section title">
             </div>
-            <div class="edit-field">
+            <div class="edit-form-group">
                 <label>Subtitle</label>
-                <textarea id="edit-subtitle" onchange="updateField('subtitle', this.value)">${data.subtitle || ''}</textarea>
+                <textarea id="edit-subtitle" onchange="updateField('subtitle', this.value)" placeholder="Optional description">${escapeHtml(data.subtitle || '')}</textarea>
             </div>
-            <div class="edit-field">
+            <div class="edit-form-group">
                 <label>Section Type</label>
-                <select id="edit-section-type" onchange="updateField('section_type', this.value)">
-                    <option value="cards" ${data.section_type === 'cards' ? 'selected' : ''}>Cards Grid</option>
-                    <option value="hero" ${data.section_type === 'hero' ? 'selected' : ''}>Hero Banner</option>
-                    <option value="text" ${data.section_type === 'text' ? 'selected' : ''}>Text Content</option>
-                    <option value="resources" ${data.section_type === 'resources' ? 'selected' : ''}>Resources List</option>
-                </select>
-            </div>
-            <div class="edit-field">
-                <label>Visibility</label>
-                <select id="edit-visible" onchange="updateField('is_visible', this.value === 'true')">
-                    <option value="true" ${data.is_visible !== false ? 'selected' : ''}>Visible</option>
-                    <option value="false" ${data.is_visible === false ? 'selected' : ''}>Hidden</option>
+                <select id="edit-section-type" onchange="updateField('type', this.value)">
+                    <option value="menu" ${data.type === 'menu' ? 'selected' : ''}>Menu Items</option>
+                    <option value="cards" ${data.type === 'cards' ? 'selected' : ''}>Cards Grid</option>
+                    <option value="ai_team" ${data.type === 'ai_team' ? 'selected' : ''}>AI Team</option>
+                    <option value="hero" ${data.type === 'hero' ? 'selected' : ''}>Hero Banner</option>
+                    <option value="resources" ${data.type === 'resources' ? 'selected' : ''}>Resources List</option>
                 </select>
             </div>
             <div class="edit-actions">
+                <button class="btn btn-danger" onclick="deleteSection('${data.id}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
                 <button class="btn btn-primary" onclick="applyChanges()">
                     <i class="fas fa-check"></i> Apply
                 </button>
             </div>
         `;
     } else if (type === 'card') {
+        titleEl.innerHTML = '<i class="fas fa-square"></i> Edit Card';
+        
+        // Available icons for selection
+        const icons = ['heart', 'people', 'shield', 'call', 'fitness', 'headset', 'list', 'heart-circle', 'heart-dislike', 'shield-checkmark', 'chatbubbles', 'book', 'home', 'star', 'person', 'medical', 'warning', 'information-circle'];
+        
+        let iconOptionsHtml = icons.map(icon => `
+            <div class="icon-option ${data.icon === icon ? 'selected' : ''}" onclick="selectIcon('${icon}')" data-icon="${icon}">
+                <i class="${getIconClass(icon)}"></i>
+            </div>
+        `).join('');
+        
         panel.innerHTML = `
-            <div class="edit-field">
+            <div class="edit-form-group">
                 <label>Card Title</label>
-                <input type="text" id="edit-title" value="${data.title || ''}" onchange="updateField('title', this.value)">
+                <input type="text" id="edit-title" value="${escapeHtml(data.title || '')}" oninput="updateFieldLive('title', this.value)" placeholder="Card title">
             </div>
-            <div class="edit-field">
+            <div class="edit-form-group">
                 <label>Description</label>
-                <textarea id="edit-description" onchange="updateField('description', this.value)">${data.description || ''}</textarea>
+                <textarea id="edit-description" oninput="updateFieldLive('description', this.value)" placeholder="Brief description">${escapeHtml(data.description || '')}</textarea>
             </div>
-            <div class="edit-field">
+            <div class="edit-form-group">
+                <label>Icon</label>
+                <div class="icon-selector">
+                    ${iconOptionsHtml}
+                </div>
+            </div>
+            <div class="edit-form-group">
                 <label>Icon Color</label>
-                <div class="color-picker-wrapper">
-                    <input type="color" id="edit-color" value="${data.color || '#3b82f6'}" onchange="updateField('color', this.value)">
-                    <input type="text" value="${data.color || '#3b82f6'}" onchange="document.getElementById('edit-color').value = this.value; updateField('color', this.value)">
+                <div class="color-picker-row">
+                    <input type="color" id="edit-color" value="${data.color || '#3b82f6'}" oninput="updateColorLive('color', this.value)">
+                    <input type="text" id="edit-color-text" value="${data.color || '#3b82f6'}" oninput="syncColorInput('color', this.value)">
                 </div>
             </div>
-            <div class="edit-field">
+            <div class="edit-form-group">
                 <label>Background Color</label>
-                <div class="color-picker-wrapper">
-                    <input type="color" id="edit-bg-color" value="${data.bg_color || '#1e3a5f'}" onchange="updateField('bg_color', this.value)">
-                    <input type="text" value="${data.bg_color || '#1e3a5f'}" onchange="document.getElementById('edit-bg-color').value = this.value; updateField('bg_color', this.value)">
+                <div class="color-picker-row">
+                    <input type="color" id="edit-bg-color" value="${data.bg_color || '#dbeafe'}" oninput="updateColorLive('bg_color', this.value)">
+                    <input type="text" id="edit-bg-color-text" value="${data.bg_color || '#dbeafe'}" oninput="syncColorInput('bg_color', this.value)">
                 </div>
             </div>
-            <div class="edit-field">
-                <label>Route (Internal Link)</label>
-                <input type="text" id="edit-route" value="${data.route || ''}" placeholder="/page-name" onchange="updateField('route', this.value)">
+            <div class="edit-form-group">
+                <label>Route / Link</label>
+                <input type="text" id="edit-route" value="${escapeHtml(data.route || '')}" onchange="updateField('route', this.value)" placeholder="/page-name">
             </div>
-            <div class="edit-field">
-                <label>External URL (Optional)</label>
-                <input type="text" id="edit-external-url" value="${data.external_url || ''}" placeholder="https://..." onchange="updateField('external_url', this.value)">
-            </div>
-            <div class="edit-field">
-                <label>Phone Number (Optional)</label>
-                <input type="text" id="edit-phone" value="${data.phone || ''}" placeholder="0800 123 456" onchange="updateField('phone', this.value)">
+            <div class="edit-form-group">
+                <label>Image URL (for AI characters)</label>
+                <input type="text" id="edit-image" value="${escapeHtml(data.image_url || '')}" onchange="updateField('image_url', this.value)" placeholder="https://...">
             </div>
             <div class="edit-actions">
+                <button class="btn btn-danger" onclick="deleteCard('${data.id}', '${editingElement.sectionId}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
                 <button class="btn btn-primary" onclick="applyChanges()">
                     <i class="fas fa-check"></i> Apply
                 </button>
             </div>
         `;
+    }
+}
+
+// Select icon from the icon selector
+function selectIcon(iconName) {
+    document.querySelectorAll('.icon-option').forEach(el => el.classList.remove('selected'));
+    document.querySelector(`[data-icon="${iconName}"]`)?.classList.add('selected');
+    updateFieldLive('icon', iconName);
+}
+
+// Live update field and refresh preview
+function updateFieldLive(field, value) {
+    if (!editingElement) return;
+    editingElement.data[field] = value;
+    renderPhonePreview(cmsPageData);
+    
+    // Re-highlight the editing element
+    setTimeout(() => {
+        const el = document.querySelector(`[data-card-id="${editingElement.id}"]`) || 
+                   document.querySelector(`[data-section-id="${editingElement.id}"]`);
+        if (el) el.classList.add('editing');
+    }, 10);
+}
+
+// Sync color input with color picker
+function syncColorInput(field, value) {
+    if (!value.startsWith('#')) value = '#' + value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        document.getElementById(`edit-${field.replace('_', '-')}`).value = value;
+        updateColorLive(field, value);
+    }
+}
+
+// Live update color and refresh preview
+function updateColorLive(field, value) {
+    if (!editingElement) return;
+    editingElement.data[field] = value;
+    document.getElementById(`edit-${field.replace('_', '-')}-text`).value = value;
+    renderPhonePreview(cmsPageData);
+    
+    // Re-highlight the editing element
+    setTimeout(() => {
+        const el = document.querySelector(`[data-card-id="${editingElement.id}"]`);
+        if (el) el.classList.add('editing');
+    }, 10);
+}
+
+// Set preview theme (light/dark)
+function setPreviewTheme(theme) {
+    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.closest('.theme-btn').classList.add('active');
+    
+    const phoneScreen = document.getElementById('cms-phone-screen');
+    const phoneContent = document.getElementById('cms-phone-content');
+    
+    if (theme === 'light') {
+        phoneScreen.style.background = '#f5f7fa';
+        phoneContent.classList.add('light-theme');
+        document.querySelector('.phone-header').style.background = '#ffffff';
+        document.querySelector('.phone-header').style.color = '#1e293b';
+    } else {
+        phoneScreen.style.background = '#0f172a';
+        phoneContent.classList.remove('light-theme');
+        document.querySelector('.phone-header').style.background = '#1e293b';
+        document.querySelector('.phone-header').style.color = '#ffffff';
     }
 }
 
