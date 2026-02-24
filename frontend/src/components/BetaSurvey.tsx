@@ -16,8 +16,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../src/context/ThemeContext';
-import { API_URL } from '../src/config/api';
+import { useTheme } from '../context/ThemeContext';
+import { API_URL } from '../config/api';
 
 interface BetaSurveyProps {
   userId: string;
