@@ -243,16 +243,24 @@ export default function SplashScreen() {
                 <Text style={styles.permissionFeatureText}>Your privacy is protected</Text>
               </View>
             </View>
-            <TouchableOpacity 
-              style={styles.permissionAllowButton}
+            <Pressable 
+              style={({ pressed }) => [
+                styles.permissionAllowButton,
+                pressed && { opacity: 0.8 }
+              ]}
               onPress={handleAllowPermissions}
+              data-testid="allow-microphone-btn"
             >
               <Ionicons name="mic" size={20} color="#fff" />
               <Text style={styles.permissionAllowText}>Allow Microphone</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.permissionSkipButton}
+            </Pressable>
+            <Pressable 
+              style={({ pressed }) => [
+                styles.permissionSkipButton,
+                pressed && { opacity: 0.7 }
+              ]}
               onPress={handleSkipPermissions}
+              data-testid="skip-microphone-btn"
             >
               <Text style={styles.permissionSkipText}>Maybe Later</Text>
             </TouchableOpacity>
