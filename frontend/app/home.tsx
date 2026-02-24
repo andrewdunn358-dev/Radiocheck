@@ -41,6 +41,24 @@ export default function Index() {
   const styles = createStyles(colors);
   const [showAITeam, setShowAITeam] = useState(false);
   const [selectedMember, setSelectedMember] = useState<AITeamMember | null>(null);
+  const [userId, setUserId] = useState<string>('');
+  
+  // Generate or retrieve anonymous user ID for survey tracking
+  useEffect(() => {
+    const getOrCreateUserId = async () => {
+      try {
+        let id = await AsyncStorage.getItem('anonymous_user_id');
+        if (!id) {
+          id = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+          await AsyncStorage.setItem('anonymous_user_id', id);
+        }
+        setUserId(id);
+      } catch (e) {
+        setUserId('fallback_' + Date.now());
+      }
+    };
+    getOrCreateUserId();
+  }, []);
   
   // Fetch CMS content for the home page (AI team section)
   const { sections, isLoading } = useCMSContent('home');
