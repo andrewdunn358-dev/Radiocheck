@@ -1822,8 +1822,9 @@ function showSelectedDayShifts(dateString) {
     }
     
     shiftsContainer.innerHTML = dayShifts.map(function(shift) {
-        var isMyShift = shift.staff_id === currentUser.id;
-        var name = isMyShift ? 'You' : (shift.staff_name || 'Staff');
+        // Use user_id and user_name from API response
+        var isMyShift = (shift.user_id === currentUser.id) || (shift.staff_id === currentUser.id);
+        var name = isMyShift ? 'You' : (shift.user_name || shift.staff_name || 'Staff Member');
         
         var actionsHtml = '';
         if (isMyShift) {
