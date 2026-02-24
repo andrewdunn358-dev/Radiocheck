@@ -134,17 +134,19 @@ Vercel (app.radiocheck.me)  →  Render (veterans-support-api.onrender.com)
 - [x] API URL failsafe for production - DONE
 - [x] Cron job setup helper - DONE
 - [x] Counsellor status 422 error fix - DONE (Feb 24)
+- [x] CMS pages missing (self-care, family-friends) - DONE (Feb 24)
+- [x] AI Chat theme support - DONE (Feb 24) - Consolidated to unified component
 
 ### Medium Priority (P1)
 - [ ] Push notifications integration
 - [ ] DPIA document for AI processing
 - [ ] Verify Render cron job is working
+- [ ] Delete old AI chat files (hugo-chat.tsx, bob-chat.tsx, etc.) after production testing
 
 ### Future / Backlog
 - [ ] Welsh language support
 - [ ] SMS text reminders (Twilio)
 - [ ] Structured CBT courses
-- [ ] Consolidate AI chat screens into reusable component
 - [ ] Mood tracking enhancements (filtering, trend analysis)
 
 ---
