@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
+import { safeGoBack } from '../src/utils/navigation';
 
 // Hugo's avatar URL
 const HUGO_AVATAR = 'https://static.prod-images.emergentagent.com/jobs/56155002-fa62-4b53-8fda-4baf701ab83f/images/6be1ae886e76d7b380a66ef3eb98c183e26882fe8e9897aab7e8a8ad4320acb9.png';
