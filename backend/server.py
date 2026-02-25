@@ -4053,7 +4053,7 @@ async def get_ai_characters():
             {
                 "id": "hugo",
                 "name": "Hugo",
-                "description": "A 35-year-old wellbeing coach focused on mental health, resilience and daily habits.",
+                "description": "Your guide to UK veteran support systems — housing, jobs, benefits, legal help and more.",
                 "avatar": AI_CHARACTERS["hugo"]["avatar"]
             },
             {
