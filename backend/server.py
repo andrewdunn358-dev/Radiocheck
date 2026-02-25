@@ -1929,7 +1929,7 @@ async def send_safeguarding_email_notification(alert: SafeguardingAlert, risk_da
             <p style="color: #666;">The user has been shown support options including crisis helplines and the option to speak with a real person.</p>
             
             <p style="text-align: center; margin: 30px 0;">
-                <a href="{FRONTEND_URL}/login" style="background-color: {risk_color}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">View in Staff Portal</a>
+                <a href="{STAFF_PORTAL_URL}" style="background-color: {risk_color}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">View in Staff Portal</a>
             </p>
             
             <p style="color: #666; font-size: 12px;">This is an automated safeguarding notification from Radio Check Veterans Support.</p>
