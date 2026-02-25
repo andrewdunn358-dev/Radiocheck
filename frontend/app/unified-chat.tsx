@@ -120,7 +120,9 @@ export default function UnifiedAIChat() {
   };
 
   const handleConnectToStaff = () => {
-    // Navigate to live chat with available staff
+    // Close the safeguarding modal first, then navigate to live chat
+    setShowSafeguardingModal(false);
+    setSafeguardingView('main');
     router.push('/live-chat');
   };
 
