@@ -3511,6 +3511,28 @@ async def get_safeguarding_alerts(
         logging.error(f"Error fetching safeguarding alerts: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch safeguarding alerts")
 
+@api_router.get("/safeguarding-alerts/{alert_id}")
+async def get_safeguarding_alert(
+    alert_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get a single safeguarding alert by ID"""
+    if current_user.role not in ["admin", "counsellor", "peer"]:
+        raise HTTPException(status_code=403, detail="Only staff can view safeguarding alerts")
+    
+    try:
+        alert = await db.safeguarding_alerts.find_one({"id": alert_id}, {"_id": 0})
+        if not alert:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        return alert
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error fetching safeguarding alert {alert_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch safeguarding alert")
+
+
+
 @api_router.patch("/safeguarding-alerts/{alert_id}/acknowledge")
 async def acknowledge_safeguarding_alert(
     alert_id: str,
