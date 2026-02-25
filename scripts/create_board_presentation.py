@@ -13,10 +13,10 @@ import markdown
 from weasyprint import HTML, CSS
 
 # Colors - Military/Professional theme
-DARK_GREEN = RgbColor(0x1a, 0x3c, 0x34)  # Dark military green
-GOLD = RgbColor(0xc9, 0xa2, 0x27)  # Gold accent
-WHITE = RgbColor(0xff, 0xff, 0xff)
-LIGHT_GRAY = RgbColor(0xf5, 0xf5, 0xf5)
+DARK_GREEN = RGBColor(0x1a, 0x3c, 0x34)  # Dark military green
+GOLD = RGBColor(0xc9, 0xa2, 0x27)  # Gold accent
+WHITE = RGBColor(0xff, 0xff, 0xff)
+LIGHT_GRAY = RGBColor(0xf5, 0xf5, 0xf5)
 
 def create_powerpoint():
     """Create PowerPoint presentation"""
