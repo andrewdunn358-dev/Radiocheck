@@ -723,7 +723,7 @@ async function loadSafeguardingAlerts(isPolling) {
 }
 
 // Show new alert notification banner
-function showNewAlertBanner(count) {
+function showNewAlertBanner(count, newAlerts) {
     var banner = document.getElementById('new-alert-banner');
     if (!banner) {
         banner = document.createElement('div');
@@ -735,10 +735,102 @@ function showNewAlertBanner(count) {
     banner.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + count + ' NEW SAFEGUARDING ALERT' + (count > 1 ? 'S' : '') + ' <button onclick="dismissAlertBanner()">View</button>';
     banner.classList.add('show');
     
-    // Auto-dismiss after 10 seconds
+    // For RED level alerts, show a full-screen modal
+    if (newAlerts && newAlerts.length > 0) {
+        var redAlert = newAlerts.find(function(a) { return a.risk_level === 'RED'; });
+        if (redAlert) {
+            showUrgentAlertModal(redAlert);
+        }
+    }
+    
+    // Auto-dismiss banner after 10 seconds
     setTimeout(function() {
         banner.classList.remove('show');
     }, 10000);
+}
+
+// Show urgent alert modal for RED-level alerts
+function showUrgentAlertModal(alert) {
+    var existingModal = document.getElementById('urgent-alert-modal');
+    if (existingModal) existingModal.remove();
+    
+    var location = alert.geo_city && alert.geo_country ? alert.geo_city + ', ' + alert.geo_country : 'Unknown location';
+    var triggers = alert.triggered_indicators ? alert.triggered_indicators.join(', ') : 'Unknown';
+    
+    var modal = document.createElement('div');
+    modal.id = 'urgent-alert-modal';
+    modal.className = 'urgent-alert-modal';
+    modal.innerHTML = 
+        '<div class="urgent-alert-content">' +
+            '<div class="urgent-alert-header">' +
+                '<i class="fas fa-exclamation-circle"></i>' +
+                '<h2>URGENT: Safeguarding Alert</h2>' +
+            '</div>' +
+            '<div class="urgent-alert-body">' +
+                '<div class="alert-risk-badge risk-red">RED RISK - Score: ' + (alert.risk_score || 0) + '</div>' +
+                '<div class="alert-info-grid">' +
+                    '<div class="alert-info-item">' +
+                        '<span class="label">Session:</span>' +
+                        '<span class="value">' + (alert.session_id || 'Unknown').substring(0, 20) + '...</span>' +
+                    '</div>' +
+                    '<div class="alert-info-item">' +
+                        '<span class="label">AI Character:</span>' +
+                        '<span class="value">' + (alert.character || 'Unknown') + '</span>' +
+                    '</div>' +
+                    '<div class="alert-info-item">' +
+                        '<span class="label">Location:</span>' +
+                        '<span class="value">' + location + '</span>' +
+                    '</div>' +
+                    '<div class="alert-info-item">' +
+                        '<span class="label">ISP:</span>' +
+                        '<span class="value">' + (alert.geo_isp || 'Unknown') + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="alert-triggers">' +
+                    '<span class="label">Triggered Keywords:</span>' +
+                    '<span class="triggers">' + triggers + '</span>' +
+                '</div>' +
+                '<div class="alert-message">' +
+                    '<span class="label">Message:</span>' +
+                    '<p>' + (alert.triggering_message || 'No message recorded') + '</p>' +
+                '</div>' +
+            '</div>' +
+            '<div class="urgent-alert-actions">' +
+                '<p class="action-prompt">The user is seeing support options. If they request to talk, be ready to respond.</p>' +
+                '<div class="action-buttons">' +
+                    '<button class="btn btn-success btn-lg" onclick="takeAlertAction(\'' + alert.id + '\', \'acknowledge\')">' +
+                        '<i class="fas fa-hand-paper"></i> I\'m Monitoring This' +
+                    '</button>' +
+                    '<button class="btn btn-secondary" onclick="closeUrgentModal()">' +
+                        'Dismiss' +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    
+    document.body.appendChild(modal);
+    
+    // Pulse sound continues until acknowledged
+    playAlertSound();
+}
+
+function closeUrgentModal() {
+    var modal = document.getElementById('urgent-alert-modal');
+    if (modal) modal.remove();
+}
+
+async function takeAlertAction(alertId, action) {
+    try {
+        if (action === 'acknowledge') {
+            await apiCall('/safeguarding-alerts/' + alertId + '/acknowledge', { method: 'PATCH' });
+            showNotification('You are now monitoring this alert', 'success');
+        }
+        closeUrgentModal();
+        loadSafeguardingAlerts(false);
+    } catch (error) {
+        console.error('Error taking alert action:', error);
+        showNotification('Error: ' + error.message, 'error');
+    }
 }
 
 function dismissAlertBanner() {
