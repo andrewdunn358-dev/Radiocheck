@@ -164,12 +164,14 @@ Vercel (app.radiocheck.me)  →  Render (veterans-support-api.onrender.com)
 - [x] AI Chat theme support - DONE (Feb 24) - Consolidated to unified component
 - [x] AI Consent Modal dark/light theme - DONE (Feb 24) - Modal now respects theme
 - [x] Back button after refresh fix - DONE (Feb 24) - Using safeGoBack utility
+- [x] Board Presentation Document - DONE (Feb 25) - /app/board_presentation.md created
 
 ### Medium Priority (P1)
 - [ ] Push notifications integration
 - [ ] DPIA document for AI processing
 - [ ] Verify Render cron job is working
 - [ ] Delete old AI chat files (hugo-chat.tsx, bob-chat.tsx, etc.) after production testing
+- [ ] Full CMS Integration for all app pages (continue from home.tsx pattern)
 
 ### Future / Backlog
 - [ ] Welsh language support
