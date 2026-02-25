@@ -1842,7 +1842,7 @@ async def send_reset_email(email: str, reset_token: str):
         return False
     
     try:
-        reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
+        reset_link = f"{APP_URL}/reset-password?token={reset_token}"
         
         html_content = f"""
         <html>
