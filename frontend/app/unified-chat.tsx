@@ -77,12 +77,52 @@ export default function UnifiedAIChat() {
   // Safeguarding state
   const [showSafeguardingModal, setShowSafeguardingModal] = useState(false);
   const [currentAlertId, setCurrentAlertId] = useState<string | null>(null);
-  const [safeguardingView, setSafeguardingView] = useState<'main' | 'callback' | 'connecting' | 'callback_success'>('main');
+  const [safeguardingView, setSafeguardingView] = useState<'main' | 'callback' | 'connecting' | 'callback_success' | 'live_chat'>('main');
   const [callbackPhone, setCallbackPhone] = useState('');
   const [callbackName, setCallbackName] = useState('');
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
   const [availableStaff, setAvailableStaff] = useState<AvailableStaff>({ counsellors: [], peers: [] });
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [staffAvailable, setStaffAvailable] = useState(false);
+
+  // Check for available staff when safeguarding modal opens
+  useEffect(() => {
+    if (showSafeguardingModal) {
+      checkStaffAvailability();
+    }
+  }, [showSafeguardingModal]);
+
+  const checkStaffAvailability = async () => {
+    setIsCheckingAvailability(true);
+    try {
+      const [counsellorsRes, peersRes] = await Promise.all([
+        fetch(`${API_URL}/api/counsellors/available`),
+        fetch(`${API_URL}/api/peer-supporters/available`)
+      ]);
+      
+      const counsellors = await counsellorsRes.json();
+      const peers = await peersRes.json();
+      
+      const availableCounsellors = Array.isArray(counsellors) ? counsellors : [];
+      const availablePeers = Array.isArray(peers) ? peers : [];
+      
+      setAvailableStaff({ 
+        counsellors: availableCounsellors, 
+        peers: availablePeers 
+      });
+      setStaffAvailable(availableCounsellors.length > 0 || availablePeers.length > 0);
+    } catch (error) {
+      console.error('Error checking staff availability:', error);
+      setStaffAvailable(false);
+    } finally {
+      setIsCheckingAvailability(false);
+    }
+  };
+
+  const handleConnectToStaff = () => {
+    // Navigate to live chat with available staff
+    router.push('/live-chat');
+  };
 
   // Check consent on mount
   useEffect(() => {
