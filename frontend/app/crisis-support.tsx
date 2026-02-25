@@ -26,11 +26,29 @@ export default function CrisisSupport() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
           <TouchableOpacity onPress={() => router.replace('/home')} style={{ padding: 8, marginRight: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text }}>Crisis Support</Text>
+        </View>
+
+        {/* Crisis Information Header */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fef2f2', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+              <Ionicons name="heart" size={24} color="#dc2626" />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 }}>You're Not Alone</Text>
+          </View>
+          <Text style={{ fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginBottom: 12 }}>
+            If you're struggling right now, help is available 24/7. Whether you need someone to talk to, 
+            professional support, or emergency help - we've got your back.
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>
+            <Text style={{ fontWeight: '600', color: colors.text }}>Remember:</Text> Reaching out is a sign of strength, not weakness. 
+            Every service listed here is free, confidential, and staffed by people who understand.
+          </Text>
         </View>
 
         {/* Emergency Banner */}
@@ -38,11 +56,125 @@ export default function CrisisSupport() {
           <Ionicons name="warning" size={28} color="#ffffff" />
           <View style={{ marginLeft: 16, flex: 1 }}>
             <Text style={{ fontSize: 20, fontWeight: '700', color: '#ffffff', marginBottom: 4 }}>Emergency: Call 999</Text>
-            <Text style={{ fontSize: 14, color: '#ffcccc' }}>For immediate danger, dial 999 directly</Text>
+            <Text style={{ fontSize: 14, color: '#ffcccc' }}>For immediate danger to yourself or others</Text>
           </View>
         </View>
 
-        {/* AI Battle Buddies */}
+        {/* Section Title - Crisis Helplines */}
+        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginBottom: 16 }}>
+          24/7 Crisis Helplines
+        </Text>
+
+        {/* Samaritans */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+            <Ionicons name="heart" size={28} color="#16a34a" />
+            <View style={{ marginLeft: 16, flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Samaritans</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>24/7 emotional support for anyone in distress. Free to call, always confidential.</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', backgroundColor: '#16a34a', borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            onPress={() => handleCall('116123')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="call" size={24} color="#ffffff" />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>Call 116 123</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Combat Stress */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+            <Ionicons name="shield" size={28} color="#dc2626" />
+            <View style={{ marginLeft: 16, flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Combat Stress</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>Veterans' mental health charity. Specialist support from people who understand military life.</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity
+              style={{ flex: 1, flexDirection: 'row', backgroundColor: '#dc2626', borderRadius: 8, padding: 14, alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              onPress={() => handleCall('08001381619')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call" size={20} color="#ffffff" />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>0800 138 1619</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', backgroundColor: colors.surfaceHover, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border }}
+              onPress={() => handleSMS('61212')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="chatbubble" size={18} color={colors.textSecondary} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Text</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Veterans Gateway */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+            <Ionicons name="flag" size={28} color="#2563eb" />
+            <View style={{ marginLeft: 16, flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Veterans Gateway</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>First point of contact for veterans seeking support. Connects you to the right services.</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', backgroundColor: '#2563eb', borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            onPress={() => handleCall('08088021212')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="call" size={24} color="#ffffff" />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>0808 802 1212</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* SSAFA */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 24, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+            <Ionicons name="people" size={28} color="#7c3aed" />
+            <View style={{ marginLeft: 16, flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>SSAFA</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>Armed Forces charity supporting serving personnel, veterans and their families since 1885.</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', backgroundColor: '#7c3aed', borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            onPress={() => handleCall('08007314880')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="call" size={24} color="#ffffff" />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>0800 731 4880</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Section Title - Talk to Someone */}
+        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginBottom: 16 }}>
+          Talk to Someone Now
+        </Text>
+
+        {/* On-Duty Counsellors Card */}
+        <TouchableOpacity 
+          style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 20, marginBottom: 16 }}
+          onPress={() => router.push('/counsellors')}
+          activeOpacity={0.8}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
+              <Ionicons name="people-circle" size={32} color="#ffffff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', marginBottom: 4 }}>On-Duty Counsellors</Text>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>Professional support available now</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#ffffff" />
+          </View>
+        </TouchableOpacity>
+
+        {/* AI Battle Buddies - Now below the header and helplines */}
         <TouchableOpacity 
           style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: colors.border }}
           onPress={() => router.push('/ai-buddies')}
@@ -60,121 +192,12 @@ export default function CrisisSupport() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>We're on stag 24/7</Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Chat with Tommy or Doris</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>AI Battle Buddies</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Chat with Tommy or Doris - available 24/7</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
           </View>
         </TouchableOpacity>
-
-        {/* On-Duty Counsellors Card */}
-        <TouchableOpacity 
-          style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 20, marginBottom: 24 }}
-          onPress={() => router.push('/counsellors')}
-          activeOpacity={0.8}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
-              <Ionicons name="people-circle" size={32} color="#ffffff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', marginBottom: 4 }}>On-Duty Counsellors</Text>
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>Professional support available now</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#ffffff" />
-          </View>
-        </TouchableOpacity>
-
-        {/* Section Title */}
-        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginBottom: 16 }}>
-          Crisis Helplines
-        </Text>
-
-        {/* Samaritans - FIRST */}
-        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-            <Ionicons name="heart" size={28} color={colors.textSecondary} />
-            <View style={{ marginLeft: 16, flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Samaritans</Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>24/7 emotional support for anyone in distress</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={{ flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            onPress={() => handleCall('116123')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="call" size={24} color="#ffffff" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>Call 116 123</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Combat Stress - SECOND */}
-        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-            <Ionicons name="shield" size={28} color={colors.textSecondary} />
-            <View style={{ marginLeft: 16, flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Combat Stress</Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>Veterans' mental health charity helpline</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity
-              style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 8, padding: 14, alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              onPress={() => handleCall('01912704378')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="call" size={20} color="#ffffff" />
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>Call</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{ flexDirection: 'row', backgroundColor: colors.surfaceHover, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border }}
-              onPress={() => handleSMS('61212')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="chatbubble" size={18} color={colors.textSecondary} />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Text</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Veterans UK */}
-        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-            <Ionicons name="flag" size={28} color={colors.textSecondary} />
-            <View style={{ marginLeft: 16, flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Veterans UK</Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>Government welfare and support services</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={{ flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            onPress={() => handleCall('08081914218')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="call" size={24} color="#ffffff" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>Call 0808 191 4218</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* SSAFA */}
-        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 20, marginBottom: 24, borderWidth: 1, borderColor: colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-            <Ionicons name="people" size={28} color={colors.textSecondary} />
-            <View style={{ marginLeft: 16, flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>SSAFA</Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>Armed Forces charity supporting serving personnel, veterans and families</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={{ flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            onPress={() => handleCall('08007314880')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="call" size={24} color="#ffffff" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>Call 0800 731 4880</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* More Options Link */}
         <TouchableOpacity 
