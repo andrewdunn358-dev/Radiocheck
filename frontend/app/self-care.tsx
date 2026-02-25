@@ -68,22 +68,22 @@ export default function SelfCarePage() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hugo AI Buddy Card - Featured at top */}
+        {/* Catherine AI Buddy Card - Featured at top */}
         <TouchableOpacity 
           style={[styles.hugoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push('/chat/hugo')}
+          onPress={() => router.push('/chat/catherine')}
           activeOpacity={0.8}
-          data-testid="hugo-card"
+          data-testid="catherine-card"
         >
           <Image 
-            source={{ uri: HUGO_AVATAR }} 
+            source={{ uri: CATHERINE_AVATAR }} 
             style={styles.hugoAvatar}
           />
           <View style={styles.hugoContent}>
-            <Text style={[styles.hugoTitle, { color: colors.text }]}>Chat with Hugo</Text>
-            <Text style={[styles.hugoSubtitle, { color: '#10b981' }]}>Your Self-Help & Wellness Guide</Text>
+            <Text style={[styles.hugoTitle, { color: colors.text }]}>Chat with Catherine</Text>
+            <Text style={[styles.hugoSubtitle, { color: '#8b5cf6' }]}>Calm & Intelligent Support</Text>
             <Text style={[styles.hugoDescription, { color: colors.textSecondary }]}>
-              Hugo helps with daily habits, grounding techniques, and finding your routine. Small steps make big differences.
+              Catherine helps you think clearly when emotions run high. Calm, composed, and always encouraging.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color={colors.textMuted} />
