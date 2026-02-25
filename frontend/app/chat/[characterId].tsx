@@ -157,22 +157,22 @@ export default function DynamicAIChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: messageText,
-          character_id: character.id,
-          session_id: sessionId,
+          character: character.id,
+          sessionId: sessionId,
         }),
       });
 
       const data = await response.json();
 
       // Check for safeguarding alert
-      if (data.safeguarding_alert) {
-        setCurrentAlertId(data.alert_id);
+      if (data.safeguardingTriggered) {
+        setCurrentAlertId(data.safeguardingAlertId);
         setShowSafeguardingModal(true);
       }
 
       const buddyMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.response || "I'm here for you. Sometimes it helps to just talk.",
+        text: data.reply || "I'm here for you. Sometimes it helps to just talk.",
         sender: 'buddy',
         timestamp: new Date(),
       };
