@@ -259,28 +259,6 @@ export default function UnifiedAIChat() {
     }
   };
 
-  // Check staff availability for safeguarding
-  const checkStaffAvailability = async () => {
-    setIsCheckingAvailability(true);
-    try {
-      const [counsellorsRes, peersRes] = await Promise.all([
-        fetch(`${API_URL}/api/counsellors`),
-        fetch(`${API_URL}/api/peer-supporters`),
-      ]);
-      const counsellors = await counsellorsRes.json();
-      const peers = await peersRes.json();
-      
-      setAvailableStaff({
-        counsellors: counsellors.filter((c: any) => c.status === 'available'),
-        peers: peers.filter((p: any) => p.status === 'available'),
-      });
-    } catch (error) {
-      console.error('Error checking availability:', error);
-    } finally {
-      setIsCheckingAvailability(false);
-    }
-  };
-
   // Submit callback request
   const submitCallback = async () => {
     if (!callbackPhone || !callbackName) return;
