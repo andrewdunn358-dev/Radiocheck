@@ -511,6 +511,38 @@ export default function DynamicAIChat() {
                 </Text>
                 
                 <ScrollView style={styles.safeguardingScroll} showsVerticalScrollIndicator={false}>
+                  {/* Talk to Someone Now - Always show */}
+                  <TouchableOpacity
+                    style={[styles.safeguardingOption, { backgroundColor: '#dcfce7', borderColor: '#16a34a', borderWidth: 2 }]}
+                    onPress={handleConnectToStaff}
+                  >
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center' }}>
+                      <FontAwesome5 name="comments" size={18} color="#ffffff" />
+                    </View>
+                    <View style={styles.safeguardingOptionContent}>
+                      <Text style={[styles.safeguardingOptionTitle, { color: '#16a34a' }]}>Talk to Someone Now</Text>
+                      <Text style={styles.safeguardingOptionDesc}>
+                        {isCheckingAvailability 
+                          ? 'Checking availability...'
+                          : staffAvailable
+                            ? (availableStaff.counsellors.length > 0 && availableStaff.peers.length > 0 
+                                ? 'Counsellor & peer supporter available'
+                                : availableStaff.counsellors.length > 0 
+                                  ? 'Counsellor available now'
+                                  : 'Peer supporter available now')
+                            : 'Connect with our support team'}
+                      </Text>
+                    </View>
+                    {staffAvailable && (
+                      <View style={{ backgroundColor: '#16a34a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>LIVE</Text>
+                      </View>
+                    )}
+                    {!staffAvailable && !isCheckingAvailability && (
+                      <FontAwesome5 name="chevron-right" size={16} color="#16a34a" />
+                    )}
+                  </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.safeguardingOption}
                     onPress={() => setSafeguardingView('callback')}
