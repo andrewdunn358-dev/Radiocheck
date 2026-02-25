@@ -427,10 +427,21 @@ export default function PeerSupport() {
 
           {/* Main Content */}
           <View style={styles.content}>
-            {/* Chat with Bob - AI Peer Support (at the very top) */}
+            {/* View Available Veterans Button - at the top */}
+            <TouchableOpacity 
+              style={styles.primaryButton}
+              onPress={() => setShowVeteransList(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="people" size={24} color="#ffffff" />
+              <Text style={styles.primaryButtonText}>View Available Volunteers</Text>
+              <Text style={styles.primaryButtonSubtext}>Tap to see peer supporters</Text>
+            </TouchableOpacity>
+
+            {/* Chat with Bob - AI Peer Support (underneath volunteers) */}
             <TouchableOpacity 
               style={[styles.bobCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.push('/bob-chat')}
+              onPress={() => router.push('/chat/bob')}
               activeOpacity={0.9}
             >
               <Image 
@@ -441,18 +452,9 @@ export default function PeerSupport() {
                 <Text style={[styles.bobTitle, { color: colors.text }]}>Chat with Bob</Text>
                 <Text style={[styles.bobSubtitle, { color: colors.textSecondary }]}>Ex-Para AI peer support, 24/7</Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            {/* View Available Veterans Button */}
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => setShowVeteransList(true)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="people" size={24} color="#ffffff" />
-              <Text style={styles.primaryButtonText}>View Available Volunteers</Text>
-              <Text style={styles.primaryButtonSubtext}>Tap to see peer supporters</Text>
+              <View style={{ backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
+              </View>
             </TouchableOpacity>
 
             {/* What is it */}
