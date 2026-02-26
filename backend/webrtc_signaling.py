@@ -316,11 +316,16 @@ async def webrtc_offer(sid, data):
     call_id = data.get('call_id')
     offer = data.get('offer')
     
+    logger.info(f"Received WebRTC offer for call {call_id} from {sid}")
+    
     if call_id not in active_calls:
+        logger.warning(f"Call {call_id} not found in active_calls")
         return
     
     call = active_calls[call_id]
     target_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
+    
+    logger.info(f"Forwarding WebRTC offer to {target_sid}")
     
     await sio.emit('webrtc_offer', {
         'call_id': call_id,
