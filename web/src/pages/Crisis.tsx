@@ -33,9 +33,9 @@ export default function Crisis() {
         <button onClick={() => navigate('/buddies')}
           style={{backgroundColor:'#243447',border:'1px solid #2d4060',borderRadius:'16px',padding:'16px',display:'flex',alignItems:'center',gap:'16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
           <div style={{display:'flex'}}>
-            <img src="https://customer-assets.emergentagent.com/job_47488e3d-c9ce-4f22-ba89-b000b32c4954/artifacts/slx9i8gj_image.png"
+            <img src="/avatars/tommy.png"
               style={{width:'48px',height:'48px',borderRadius:'24px',border:'2px solid #2d4060',objectFit:'cover'}}/>
-            <img src="https://customer-assets.emergentagent.com/job_47488e3d-c9ce-4f22-ba89-b000b32c4954/artifacts/1cxzxfrj_image.png"
+            <img src="/avatars/doris.png"
               style={{width:'48px',height:'48px',borderRadius:'24px',border:'2px solid #2d4060',objectFit:'cover',marginLeft:'-16px'}}/>
           </div>
           <div style={{flex:1}}>

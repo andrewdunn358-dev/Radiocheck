@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import Splash from './pages/Splash';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Portal from './pages/Portal';
@@ -19,7 +20,8 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home/>}/>
+          <Route path="/" element={<Splash/>}/>
+          <Route path="/home" element={<Home/>}/>
           <Route path="/login" element={<Login/>}/>
           <Route path="/portal" element={<PrivateRoute><Portal/></PrivateRoute>}/>
           <Route path="/buddies" element={<AiBuddies/>}/>
