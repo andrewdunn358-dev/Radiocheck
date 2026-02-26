@@ -31,6 +31,12 @@ export default function PeerSupport() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Staff busy fallback state
+  const [showStaffBusyModal, setShowStaffBusyModal] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
+  
   // WebRTC calling
   const { callState, callInfo, callDuration, debugInfo, initiateCall, endCall } = useWebRTCCall();
   const [isInitiatingCall, setIsInitiatingCall] = useState(false);
