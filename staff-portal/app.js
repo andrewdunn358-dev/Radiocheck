@@ -1224,8 +1224,55 @@ async function initiateStaffChat(alertId, sessionId) {
             return;
         }
         
-        // No existing room found - create a new one (user may need to click "Talk to Someone")
-        showNotification('No active chat from user. Creating room - user will need to connect...', 'info');
+        // No existing room found - try to reach user via Socket.IO
+        // The user might still be connected from the safeguarding alert
+        if (typeof webRTCPhone !== 'undefined' && webRTCPhone.socket) {
+            showNotification('User not in chat yet. Sending chat invite...', 'info');
+            
+            // Send a chat invite to the user (if they're still connected)
+            webRTCPhone.socket.emit('staff_chat_invite', {
+                session_id: sessionId,
+                staff_id: currentUser.id,
+                staff_name: currentUser.name,
+                alert_id: alertId
+            });
+            
+            // Wait briefly for a response, then create room anyway
+            setTimeout(async function() {
+                // Create a room and wait for user to connect
+                try {
+                    var response = await fetch(CONFIG.API_URL + '/api/live-chat/rooms', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            staff_id: currentUser.id,
+                            staff_name: currentUser.name,
+                            staff_type: currentUser.role,
+                            safeguarding_alert_id: alertId,
+                            ai_session_id: sessionId
+                        })
+                    });
+                    
+                    var data = await response.json();
+                    
+                    if (response.ok) {
+                        showNotification('Chat room created - waiting for user to connect...', 'info');
+                        joinLiveChat(data.room_id);
+                        await acknowledgeSafeguardingAlert(alertId);
+                    }
+                } catch (e) {
+                    console.error('Error creating room:', e);
+                }
+            }, 1000);
+            
+            return;
+        }
+        
+        // Fallback: Create room via API
+        showNotification('Creating chat room - user will need to connect...', 'info');
         
         var response = await fetch(CONFIG.API_URL + '/api/live-chat/rooms', {
             method: 'POST',
