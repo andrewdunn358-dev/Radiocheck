@@ -378,6 +378,11 @@ async function initializeWebRTCPhone() {
         
         if (success) {
             console.log('WebRTC Phone initialized for:', currentUser.name);
+            
+            // Setup live chat request listeners after a short delay to ensure socket is connected
+            setTimeout(function() {
+                setupLiveChatRequestListeners();
+            }, 2000);
         }
         
     } catch (error) {
@@ -385,6 +390,102 @@ async function initializeWebRTCPhone() {
         updatePhoneStatusUI('error');
         alert('WebRTC Phone Error: ' + error.message);
     }
+}
+
+// Setup listeners for incoming live chat requests
+function setupLiveChatRequestListeners() {
+    if (typeof webRTCPhone === 'undefined' || !webRTCPhone.socket) {
+        console.warn('WebRTC socket not available for chat request listeners');
+        return;
+    }
+    
+    var socket = webRTCPhone.socket;
+    console.log('Setting up live chat request listeners on socket');
+    
+    // Listen for incoming chat requests from users (when they click "Talk to Someone")
+    socket.off('incoming_chat_request'); // Remove any existing listener
+    socket.on('incoming_chat_request', function(data) {
+        console.log('Received incoming chat request:', data);
+        
+        // Play alert sound
+        playAlertSound();
+        
+        // Show notification banner
+        showIncomingChatRequestBanner(data);
+    });
+    
+    // Listen for when another staff member takes a chat request
+    socket.off('chat_request_taken');
+    socket.on('chat_request_taken', function(data) {
+        console.log('Chat request taken by:', data.accepted_by);
+        // Hide the banner if it's still showing
+        dismissIncomingChatBanner();
+        showNotification('Chat request taken by ' + data.accepted_by, 'info');
+    });
+    
+    // Listen for chat request confirmation (when we accept)
+    socket.off('chat_request_confirmed');
+    socket.on('chat_request_confirmed', function(data) {
+        console.log('Chat request confirmed, room:', data.room_id);
+        // Join the chat room
+        joinLiveChat(data.room_id);
+    });
+}
+
+// Show banner for incoming chat request
+function showIncomingChatRequestBanner(data) {
+    var existingBanner = document.getElementById('incoming-chat-banner');
+    if (existingBanner) existingBanner.remove();
+    
+    var banner = document.createElement('div');
+    banner.id = 'incoming-chat-banner';
+    banner.className = 'incoming-chat-banner';
+    banner.innerHTML = 
+        '<div class="banner-content">' +
+            '<i class="fas fa-comments"></i>' +
+            '<div class="banner-text">' +
+                '<strong>' + escapeHtml(data.user_name || 'A veteran') + '</strong> is requesting to chat' +
+                '<span class="banner-reason">' + escapeHtml(data.reason || 'Requested human support') + '</span>' +
+            '</div>' +
+            '<div class="banner-actions">' +
+                '<button class="btn btn-success" onclick="acceptIncomingChatRequest(\'' + data.request_id + '\', \'' + data.user_id + '\')">' +
+                    '<i class="fas fa-check"></i> Accept' +
+                '</button>' +
+                '<button class="btn btn-secondary" onclick="dismissIncomingChatBanner()">' +
+                    '<i class="fas fa-times"></i> Dismiss' +
+                '</button>' +
+            '</div>' +
+        '</div>';
+    
+    document.body.appendChild(banner);
+    
+    // Auto-dismiss after 60 seconds
+    setTimeout(function() {
+        dismissIncomingChatBanner();
+    }, 60000);
+}
+
+// Accept incoming chat request
+function acceptIncomingChatRequest(requestId, userId) {
+    if (typeof webRTCPhone !== 'undefined' && webRTCPhone.socket) {
+        console.log('Accepting chat request:', requestId, 'from user:', userId);
+        
+        webRTCPhone.socket.emit('accept_chat_request', {
+            request_id: requestId,
+            user_id: userId
+        });
+        
+        dismissIncomingChatBanner();
+        showNotification('Accepting chat request...', 'info');
+    } else {
+        showNotification('Socket not connected. Please refresh the page.', 'error');
+    }
+}
+
+// Dismiss incoming chat banner
+function dismissIncomingChatBanner() {
+    var banner = document.getElementById('incoming-chat-banner');
+    if (banner) banner.remove();
 }
 
 // Update phone status in UI
