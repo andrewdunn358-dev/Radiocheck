@@ -1332,4 +1332,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  // Incoming call styles
+  incomingCallButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 32,
+    marginTop: 24,
+  },
+  callButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  acceptButton: {
+    backgroundColor: '#22c55e',
+  },
+  rejectButton: {
+    backgroundColor: '#ef4444',
+  },
+  callButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
 });
