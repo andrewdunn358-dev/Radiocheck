@@ -568,6 +568,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d3a4d',
     borderRadius: 8,
   },
+  endCallButton: {
+    padding: 12,
+    backgroundColor: '#fee2e2',
+    borderRadius: 8,
+  },
   waitingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
