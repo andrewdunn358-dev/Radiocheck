@@ -350,7 +350,7 @@ async def seed_cms_public(force: bool = False):
     
     # AI Character cards matching FALLBACK_AI_TEAM in home.tsx
     # Using local avatar paths - images are in frontend/assets/images/
-    avatar_base = "/assets/images"
+    avatar_base = "/images"
     ai_characters = [
         {"title": "Tommy", "description": "Your battle buddy", "bio": "Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back.", "image_url": f"{avatar_base}/tommy.png", "route": "/chat/tommy", "order": 1},
         {"title": "Doris", "description": "Warm support", "bio": "Doris is a nurturing, compassionate presence who creates a safe space to talk.", "image_url": f"{avatar_base}/doris.png", "route": "/chat/doris", "order": 2},

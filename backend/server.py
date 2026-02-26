@@ -1190,7 +1190,7 @@ Catherine: "Fear before a difficult conversation is normal — it means the outc
 # Character configurations
 # Avatar paths are relative to the frontend's assets folder
 # In production, these will be served from your domain (e.g., app.radiocheck.me/assets/images/)
-AVATAR_BASE_URL = os.environ.get('AVATAR_BASE_URL', '/assets/images')
+AVATAR_BASE_URL = os.environ.get('AVATAR_BASE_URL', '/images')
 
 AI_CHARACTERS = {
     "tommy": {
