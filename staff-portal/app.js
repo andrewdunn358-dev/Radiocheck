@@ -407,21 +407,59 @@ function setupLiveChatRequestListeners() {
     socket.on('incoming_chat_request', function(data) {
         console.log('Received incoming chat request:', data);
         
-        // Check if there's already an urgent safeguarding alert modal open
-        // If so, don't show a separate chat banner (the user clicked "Talk to Someone" from there)
-        var urgentModal = document.getElementById('urgent-alert-modal');
-        if (urgentModal) {
-            console.log('Safeguarding modal already open - skipping chat banner');
-            // Just show a brief notification instead
-            showNotification('User clicked "Talk to Someone" - use the Chat button in the alert', 'info');
-            return;
+        // Store the chat request data globally so we can link it to safeguarding alerts
+        window.pendingChatRequest = data;
+        
+        // Check if there's a safeguarding alert for this user - if so, link them
+        var safeguardingCards = document.querySelectorAll('.safeguarding-alert-card');
+        var linkedToAlert = false;
+        
+        safeguardingCards.forEach(function(card) {
+            // Check if the alert is for the same user (by session ID pattern matching)
+            var cardSessionId = card.getAttribute('data-session-id') || '';
+            if (cardSessionId && data.user_id && 
+                (cardSessionId.includes(data.user_id.split('_')[1]) || 
+                 data.user_id.includes(cardSessionId.split('-')[0]))) {
+                // Link this chat request to the safeguarding alert
+                linkedToAlert = true;
+                
+                // Add a "User wants to chat" indicator to the alert card
+                var existingIndicator = card.querySelector('.chat-request-indicator');
+                if (!existingIndicator) {
+                    var indicator = document.createElement('div');
+                    indicator.className = 'chat-request-indicator';
+                    indicator.innerHTML = '<i class="fas fa-comments"></i> User is requesting to chat - Click "Chat with User" below';
+                    indicator.style.cssText = 'background:#16a34a;color:white;padding:10px;border-radius:8px;margin:10px 0;text-align:center;animation:pulse 2s infinite;';
+                    
+                    var alertContent = card.querySelector('.card-body, .alert-content');
+                    if (alertContent) {
+                        alertContent.insertBefore(indicator, alertContent.firstChild);
+                    }
+                }
+                
+                // Scroll to the alert
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                showNotification('User wants to chat - see safeguarding alert below', 'info');
+            }
+        });
+        
+        // If not linked to a safeguarding alert, show the banner
+        if (!linkedToAlert) {
+            // Check if there's already an urgent safeguarding alert modal open
+            var urgentModal = document.getElementById('urgent-alert-modal');
+            if (urgentModal) {
+                console.log('Safeguarding modal already open - skipping chat banner');
+                showNotification('User clicked "Talk to Someone" - use the Chat button in the alert', 'info');
+                return;
+            }
+            
+            // Play alert sound
+            playAlertSound();
+            
+            // Show notification banner
+            showIncomingChatRequestBanner(data);
         }
-        
-        // Play alert sound
-        playAlertSound();
-        
-        // Show notification banner
-        showIncomingChatRequestBanner(data);
     });
     
     // Listen for when another staff member takes a chat request
