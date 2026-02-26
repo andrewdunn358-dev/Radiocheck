@@ -2139,16 +2139,39 @@ async function sendChatMessage() {
     }
 }
 
-// Start polling for new messages
+// Track if Socket.IO is handling chat messages
+var socketChatConnected = false;
+
+// Start polling for new messages (only as fallback when Socket.IO fails)
 function startChatPolling(roomId) {
+    // Only use polling as a fallback if Socket.IO isn't working
+    if (socketChatConnected) {
+        console.log('Socket.IO connected - skipping polling');
+        return;
+    }
+    
+    if (chatPollingInterval) {
+        clearInterval(chatPollingInterval);
+    }
+    
+    console.log('Starting chat polling as fallback for room:', roomId);
+    
     chatPollingInterval = setInterval(async function() {
+        // Skip polling if Socket.IO is now connected
+        if (socketChatConnected) {
+            console.log('Socket.IO now connected - stopping polling');
+            clearInterval(chatPollingInterval);
+            chatPollingInterval = null;
+            return;
+        }
+        
         try {
             var response = await apiCall('/live-chat/rooms/' + roomId + '/messages');
             updateChatMessages(response.messages || []);
         } catch (error) {
             console.log('Chat polling error:', error);
         }
-    }, 3000);
+    }, 5000);  // Increased from 3s to 5s to reduce interference
 }
 
 // Update chat messages in modal
