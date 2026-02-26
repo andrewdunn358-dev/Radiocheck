@@ -1220,6 +1220,94 @@ body {
     100% { background: transparent; transform: scale(1); }
 }
 
+/* Incoming Chat Request Banner */
+.incoming-chat-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    color: white;
+    padding: 0;
+    z-index: 10001;
+    animation: slideDown 0.5s ease-out, pulse-glow-green 2s infinite;
+    box-shadow: 0 4px 20px rgba(22, 163, 74, 0.4);
+}
+
+.incoming-chat-banner .banner-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.incoming-chat-banner i {
+    font-size: 28px;
+    animation: bounce 1s infinite;
+}
+
+.incoming-chat-banner .banner-text {
+    flex: 1;
+}
+
+.incoming-chat-banner .banner-text strong {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 2px;
+}
+
+.incoming-chat-banner .banner-reason {
+    display: block;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.incoming-chat-banner .banner-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.incoming-chat-banner .banner-actions .btn {
+    padding: 10px 20px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.incoming-chat-banner .banner-actions .btn-success {
+    background: white;
+    color: #16a34a;
+    border: none;
+}
+
+.incoming-chat-banner .banner-actions .btn-success:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.incoming-chat-banner .banner-actions .btn-secondary {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+}
+
+@keyframes pulse-glow-green {
+    0%, 100% { box-shadow: 0 4px 20px rgba(22, 163, 74, 0.4); }
+    50% { box-shadow: 0 4px 30px rgba(22, 163, 74, 0.7); }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
 /* Location Map */
 .location-map {
     height: 200px;
