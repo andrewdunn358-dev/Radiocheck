@@ -1308,6 +1308,89 @@ body {
     50% { transform: translateY(-5px); }
 }
 
+/* Incoming Call Request Banner */
+.incoming-call-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    animation: slideDown 0.4s ease-out;
+}
+
+.incoming-call-banner .banner-content {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+    animation: pulse-glow-blue 2s infinite;
+}
+
+.incoming-call-banner i.fa-phone-alt {
+    font-size: 28px;
+    animation: ring 1s ease-in-out infinite;
+}
+
+@keyframes ring {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(15deg); }
+    50% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+}
+
+.incoming-call-banner .banner-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.incoming-call-banner .banner-text strong {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.incoming-call-banner .banner-reason {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.incoming-call-banner .banner-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.incoming-call-banner .banner-actions .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.incoming-call-banner .banner-actions .btn-success {
+    background: white;
+    color: #2563eb;
+    border: none;
+}
+
+.incoming-call-banner .banner-actions .btn-success:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.incoming-call-banner .banner-actions .btn-secondary {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+@keyframes pulse-glow-blue {
+    0%, 100% { box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4); }
+    50% { box-shadow: 0 4px 30px rgba(37, 99, 235, 0.7); }
+}
+
 /* Location Map */
 .location-map {
     height: 200px;
