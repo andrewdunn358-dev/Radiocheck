@@ -202,6 +202,35 @@ export default function LiveChat() {
       console.error('Socket connection error:', error);
       setIsLoading(false);
     });
+    
+    // WebRTC call handling
+    socket.on('incoming_call', (data) => {
+      console.log('Incoming call:', data);
+      // Show incoming call UI
+      setIncomingCall({
+        callId: data.call_id,
+        callerName: data.caller_name,
+        callType: data.call_type
+      });
+    });
+    
+    socket.on('call_accepted', async (data) => {
+      console.log('Call accepted:', data);
+      setIncomingCall(null);
+      setActiveCall({ callId: data.call_id, status: 'connecting' });
+    });
+    
+    socket.on('call_ended', (data) => {
+      console.log('Call ended:', data);
+      setIncomingCall(null);
+      setActiveCall(null);
+    });
+    
+    socket.on('call_failed', (data) => {
+      console.log('Call failed:', data);
+      setIncomingCall(null);
+      setActiveCall(null);
+    });
   };
 
   const requestHumanChat = () => {
