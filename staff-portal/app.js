@@ -416,30 +416,54 @@ function setupLiveChatRequestListeners() {
         var linkedToAlert = false;
         
         console.log('Found safeguarding cards:', safeguardingCards.length);
+        console.log('Incoming request data - session_id:', data.session_id, 'user_id:', data.user_id, 'alert_id:', data.alert_id);
         
         safeguardingCards.forEach(function(card) {
             // Check if the alert is for the same user using data-session-id attribute
             var cardSessionId = card.getAttribute('data-session-id') || '';
+            var incomingSessionId = data.session_id || '';  // Use the session_id from the request
             var incomingUserId = data.user_id || '';
             
-            console.log('Checking match - Card session:', cardSessionId, 'User ID:', incomingUserId);
+            console.log('Checking match - Card session:', cardSessionId, 'Request session:', incomingSessionId, 'User ID:', incomingUserId);
             
             // Try multiple matching strategies
             var isMatch = false;
             
-            // Strategy 1: Direct session ID comparison
-            if (cardSessionId && incomingUserId) {
-                // Extract the unique part from session IDs (usually UUID portion)
+            // Strategy 1: Direct session ID match (most reliable)
+            if (cardSessionId && incomingSessionId && cardSessionId === incomingSessionId) {
+                isMatch = true;
+                console.log('Match via direct session ID');
+            }
+            // Strategy 2: Session ID contains match (e.g., "tommy-1234567890-abc" matches "tommy-1234567890-abc")
+            else if (cardSessionId && incomingSessionId) {
+                var cardParts = cardSessionId.split('-');
+                var sessionParts = incomingSessionId.split('-');
+                
+                // Check if character and timestamp match (first two parts)
+                if (cardParts.length >= 2 && sessionParts.length >= 2) {
+                    if (cardParts[0] === sessionParts[0] && cardParts[1] === sessionParts[1]) {
+                        isMatch = true;
+                        console.log('Match via character+timestamp');
+                    }
+                }
+                
+                // Also check if one contains the other
+                if (!isMatch && (cardSessionId.includes(incomingSessionId) || incomingSessionId.includes(cardSessionId))) {
+                    isMatch = true;
+                    console.log('Match via contains');
+                }
+            }
+            // Strategy 3: Fallback - match via user_id if it contains session parts
+            else if (cardSessionId && incomingUserId) {
                 var cardParts = cardSessionId.split('-');
                 var userParts = incomingUserId.split('_');
                 
-                // Check if any part matches
-                if (cardSessionId === incomingUserId) {
+                if (userParts.length > 1 && cardSessionId.includes(userParts[1])) {
                     isMatch = true;
-                } else if (userParts.length > 1 && cardSessionId.includes(userParts[1])) {
-                    isMatch = true;
+                    console.log('Match via user_id fallback');
                 } else if (cardParts.length > 0 && incomingUserId.includes(cardParts[0])) {
                     isMatch = true;
+                    console.log('Match via card_parts fallback');
                 }
             }
             
