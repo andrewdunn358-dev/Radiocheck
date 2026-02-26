@@ -70,7 +70,7 @@ IMPORTANT: If someone mentions self-harm, suicide, or severe distress, gently ac
   margie: {
     id: 'margie',
     name: 'Margie',
-    avatar: 'https://static.prod-images.emergentagent.com/jobs/fba61e42-5a99-4622-a43b-84a14c5bcf87/images/313a20c933febb69cc523b6b3647ba814a5b9123a3ea7f674f7a87695a8a4789.png',
+    avatar: `${AVATAR_BASE}/margie.png`,
     role: 'Addiction Support Specialist',
     description: 'Supporting veterans dealing with addiction - alcohol, drugs, gambling, and other compulsive behaviours. Margie understands without judgement.',
     welcomeMessage: "Hello love, I'm Margie. Whatever you're dealing with - whether it's drinking, gambling, or something else - there's no judgement here. How can I help you today?",
