@@ -1204,43 +1204,23 @@ async function initiateStaffCall(alertId, sessionId) {
         
         if (existingRoom && existingRoom.user_id) {
             targetUserId = existingRoom.user_id;
-        } else if (sessionId) {
-            // Use the session ID as the target - user should be registered with this
-            targetUserId = sessionId;
         }
         
         if (!targetUserId) {
-            // No user found - offer to wait or create a chat room
-            var useChat = confirm('Cannot find user connection for voice call.\n\nThe user may not be online right now.\n\nWould you like to open a chat room instead?');
-            if (useChat) {
-                await initiateStaffChat(alertId, sessionId);
-            }
+            // User is not in a live chat room - they need to click "Talk to Someone" first
+            alert('Cannot call user directly - they are not in a live chat session.\n\n' +
+                  'The user needs to click "Talk to Someone Now" from the safeguarding popup to enable voice calls.\n\n' +
+                  'Would you like to open a chat room and wait for them to connect?');
+            await initiateStaffChat(alertId, sessionId);
             return;
         }
         
         // Initiate WebRTC call to the user
+        console.log('Initiating WebRTC call to user:', targetUserId);
         showNotification('Calling user via WebRTC...', 'info');
         
-        // Use the WebRTC phone to call the user by their ID
-        if (typeof webRTCPhone.callUser === 'function') {
-            webRTCPhone.callUser(targetUserId);
-        } else if (typeof makeOutboundCall === 'function') {
-            // Fallback to makeOutboundCall with user ID
-            makeOutboundCall(targetUserId);
-        } else {
-            // Direct socket emit for call
-            if (webRTCPhone.socket) {
-                webRTCPhone.socket.emit('call_user', {
-                    from_user_id: currentUser.id,
-                    from_user_name: currentUser.name,
-                    to_user_id: targetUserId,
-                    call_type: 'voice'
-                });
-                showNotification('Call request sent to user...', 'success');
-            } else {
-                showNotification('WebRTC socket not available', 'error');
-            }
-        }
+        // Use the makeOutboundCall function
+        makeOutboundCall(targetUserId);
         
         // Auto-acknowledge the safeguarding alert
         await acknowledgeSafeguardingAlert(alertId);
