@@ -116,7 +116,7 @@ IMPORTANT: If someone mentions self-harm, suicide, or severe distress (theirs or
   sentry: {
     id: 'sentry',
     name: 'Finch',
-    avatar: 'https://static.prod-images.emergentagent.com/jobs/26fef91b-7832-48ee-9b54-6cd204a344d5/images/f2058ae7a5d15ff3f002514d4ada7039eeddf405b897ae4fc1f0a68a1114e1d8.png',
+    avatar: `${AVATAR_BASE}/finch.png`,
     role: 'Military Law & Legal Support',
     description: 'Expert in UK military law, the Armed Forces Act, and service discipline. Finch helps veterans understand their legal rights.',
     welcomeMessage: "Hello, I'm Finch. I specialise in UK military law and can help you understand legal matters relating to service. Whether it's about the Armed Forces Act, service discipline, or your rights as a veteran - I'm here to help. What would you like to know?",
