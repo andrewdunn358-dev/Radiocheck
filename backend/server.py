@@ -4326,7 +4326,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     'character_id': character,
                     'risk_level': risk_level,
                     'risk_score': risk_data['score'],
-                    'triggered_indicators': risk_data['indicators'],
+                    'triggered_indicators': [t["indicator"] for t in risk_data.get("triggered_indicators", [])],
                     'geo_city': geo_data.get('geo_city', ''),
                     'geo_country': geo_data.get('geo_country', ''),
                     'created_at': alert.created_at.isoformat() if hasattr(alert.created_at, 'isoformat') else str(alert.created_at)
