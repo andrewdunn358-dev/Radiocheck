@@ -1188,46 +1188,50 @@ Catherine: "Fear before a difficult conversation is normal — it means the outc
 """
 
 # Character configurations
+# Avatar paths are relative to the frontend's assets folder
+# In production, these will be served from your domain (e.g., app.radiocheck.me/assets/images/)
+AVATAR_BASE_URL = os.environ.get('AVATAR_BASE_URL', '/assets/images')
+
 AI_CHARACTERS = {
     "tommy": {
         "name": "Tommy",
         "prompt": TOMMY_SYSTEM_PROMPT,
-        "avatar": "https://customer-assets.emergentagent.com/job_47488e3d-c9ce-4f22-ba89-b000b32c4954/artifacts/slx9i8gj_image.png"
+        "avatar": f"{AVATAR_BASE_URL}/tommy.png"
     },
     "doris": {
         "name": "Doris",
         "prompt": DORIS_SYSTEM_PROMPT,
-        "avatar": "https://customer-assets.emergentagent.com/job_47488e3d-c9ce-4f22-ba89-b000b32c4954/artifacts/1cxzxfrj_image.png"
+        "avatar": f"{AVATAR_BASE_URL}/doris.png"
     },
     "sentry": {
         "name": "Finch",
         "prompt": FINCH_SYSTEM_PROMPT,
-        "avatar": "https://static.prod-images.emergentagent.com/jobs/26fef91b-7832-48ee-9b54-6cd204a344d5/images/f2058ae7a5d15ff3f002514d4ada7039eeddf405b897ae4fc1f0a68a1114e1d8.png"
+        "avatar": f"{AVATAR_BASE_URL}/finch.png"
     },
     "bob": {
         "name": "Bob",
         "prompt": BOB_SYSTEM_PROMPT,
-        "avatar": "https://static.prod-images.emergentagent.com/jobs/e42bf70a-a287-4141-b70d-0728db3b1a3c/images/5ccb4f3dba33762dc691a5023cd5a26342d43ef9a7e95308f48f38301df65f8c.png"
+        "avatar": f"{AVATAR_BASE_URL}/bob.png"
     },
     "margie": {
         "name": "Margie",
         "prompt": MARGIE_SYSTEM_PROMPT,
-        "avatar": "https://static.prod-images.emergentagent.com/jobs/fba61e42-5a99-4622-a43b-84a14c5bcf87/images/313a20c933febb69cc523b6b3647ba814a5b9123a3ea7f674f7a87695a8a4789.png"
+        "avatar": f"{AVATAR_BASE_URL}/margie.png"
     },
     "hugo": {
         "name": "Hugo",
         "prompt": HUGO_SYSTEM_PROMPT,
-        "avatar": "https://static.prod-images.emergentagent.com/jobs/56155002-fa62-4b53-8fda-4baf701ab83f/images/6be1ae886e76d7b380a66ef3eb98c183e26882fe8e9897aab7e8a8ad4320acb9.png"
+        "avatar": f"{AVATAR_BASE_URL}/hugo.png"
     },
     "rita": {
         "name": "Rita",
         "prompt": RITA_SYSTEM_PROMPT,
-        "avatar": "https://static.prod-images.emergentagent.com/jobs/bf7a0a9a-b52d-4db3-b85e-aedfe9959d59/images/fd3c1add3b95c627676f7848bc963c3e1afe0b7c3e1187304df81ea307705318.png"
+        "avatar": f"{AVATAR_BASE_URL}/rita.png"
     },
     "catherine": {
         "name": "Catherine",
         "prompt": CATHERINE_SYSTEM_PROMPT,
-        "avatar": "https://customer-assets.emergentagent.com/job_3f1769a6-9483-465f-acf7-4bb9481c6a27/artifacts/vkvfic4v_image.png"
+        "avatar": f"{AVATAR_BASE_URL}/catherine.png"
     }
 }
 
