@@ -26,6 +26,28 @@ Build "Radio Check," a mental health and peer support application for veterans. 
 └── admin-site/             # Static admin portal (20i)
 ```
 
+## New Call/Chat Flow (Fixed)
+
+**Problem**: Staff was seeing safeguarding alerts BEFORE user was ready to receive calls/chats.
+
+**Solution**: Alerts now only appear when user is connected and ready:
+
+### Call Flow:
+1. Safeguarding triggers → modal shows to user
+2. User clicks "Call a Supporter" → navigates to peer-support
+3. User registers with WebRTC (2 second wait)
+4. `request_human_call` emitted to notify staff
+5. Staff sees call request banner → clicks "Call Now"
+6. User receives incoming call → clicks Accept
+7. WebRTC connection establishes
+
+### Chat Flow:
+1. Safeguarding triggers → modal shows to user
+2. User clicks "Chat with a Supporter" → navigates to live-chat
+3. User's `request_human_chat` emits to notify staff
+4. Staff sees chat request banner → clicks "Accept"
+5. Chat room created → both parties join
+
 ## What's Been Implemented
 
 ### Session - February 26, 2025 (Latest)
