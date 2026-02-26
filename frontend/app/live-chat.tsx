@@ -281,19 +281,6 @@ export default function LiveChat() {
     }
   };
 
-  // WebRTC call functions - using the hook
-  const acceptIncomingCall = () => {
-    webRTC.acceptCall();
-  };
-
-  const rejectIncomingCall = () => {
-    webRTC.rejectCall();
-  };
-
-  const endActiveCall = () => {
-    webRTC.endCall();
-  };
-
   const handleEndChat = () => {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(
