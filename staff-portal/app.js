@@ -411,45 +411,68 @@ function setupLiveChatRequestListeners() {
         window.pendingChatRequest = data;
         
         // Check if there's a safeguarding alert for this user - if so, link them
-        var safeguardingCards = document.querySelectorAll('.safeguarding-alert-card');
+        // Use the correct CSS class: .safeguarding-card (not .safeguarding-alert-card)
+        var safeguardingCards = document.querySelectorAll('.safeguarding-card');
         var linkedToAlert = false;
         
+        console.log('Found safeguarding cards:', safeguardingCards.length);
+        
         safeguardingCards.forEach(function(card) {
-            // Check if the alert is for the same user (by session ID pattern matching)
+            // Check if the alert is for the same user using data-session-id attribute
             var cardSessionId = card.getAttribute('data-session-id') || '';
-            if (cardSessionId && data.user_id && 
-                (cardSessionId.includes(data.user_id.split('_')[1]) || 
-                 data.user_id.includes(cardSessionId.split('-')[0]))) {
-                // Link this chat request to the safeguarding alert
+            var incomingUserId = data.user_id || '';
+            
+            console.log('Checking match - Card session:', cardSessionId, 'User ID:', incomingUserId);
+            
+            // Try multiple matching strategies
+            var isMatch = false;
+            
+            // Strategy 1: Direct session ID comparison
+            if (cardSessionId && incomingUserId) {
+                // Extract the unique part from session IDs (usually UUID portion)
+                var cardParts = cardSessionId.split('-');
+                var userParts = incomingUserId.split('_');
+                
+                // Check if any part matches
+                if (cardSessionId === incomingUserId) {
+                    isMatch = true;
+                } else if (userParts.length > 1 && cardSessionId.includes(userParts[1])) {
+                    isMatch = true;
+                } else if (cardParts.length > 0 && incomingUserId.includes(cardParts[0])) {
+                    isMatch = true;
+                }
+            }
+            
+            if (isMatch) {
+                console.log('Match found! Linking chat request to safeguarding alert');
                 linkedToAlert = true;
                 
-                // Add a "User wants to chat" indicator to the alert card
-                var existingIndicator = card.querySelector('.chat-request-indicator');
-                if (!existingIndicator) {
-                    var indicator = document.createElement('div');
-                    indicator.className = 'chat-request-indicator';
-                    indicator.innerHTML = '<i class="fas fa-comments"></i> User is requesting to chat - Click "Chat with User" below';
-                    indicator.style.cssText = 'background:#16a34a;color:white;padding:10px;border-radius:8px;margin:10px 0;text-align:center;animation:pulse 2s infinite;';
-                    
-                    var alertContent = card.querySelector('.card-body, .alert-content');
-                    if (alertContent) {
-                        alertContent.insertBefore(indicator, alertContent.firstChild);
+                // Re-render the safeguarding alerts to show the indicator
+                loadSafeguardingAlerts(false);
+                
+                // Scroll to the alert card
+                setTimeout(function() {
+                    var updatedCard = document.querySelector('[data-alert-id="' + card.getAttribute('data-alert-id') + '"]');
+                    if (updatedCard) {
+                        updatedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
-                }
+                }, 300);
                 
-                // Scroll to the alert
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Play alert sound
+                playAlertSound();
                 
-                showNotification('User wants to chat - see safeguarding alert below', 'info');
+                showNotification('User wants to chat! See the safeguarding alert below.', 'success');
             }
         });
         
         // If not linked to a safeguarding alert, show the banner
         if (!linkedToAlert) {
+            console.log('No matching safeguarding alert found, showing chat banner');
+            
             // Check if there's already an urgent safeguarding alert modal open
             var urgentModal = document.getElementById('urgent-alert-modal');
             if (urgentModal) {
-                console.log('Safeguarding modal already open - skipping chat banner');
+                console.log('Safeguarding modal already open - storing request for later');
                 showNotification('User clicked "Talk to Someone" - use the Chat button in the alert', 'info');
                 return;
             }
