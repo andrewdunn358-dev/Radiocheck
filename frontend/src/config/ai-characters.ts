@@ -4,6 +4,8 @@
  * All AI buddy personas are defined here. To add a new character:
  * 1. Add their config to AI_CHARACTERS
  * 2. That's it! They'll automatically be available at /ai-chat/[characterId]
+ * 
+ * Avatar images are stored locally in /assets/images/ for production independence
  */
 
 export interface AICharacter {
@@ -18,11 +20,14 @@ export interface AICharacter {
   consentKey: string;  // AsyncStorage key for consent tracking
 }
 
+// Local avatar paths - these images are in frontend/assets/images/
+const AVATAR_BASE = '/assets/images';
+
 export const AI_CHARACTERS: Record<string, AICharacter> = {
   hugo: {
     id: 'hugo',
     name: 'Hugo',
-    avatar: 'https://static.prod-images.emergentagent.com/jobs/56155002-fa62-4b53-8fda-4baf701ab83f/images/6be1ae886e76d7b380a66ef3eb98c183e26882fe8e9897aab7e8a8ad4320acb9.png',
+    avatar: `${AVATAR_BASE}/hugo.png`,
     role: 'Veteran Services Navigator',
     description: 'Expert in UK veteran support systems. Hugo helps you find the right organisations, charities and services for housing, jobs, benefits and more.',
     welcomeMessage: "Hey, Hugo here. I help veterans navigate support services — housing, jobs, benefits, legal help, you name it. What's going on? Let's find the right door for you.",
