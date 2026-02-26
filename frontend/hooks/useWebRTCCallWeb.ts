@@ -27,9 +27,27 @@ const RTC_CONFIG: RTCConfiguration = {
     // Google STUN servers (reliable)
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    // Twilio STUN (backup)
-    { urls: 'stun:global.stun.twilio.com:3478' },
+    // Metered.ca free TURN servers (required for NAT traversal behind symmetric NATs)
+    {
+      urls: 'turn:standard.relay.metered.ca:80',
+      username: 'e8dd65c92eb8e17532e90b5d',
+      credential: 'uWdWNmkhvyqTW1QC',
+    },
+    {
+      urls: 'turn:standard.relay.metered.ca:80?transport=tcp',
+      username: 'e8dd65c92eb8e17532e90b5d',
+      credential: 'uWdWNmkhvyqTW1QC',
+    },
+    {
+      urls: 'turn:standard.relay.metered.ca:443',
+      username: 'e8dd65c92eb8e17532e90b5d',
+      credential: 'uWdWNmkhvyqTW1QC',
+    },
+    {
+      urls: 'turns:standard.relay.metered.ca:443?transport=tcp',
+      username: 'e8dd65c92eb8e17532e90b5d',
+      credential: 'uWdWNmkhvyqTW1QC',
+    },
   ],
   iceCandidatePoolSize: 10,
 };
