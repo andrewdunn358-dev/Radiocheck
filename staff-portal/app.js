@@ -1161,86 +1161,94 @@ async function initiateStaffChat(alertId, sessionId) {
 // Initiate staff WebRTC call to a user from a safeguarding alert
 async function initiateStaffCall(alertId, sessionId) {
     try {
-        // First, check if we have contact info for this alert
-        var response = await fetch(CONFIG.API_URL + '/api/safeguarding-alerts/' + alertId, {
+        // Check if WebRTC phone is available and registered
+        if (!webRTCPhone || !webRTCPhone.isRegistered) {
+            showNotification('WebRTC phone not connected. Please wait for connection...', 'error');
+            return;
+        }
+        
+        showNotification('Looking for user connection...', 'info');
+        
+        // First, check if there's an active live chat room with this user
+        var roomsResponse = await fetch(CONFIG.API_URL + '/api/live-chat/rooms', {
             headers: {
                 'Authorization': 'Bearer ' + token
             }
         });
         
-        var alert = await response.json();
+        var rooms = await roomsResponse.json();
         
-        if (!response.ok) {
-            throw new Error(alert.detail || 'Failed to get alert details');
-        }
+        // Find a room that matches this alert or session
+        var existingRoom = rooms.find(function(room) {
+            return room.status === 'active' && (
+                room.safeguarding_alert_id === alertId ||
+                room.ai_session_id === sessionId ||
+                (sessionId && room.ai_session_id && room.ai_session_id.includes(sessionId.split('-')[0]))
+            );
+        });
         
-        // Check if we have a linked callback request with phone number
-        var phoneNumber = null;
-        var userName = null;
-        
-        if (alert.callback_id) {
-            // Try to get the callback request details
-            try {
-                var callbackResponse = await fetch(CONFIG.API_URL + '/api/callbacks', {
-                    headers: {
-                        'Authorization': 'Bearer ' + token
-                    }
-                });
-                var callbacks = await callbackResponse.json();
-                var linkedCallback = callbacks.find(function(cb) { return cb.id === alert.callback_id; });
-                if (linkedCallback) {
-                    phoneNumber = linkedCallback.phone;
-                    userName = linkedCallback.name;
-                }
-            } catch (e) {
-                console.log('Could not fetch callback details:', e);
+        // Also check for any waiting rooms
+        if (!existingRoom) {
+            var waitingRooms = rooms.filter(function(room) {
+                return room.status === 'active' && !room.staff_id;
+            });
+            if (waitingRooms.length > 0) {
+                existingRoom = waitingRooms.sort(function(a, b) {
+                    return new Date(b.created_at) - new Date(a.created_at);
+                })[0];
             }
         }
         
-        // If no phone number from callback, check if contact was captured differently
-        if (!phoneNumber && !alert.contact_captured) {
-            // No phone number - offer to create chat room instead
-            var useChat = confirm('No phone number available for this user.\n\nWould you like to open a chat room instead?');
+        // Get the user ID to call - either from the room or use the session ID
+        var targetUserId = null;
+        
+        if (existingRoom && existingRoom.user_id) {
+            targetUserId = existingRoom.user_id;
+        } else if (sessionId) {
+            // Use the session ID as the target - user should be registered with this
+            targetUserId = sessionId;
+        }
+        
+        if (!targetUserId) {
+            // No user found - offer to wait or create a chat room
+            var useChat = confirm('Cannot find user connection for voice call.\n\nThe user may not be online right now.\n\nWould you like to open a chat room instead?');
             if (useChat) {
                 await initiateStaffChat(alertId, sessionId);
             }
             return;
         }
         
-        // Check if WebRTC phone is available
-        if (!webRTCPhone || !webRTCPhone.isRegistered) {
-            // Show callback info if available
-            if (phoneNumber) {
-                var message = 'WebRTC phone not connected.\n\n';
-                message += 'Callback phone: ' + phoneNumber + '\n';
-                if (userName) message += 'Name: ' + userName + '\n';
-                message += '\nWould you like to open a chat room instead?';
-                
-                var useChat = confirm(message);
-                if (useChat) {
-                    await initiateStaffChat(alertId, sessionId);
-                }
+        // Initiate WebRTC call to the user
+        showNotification('Calling user via WebRTC...', 'info');
+        
+        // Use the WebRTC phone to call the user by their ID
+        if (typeof webRTCPhone.callUser === 'function') {
+            webRTCPhone.callUser(targetUserId);
+        } else if (typeof makeOutboundCall === 'function') {
+            // Fallback to makeOutboundCall with user ID
+            makeOutboundCall(targetUserId);
+        } else {
+            // Direct socket emit for call
+            if (webRTCPhone.socket) {
+                webRTCPhone.socket.emit('call_user', {
+                    from_user_id: currentUser.id,
+                    from_user_name: currentUser.name,
+                    to_user_id: targetUserId,
+                    call_type: 'voice'
+                });
+                showNotification('Call request sent to user...', 'success');
             } else {
-                showNotification('WebRTC phone not connected and no phone number available. Opening chat instead...', 'info');
-                await initiateStaffChat(alertId, sessionId);
+                showNotification('WebRTC socket not available', 'error');
             }
-            return;
         }
-        
-        if (!phoneNumber) {
-            showNotification('No phone number available. Opening chat instead...', 'info');
-            await initiateStaffChat(alertId, sessionId);
-            return;
-        }
-        
-        // Make the WebRTC call
-        showNotification('Initiating call to: ' + phoneNumber, 'info');
-        
-        // Use the WebRTC phone to make the call
-        makeOutboundCall(phoneNumber);
         
         // Auto-acknowledge the safeguarding alert
         await acknowledgeSafeguardingAlert(alertId);
+        
+    } catch (error) {
+        showNotification('Failed to initiate call: ' + error.message, 'error');
+    }
+}
         await acknowledgeSafeguardingAlert(alertId);
         
     } catch (error) {
