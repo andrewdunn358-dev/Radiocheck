@@ -567,6 +567,26 @@ function setupLiveChatRequestListeners() {
             showNotification('New safeguarding alert received', 'warning');
         }
     });
+    
+    // Listen for incoming call requests (when user chooses "Call a Supporter")
+    socket.off('incoming_call_request');
+    socket.on('incoming_call_request', function(data) {
+        console.log('Incoming call request received:', data);
+        
+        // Play alert sound
+        playAlertSound();
+        
+        // Store the call request
+        window.pendingCallRequest = data;
+        
+        // Show call request banner
+        showIncomingCallRequestBanner(data);
+        
+        // Also reload safeguarding alerts in case one matches
+        loadSafeguardingAlerts(true);
+        
+        showNotification('A veteran wants to talk! Click to call them.', 'success');
+    });
 }
 
 // Show banner for incoming chat request
