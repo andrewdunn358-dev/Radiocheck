@@ -556,30 +556,6 @@ export default function DynamicAIChat() {
                     </View>
                     <FontAwesome5 name="chevron-right" size={16} color={colors.textMuted} />
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.safeguardingOption}
-                    onPress={() => Linking.openURL('tel:116123')}
-                  >
-                    <FontAwesome5 name="hands-helping" size={24} color="#16a34a" />
-                    <View style={styles.safeguardingOptionContent}>
-                      <Text style={styles.safeguardingOptionTitle}>Samaritans</Text>
-                      <Text style={styles.safeguardingOptionDesc}>Free 24/7 support: 116 123</Text>
-                    </View>
-                    <FontAwesome5 name="external-link-alt" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.safeguardingOption}
-                    onPress={() => Linking.openURL('tel:08001381619')}
-                  >
-                    <FontAwesome5 name="user-shield" size={24} color="#7c3aed" />
-                    <View style={styles.safeguardingOptionContent}>
-                      <Text style={styles.safeguardingOptionTitle}>Combat Stress</Text>
-                      <Text style={styles.safeguardingOptionDesc}>Veterans helpline: 0800 138 1619</Text>
-                    </View>
-                    <FontAwesome5 name="external-link-alt" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
                 </ScrollView>
 
                 <View style={styles.emergencyNote}>
