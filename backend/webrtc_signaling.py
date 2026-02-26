@@ -620,6 +620,66 @@ async def request_human_chat(sid, data):
 
 
 @sio.event
+async def request_human_call(sid, data):
+    """
+    User requests a voice call with staff (from safeguarding flow)
+    Data: {user_id, user_name, session_id?, alert_id?}
+    This is emitted when the user navigates to peer-support and is ready to receive calls.
+    """
+    user_id = data.get('user_id')
+    user_name = data.get('user_name', 'A veteran')
+    session_id = data.get('session_id', '')  # Original AI chat session ID
+    alert_id = data.get('alert_id', '')  # Associated safeguarding alert ID
+    
+    # Find available staff
+    available_staff = []
+    for socket_id, user in connected_users.items():
+        if user['user_type'] in ['counsellor', 'peer'] and user['status'] == 'available':
+            available_staff.append({
+                'socket_id': socket_id,
+                'user_id': user['user_id'],
+                'user_type': user['user_type'],
+                'name': user['name']
+            })
+    
+    if not available_staff:
+        # No staff available
+        await sio.emit('human_call_unavailable', {
+            'message': 'No staff members are currently available. Please try again later.',
+            'suggestion': 'callback'
+        }, to=sid)
+        return
+    
+    # Create a call request that goes to available staff
+    request_id = f"callreq_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{sid[:8]}"
+    
+    logger.info(f"Human call request from {user_name} ({user_id}), session: {session_id}, {len(available_staff)} staff available")
+    
+    # Notify all available staff about the call request
+    for staff in available_staff:
+        await sio.emit('incoming_call_request', {
+            'request_id': request_id,
+            'user_id': user_id,
+            'user_name': user_name,
+            'session_id': session_id,
+            'alert_id': alert_id,
+            'request_type': 'call',
+            'timestamp': datetime.utcnow().isoformat()
+        }, to=staff['socket_id'])
+    
+    # Notify user that request is pending
+    await sio.emit('human_call_pending', {
+        'request_id': request_id,
+        'message': 'Finding an available supporter to call you...',
+        'available_count': len(available_staff)
+    }, to=sid)
+    
+    # Store request for tracking
+    if sid in connected_users:
+        connected_users[sid]['pending_call_request'] = request_id
+
+
+@sio.event
 async def accept_chat_request(sid, data):
     """
     Staff accepts a chat request
