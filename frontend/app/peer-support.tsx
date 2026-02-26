@@ -54,6 +54,9 @@ export default function PeerSupport() {
   
   // Handle safeguarding call flow - auto-register and show waiting screen
   useEffect(() => {
+    console.log('Peer support params:', params);
+    console.log('preferredType:', params.preferredType, 'alertId:', params.alertId);
+    
     if (params.preferredType === 'call' && params.alertId) {
       console.log('Safeguarding call flow - registering for incoming calls');
       setIsWaitingForSupport(true);
