@@ -10,13 +10,11 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
-  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../src/config/api';
-import { useWebRTCCall } from '../hooks/useWebRTCCallWeb';
 
 interface Message {
   id: string;
@@ -45,9 +43,6 @@ export default function LiveChat() {
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [userId] = useState(() => `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [userName] = useState('You');
-  
-  // WebRTC calling hook - handles all audio call functionality
-  const webRTC = useWebRTCCall();
   
   const scrollViewRef = useRef<ScrollView>(null);
   const socketRef = useRef<Socket | null>(null);
