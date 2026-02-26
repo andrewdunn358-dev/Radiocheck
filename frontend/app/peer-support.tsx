@@ -743,6 +743,87 @@ export default function PeerSupport() {
         </ScrollView>
       </KeyboardAvoidingView>
       )}
+      
+      {/* WebRTC Call Modal - rendered outside conditionals so it shows during any state */}
+      <Modal visible={showCallModal} transparent animationType="fade">
+        <View style={styles.callModalOverlay}>
+          <View style={styles.callModalContent}>
+            <View style={styles.callModalHeader}>
+              {/* Animated icon based on call state */}
+              <View style={styles.callIconContainer}>
+                <Ionicons 
+                  name={callState === 'connected' ? 'call' : 'call-outline'} 
+                  size={48} 
+                  color={callState === 'connected' ? '#22c55e' : callInfo?.isIncoming ? '#16a34a' : '#3b82f6'} 
+                />
+              </View>
+              
+              <Text style={styles.callModalTitle}>
+                {callInfo?.isIncoming && callState === 'ringing' ? 'Incoming Call' :
+                 isInitiatingCall ? 'Connecting...' :
+                 callState === 'connecting' ? 'Connecting...' : 
+                 callState === 'ringing' ? 'Ringing...' : 
+                 callState === 'connected' ? 'Connected' : 'Calling...'}
+              </Text>
+              
+              <Text style={styles.callModalPeerName}>
+                {callInfo?.peerName || callingPeerName || 'Peer Supporter'}
+              </Text>
+              
+              {callState === 'connected' && (
+                <Text style={styles.callModalDuration}>{formatCallDuration(callDuration)}</Text>
+              )}
+              
+              {/* Debug Info - visible on screen */}
+              {callState === 'connected' && (
+                <View style={styles.debugInfo}>
+                  <Text style={styles.debugText}>Track: {debugInfo.remoteTrackReceived ? '✓' : '✗'}</Text>
+                  <Text style={styles.debugText}>Audio: {debugInfo.audioPlaying ? '✓' : '✗'}</Text>
+                  <Text style={styles.debugText}>ICE: {debugInfo.iceState}</Text>
+                </View>
+              )}
+              
+              {!callInfo?.isIncoming && (isInitiatingCall || callState === 'connecting' || callState === 'ringing') && (
+                <ActivityIndicator size="small" color="#3b82f6" style={{ marginTop: 16 }} />
+              )}
+            </View>
+            
+            {/* Incoming call - show Accept/Reject buttons */}
+            {callInfo?.isIncoming && callState === 'ringing' ? (
+              <View style={styles.incomingCallButtons}>
+                <TouchableOpacity 
+                  style={[styles.callButton, styles.rejectButton]} 
+                  onPress={() => {
+                    console.log('Rejecting incoming call');
+                    rejectCall();
+                  }}
+                >
+                  <Ionicons name="call" size={28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+                  <Text style={styles.callButtonText}>Decline</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.callButton, styles.acceptButton]} 
+                  onPress={() => {
+                    console.log('Accepting incoming call');
+                    acceptCall();
+                  }}
+                >
+                  <Ionicons name="call" size={28} color="#fff" />
+                  <Text style={styles.callButtonText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.callEndButton} onPress={handleEndCall}>
+                <Ionicons name="call" size={28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+                <Text style={styles.callEndButtonText}>
+                  {callState === 'connected' ? 'End Call' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
