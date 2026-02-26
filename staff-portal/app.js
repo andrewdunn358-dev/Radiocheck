@@ -880,10 +880,41 @@ function renderSafeguardingAlerts(alerts) {
         if (alert.status === 'active') {
             actions = '<button class="btn btn-warning" onclick="acknowledgeSafeguardingAlert(\'' + alert.id + '\')"><i class="fas fa-hand-paper"></i> Acknowledge</button>';
         }
+        
+        // Add contact buttons - Call (WebRTC) and Chat
+        actions += '<button class="btn btn-primary" onclick="initiateStaffChat(\'' + alert.id + '\', \'' + alert.session_id + '\')">' +
+            '<i class="fas fa-comments"></i> Chat with User</button>';
+        actions += '<button class="btn btn-info" onclick="initiateStaffCall(\'' + alert.id + '\', \'' + alert.session_id + '\')">' +
+            '<i class="fas fa-phone-alt"></i> Call User</button>';
+        
         actions += '<button class="btn btn-success" onclick="resolveSafeguardingAlert(\'' + alert.id + '\')"><i class="fas fa-check"></i> Resolve</button>';
         
-        var characterIcon = alert.character === 'tommy' ? 'fa-user' : 'fa-user-circle';
-        var characterName = alert.character === 'tommy' ? 'Tommy' : 'Doris';
+        // Get proper character name from the characters mapping
+        var characterNames = {
+            'tommy': 'Tommy',
+            'doris': 'Doris',
+            'bob': 'Bob',
+            'finch': 'Finch',
+            'margie': 'Margie',
+            'hugo': 'Hugo',
+            'rita': 'Rita',
+            'catherine': 'Catherine',
+            'sentry': 'Finch'
+        };
+        var characterIcons = {
+            'tommy': 'fa-user',
+            'doris': 'fa-user-circle',
+            'bob': 'fa-user-tie',
+            'finch': 'fa-balance-scale',
+            'margie': 'fa-heart',
+            'hugo': 'fa-compass',
+            'rita': 'fa-users',
+            'catherine': 'fa-brain',
+            'sentry': 'fa-balance-scale'
+        };
+        var characterIcon = characterIcons[alert.character] || 'fa-robot';
+        var characterName = characterNames[alert.character] || alert.character || 'AI';
+        
         
         // Risk level styling
         var riskLevel = alert.risk_level || 'AMBER';
