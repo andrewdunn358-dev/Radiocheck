@@ -22,6 +22,7 @@ interface PeerVeteran {
 
 export default function PeerSupport() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ alertId?: string; preferredType?: string; sessionId?: string }>();
   const { colors, isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,17 +32,65 @@ export default function PeerSupport() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Safeguarding call waiting state
+  const [isWaitingForSupport, setIsWaitingForSupport] = useState(false);
+  const [waitingMessage, setWaitingMessage] = useState('Connecting you to support...');
+  const pulseAnim = useState(new Animated.Value(1))[0];
+  
   // Staff busy fallback state
   const [showStaffBusyModal, setShowStaffBusyModal] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   
-  // WebRTC calling
-  const { callState, callInfo, callDuration, debugInfo, initiateCall, endCall } = useWebRTCCall();
+  // WebRTC calling - include register and acceptCall for incoming calls
+  const { callState, callInfo, callDuration, debugInfo, initiateCall, endCall, register, acceptCall, rejectCall } = useWebRTCCall();
   const [isInitiatingCall, setIsInitiatingCall] = useState(false);
   const [callingPeerName, setCallingPeerName] = useState('');
   const showCallModal = callState !== 'idle' || isInitiatingCall;
+  
+  // Generate unique user ID for this session
+  const [userId] = useState(() => `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  
+  // Handle safeguarding call flow - auto-register and show waiting screen
+  useEffect(() => {
+    if (params.preferredType === 'call' && params.alertId) {
+      console.log('Safeguarding call flow - registering for incoming calls');
+      setIsWaitingForSupport(true);
+      setWaitingMessage('Connecting you to a supporter...');
+      
+      // Register with WebRTC so staff can call us
+      // Use the sessionId from params if available, otherwise use generated userId
+      const registrationId = params.sessionId || userId;
+      register(registrationId, 'user', 'Veteran in need');
+      
+      // Start pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        ])
+      ).start();
+      
+      // Update waiting message after a few seconds
+      setTimeout(() => {
+        setWaitingMessage('A supporter will call you shortly...');
+      }, 3000);
+      
+      setTimeout(() => {
+        setWaitingMessage('Please stay on this screen to receive your call');
+      }, 8000);
+    }
+  }, [params.preferredType, params.alertId]);
+  
+  // Handle incoming call - auto-show when we receive one
+  useEffect(() => {
+    if (callState === 'ringing' && callInfo?.isIncoming) {
+      console.log('Incoming call detected!', callInfo);
+      setIsWaitingForSupport(false);
+      // The call modal will show automatically since showCallModal depends on callState
+    }
+  }, [callState, callInfo]);
 
   // Fetch peer supporters from API
   const fetchPeerSupporters = async () => {
