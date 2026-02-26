@@ -1168,7 +1168,8 @@ function renderSafeguardingAlerts(alerts) {
             '</div>';
         }
         
-        return '<div class="card safeguarding-card ' + alert.status + ' risk-' + riskClass + '" data-alert-id="' + alert.id + '">' +
+        return '<div class="card safeguarding-card ' + alert.status + ' risk-' + riskClass + '" data-alert-id="' + alert.id + '" data-session-id="' + (alert.session_id || '') + '">' +
+            userRequestHtml +
             '<div class="card-header">' +
                 '<span class="card-name"><i class="fas ' + characterIcon + '"></i> Chat with ' + characterName + '</span>' +
                 '<span class="risk-badge" style="background-color:' + riskBadgeColor + '">' + riskLevel + ' (' + riskScore + ')</span>' +
@@ -1234,6 +1235,33 @@ function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Accept pending chat request from a safeguarding alert
+function acceptPendingChatFromAlert(alertId) {
+    var pendingRequest = window.pendingChatRequest;
+    if (!pendingRequest || !pendingRequest.request_id) {
+        showNotification('No pending chat request found', 'error');
+        return;
+    }
+    
+    console.log('Accepting pending chat from alert:', alertId, 'request:', pendingRequest.request_id);
+    
+    // Accept the chat request using the existing function
+    acceptIncomingChatRequest(pendingRequest.request_id, pendingRequest.user_id);
+    
+    // Clear the pending request
+    window.pendingChatRequest = null;
+    
+    // Remove the indicator from the card
+    var card = document.querySelector('[data-alert-id="' + alertId + '"]');
+    if (card) {
+        var indicator = card.querySelector('.user-request-indicator');
+        if (indicator) indicator.remove();
+    }
+    
+    // Auto-acknowledge the safeguarding alert
+    acknowledgeSafeguardingAlert(alertId);
 }
 
 // Acknowledge Safeguarding Alert
