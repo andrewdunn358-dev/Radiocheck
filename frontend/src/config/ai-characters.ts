@@ -223,7 +223,7 @@ IMPORTANT: If someone mentions self-harm, suicide, or severe distress, gently ac
   catherine: {
     id: 'catherine',
     name: 'Catherine',
-    avatar: 'https://customer-assets.emergentagent.com/job_3f1769a6-9483-465f-acf7-4bb9481c6a27/artifacts/vkvfic4v_image.png',
+    avatar: `${AVATAR_BASE}/catherine.png`,
     role: 'Calm & Intelligent Support',
     description: 'Catherine is composed, articulate, and grounded. She helps you think clearly when emotions run high and approach problems with calm intelligence.',
     welcomeMessage: "Hello, I'm Catherine. Let's take a moment and think through whatever you're facing. What's on your mind?",
