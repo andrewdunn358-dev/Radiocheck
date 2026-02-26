@@ -312,6 +312,32 @@ export default function LiveChat() {
     }
   };
 
+  // WebRTC call functions
+  const acceptIncomingCall = () => {
+    if (socketRef.current && incomingCall) {
+      socketRef.current.emit('call_accept', { call_id: incomingCall.callId });
+      setActiveCall({ callId: incomingCall.callId, status: 'connecting' });
+      setIncomingCall(null);
+    }
+  };
+
+  const rejectIncomingCall = () => {
+    if (socketRef.current && incomingCall) {
+      socketRef.current.emit('call_reject', { 
+        call_id: incomingCall.callId,
+        reason: 'rejected'
+      });
+      setIncomingCall(null);
+    }
+  };
+
+  const endActiveCall = () => {
+    if (socketRef.current && activeCall) {
+      socketRef.current.emit('call_end', { call_id: activeCall.callId });
+      setActiveCall(null);
+    }
+  };
+
   const handleEndChat = () => {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(
