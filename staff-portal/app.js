@@ -1649,9 +1649,9 @@ function joinChatRoomSocket(roomId) {
             name: currentUser.name
         });
         
-        // Listen for incoming chat messages
-        webRTCPhone.socket.off('chat_message'); // Remove any existing listener
-        webRTCPhone.socket.on('chat_message', function(data) {
+        // Listen for incoming chat messages (backend emits 'new_chat_message')
+        webRTCPhone.socket.off('new_chat_message'); // Remove any existing listener
+        webRTCPhone.socket.on('new_chat_message', function(data) {
             console.log('Received chat message via Socket.IO:', data);
             if (data.room_id === currentChatRoom && data.sender_id !== currentUser.id) {
                 appendChatMessage(data.message, data.sender_name, data.sender_type, data.timestamp);
