@@ -407,6 +407,16 @@ function setupLiveChatRequestListeners() {
     socket.on('incoming_chat_request', function(data) {
         console.log('Received incoming chat request:', data);
         
+        // Check if there's already an urgent safeguarding alert modal open
+        // If so, don't show a separate chat banner (the user clicked "Talk to Someone" from there)
+        var urgentModal = document.getElementById('urgent-alert-modal');
+        if (urgentModal) {
+            console.log('Safeguarding modal already open - skipping chat banner');
+            // Just show a brief notification instead
+            showNotification('User clicked "Talk to Someone" - use the Chat button in the alert', 'info');
+            return;
+        }
+        
         // Play alert sound
         playAlertSound();
         
