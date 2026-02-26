@@ -1131,8 +1131,31 @@ async function initiateStaffCall(alertId, sessionId) {
             throw new Error(alert.detail || 'Failed to get alert details');
         }
         
-        // Check if we have callback info
-        if (!alert.callback_phone && !alert.contact_captured) {
+        // Check if we have a linked callback request with phone number
+        var phoneNumber = null;
+        var userName = null;
+        
+        if (alert.callback_id) {
+            // Try to get the callback request details
+            try {
+                var callbackResponse = await fetch(CONFIG.API_URL + '/api/callbacks', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                var callbacks = await callbackResponse.json();
+                var linkedCallback = callbacks.find(function(cb) { return cb.id === alert.callback_id; });
+                if (linkedCallback) {
+                    phoneNumber = linkedCallback.phone;
+                    userName = linkedCallback.name;
+                }
+            } catch (e) {
+                console.log('Could not fetch callback details:', e);
+            }
+        }
+        
+        // If no phone number from callback, check if contact was captured differently
+        if (!phoneNumber && !alert.contact_captured) {
             // No phone number - offer to create chat room instead
             var useChat = confirm('No phone number available for this user.\n\nWould you like to open a chat room instead?');
             if (useChat) {
@@ -1143,26 +1166,38 @@ async function initiateStaffCall(alertId, sessionId) {
         
         // Check if WebRTC phone is available
         if (!webRTCPhone || !webRTCPhone.isRegistered) {
-            showNotification('WebRTC phone not connected. Please check your SIP settings.', 'error');
-            
-            // Fallback: show the callback info and suggest calling
-            if (alert.callback_phone) {
-                var manualCall = confirm('WebRTC not available.\n\nCallback phone: ' + alert.callback_phone + '\nName: ' + (alert.callback_name || 'Not provided') + '\n\nWould you like to open a chat room instead?');
-                if (manualCall) {
+            // Show callback info if available
+            if (phoneNumber) {
+                var message = 'WebRTC phone not connected.\n\n';
+                message += 'Callback phone: ' + phoneNumber + '\n';
+                if (userName) message += 'Name: ' + userName + '\n';
+                message += '\nWould you like to open a chat room instead?';
+                
+                var useChat = confirm(message);
+                if (useChat) {
                     await initiateStaffChat(alertId, sessionId);
                 }
+            } else {
+                showNotification('WebRTC phone not connected and no phone number available. Opening chat instead...', 'info');
+                await initiateStaffChat(alertId, sessionId);
             }
             return;
         }
         
+        if (!phoneNumber) {
+            showNotification('No phone number available. Opening chat instead...', 'info');
+            await initiateStaffChat(alertId, sessionId);
+            return;
+        }
+        
         // Make the WebRTC call
-        var phoneNumber = alert.callback_phone;
         showNotification('Initiating call to: ' + phoneNumber, 'info');
         
         // Use the WebRTC phone to make the call
         makeOutboundCall(phoneNumber);
         
         // Auto-acknowledge the safeguarding alert
+        await acknowledgeSafeguardingAlert(alertId);
         await acknowledgeSafeguardingAlert(alertId);
         
     } catch (error) {
