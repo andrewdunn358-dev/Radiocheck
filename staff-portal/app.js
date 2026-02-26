@@ -1033,6 +1033,32 @@ function renderSafeguardingAlerts(alerts) {
     }
     
     container.innerHTML = alerts.map(function(alert) {
+        // Check if there's a pending chat/call request for this user
+        var pendingRequest = window.pendingChatRequest;
+        var hasPendingRequest = pendingRequest && pendingRequest.user_id && 
+            (alert.session_id && (
+                alert.session_id.includes(pendingRequest.user_id.split('_')[1] || '') || 
+                pendingRequest.user_id.includes((alert.session_id || '').split('-')[0])
+            ));
+        
+        // User request indicator (shown prominently at top of card)
+        var userRequestHtml = '';
+        if (hasPendingRequest) {
+            userRequestHtml = '<div class="user-request-indicator">' +
+                '<div class="request-pulse"></div>' +
+                '<i class="fas fa-hand-paper"></i> ' +
+                '<strong>User is requesting support!</strong>' +
+                '<div class="request-actions">' +
+                    '<button class="btn btn-success btn-sm" onclick="acceptPendingChatFromAlert(\'' + alert.id + '\')">' +
+                        '<i class="fas fa-comments"></i> Accept Chat' +
+                    '</button>' +
+                    '<button class="btn btn-info btn-sm" onclick="initiateStaffCall(\'' + alert.id + '\', \'' + alert.session_id + '\')">' +
+                        '<i class="fas fa-phone-alt"></i> Call Instead' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        }
+        
         var actions = '';
         if (alert.status === 'active') {
             actions = '<button class="btn btn-warning" onclick="acknowledgeSafeguardingAlert(\'' + alert.id + '\')"><i class="fas fa-hand-paper"></i> Acknowledge</button>';
