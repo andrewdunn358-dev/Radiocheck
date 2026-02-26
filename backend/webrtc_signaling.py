@@ -639,7 +639,7 @@ async def accept_chat_request(sid, data):
             "created_at": datetime.utcnow().isoformat(),
             "messages": []
         }
-        await db.live_chat_rooms.insert_one(room_doc)
+        await db.chat_rooms.insert_one(room_doc)
         logger.info(f"Created chat room in database: {room_id}")
     except Exception as e:
         logger.error(f"Error creating chat room in database: {e}")
