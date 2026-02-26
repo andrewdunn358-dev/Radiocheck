@@ -20,11 +20,8 @@ export interface AICharacter {
   consentKey: string;  // AsyncStorage key for consent tracking
 }
 
-// Local avatar paths - these images are in frontend/assets/images/
-// For production on Vercel, use the app domain
-const AVATAR_BASE = typeof window !== 'undefined' && window.location.hostname.includes('radiocheck') 
-  ? 'https://app.radiocheck.me/assets/images'
-  : '/assets/images';
+// Avatar images are in the public/images folder for Vercel deployment
+const AVATAR_BASE = '/images';
 
 export const AI_CHARACTERS: Record<string, AICharacter> = {
   hugo: {
