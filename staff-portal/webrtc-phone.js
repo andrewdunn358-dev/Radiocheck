@@ -12,41 +12,29 @@ const WEBRTC_CONFIG = {
         // Google STUN servers
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        // Metered.ca TURN servers (primary)
-        {
-            urls: 'turn:a.relay.metered.ca:80',
-            username: 'e8dd65c92eb8e17532e90b5d',
-            credential: 'uWdWNmkhvyqTW1QC'
-        },
-        {
-            urls: 'turn:a.relay.metered.ca:80?transport=tcp',
-            username: 'e8dd65c92eb8e17532e90b5d',
-            credential: 'uWdWNmkhvyqTW1QC'
-        },
-        {
-            urls: 'turn:a.relay.metered.ca:443',
-            username: 'e8dd65c92eb8e17532e90b5d',
-            credential: 'uWdWNmkhvyqTW1QC'
-        },
-        {
-            urls: 'turns:a.relay.metered.ca:443?transport=tcp',
-            username: 'e8dd65c92eb8e17532e90b5d',
-            credential: 'uWdWNmkhvyqTW1QC'
-        },
-        // OpenRelay backup
+        // Twilio free STUN
+        { urls: 'stun:global.stun.twilio.com:3478' },
+        // OpenRelay public TURN (no auth required)
         {
             urls: 'turn:openrelay.metered.ca:80',
             username: 'openrelayproject',
             credential: 'openrelayproject'
         },
         {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject', 
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
             credential: 'openrelayproject'
-        }
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        // Cloudflare public STUN
+        { urls: 'stun:stun.cloudflare.com:3478' }
     ],
     iceCandidatePoolSize: 10,
-    iceTransportPolicy: 'all'  // Try both direct and relay candidates
+    iceTransportPolicy: 'all'
 };
 
 // State
