@@ -54,22 +54,19 @@ export default function PeerSupport() {
   
   // Handle safeguarding call flow - auto-register and show waiting screen
   useEffect(() => {
-    console.log('Peer support params:', JSON.stringify(params));
+    // For web, check window.location.search directly since useLocalSearchParams may not be ready
+    let preferredType: string | undefined | null = params.preferredType;
+    let alertIdParam: string | undefined | null = params.alertId;
+    let sessionIdParam: string | undefined | null = params.sessionId;
     
-    // For web, also check window.location.search as fallback
-    let preferredType = params.preferredType;
-    let alertIdParam = params.alertId;
-    let sessionIdParam = params.sessionId;
-    
-    if (typeof window !== 'undefined' && !preferredType) {
+    if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      preferredType = urlParams.get('preferredType') || undefined;
-      alertIdParam = urlParams.get('alertId') || undefined;
-      sessionIdParam = urlParams.get('sessionId') || undefined;
-      console.log('Fallback URL params:', preferredType, alertIdParam, sessionIdParam);
+      if (!preferredType) preferredType = urlParams.get('preferredType');
+      if (!alertIdParam) alertIdParam = urlParams.get('alertId');
+      if (!sessionIdParam) sessionIdParam = urlParams.get('sessionId');
     }
     
-    console.log('Final preferredType:', preferredType, 'alertId:', alertIdParam);
+    console.log('Peer support - checking for call mode:', { preferredType, alertIdParam, sessionIdParam });
     
     if (preferredType === 'call' && alertIdParam) {
       console.log('Safeguarding call flow - registering for incoming calls');
