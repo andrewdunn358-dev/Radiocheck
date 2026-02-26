@@ -63,10 +63,14 @@ async def disconnect(sid):
             del user_to_socket[user_id]
         del connected_users[sid]
     
-    # End any active calls
+    # End any active calls and reset other party's status
     for call_id, call in list(active_calls.items()):
         if call['caller_sid'] == sid or call['callee_sid'] == sid:
             other_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
+            # Reset the other party's status to available
+            if other_sid in connected_users:
+                connected_users[other_sid]['status'] = 'available'
+                logger.info(f"Reset status to available for {other_sid} after peer disconnect")
             await sio.emit('call_ended', {
                 'call_id': call_id,
                 'reason': 'peer_disconnected'
