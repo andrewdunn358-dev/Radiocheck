@@ -846,7 +846,7 @@ window.webRTCPhone = {
     endCall: endCall,
     setAvailability: setAvailability,
     isConnected: () => isRegistered,
-    isRegistered: isRegistered,
+    get isRegistered() { return isRegistered; },
     get socket() { return socket; }  // Expose socket for live chat
 };
 
