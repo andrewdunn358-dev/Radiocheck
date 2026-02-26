@@ -1064,6 +1064,106 @@ async function acknowledgeSafeguardingAlert(id) {
     }
 }
 
+
+// ============ STAFF-INITIATED CONTACT ============
+
+// Initiate staff chat with a user from a safeguarding alert
+async function initiateStaffChat(alertId, sessionId) {
+    try {
+        showNotification('Starting chat room for this alert...', 'info');
+        
+        // Create a live chat room linked to the safeguarding alert
+        var response = await fetch(CONFIG.API_URL + '/api/live-chat/rooms', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                staff_id: currentUser.id,
+                staff_name: currentUser.name,
+                staff_type: currentUser.role,
+                safeguarding_alert_id: alertId,
+                ai_session_id: sessionId
+            })
+        });
+        
+        var data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.detail || 'Failed to create chat room');
+        }
+        
+        // Join the chat room
+        joinLiveChat(data.room_id);
+        
+        showNotification('Chat room created - waiting for user to connect', 'success');
+        
+        // Auto-acknowledge the safeguarding alert
+        await acknowledgeSafeguardingAlert(alertId);
+        
+    } catch (error) {
+        showNotification('Failed to initiate chat: ' + error.message, 'error');
+    }
+}
+
+// Initiate staff WebRTC call to a user from a safeguarding alert
+async function initiateStaffCall(alertId, sessionId) {
+    try {
+        // First, check if we have contact info for this alert
+        var response = await fetch(CONFIG.API_URL + '/api/safeguarding-alerts/' + alertId, {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+        
+        var alert = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(alert.detail || 'Failed to get alert details');
+        }
+        
+        // Check if we have callback info
+        if (!alert.callback_phone && !alert.contact_captured) {
+            // No phone number - offer to create chat room instead
+            var useChat = confirm('No phone number available for this user.\n\nWould you like to open a chat room instead?');
+            if (useChat) {
+                await initiateStaffChat(alertId, sessionId);
+            }
+            return;
+        }
+        
+        // Check if WebRTC phone is available
+        if (!webRTCPhone || !webRTCPhone.isRegistered) {
+            showNotification('WebRTC phone not connected. Please check your SIP settings.', 'error');
+            
+            // Fallback: show the callback info and suggest calling
+            if (alert.callback_phone) {
+                var manualCall = confirm('WebRTC not available.\n\nCallback phone: ' + alert.callback_phone + '\nName: ' + (alert.callback_name || 'Not provided') + '\n\nWould you like to open a chat room instead?');
+                if (manualCall) {
+                    await initiateStaffChat(alertId, sessionId);
+                }
+            }
+            return;
+        }
+        
+        // Make the WebRTC call
+        var phoneNumber = alert.callback_phone;
+        showNotification('Initiating call to: ' + phoneNumber, 'info');
+        
+        // Use the WebRTC phone to make the call
+        makeOutboundCall(phoneNumber);
+        
+        // Auto-acknowledge the safeguarding alert
+        await acknowledgeSafeguardingAlert(alertId);
+        
+    } catch (error) {
+        showNotification('Failed to initiate call: ' + error.message, 'error');
+    }
+}
+
+
+
 // Resolve Safeguarding Alert
 async function resolveSafeguardingAlert(id) {
     var notes = prompt('Resolution notes (optional - what action was taken?):');
