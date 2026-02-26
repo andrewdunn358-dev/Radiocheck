@@ -462,6 +462,81 @@ export default function PeerSupport() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+      
+      {/* Waiting for Support Screen - shown when user clicked "Call a Supporter" from safeguarding */}
+      {isWaitingForSupport && !showCallModal && (
+        <View style={[styles.waitingContainer, { backgroundColor: colors.background }]}>
+          <View style={styles.waitingContent}>
+            {/* Pulsing phone icon */}
+            <Animated.View style={[styles.waitingIconContainer, { transform: [{ scale: pulseAnim }] }]}>
+              <View style={styles.waitingIconOuter}>
+                <Ionicons name="call" size={48} color="#16a34a" />
+              </View>
+            </Animated.View>
+            
+            <Text style={[styles.waitingTitle, { color: colors.text }]}>
+              Waiting for Support
+            </Text>
+            
+            <Text style={[styles.waitingMessage, { color: colors.textSecondary }]}>
+              {waitingMessage}
+            </Text>
+            
+            <View style={styles.waitingSteps}>
+              <View style={styles.waitingStep}>
+                <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+                <Text style={[styles.waitingStepText, { color: colors.textSecondary }]}>Request received</Text>
+              </View>
+              <View style={styles.waitingStep}>
+                <ActivityIndicator size="small" color="#16a34a" />
+                <Text style={[styles.waitingStepText, { color: colors.textSecondary }]}>Finding available supporter</Text>
+              </View>
+              <View style={styles.waitingStep}>
+                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.waitingStepText, { color: colors.textSecondary }]}>You'll receive a call shortly</Text>
+              </View>
+            </View>
+            
+            <Text style={[styles.waitingHint, { color: colors.textSecondary }]}>
+              Please keep this screen open to receive your call.{'\n'}
+              A supporter will call you as soon as one is available.
+            </Text>
+            
+            {/* Cancel button */}
+            <TouchableOpacity
+              style={styles.waitingCancelButton}
+              onPress={() => {
+                setIsWaitingForSupport(false);
+                router.back();
+              }}
+            >
+              <Text style={styles.waitingCancelText}>Cancel & Go Back</Text>
+            </TouchableOpacity>
+            
+            {/* Switch to chat option */}
+            <TouchableOpacity
+              style={styles.waitingSwitchButton}
+              onPress={() => {
+                setIsWaitingForSupport(false);
+                router.push({
+                  pathname: '/live-chat',
+                  params: { 
+                    alertId: params.alertId,
+                    sessionId: params.sessionId,
+                    preferredType: 'chat'
+                  }
+                });
+              }}
+            >
+              <Ionicons name="chatbubbles" size={18} color="#2563eb" />
+              <Text style={styles.waitingSwitchText}>Switch to Text Chat Instead</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      
+      {/* Regular content - hidden when waiting for support */}
+      {!isWaitingForSupport && (
       <KeyboardAvoidingView 
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
