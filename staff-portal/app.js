@@ -1794,6 +1794,9 @@ function updateChatMessages(messages) {
 
 // Close Live Chat Modal
 function closeLiveChatModal() {
+    // Leave Socket.IO room
+    leaveChatRoomSocket();
+    
     if (chatPollingInterval) {
         clearInterval(chatPollingInterval);
         chatPollingInterval = null;
