@@ -1229,6 +1229,17 @@ async function initiateStaffChat(alertId, sessionId) {
     try {
         showNotification('Looking for active chat room...', 'info');
         
+        // Check if there's a pending chat request from this user
+        var pendingRequest = window.pendingChatRequest;
+        if (pendingRequest && pendingRequest.user_id) {
+            // Accept the pending chat request instead of creating a new room
+            console.log('Found pending chat request, accepting:', pendingRequest.request_id);
+            acceptIncomingChatRequest(pendingRequest.request_id, pendingRequest.user_id);
+            window.pendingChatRequest = null; // Clear it
+            await acknowledgeSafeguardingAlert(alertId);
+            return;
+        }
+        
         // First, check if there's already an active live chat room for this alert or session
         var roomsResponse = await fetch(CONFIG.API_URL + '/api/live-chat/rooms', {
             headers: {
