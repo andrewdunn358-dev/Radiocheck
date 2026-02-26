@@ -692,6 +692,7 @@ export default function PeerSupport() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
