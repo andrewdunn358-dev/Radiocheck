@@ -763,19 +763,37 @@ function createAudioElement() {
 
 function createRingtone() {
     // Use HTML5 Audio with a data URL for the ringtone
-    // This works better with browser autoplay policies
     ringtone = {
         audio: null,
-        isPlaying: false
+        isPlaying: false,
+        isEnabled: false
     };
     
-    // Create audio element with a simple beep tone as base64
-    // This is a short beep that we'll loop
+    // Create audio element
     const audio = new Audio();
     audio.loop = true;
-    // UK phone ring tone - generated as base64 WAV
-    audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkI2Coverage+bnZ2dnZycm5uampqam5ydnZ6enp6enp2dnJybm5qamZmZmZqbnJ2en5+fn5+enZ2cm5qZmZiYmZqbnJ2eoKCgoKCfnp2cmpmYl5eYmZqcnZ6goaGhoaCfnpyamJeWlpeYmpydn6ChoqKioJ+dnJqYlpWVlpeZm52foKKjo6OioJ6cmpiWlJSUlZeZm52foaKjo6OioJ6cmpeTk5OTlZeZm52goaOkpKOioJ6cmpiUkpKSk5WYmp2foaOkpaWjoaCempiUkZGRkpSXmp2goaOlpaWjoJ6cmZWSj4+PkJOWmZyfoaSkpaWjoJ6bmpWRj46OkJKVmZyfoaOlpaWkoZ+cmZaSkI6Oj5GTlpmcn6KkpaaloqCdmpiUkI6NjY+Sk5ebnqGkpaamo6GempeUkI2Li42QkpaanqGkpqampKGempeUj4yKio2PkpaanqGkpqenpaKfnJeTjoqJiYuOkZWZnaCkpqenpqOfnJmVkIyJiIiLjpGVmZ2hpKanp6ainpuYk46KhYSFiIyPlJidoaSlp6inoqCcl5GPioWCgYOGi4+UmJyhoqSlp6ejoZ2Zk46JhICAgIKFio6TmJyfpKWnqKajn5yXko2HgX19foGFio6Tl5ygoqWnqKako5+al5GKhX55eHl8gYWKj5SYnKCjpqepp6SgnJeSjIV/eXZ1d3qAhIqPk5idoKOmp6qopaSgnJaRioN9d3Nyd3qAhYqPk5ebn6KlqKqqqKWhnpiSi4R+dnJvcHR5gISJj5OXm56ho6aoqqimop+Zk4uEfHVwbW1wd3yBhouPk5ebnqGjpaeppqOgnpmSi4J7c21ramxxd3yBhYqOkpWZnaChpKampqOgm5eTjIR8dG5qaWtwd3yBhYmNkZWZnJ+io6WmpqShnpiRioJ5cWtoaGtwd3yAhIiMkJSYm56goqSlpaShn5mSioF4cGlnZmpvdnuAhIiMkJOXmp2foaOlpqWjoJ2WjoZ9dW1oZWZpb3V7gISIjJCTlpmcn6GjpKWko6CclpCHfnVtaGVkZmtwdnuAhIiLj5KVmJueoKGjpKSjoZ6ZkYqBd29pZWNkZ21zeICDh4uOkpWYm52foaKjo6KgnpqTi4J5cGpmY2JkZ21zeoCAhIeMj5KVmJqcnp+goaGgnpuVjoV8c2xnYmFjZmpwd3yBhYmMj5GUl5mbnZ6fn5+enJmUjYR7c2xnYmBiZGlud3yBhIiLjpGTlpiamp2en56enJqWkImAd3BqZGFgYmVpb3Z8gYSHi42QkpSXmZqcnZ6dnJuYk4yDenJrZWFfYGJlaXB3fIGFiIuOkJOVl5mam5ycnJuZlo+IgHlyamRgXl9hZGlwd3yBhYiLjpCSlJaYmpqcnJybmZWQiIF4cmpiXl1eYGRobnd8gYWIi42PkpSWl5mam5ubmpiVkIiBd3FpY15dXF5hZWtyd3yBhYiKjY+RlJaXmZqam5qYlZCKgnh0bGZhXV1eYGNobHR5foKFiIqNj5GSk5SWl5iYl5aUkYuDe3RsZmBdXF5gY2htdHl+goWIi42Pj5CRkpSVlpaWlJGNh4B4cWtmYF1cXWBkZ2xzeX6ChYiKjY6Pj5CRkpOTk5KQjIiCenNsZmJfXV1gYmVqcHV7f4KEh4qMjo+PkJCRkZCPjouGgHlybGdhXlxdX2JlaW90eX+ChYaJi4yOjY2Oj46NjIqGgXt1b2lkYF5dXmBkZ21ydnx/goWHiYuLjIyMjIyLioiFgXx2cGtlYV9eXmFkZ2txdnp+gYSGiIqKi4qKiomIhoOAfXhzbmllYV9eX2FkZ2xwd3p+gYOGh4iJiYmIh4aEgX57dnJuamZiYF9gYmVobHF2en2AgoSGh4iHh4aFg4F+e3d0cGxpZWJgYGFjZmltcXV5fH+BgoSFhYWEg4GAfXp4dXJva2hmY2FhY2VobXF0eHt+gIGDg4OEg4GAf316eHZzcW5rZ2VkZGRmaWxvcnZ5fH5/gYGCgYGAfn17enl3dXNwbmtpaGdnZ2ltcHN2enx+gICAf399fHt5eHd2dHJwbmxqaWhoaWttcHJ1d3t8fn9/f359fHp5eHd2dXRycXBubWxra2xrbnBxc3V4enx9fn5+fXx7enp5eHd3dnV0c3JxcHBvcHFyc3V2eHp8fH19fX19fHx7e3p6eXl4eHd3dnZ2dnZ3d3h5enp7fHx8fXx8fHx7e3t7e3p6';
+    // Simple ringtone tone as base64 (short beep pattern)
+    audio.src = 'data:audio/wav;base64,UklGRl9vT19teleXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU5vT19teleX';
+    audio.volume = 0.7;
     ringtone.audio = audio;
+    
+    // Pre-enable audio on first user interaction (click anywhere on page)
+    const enableAudio = () => {
+        if (!ringtone.isEnabled) {
+            // Play and immediately pause to unlock audio
+            ringtone.audio.play().then(() => {
+                ringtone.audio.pause();
+                ringtone.audio.currentTime = 0;
+                ringtone.isEnabled = true;
+                console.log('Ringtone audio enabled');
+            }).catch(() => {});
+        }
+        document.removeEventListener('click', enableAudio);
+        document.removeEventListener('keydown', enableAudio);
+    };
+    
+    document.addEventListener('click', enableAudio);
+    document.addEventListener('keydown', enableAudio);
 }
 
 function playRingtone() {
@@ -785,20 +803,20 @@ function playRingtone() {
         
         if (ringtone.audio) {
             ringtone.audio.currentTime = 0;
-            const playPromise = ringtone.audio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => {
-                    console.log('Ringtone autoplay blocked, will play on user interaction');
-                    // Add click listener to play on first interaction
-                    const playOnClick = () => {
-                        if (ringtone.isPlaying && ringtone.audio) {
-                            ringtone.audio.play().catch(console.error);
-                        }
-                        document.removeEventListener('click', playOnClick);
-                    };
-                    document.addEventListener('click', playOnClick);
-                });
-            }
+            ringtone.audio.play().catch(e => {
+                console.log('Ringtone blocked - click page to enable');
+            });
+        }
+        
+        // Also use system notification sound as backup
+        if ('Notification' in window && Notification.permission === 'granted') {
+            // Browser notification with sound
+            new Notification('Incoming Call', {
+                body: 'Someone is calling...',
+                icon: '/favicon.ico',
+                requireInteraction: true,
+                silent: false
+            });
         }
     } catch (e) {
         console.log('Could not play ringtone:', e);
