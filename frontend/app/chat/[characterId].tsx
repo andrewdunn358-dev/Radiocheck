@@ -509,30 +509,36 @@ export default function DynamicAIChat() {
                 
                 <Text style={styles.safeguardingText}>
                   It sounds like you might be going through something difficult. 
-                  You don't have to face this alone.
+                  Would you like to speak with a real person right now?
                 </Text>
                 
-                <ScrollView style={styles.safeguardingScroll} showsVerticalScrollIndicator={false}>
-                  {/* Talk to Someone Now - Always show */}
+                <View style={{ gap: 12, marginVertical: 16 }}>
+                  {/* Call a Supporter Button */}
                   <TouchableOpacity
                     style={[styles.safeguardingOption, { backgroundColor: '#dcfce7', borderColor: '#16a34a', borderWidth: 2 }]}
-                    onPress={handleConnectToStaff}
+                    onPress={() => {
+                      // Navigate to peer-support for voice call
+                      setShowSafeguardingModal(false);
+                      router.push({
+                        pathname: '/peer-support',
+                        params: { 
+                          alertId: currentAlertId,
+                          preferredType: 'call'
+                        }
+                      });
+                    }}
                   >
-                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center' }}>
-                      <FontAwesome5 name="comments" size={18} color="#ffffff" />
+                    <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center' }}>
+                      <FontAwesome5 name="phone-alt" size={20} color="#ffffff" />
                     </View>
                     <View style={styles.safeguardingOptionContent}>
-                      <Text style={[styles.safeguardingOptionTitle, { color: '#16a34a' }]}>Talk to Someone Now</Text>
+                      <Text style={[styles.safeguardingOptionTitle, { color: '#16a34a', fontSize: 17 }]}>Call a Supporter</Text>
                       <Text style={styles.safeguardingOptionDesc}>
                         {isCheckingAvailability 
                           ? 'Checking availability...'
                           : staffAvailable
-                            ? (availableStaff.counsellors.length > 0 && availableStaff.peers.length > 0 
-                                ? 'Counsellor & peer supporter available'
-                                : availableStaff.counsellors.length > 0 
-                                  ? 'Counsellor available now'
-                                  : 'Peer supporter available now')
-                            : 'Connect with our support team'}
+                            ? 'Speak to someone now'
+                            : 'Voice call when available'}
                       </Text>
                     </View>
                     {staffAvailable && (
@@ -540,14 +546,62 @@ export default function DynamicAIChat() {
                         <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>LIVE</Text>
                       </View>
                     )}
-                    {!staffAvailable && !isCheckingAvailability && (
-                      <FontAwesome5 name="chevron-right" size={16} color="#16a34a" />
+                  </TouchableOpacity>
+
+                  {/* Chat with a Supporter Button */}
+                  <TouchableOpacity
+                    style={[styles.safeguardingOption, { backgroundColor: '#dbeafe', borderColor: '#2563eb', borderWidth: 2 }]}
+                    onPress={handleConnectToStaff}
+                  >
+                    <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#2563eb', justifyContent: 'center', alignItems: 'center' }}>
+                      <FontAwesome5 name="comments" size={20} color="#ffffff" />
+                    </View>
+                    <View style={styles.safeguardingOptionContent}>
+                      <Text style={[styles.safeguardingOptionTitle, { color: '#2563eb', fontSize: 17 }]}>Chat with a Supporter</Text>
+                      <Text style={styles.safeguardingOptionDesc}>
+                        {isCheckingAvailability 
+                          ? 'Checking availability...'
+                          : staffAvailable
+                            ? 'Text chat - usually faster'
+                            : 'Text chat if you prefer'}
+                      </Text>
+                    </View>
+                    {staffAvailable && (
+                      <View style={{ backgroundColor: '#2563eb', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>LIVE</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
 
+                  {/* Request Callback - smaller, secondary option */}
                   <TouchableOpacity
-                    style={styles.safeguardingOption}
+                    style={[styles.safeguardingOption, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
                     onPress={() => setSafeguardingView('callback')}
+                  >
+                    <FontAwesome5 name="phone-volume" size={20} color="#64748b" />
+                    <View style={styles.safeguardingOptionContent}>
+                      <Text style={[styles.safeguardingOptionTitle, { color: '#64748b', fontSize: 15 }]}>Request a Callback</Text>
+                      <Text style={[styles.safeguardingOptionDesc, { fontSize: 12 }]}>We'll call you back later</Text>
+                    </View>
+                    <FontAwesome5 name="chevron-right" size={14} color="#64748b" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.emergencyNote}>
+                  <FontAwesome5 name="exclamation-triangle" size={16} color={isDark ? '#fcd34d' : '#92400e'} />
+                  <Text style={styles.emergencyNoteText}>
+                    In immediate danger? Call 999
+                  </Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.safeguardingContinue}
+                  onPress={closeSafeguardingModal}
+                >
+                  <Text style={styles.safeguardingContinueText}>Continue chatting with {character.name}</Text>
+                </TouchableOpacity>
+              </>
+            )}
                   >
                     <FontAwesome5 name="phone-alt" size={24} color="#2563eb" />
                     <View style={styles.safeguardingOptionContent}>
