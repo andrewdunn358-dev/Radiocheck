@@ -24,29 +24,19 @@ const showAlert = (title: string, message: string) => {
 // WebRTC configuration - STUN + TURN servers for NAT traversal
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
-    // Google STUN servers (reliable)
+    // Google STUN servers
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    // Metered.ca TURN servers (more reliable than OpenRelay)
+    // ExpressTURN - your account
     {
-      urls: 'turn:a.relay.metered.ca:80',
-      username: 'e8dd65c92eb8e17532e90b5d',
-      credential: 'uWdWNmkhvyqTW1QC',
+      urls: 'turn:free.expressturn.com:3478',
+      username: '000000002087494108',
+      credential: 'VGqVfeznpN8ZxyueC6MSG71Sso8=',
     },
     {
-      urls: 'turn:a.relay.metered.ca:80?transport=tcp',
-      username: 'e8dd65c92eb8e17532e90b5d',
-      credential: 'uWdWNmkhvyqTW1QC',
-    },
-    {
-      urls: 'turn:a.relay.metered.ca:443',
-      username: 'e8dd65c92eb8e17532e90b5d',
-      credential: 'uWdWNmkhvyqTW1QC',
-    },
-    {
-      urls: 'turns:a.relay.metered.ca:443?transport=tcp',
-      username: 'e8dd65c92eb8e17532e90b5d',
-      credential: 'uWdWNmkhvyqTW1QC',
+      urls: 'turn:free.expressturn.com:3478?transport=tcp',
+      username: '000000002087494108',
+      credential: 'VGqVfeznpN8ZxyueC6MSG71Sso8=',
     },
   ],
   iceCandidatePoolSize: 10,
