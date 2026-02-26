@@ -78,11 +78,11 @@ export default function CrisisSupport() {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', marginRight: 12 }}>
               <Image 
-                source={{ uri: '/assets/images/tommy.png' }}
+                source={{ uri: '/images/tommy.png' }}
                 style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colors.border }}
               />
               <Image 
-                source={{ uri: '/assets/images/doris.png' }}
+                source={{ uri: '/images/doris.png' }}
                 style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colors.border, marginLeft: -16 }}
               />
             </View>

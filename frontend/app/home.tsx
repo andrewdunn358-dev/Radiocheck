@@ -13,7 +13,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const NEW_LOGO_URL = require('../assets/images/logo.png');
+const NEW_LOGO_URL = require('../images/logo.png');
 
 // AI Team member type
 interface AITeamMember {
@@ -52,14 +52,14 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
 
 // Fallback AI Team (used when CMS is empty or unavailable)
 const FALLBACK_AI_TEAM: AITeamMember[] = [
-  { name: 'Tommy', avatar: '/assets/images/tommy.png', description: 'Your battle buddy', bio: 'Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back. He understands military life inside out and provides honest, direct support.', route: '/chat/tommy' },
-  { name: 'Doris', avatar: '/assets/images/doris.png', description: 'Warm support', bio: 'Doris is a nurturing, compassionate presence who creates a safe space to talk. She offers warmth and understanding, like a caring grandmother figure who listens without judgement.', route: '/chat/doris' },
-  { name: 'Bob', avatar: '/assets/images/bob.png', description: 'Ex-Para peer support', bio: 'Bob is a down-to-earth ex-Para who keeps things real. He\'s been there, done that, and offers honest peer support from someone who truly understands the military experience.', route: '/chat/bob' },
-  { name: 'Finch', avatar: '/assets/images/finch.png', description: 'Military law & legal support', bio: 'Finch is a knowledgeable companion with expertise in UK military law, including the Armed Forces Act, Manual of Military Law, and service discipline. He helps veterans understand their legal rights and navigate military justice matters.', route: '/chat/sentry' },
-  { name: 'Margie', avatar: '/assets/images/margie.png', description: 'Addiction support', bio: 'Margie is a wise, understanding presence with warmth and years of experience. She specialises in supporting those dealing with all types of addiction - alcohol, drugs, gambling and more - offering non-judgemental guidance.', route: '/chat/margie' },
-  { name: 'Hugo', avatar: '/assets/images/hugo.png', description: 'Veteran services navigator', bio: 'Hugo is your guide to UK veteran support systems. He helps you find the right organisations, charities, and services for housing, jobs, benefits, legal help and more. His focus is on clear signposting and practical next steps.', route: '/chat/hugo' },
-  { name: 'Rita', avatar: '/assets/images/rita.png', description: 'Family support', bio: 'Rita is a warm, grounded family-support companion for partners, spouses, parents and loved ones of military personnel. She\'s been around the military for a long time and understands what families go through.', route: '/chat/rita' },
-  { name: 'Catherine', avatar: '/assets/images/catherine.png', description: 'Calm & intelligent support', bio: 'Catherine is composed, articulate, and grounded. She helps you think clearly when emotions run high and approach problems with calm intelligence. She guides you toward realistic next steps, not abstract solutions.', route: '/chat/catherine' },
+  { name: 'Tommy', avatar: '/images/tommy.png', description: 'Your battle buddy', bio: 'Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back. He understands military life inside out and provides honest, direct support.', route: '/chat/tommy' },
+  { name: 'Doris', avatar: '/images/doris.png', description: 'Warm support', bio: 'Doris is a nurturing, compassionate presence who creates a safe space to talk. She offers warmth and understanding, like a caring grandmother figure who listens without judgement.', route: '/chat/doris' },
+  { name: 'Bob', avatar: '/images/bob.png', description: 'Ex-Para peer support', bio: 'Bob is a down-to-earth ex-Para who keeps things real. He\'s been there, done that, and offers honest peer support from someone who truly understands the military experience.', route: '/chat/bob' },
+  { name: 'Finch', avatar: '/images/finch.png', description: 'Military law & legal support', bio: 'Finch is a knowledgeable companion with expertise in UK military law, including the Armed Forces Act, Manual of Military Law, and service discipline. He helps veterans understand their legal rights and navigate military justice matters.', route: '/chat/sentry' },
+  { name: 'Margie', avatar: '/images/margie.png', description: 'Addiction support', bio: 'Margie is a wise, understanding presence with warmth and years of experience. She specialises in supporting those dealing with all types of addiction - alcohol, drugs, gambling and more - offering non-judgemental guidance.', route: '/chat/margie' },
+  { name: 'Hugo', avatar: '/images/hugo.png', description: 'Veteran services navigator', bio: 'Hugo is your guide to UK veteran support systems. He helps you find the right organisations, charities, and services for housing, jobs, benefits, legal help and more. His focus is on clear signposting and practical next steps.', route: '/chat/hugo' },
+  { name: 'Rita', avatar: '/images/rita.png', description: 'Family support', bio: 'Rita is a warm, grounded family-support companion for partners, spouses, parents and loved ones of military personnel. She\'s been around the military for a long time and understands what families go through.', route: '/chat/rita' },
+  { name: 'Catherine', avatar: '/images/catherine.png', description: 'Calm & intelligent support', bio: 'Catherine is composed, articulate, and grounded. She helps you think clearly when emotions run high and approach problems with calm intelligence. She guides you toward realistic next steps, not abstract solutions.', route: '/chat/catherine' },
 ];
 
 export default function Index() {

@@ -445,7 +445,7 @@ export default function PeerSupport() {
               activeOpacity={0.9}
             >
               <Image 
-                source={{ uri: '/assets/images/bob.png' }}
+                source={{ uri: '/images/bob.png' }}
                 style={styles.bobAvatar}
               />
               <View style={styles.bobTextContainer}>

@@ -7,7 +7,7 @@ import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 
 // Hugo's avatar URL
-const HUGO_AVATAR = '/assets/images/hugo.png';
+const HUGO_AVATAR = '/images/hugo.png';
 
 interface Organization {
   id: string;

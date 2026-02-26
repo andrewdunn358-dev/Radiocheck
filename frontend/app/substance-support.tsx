@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 
-const MARGIE_AVATAR = '/assets/images/margie.png';
+const MARGIE_AVATAR = '/images/margie.png';
 
 // UK Armed Forces-Specific Resources
 const VETERAN_RESOURCES = [

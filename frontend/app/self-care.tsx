@@ -8,7 +8,7 @@ import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
 import { safeGoBack } from '../src/utils/navigation';
 
 // Catherine's avatar URL
-const CATHERINE_AVATAR = '/assets/images/catherine.png';
+const CATHERINE_AVATAR = '/images/catherine.png';
 
 // Fallback hardcoded tools (used when CMS is empty or unavailable)
 const FALLBACK_TOOLS = [

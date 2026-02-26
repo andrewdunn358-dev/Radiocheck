@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 
-const FINCH_AVATAR = '/assets/images/finch.png';
+const FINCH_AVATAR = '/images/finch.png';
 
 export default function HistoricalInvestigations() {
   const router = useRouter();
