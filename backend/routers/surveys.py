@@ -144,23 +144,33 @@ async def submit_post_survey(survey: PostSurveySubmission):
 @router.get("/status/{user_id}")
 async def get_survey_status(user_id: str):
     """Check which surveys a user has completed"""
-    from server import db
-    
-    pre = await db.survey_responses.find_one({"user_id": user_id, "survey_type": "pre"})
-    post = await db.survey_responses.find_one({"user_id": user_id, "survey_type": "post"})
-    
-    # Get pre-survey date to calculate if post-survey should show
-    pre_date = pre.get("submitted_at") if pre else None
-    days_since_pre = 0
-    if pre_date:
-        days_since_pre = (datetime.now(timezone.utc) - pre_date).days
-    
-    return {
-        "pre_completed": pre is not None,
-        "post_completed": post is not None,
-        "days_since_pre": days_since_pre,
-        "show_post_survey": pre is not None and post is None and days_since_pre >= 7
-    }
+    try:
+        from server import db
+        
+        pre = await db.survey_responses.find_one({"user_id": user_id, "survey_type": "pre"})
+        post = await db.survey_responses.find_one({"user_id": user_id, "survey_type": "post"})
+        
+        # Get pre-survey date to calculate if post-survey should show
+        pre_date = pre.get("submitted_at") if pre else None
+        days_since_pre = 0
+        if pre_date:
+            days_since_pre = (datetime.now(timezone.utc) - pre_date).days
+        
+        return {
+            "pre_completed": pre is not None,
+            "post_completed": post is not None,
+            "days_since_pre": days_since_pre,
+            "show_post_survey": pre is not None and post is None and days_since_pre >= 7
+        }
+    except Exception as e:
+        # Return a safe default instead of crashing
+        return {
+            "pre_completed": False,
+            "post_completed": False,
+            "days_since_pre": 0,
+            "show_post_survey": False,
+            "error": str(e)
+        }
 
 # ============================================
 # Admin Endpoints
