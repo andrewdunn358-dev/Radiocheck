@@ -545,10 +545,17 @@ async def leave_chat_room(sid, data):
         
         logger.info(f"User {user_id} left chat room {room_id}")
         
+        # Get user name for notification
+        user_name = 'User'
+        if sid in connected_users:
+            user_name = connected_users[sid].get('name', 'User')
+        
         # Notify room members
         await sio.emit('user_left_chat', {
             'room_id': room_id,
-            'user_id': user_id
+            'user_id': user_id,
+            'user_name': user_name,
+            'reason': 'left'  # User chose to leave (vs 'disconnected')
         }, room=room_id)
 
 
