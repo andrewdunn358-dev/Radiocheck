@@ -714,15 +714,23 @@ async def accept_chat_request(sid, data):
     request_id = data.get('request_id')
     requester_user_id = data.get('user_id')
     
+    logger.info(f"=== ACCEPT CHAT REQUEST ===")
+    logger.info(f"accept_chat_request: request_id={request_id}, requester_user_id={requester_user_id}")
+    logger.info(f"accept_chat_request: user_to_socket keys: {list(user_to_socket.keys())}")
+    
     staff_info = connected_users.get(sid, {})
     
     if staff_info.get('user_type') not in ['counsellor', 'peer']:
+        logger.warning(f"accept_chat_request: Staff type not valid: {staff_info.get('user_type')}")
         return
     
     # Find the requester's socket
     requester_sid = user_to_socket.get(requester_user_id)
     
+    logger.info(f"accept_chat_request: Found requester_sid={requester_sid}")
+    
     if not requester_sid:
+        logger.warning(f"accept_chat_request: User {requester_user_id} not found in user_to_socket")
         await sio.emit('chat_request_expired', {
             'request_id': request_id,
             'reason': 'User no longer connected'
@@ -731,6 +739,8 @@ async def accept_chat_request(sid, data):
     
     # Create a chat room
     room_id = f"chat_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{staff_info.get('user_id', '')[:8]}"
+    
+    logger.info(f"accept_chat_request: Creating room {room_id}")
     
     # Create the room in the database so the API can find it
     try:
@@ -756,6 +766,7 @@ async def accept_chat_request(sid, data):
     logger.info(f"Staff {staff_info.get('name')} accepted chat request {request_id}, room: {room_id}")
     
     # Notify the requester
+    logger.info(f"accept_chat_request: Emitting human_chat_accepted to requester {requester_sid}")
     await sio.emit('human_chat_accepted', {
         'request_id': request_id,
         'room_id': room_id,
@@ -765,19 +776,14 @@ async def accept_chat_request(sid, data):
     }, to=requester_sid)
     
     # Confirm to staff
+    logger.info(f"accept_chat_request: Emitting chat_request_confirmed to staff {sid}")
     await sio.emit('chat_request_confirmed', {
         'request_id': request_id,
         'room_id': room_id,
         'user_id': requester_user_id
     }, to=sid)
     
-    # Notify other staff that request is taken
-    for socket_id, user in connected_users.items():
-        if socket_id != sid and user.get('user_type') in ['counsellor', 'peer']:
-            await sio.emit('chat_request_taken', {
-                'request_id': request_id,
-                'accepted_by': staff_info.get('name')
-            }, to=socket_id)
+    logger.info(f"accept_chat_request: Done, chat room {room_id} created and both parties notified")
 
 
 
