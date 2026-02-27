@@ -534,14 +534,27 @@ function endCall() {
  * @param {string} targetUserId - The user ID or session ID to call
  */
 function makeOutboundCall(targetUserId) {
+    console.log('=== MAKE OUTBOUND CALL ===');
+    console.log('Target user:', targetUserId);
+    console.log('Socket connected:', socket?.connected);
+    console.log('Is registered:', isRegistered);
+    console.log('Current call ID:', currentCallId);
+    
     if (!socket || !isRegistered) {
         showNotification('Phone not connected. Please wait...', 'error');
         return;
     }
     
     if (currentCallId) {
-        showNotification('Already in a call', 'warning');
-        return;
+        // Check if we're actually in an active call by checking peer connection state
+        if (peerConnection && peerConnection.connectionState === 'connected') {
+            showNotification('Already in a call', 'warning');
+            return;
+        } else {
+            // Stale call ID - clean it up
+            console.log('Stale call ID detected, cleaning up...');
+            cleanupCall();
+        }
     }
     
     console.log('Initiating call to:', targetUserId);
