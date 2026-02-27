@@ -11,6 +11,9 @@ import Crisis from './pages/Crisis';
 import Callback from './pages/Callback';
 import Podcasts from './pages/Podcasts';
 import PeerSupport from './pages/PeerSupport';
+import Organizations from './pages/Organizations';
+import SelfCare from './pages/SelfCare';
+import WarfareLawfare from './pages/WarfareLawfare';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const {user,isLoading}=useAuth();
@@ -33,6 +36,9 @@ export default function App() {
           <Route path="/callback" element={<Callback/>}/>
           <Route path="/podcasts" element={<Podcasts/>}/>
           <Route path="/peer-support" element={<PeerSupport/>}/>
+          <Route path="/organizations" element={<Organizations/>}/>
+          <Route path="/self-care" element={<SelfCare/>}/>
+          <Route path="/historical-investigations" element={<WarfareLawfare/>}/>
           <Route path="*" element={<Navigate to="/"/>}/>
         </Routes>
       </BrowserRouter>
