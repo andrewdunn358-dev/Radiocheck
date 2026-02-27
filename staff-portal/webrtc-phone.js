@@ -143,9 +143,16 @@ function setupSocketHandlers() {
     socket.on('call_accepted', async (data) => {
         console.log('=== CALL ACCEPTED EVENT ===');
         console.log('Call accepted data:', data);
-        console.log('Current call ID:', currentCallId);
-        console.log('is_callee:', data.is_callee);
+        console.log('OLD currentCallId:', currentCallId);
         stopRingtone();
+        
+        // CRITICAL FIX: Update to server's authoritative call_id
+        // This ensures WebRTC signaling uses the correct ID that the server knows about
+        if (data.call_id) {
+            console.log('Updating currentCallId to server call_id:', data.call_id);
+            currentCallId = data.call_id;
+        }
+        console.log('NEW currentCallId:', currentCallId);
         
         // If we're the callee, we wait for the offer (don't create one)
         // If we're the caller, we create the offer
