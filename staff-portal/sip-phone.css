@@ -38,6 +38,42 @@
     color: #ffc107;
 }
 
+/* Device selector */
+.sip-device-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.sip-device-row label {
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 60px;
+}
+
+.sip-device-select {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+.sip-device-select:focus {
+    border-color: #69f0ae;
+}
+
+.sip-device-select option {
+    background: #1a5a2e;
+    color: white;
+}
+
 .sip-phone-header {
     display: flex;
     align-items: center;
