@@ -2061,8 +2061,12 @@ function getWaitingTime(createdAt) {
 
 // Join Live Chat
 async function joinLiveChat(roomId) {
+    console.log('=== JOIN LIVE CHAT ===');
+    console.log('joinLiveChat called with roomId:', roomId);
+    
     try {
         // First, join the chat room (assign this staff member)
+        console.log('Calling API: /live-chat/rooms/' + roomId + '/join');
         await apiCall('/live-chat/rooms/' + roomId + '/join', {
             method: 'POST',
             body: JSON.stringify({
@@ -2071,7 +2075,10 @@ async function joinLiveChat(roomId) {
             })
         });
         
+        console.log('API call successful, setting currentChatRoom to:', roomId);
         currentChatRoom = roomId;
+        
+        console.log('Calling showLiveChatModal...');
         showLiveChatModal(roomId);
         showNotification('You have joined the chat', 'success');
         
@@ -2080,6 +2087,7 @@ async function joinLiveChat(roomId) {
         
     } catch (error) {
         console.error('Error joining chat:', error);
+        console.error('Error details:', error.message, error.stack);
         if (error.message && error.message.includes('already has a staff member')) {
             showNotification('This chat has already been taken by another staff member', 'error');
             loadLiveChats(false); // Refresh list
