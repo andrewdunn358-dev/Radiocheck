@@ -342,10 +342,10 @@ function updateSipgateStatus(status, text) {
         statusText.textContent = text;
     }
     
-    // Enable/disable call button
+    // Enable/disable call button based on ready state
     const callBtn = document.getElementById('sip-call-btn');
     if (callBtn) {
-        callBtn.disabled = sipgateState.isInCall;
+        callBtn.disabled = !sipgateState.isReady || sipgateState.isInCall;
     }
 }
 
