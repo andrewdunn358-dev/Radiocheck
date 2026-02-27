@@ -1050,13 +1050,18 @@ function showNewAlertBanner(count, newAlerts) {
     banner.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + count + ' NEW SAFEGUARDING ALERT' + (count > 1 ? 'S' : '') + ' <button onclick="dismissAlertBanner()">View</button>';
     banner.classList.add('show');
     
-    // For RED level alerts, show a full-screen modal
-    if (newAlerts && newAlerts.length > 0) {
-        var redAlert = newAlerts.find(function(a) { return a.risk_level === 'RED'; });
-        if (redAlert) {
-            showUrgentAlertModal(redAlert);
-        }
-    }
+    // DISABLED: Don't show the urgent modal popup anymore
+    // The modal was appearing before users made their choice, causing confusion.
+    // Staff will now see alerts via:
+    // 1. The banner notification at top
+    // 2. The alert list on the left side
+    // 3. Call/Chat request banners ONLY when user is ready
+    // if (newAlerts && newAlerts.length > 0) {
+    //     var redAlert = newAlerts.find(function(a) { return a.risk_level === 'RED'; });
+    //     if (redAlert) {
+    //         showUrgentAlertModal(redAlert);
+    //     }
+    // }
     
     // Auto-dismiss banner after 10 seconds
     setTimeout(function() {
