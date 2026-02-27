@@ -35,7 +35,7 @@ Build "Radio Check," a mental health and peer support application for veterans. 
 ### Call Flow:
 1. Safeguarding triggers → modal shows to user
 2. User clicks "Call a Supporter" → navigates to peer-support
-3. User registers with WebRTC (2 second wait)
+3. User registers with WebRTC (waits for connection)
 4. `request_human_call` emitted to notify staff
 5. Staff sees call request banner → clicks "Call Now"
 6. User receives incoming call → clicks Accept
@@ -50,7 +50,28 @@ Build "Radio Check," a mental health and peer support application for veterans. 
 
 ## What's Been Implemented
 
-### Session - February 26, 2025 (Latest)
+### Session - February 27, 2025 (Current)
+
+**Critical Bug Fix - Call ID Mismatch:**
+The call connection was failing because:
+1. Staff portal generated its own `call_id` locally in `makeOutboundCall()`
+2. Backend generated a DIFFERENT `call_id` in `call_initiate` handler
+3. Staff portal wasn't listening for `call_ringing` event to get the server's authoritative call_id
+4. WebRTC signaling used mismatched call IDs, causing offers to not be delivered
+
+**Fixes Applied:**
+1. **Added `call_ringing` handler** to `webrtc-phone.js` - Staff portal now updates `currentCallId` with server's authoritative ID
+2. **Fixed socket initialization** in `useWebRTCCallWeb.ts` - Socket now recreates cleanly if disconnected (was just reconnecting without re-attaching listeners)
+3. **Improved socket wait logic** in `peer-support.tsx` - Now actively polls for socket connection before notifying staff (was using fixed 2s timeout)
+4. **Added extensive logging** to trace the call flow end-to-end
+
+**Key Files Modified:**
+- `staff-portal/webrtc-phone.js` - Added `call_ringing` handler, logging
+- `frontend/hooks/useWebRTCCallWeb.ts` - Fixed socket initialization, added logging
+- `frontend/app/peer-support.tsx` - Improved socket wait logic
+- `backend/webrtc_signaling.py` - Added detailed logging for `call_accept`, `webrtc_offer`, `webrtc_answer`
+
+### Session - February 26, 2025 (Previous)
 
 **Bug Fixes:**
 1. **Chat banner timing** - Added 1.5s delay before showing generic chat banner to allow safeguarding alerts to load first
