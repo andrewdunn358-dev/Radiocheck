@@ -342,21 +342,27 @@ async def webrtc_offer(sid, data):
     call_id = data.get('call_id')
     offer = data.get('offer')
     
-    logger.info(f"Received WebRTC offer for call {call_id} from {sid}")
+    logger.info(f"=== WEBRTC OFFER EVENT ===")
+    logger.info(f"webrtc_offer: Received from sid={sid}, call_id={call_id}")
+    logger.info(f"webrtc_offer: Offer type={offer.get('type') if offer else 'None'}")
     
     if call_id not in active_calls:
-        logger.warning(f"Call {call_id} not found in active_calls")
+        logger.warning(f"webrtc_offer: Call {call_id} not found in active_calls")
+        logger.warning(f"webrtc_offer: Available calls: {list(active_calls.keys())}")
         return
     
     call = active_calls[call_id]
     target_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
     
-    logger.info(f"Forwarding WebRTC offer to {target_sid}")
+    logger.info(f"webrtc_offer: Forwarding from {sid} to target_sid={target_sid}")
+    logger.info(f"webrtc_offer: Is target in connected_users? {target_sid in connected_users}")
     
     await sio.emit('webrtc_offer', {
         'call_id': call_id,
         'offer': offer
     }, to=target_sid)
+    
+    logger.info(f"webrtc_offer: Offer forwarded successfully to {target_sid}")
 
 
 @sio.event
