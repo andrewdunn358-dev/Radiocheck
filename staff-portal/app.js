@@ -148,7 +148,7 @@ function updateSoundButton() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Setup activity tracking for session timeout
     setupActivityListeners();
     
@@ -160,6 +160,34 @@ document.addEventListener('DOMContentLoaded', function() {
         // Session still valid - initialize portal
         resetInactivityTimer();
         initPortal();
+    } else if (token && !currentUser) {
+        // Token exists but no user data (e.g., came from app redirect)
+        // Fetch user profile using the token
+        console.log('Token found but no user data - fetching profile...');
+        try {
+            const response = await fetch(BACKEND_URL + '/api/auth/me', {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const userData = await response.json();
+                console.log('User data fetched:', userData);
+                currentUser = userData;
+                localStorage.setItem('staff_user', JSON.stringify(currentUser));
+                resetInactivityTimer();
+                initPortal();
+            } else {
+                console.error('Failed to fetch user profile:', response.status);
+                // Invalid token - clear and show login
+                logout(true);
+            }
+        } catch (error) {
+            console.error('Error fetching user profile:', error);
+            logout(true);
+        }
     } else {
         showScreen('login-screen');
     }
