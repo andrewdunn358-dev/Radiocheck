@@ -1,6 +1,26 @@
 // Staff Portal - Radio Check Veterans Support
 // For Counsellors and Peer Supporters
 
+// Check for token in URL (for auto-login from mobile app)
+(function checkUrlToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    
+    if (urlToken) {
+        console.log('Token found in URL, setting up auto-login...');
+        // Store the token
+        localStorage.setItem('staff_token', urlToken);
+        localStorage.setItem('staff_token_time', Date.now().toString());
+        localStorage.setItem('staff_last_activity', Date.now().toString());
+        
+        // Remove token from URL for security (don't want it in browser history)
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        
+        // Token is set, page will auto-redirect to home on load
+    }
+})();
+
 // State
 let token = localStorage.getItem('staff_token');
 let currentUser = JSON.parse(localStorage.getItem('staff_user') || 'null');
