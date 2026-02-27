@@ -1,4 +1,4 @@
-/* SIP Phone Styles for Staff Portal */
+/* Sipgate Click-to-Call Styles for Staff Portal */
 
 .sip-phone-section {
     background: linear-gradient(135deg, #1a5a2e 0%, #0d3d1a 100%);
@@ -7,6 +7,35 @@
     margin-bottom: 20px;
     color: white;
     border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.sip-info-text {
+    display: block;
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+.sip-how-it-works {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    opacity: 0.8;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+.sip-how-it-works i {
+    color: #69f0ae;
+}
+
+.sip-call-hint {
+    font-size: 12px;
+    opacity: 0.8;
+    color: #ffc107;
 }
 
 .sip-phone-header {
