@@ -2276,6 +2276,22 @@ function appendChatMessage(text, senderName, senderType, timestamp) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+// Append a system message to the chat UI (for join/leave notifications)
+function appendSystemMessage(text) {
+    var messagesDiv = document.getElementById('livechat-messages');
+    if (!messagesDiv) return;
+    
+    var time = new Date().toLocaleTimeString();
+    
+    messagesDiv.innerHTML += '<div class="chat-message system">' +
+        '<span class="msg-text" style="color: #888; font-style: italic; text-align: center; width: 100%;">' + 
+        escapeHtml(text) + ' (' + time + ')' +
+        '</span>' +
+    '</div>';
+    
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
 // Handle Enter key in chat input
 function handleChatKeypress(event) {
     if (event.key === 'Enter') {
