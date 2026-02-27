@@ -190,7 +190,12 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
 
     // Call accepted
     socketRef.current.on('call_accepted', async (data: any) => {
-      console.log('WebRTC: Call accepted', data);
+      console.log('WebRTC: *** CALL ACCEPTED EVENT ***', data);
+      console.log('WebRTC: is_callee:', data.is_callee);
+      console.log('WebRTC: call_id:', data.call_id);
+      console.log('WebRTC: Socket connected:', socketRef.current?.connected);
+      console.log('WebRTC: Socket ID:', socketRef.current?.id);
+      
       if (data.call_id) {
         currentCallIdRef.current = data.call_id;
       }
@@ -200,7 +205,14 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
       // If we're the caller, we create the offer
       const shouldCreateOffer = !data.is_callee;
       console.log('WebRTC: Starting connection, createOffer:', shouldCreateOffer);
-      await startWebRTCConnection(shouldCreateOffer);
+      console.log('WebRTC: If is_callee=true, we wait for webrtc_offer event from caller');
+      
+      try {
+        await startWebRTCConnection(shouldCreateOffer);
+        console.log('WebRTC: startWebRTCConnection completed');
+      } catch (err) {
+        console.error('WebRTC: Error in startWebRTCConnection:', err);
+      }
     });
 
     // Call connected
