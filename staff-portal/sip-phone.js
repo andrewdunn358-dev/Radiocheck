@@ -14,17 +14,15 @@ const SIPGATE_CONFIG = {
     apiUrl: 'https://api.sipgate.com/v2',
     tokenId: 'token-0FVPNW',
     token: '4ac9a5dd-abf8-46c1-91a6-78b42c9c9ad9',
-    // Your Sipgate phone number - this phone will ring first
+    // Your Sipgate phone number
     callerNumber: '01670898443',
-    // Device ID - will be auto-detected
-    deviceId: null,
-    // Available devices (populated on init)
-    devices: []
+    // Device ID = Your SIP ID (for Sipgate Classic single account)
+    deviceId: 'e0'  // Usually 'e0' for the first/default extension
 };
 
 // State
 let sipgateState = {
-    isReady: false,
+    isReady: true,
     currentSessionId: null,
     isInCall: false
 };
@@ -38,37 +36,29 @@ let sipUI = {};
 async function initSIPPhone() {
     console.log('Initializing Sipgate Click-to-Call...');
     setupSipgateUI();
-    updateSipgateStatus('connecting', 'Connecting to Sipgate...');
     
-    // Fetch available devices from Sipgate
+    // Try to get the correct device ID from user info
     try {
-        const devices = await fetchSipgateDevices();
-        
-        if (devices && devices.length > 0) {
-            SIPGATE_CONFIG.devices = devices;
-            // Use the first available device
-            SIPGATE_CONFIG.deviceId = devices[0].id;
-            console.log('Using device:', SIPGATE_CONFIG.deviceId, devices[0]);
-            sipgateState.isReady = true;
-            updateSipgateStatus('online', 'Ready for external calls');
-            populateDeviceSelector(devices);
-        } else {
-            console.warn('No devices found in Sipgate account');
-            updateSipgateStatus('error', 'No devices found');
+        const userInfo = await fetchSipgateUserInfo();
+        if (userInfo && userInfo.defaultDevice) {
+            SIPGATE_CONFIG.deviceId = userInfo.defaultDevice;
+            console.log('Using default device:', SIPGATE_CONFIG.deviceId);
         }
     } catch (error) {
-        console.error('Failed to fetch Sipgate devices:', error);
-        updateSipgateStatus('error', 'Connection failed: ' + error.message);
+        console.log('Could not fetch user info, using default device ID:', SIPGATE_CONFIG.deviceId);
     }
     
-    return sipgateState.isReady;
+    sipgateState.isReady = true;
+    updateSipgateStatus('online', 'Ready for external calls');
+    
+    return true;
 }
 
 /**
- * Fetch available devices from Sipgate API
+ * Fetch user info to get default device
  */
-async function fetchSipgateDevices() {
-    const response = await fetch(`${SIPGATE_CONFIG.apiUrl}/devices`, {
+async function fetchSipgateUserInfo() {
+    const response = await fetch(`${SIPGATE_CONFIG.apiUrl}/authorization/userinfo`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',
@@ -77,38 +67,13 @@ async function fetchSipgateDevices() {
     });
     
     if (!response.ok) {
-        throw new Error(`Failed to fetch devices: ${response.status}`);
+        console.log('User info response:', response.status);
+        return null;
     }
     
     const data = await response.json();
-    console.log('Sipgate devices:', data);
-    
-    // Filter for phone-type devices (extensions, phones)
-    return data.items || [];
-}
-
-/**
- * Populate device selector dropdown
- */
-function populateDeviceSelector(devices) {
-    const selector = document.getElementById('sip-device-selector');
-    if (!selector) return;
-    
-    selector.innerHTML = '';
-    devices.forEach(device => {
-        const option = document.createElement('option');
-        option.value = device.id;
-        option.textContent = `${device.alias || device.id} (${device.type})`;
-        if (device.id === SIPGATE_CONFIG.deviceId) {
-            option.selected = true;
-        }
-        selector.appendChild(option);
-    });
-    
-    selector.addEventListener('change', (e) => {
-        SIPGATE_CONFIG.deviceId = e.target.value;
-        console.log('Selected device:', SIPGATE_CONFIG.deviceId);
-    });
+    console.log('Sipgate user info:', data);
+    return data;
 }
 
 /**
