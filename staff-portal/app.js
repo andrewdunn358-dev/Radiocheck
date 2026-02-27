@@ -2368,6 +2368,13 @@ function callUserFromChat() {
         return;
     }
     
+    // Check if already in a call - if so, try to cleanup stale state first
+    if (webRTCPhone.currentCallId) {
+        console.log('Call state exists, attempting cleanup before new call');
+        // Force cleanup of any stale call state
+        webRTCPhone.cleanupCall();
+    }
+    
     console.log('Calling user from chat:', currentChatUserId);
     showNotification('Calling user...', 'info');
     
