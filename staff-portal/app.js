@@ -552,6 +552,15 @@ function setupLiveChatRequestListeners() {
         joinLiveChat(data.room_id);
     });
     
+    // Listen for chat request expired (user disconnected before staff could accept)
+    socket.off('chat_request_expired');
+    socket.on('chat_request_expired', function(data) {
+        console.log('=== CHAT REQUEST EXPIRED ===');
+        console.log('chat_request_expired received:', data);
+        showNotification('Chat request expired: ' + (data.reason || 'User disconnected'), 'warning');
+        dismissIncomingChatBanner();
+    });
+    
     // Listen for new safeguarding alerts (real-time notification)
     socket.off('new_safeguarding_alert');
     socket.on('new_safeguarding_alert', function(data) {
