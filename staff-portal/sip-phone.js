@@ -256,23 +256,28 @@ function setupSipgateUI() {
                 <div class="sip-phone-info">
                     <h3>External Calls (Sipgate)</h3>
                     <div id="sip-status" class="sip-status">
-                        <span class="status-dot online"></span>
-                        <span id="sip-status-text">Ready for external calls</span>
+                        <span class="status-dot offline"></span>
+                        <span id="sip-status-text">Connecting...</span>
                     </div>
-                    <small class="sip-info-text">Calls your phone (${SIPGATE_CONFIG.callerNumber}) first, then bridges to destination</small>
                 </div>
             </div>
             
             <div class="sip-dial-section">
+                <div class="sip-device-row">
+                    <label for="sip-device-selector">Device:</label>
+                    <select id="sip-device-selector" class="sip-device-select">
+                        <option value="">Loading devices...</option>
+                    </select>
+                </div>
                 <div class="sip-input-group">
                     <input type="tel" id="sip-phone-number" placeholder="Enter phone number (e.g. 07911123456)" class="sip-phone-input">
-                    <button id="sip-call-btn" class="btn btn-success" onclick="dialSipgateNumber()">
+                    <button id="sip-call-btn" class="btn btn-success" onclick="dialSipgateNumber()" disabled>
                         <i class="fas fa-phone"></i> Call
                     </button>
                 </div>
                 <div class="sip-how-it-works">
                     <i class="fas fa-info-circle"></i>
-                    <span>How it works: Click Call → Your phone rings → Answer → Connected to destination</span>
+                    <span>Click Call → Your selected device rings → Answer → Connected to destination</span>
                 </div>
             </div>
             
@@ -312,7 +317,8 @@ function setupSipgateUI() {
         activeCall: document.getElementById('sip-active-call'),
         callNumber: document.getElementById('sip-call-number'),
         callTimer: document.getElementById('sip-call-timer'),
-        callHint: document.getElementById('sip-call-hint')
+        callHint: document.getElementById('sip-call-hint'),
+        deviceSelector: document.getElementById('sip-device-selector')
     };
     
     // Enter key to dial
