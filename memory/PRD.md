@@ -101,6 +101,19 @@ The call connection was failing because of a **call_id mismatch**:
 
 ### Session - February 26, 2025 (Previous)
 
+**Session - February 27, 2025 - Chat Fix Continuation:**
+
+**Chat Fix Applied:**
+1. **User ID mismatch in chat flow** - User was registering with `userId` but sending chat request with `sessionId`. Fixed `live-chat.tsx` to register with `sessionId || userId` for consistency.
+2. **Chat room collection fix** - Already fixed in earlier commit, room now created in `live_chat_rooms` collection.
+3. **Added `chat_request_expired` handler** - Staff portal now shows notification when chat request expires (user disconnected).
+4. **Removed "Chat with User" button from safeguarding alerts** - As requested, since chat requires user to initiate first.
+
+**Key Files Modified:**
+- `staff-portal/app.js` - Removed chat buttons from safeguarding alerts, added `chat_request_expired` handler
+- `frontend/app/live-chat.tsx` - Fixed user registration ID mismatch
+- `backend/server.py` - Added better logging and fallback for `/live-chat/rooms/{room_id}/join` API
+
 **Bug Fixes:**
 1. **Chat banner timing** - Added 1.5s delay before showing generic chat banner to allow safeguarding alerts to load first
 2. **Messages disappearing in chat** - Fixed by disabling polling when Socket.IO is connected (set `socketChatConnected` flag)
