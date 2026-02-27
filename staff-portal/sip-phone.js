@@ -118,6 +118,16 @@ function populateDeviceSelector(devices) {
 async function makeExternalCall(phoneNumber) {
     console.log('Making external call to:', phoneNumber);
     
+    if (!sipgateState.isReady) {
+        showSipgateNotification('Sipgate not ready. Please wait...', 'warning');
+        return false;
+    }
+    
+    if (!SIPGATE_CONFIG.deviceId) {
+        showSipgateNotification('No device selected. Please refresh the page.', 'error');
+        return false;
+    }
+    
     if (sipgateState.isInCall) {
         showSipgateNotification('Already in a call', 'warning');
         return false;
@@ -135,17 +145,13 @@ async function makeExternalCall(phoneNumber) {
         updateSipgateStatus('calling', 'Initiating call...');
         showDialingSipgateUI(phoneNumber);
         
-        // Prepare request body
+        // Prepare request body - deviceId is REQUIRED when using phone number as caller
         const requestBody = {
-            caller: callerNumber,      // Your phone - rings first
-            callee: formattedNumber,   // Destination - connected after you answer
-            callerId: callerNumber     // Displayed caller ID
+            deviceId: SIPGATE_CONFIG.deviceId,  // Required!
+            caller: callerNumber,               // Your phone - rings first
+            callee: formattedNumber,            // Destination - connected after you answer
+            callerId: callerNumber              // Displayed caller ID
         };
-        
-        // Add deviceId if available
-        if (SIPGATE_CONFIG.deviceId) {
-            requestBody.deviceId = SIPGATE_CONFIG.deviceId;
-        }
         
         console.log('Sipgate API request:', requestBody);
         
