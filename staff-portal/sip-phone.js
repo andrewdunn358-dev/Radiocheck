@@ -1,331 +1,171 @@
 /**
- * SIP Phone for Staff Portal - Sipgate Integration
- * =================================================
- * Makes external phone calls via Sipgate Classic SIP
- * Uses SIP.js library for WebRTC-to-SIP bridging
+ * Sipgate Click-to-Call Integration for Staff Portal
+ * ===================================================
+ * Makes external phone calls via Sipgate REST API
+ * 
+ * How it works:
+ * 1. Staff clicks "Call" with a destination number
+ * 2. Sipgate calls YOUR phone first (caller)
+ * 3. When you answer, Sipgate bridges to the destination
  */
 
 // Sipgate Configuration
 const SIPGATE_CONFIG = {
-    sipId: '2032810e0',
-    sipPassword: '9PWM5ANU',
-    sipServer: 'sip.sipgate.co.uk',
-    wsServer: 'wss://sip.sipgate.co.uk:8089/ws', // WebSocket SIP
-    callerId: '01670898443',
-    stunServer: 'stun:stun.sipgate.net:3478'
+    apiUrl: 'https://api.sipgate.com/v2',
+    tokenId: 'token-0FVPNW',
+    token: '4ac9a5dd-abf8-46c1-91a6-78b42c9c9ad9',
+    // Your Sipgate phone number - this phone will ring first
+    callerNumber: '01670898443',
+    // Device ID (optional - can be found in Sipgate dashboard)
+    deviceId: null
 };
 
-// SIP Phone State
-let sipPhone = {
-    userAgent: null,
-    session: null,
-    isRegistered: false,
-    isInCall: false,
-    localStream: null,
-    isMuted: false
+// State
+let sipgateState = {
+    isReady: true,
+    currentSessionId: null,
+    isInCall: false
 };
 
 // DOM Elements
 let sipUI = {};
 
 /**
- * Initialize SIP Phone
+ * Initialize Sipgate Click-to-Call
  */
-async function initSIPPhone() {
-    console.log('Initializing Sipgate SIP Phone...');
-    
-    // Check if SIP.js is loaded
-    if (typeof SIP === 'undefined') {
-        console.error('SIP.js library not loaded');
-        updateSIPStatus('error', 'SIP.js not loaded');
-        return false;
-    }
-    
-    setupSIPUI();
-    
-    try {
-        // Create User Agent
-        const uri = SIP.UserAgent.makeURI(`sip:${SIPGATE_CONFIG.sipId}@${SIPGATE_CONFIG.sipServer}`);
-        
-        const transportOptions = {
-            server: SIPGATE_CONFIG.wsServer,
-            traceSip: true
-        };
-        
-        const userAgentOptions = {
-            uri: uri,
-            transportOptions: transportOptions,
-            authorizationUsername: SIPGATE_CONFIG.sipId,
-            authorizationPassword: SIPGATE_CONFIG.sipPassword,
-            displayName: 'Radio Check Staff',
-            sessionDescriptionHandlerFactoryOptions: {
-                peerConnectionConfiguration: {
-                    iceServers: [
-                        { urls: SIPGATE_CONFIG.stunServer },
-                        { urls: 'stun:stun.l.google.com:19302' }
-                    ]
-                }
-            },
-            logLevel: 'debug'
-        };
-        
-        sipPhone.userAgent = new SIP.UserAgent(userAgentOptions);
-        
-        // Setup User Agent event handlers
-        sipPhone.userAgent.delegate = {
-            onConnect: () => {
-                console.log('SIP Transport connected');
-            },
-            onDisconnect: (error) => {
-                console.log('SIP Transport disconnected', error);
-                sipPhone.isRegistered = false;
-                updateSIPStatus('offline', 'Disconnected');
-            },
-            onInvite: (invitation) => {
-                console.log('Incoming SIP call (not expected for outbound-only)');
-                // We're not handling incoming calls for now
-                invitation.reject();
-            }
-        };
-        
-        // Start the User Agent
-        await sipPhone.userAgent.start();
-        console.log('SIP User Agent started');
-        
-        // Register with Sipgate
-        const registerer = new SIP.Registerer(sipPhone.userAgent);
-        
-        registerer.stateChange.addListener((state) => {
-            console.log('Registration state:', state);
-            switch (state) {
-                case SIP.RegistererState.Registered:
-                    sipPhone.isRegistered = true;
-                    updateSIPStatus('online', 'Ready for external calls');
-                    showSIPNotification('Sipgate connected', 'success');
-                    break;
-                case SIP.RegistererState.Unregistered:
-                    sipPhone.isRegistered = false;
-                    updateSIPStatus('offline', 'Not registered');
-                    break;
-                case SIP.RegistererState.Terminated:
-                    sipPhone.isRegistered = false;
-                    updateSIPStatus('offline', 'Registration terminated');
-                    break;
-            }
-        });
-        
-        await registerer.register();
-        console.log('Registration request sent');
-        
-        return true;
-        
-    } catch (error) {
-        console.error('SIP initialization error:', error);
-        updateSIPStatus('error', 'Connection failed: ' + error.message);
-        return false;
-    }
+function initSIPPhone() {
+    console.log('Initializing Sipgate Click-to-Call...');
+    setupSipgateUI();
+    updateSipgateStatus('online', 'Ready for external calls');
+    return true;
 }
 
 /**
- * Make an external phone call via Sipgate
- * @param {string} phoneNumber - The phone number to call (UK format)
+ * Make an external phone call via Sipgate Click-to-Call API
+ * @param {string} phoneNumber - The phone number to call
  */
 async function makeExternalCall(phoneNumber) {
     console.log('Making external call to:', phoneNumber);
     
-    if (!sipPhone.isRegistered) {
-        showSIPNotification('SIP phone not connected. Please wait...', 'error');
+    if (sipgateState.isInCall) {
+        showSipgateNotification('Already in a call', 'warning');
         return false;
     }
     
-    if (sipPhone.isInCall) {
-        showSIPNotification('Already in a call', 'warning');
-        return false;
-    }
-    
-    // Format phone number for SIP
-    let formattedNumber = phoneNumber.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
-    
-    // Convert UK local to international format if needed
-    if (formattedNumber.startsWith('0')) {
-        formattedNumber = '+44' + formattedNumber.substring(1);
-    }
-    if (!formattedNumber.startsWith('+')) {
-        formattedNumber = '+44' + formattedNumber;
-    }
-    
+    // Format phone number
+    let formattedNumber = formatPhoneNumber(phoneNumber);
     console.log('Formatted number:', formattedNumber);
     
+    // Format caller number
+    let callerNumber = formatPhoneNumber(SIPGATE_CONFIG.callerNumber);
+    
     try {
-        // Create target URI
-        const targetURI = SIP.UserAgent.makeURI(`sip:${formattedNumber}@${SIPGATE_CONFIG.sipServer}`);
+        sipgateState.isInCall = true;
+        updateSipgateStatus('calling', 'Initiating call...');
+        showDialingSipgateUI(phoneNumber);
         
-        if (!targetURI) {
-            throw new Error('Invalid phone number');
+        // Prepare request body
+        const requestBody = {
+            caller: callerNumber,      // Your phone - rings first
+            callee: formattedNumber,   // Destination - connected after you answer
+            callerId: callerNumber     // Displayed caller ID
+        };
+        
+        // Add deviceId if available
+        if (SIPGATE_CONFIG.deviceId) {
+            requestBody.deviceId = SIPGATE_CONFIG.deviceId;
         }
         
-        // Create inviter (outgoing call)
-        const inviter = new SIP.Inviter(sipPhone.userAgent, targetURI, {
-            sessionDescriptionHandlerOptions: {
-                constraints: {
-                    audio: true,
-                    video: false
-                }
-            }
+        console.log('Sipgate API request:', requestBody);
+        
+        // Make API call
+        const response = await fetch(`${SIPGATE_CONFIG.apiUrl}/sessions/calls`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': 'Basic ' + btoa(`${SIPGATE_CONFIG.tokenId}:${SIPGATE_CONFIG.token}`)
+            },
+            body: JSON.stringify(requestBody)
         });
         
-        sipPhone.session = inviter;
+        console.log('Sipgate API response status:', response.status);
         
-        // Setup session event handlers
-        setupSessionHandlers(inviter, formattedNumber);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Sipgate API error:', errorText);
+            throw new Error(`API error: ${response.status} - ${errorText}`);
+        }
         
-        // Send invite
-        await inviter.invite();
+        const data = await response.json();
+        console.log('Sipgate API response:', data);
         
-        sipPhone.isInCall = true;
-        showDialingSIPUI(formattedNumber);
-        updateSIPStatus('calling', 'Calling ' + phoneNumber);
+        sipgateState.currentSessionId = data.sessionId;
+        
+        showActiveSipgateCall(phoneNumber);
+        updateSipgateStatus('in-call', 'Your phone is ringing...');
+        showSipgateNotification('Your phone is ringing! Answer to connect.', 'success');
+        startSipgateCallTimer();
         
         return true;
         
     } catch (error) {
-        console.error('Call failed:', error);
-        showSIPNotification('Call failed: ' + error.message, 'error');
-        cleanupSIPCall();
+        console.error('Click-to-call failed:', error);
+        showSipgateNotification('Call failed: ' + error.message, 'error');
+        cleanupSipgateCall();
+        updateSipgateStatus('online', 'Ready for external calls');
         return false;
     }
 }
 
 /**
- * Setup session event handlers
+ * Format phone number for Sipgate API
+ * Converts UK numbers to E.164 format
  */
-function setupSessionHandlers(session, phoneNumber) {
-    session.stateChange.addListener((state) => {
-        console.log('Call state:', state);
-        
-        switch (state) {
-            case SIP.SessionState.Establishing:
-                updateSIPStatus('calling', 'Connecting...');
-                break;
-                
-            case SIP.SessionState.Established:
-                sipPhone.isInCall = true;
-                updateSIPStatus('in-call', 'In call');
-                showActiveSIPCall(phoneNumber);
-                startSIPCallTimer();
-                
-                // Setup remote audio
-                setupRemoteAudio(session);
-                break;
-                
-            case SIP.SessionState.Terminating:
-                updateSIPStatus('ending', 'Ending call...');
-                break;
-                
-            case SIP.SessionState.Terminated:
-                sipPhone.isInCall = false;
-                showSIPNotification('Call ended', 'info');
-                cleanupSIPCall();
-                updateSIPStatus('online', 'Ready for external calls');
-                break;
-        }
-    });
+function formatPhoneNumber(number) {
+    // Remove spaces, dashes, parentheses
+    let formatted = number.replace(/[\s\-\(\)]/g, '');
+    
+    // Convert UK local to international format
+    if (formatted.startsWith('0')) {
+        formatted = '+44' + formatted.substring(1);
+    }
+    
+    // Add + if missing
+    if (!formatted.startsWith('+')) {
+        formatted = '+44' + formatted;
+    }
+    
+    return formatted;
 }
 
 /**
- * Setup remote audio playback
+ * End the current call
+ * Note: Sipgate click-to-call is controlled by hanging up your phone
  */
-function setupRemoteAudio(session) {
-    const sessionDescriptionHandler = session.sessionDescriptionHandler;
-    
-    if (sessionDescriptionHandler && sessionDescriptionHandler.remoteMediaStream) {
-        const remoteAudio = document.getElementById('sip-remote-audio') || createSIPAudioElement();
-        remoteAudio.srcObject = sessionDescriptionHandler.remoteMediaStream;
-        remoteAudio.play().catch(e => console.error('Audio play error:', e));
-    }
-    
-    // Also listen for track events
-    if (sessionDescriptionHandler && sessionDescriptionHandler.peerConnection) {
-        sessionDescriptionHandler.peerConnection.ontrack = (event) => {
-            console.log('Received remote track:', event.track.kind);
-            const remoteAudio = document.getElementById('sip-remote-audio') || createSIPAudioElement();
-            remoteAudio.srcObject = event.streams[0];
-            remoteAudio.play().catch(e => console.error('Audio play error:', e));
-        };
-    }
+function endSipgateCall() {
+    showSipgateNotification('Hang up your phone to end the call', 'info');
+    cleanupSipgateCall();
 }
 
 /**
- * End the current SIP call
+ * Cleanup call state
  */
-function endSIPCall() {
-    if (sipPhone.session) {
-        try {
-            if (sipPhone.session.state === SIP.SessionState.Established) {
-                sipPhone.session.bye();
-            } else if (sipPhone.session.state === SIP.SessionState.Establishing) {
-                sipPhone.session.cancel();
-            }
-        } catch (error) {
-            console.error('Error ending call:', error);
-        }
-    }
-    cleanupSIPCall();
-}
-
-/**
- * Toggle mute on current call
- */
-function toggleSIPMute() {
-    if (!sipPhone.session || !sipPhone.isInCall) return;
-    
-    const sessionDescriptionHandler = sipPhone.session.sessionDescriptionHandler;
-    if (sessionDescriptionHandler && sessionDescriptionHandler.peerConnection) {
-        const senders = sessionDescriptionHandler.peerConnection.getSenders();
-        senders.forEach(sender => {
-            if (sender.track && sender.track.kind === 'audio') {
-                sender.track.enabled = !sender.track.enabled;
-                sipPhone.isMuted = !sender.track.enabled;
-            }
-        });
-        
-        const muteBtn = document.getElementById('sip-mute-btn');
-        if (muteBtn) {
-            muteBtn.classList.toggle('muted', sipPhone.isMuted);
-            muteBtn.innerHTML = sipPhone.isMuted ? 
-                '<i class="fas fa-microphone-slash"></i> Unmute' :
-                '<i class="fas fa-microphone"></i> Mute';
-        }
-        
-        showSIPNotification(sipPhone.isMuted ? 'Muted' : 'Unmuted', 'info');
-    }
-}
-
-/**
- * Cleanup call resources
- */
-function cleanupSIPCall() {
-    sipPhone.session = null;
-    sipPhone.isInCall = false;
-    sipPhone.isMuted = false;
-    
-    stopSIPCallTimer();
-    hideSIPCallUI();
-    
-    // Stop remote audio
-    const remoteAudio = document.getElementById('sip-remote-audio');
-    if (remoteAudio) {
-        remoteAudio.srcObject = null;
-    }
+function cleanupSipgateCall() {
+    sipgateState.currentSessionId = null;
+    sipgateState.isInCall = false;
+    stopSipgateCallTimer();
+    hideSipgateCallUI();
+    updateSipgateStatus('online', 'Ready for external calls');
 }
 
 // ============ UI Functions ============
 
-let sipCallTimer = null;
-let sipCallStartTime = null;
+let sipgateCallTimer = null;
+let sipgateCallStartTime = null;
 
-function setupSIPUI() {
-    // Create SIP phone UI container
+function setupSipgateUI() {
+    // Create Sipgate phone UI container
     let container = document.getElementById('sip-phone-section');
     if (!container) {
         container = document.createElement('div');
@@ -339,44 +179,41 @@ function setupSIPUI() {
                 <div class="sip-phone-info">
                     <h3>External Calls (Sipgate)</h3>
                     <div id="sip-status" class="sip-status">
-                        <span class="status-dot offline"></span>
-                        <span id="sip-status-text">Initializing...</span>
+                        <span class="status-dot online"></span>
+                        <span id="sip-status-text">Ready for external calls</span>
                     </div>
+                    <small class="sip-info-text">Calls your phone (${SIPGATE_CONFIG.callerNumber}) first, then bridges to destination</small>
                 </div>
             </div>
             
             <div class="sip-dial-section">
                 <div class="sip-input-group">
-                    <input type="tel" id="sip-phone-number" placeholder="Enter phone number" class="sip-phone-input">
-                    <button id="sip-call-btn" class="btn btn-success" onclick="dialSIPNumber()" disabled>
+                    <input type="tel" id="sip-phone-number" placeholder="Enter phone number (e.g. 07911123456)" class="sip-phone-input">
+                    <button id="sip-call-btn" class="btn btn-success" onclick="dialSipgateNumber()">
                         <i class="fas fa-phone"></i> Call
                     </button>
                 </div>
-                <div class="sip-quick-dial">
-                    <span class="quick-dial-label">Quick dial:</span>
-                    <button class="btn btn-small btn-outline" onclick="setSIPNumber('+447911123456')">Test UK Mobile</button>
+                <div class="sip-how-it-works">
+                    <i class="fas fa-info-circle"></i>
+                    <span>How it works: Click Call → Your phone rings → Answer → Connected to destination</span>
                 </div>
             </div>
             
             <div id="sip-active-call" class="sip-active-call hidden">
                 <div class="sip-call-info">
-                    <i class="fas fa-phone-alt sip-call-icon"></i>
+                    <i class="fas fa-phone-alt sip-call-icon ringing"></i>
                     <div class="sip-call-details">
                         <span id="sip-call-number" class="sip-call-number">Calling...</span>
                         <span id="sip-call-timer" class="sip-call-timer">00:00</span>
+                        <span id="sip-call-hint" class="sip-call-hint">Answer your phone to connect</span>
                     </div>
                 </div>
                 <div class="sip-call-controls">
-                    <button id="sip-mute-btn" class="btn btn-secondary" onclick="toggleSIPMute()">
-                        <i class="fas fa-microphone"></i> Mute
-                    </button>
-                    <button class="btn btn-danger" onclick="endSIPCall()">
-                        <i class="fas fa-phone-slash"></i> End Call
+                    <button class="btn btn-danger" onclick="endSipgateCall()">
+                        <i class="fas fa-phone-slash"></i> End / Cancel
                     </button>
                 </div>
             </div>
-            
-            <audio id="sip-remote-audio" autoplay style="display: none;"></audio>
         `;
         
         // Insert after webrtc-phone-section
@@ -384,32 +221,34 @@ function setupSIPUI() {
         if (webrtcSection) {
             webrtcSection.parentNode.insertBefore(container, webrtcSection.nextSibling);
         } else {
-            document.querySelector('.portal-content').prepend(container);
+            const portalContent = document.querySelector('.portal-content');
+            if (portalContent) {
+                portalContent.prepend(container);
+            }
         }
     }
     
     sipUI = {
         container: container,
-        status: document.getElementById('sip-status'),
-        statusText: document.getElementById('sip-status-text'),
         phoneInput: document.getElementById('sip-phone-number'),
         callBtn: document.getElementById('sip-call-btn'),
         activeCall: document.getElementById('sip-active-call'),
         callNumber: document.getElementById('sip-call-number'),
-        callTimer: document.getElementById('sip-call-timer')
+        callTimer: document.getElementById('sip-call-timer'),
+        callHint: document.getElementById('sip-call-hint')
     };
     
-    // Enable call button when registered
+    // Enter key to dial
     if (sipUI.phoneInput) {
         sipUI.phoneInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && sipPhone.isRegistered) {
-                dialSIPNumber();
+            if (e.key === 'Enter') {
+                dialSipgateNumber();
             }
         });
     }
 }
 
-function updateSIPStatus(status, text) {
+function updateSipgateStatus(status, text) {
     const statusDot = document.querySelector('#sip-status .status-dot');
     const statusText = document.getElementById('sip-status-text');
     
@@ -423,41 +262,44 @@ function updateSIPStatus(status, text) {
     // Enable/disable call button
     const callBtn = document.getElementById('sip-call-btn');
     if (callBtn) {
-        callBtn.disabled = !sipPhone.isRegistered || sipPhone.isInCall;
+        callBtn.disabled = sipgateState.isInCall;
     }
 }
 
-function dialSIPNumber() {
+function dialSipgateNumber() {
     const phoneInput = document.getElementById('sip-phone-number');
-    if (phoneInput && phoneInput.value) {
-        makeExternalCall(phoneInput.value);
+    if (phoneInput && phoneInput.value.trim()) {
+        makeExternalCall(phoneInput.value.trim());
+    } else {
+        showSipgateNotification('Please enter a phone number', 'warning');
     }
 }
 
-function setSIPNumber(number) {
-    const phoneInput = document.getElementById('sip-phone-number');
-    if (phoneInput) {
-        phoneInput.value = number;
-    }
-}
-
-function showDialingSIPUI(phoneNumber) {
+function showDialingSipgateUI(phoneNumber) {
     const activeCall = document.getElementById('sip-active-call');
     const callNumber = document.getElementById('sip-call-number');
+    const callHint = document.getElementById('sip-call-hint');
+    const callIcon = document.querySelector('.sip-call-icon');
     
     if (activeCall) activeCall.classList.remove('hidden');
     if (callNumber) callNumber.textContent = 'Calling: ' + phoneNumber;
+    if (callHint) callHint.textContent = 'Your phone is ringing - answer to connect';
+    if (callIcon) callIcon.classList.add('ringing');
 }
 
-function showActiveSIPCall(phoneNumber) {
+function showActiveSipgateCall(phoneNumber) {
     const activeCall = document.getElementById('sip-active-call');
     const callNumber = document.getElementById('sip-call-number');
+    const callHint = document.getElementById('sip-call-hint');
+    const callIcon = document.querySelector('.sip-call-icon');
     
     if (activeCall) activeCall.classList.remove('hidden');
-    if (callNumber) callNumber.textContent = 'Connected: ' + phoneNumber;
+    if (callNumber) callNumber.textContent = 'To: ' + phoneNumber;
+    if (callHint) callHint.textContent = 'Hang up your phone when done';
+    if (callIcon) callIcon.classList.remove('ringing');
 }
 
-function hideSIPCallUI() {
+function hideSipgateCallUI() {
     const activeCall = document.getElementById('sip-active-call');
     if (activeCall) activeCall.classList.add('hidden');
     
@@ -465,10 +307,10 @@ function hideSIPCallUI() {
     if (callTimer) callTimer.textContent = '00:00';
 }
 
-function startSIPCallTimer() {
-    sipCallStartTime = Date.now();
-    sipCallTimer = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - sipCallStartTime) / 1000);
+function startSipgateCallTimer() {
+    sipgateCallStartTime = Date.now();
+    sipgateCallTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - sipgateCallStartTime) / 1000);
         const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
         const secs = (elapsed % 60).toString().padStart(2, '0');
         
@@ -479,28 +321,21 @@ function startSIPCallTimer() {
     }, 1000);
 }
 
-function stopSIPCallTimer() {
-    if (sipCallTimer) {
-        clearInterval(sipCallTimer);
-        sipCallTimer = null;
+function stopSipgateCallTimer() {
+    if (sipgateCallTimer) {
+        clearInterval(sipgateCallTimer);
+        sipgateCallTimer = null;
     }
-    sipCallStartTime = null;
+    sipgateCallStartTime = null;
 }
 
-function createSIPAudioElement() {
-    const audio = document.createElement('audio');
-    audio.id = 'sip-remote-audio';
-    audio.autoplay = true;
-    document.body.appendChild(audio);
-    return audio;
-}
-
-function showSIPNotification(message, type = 'info') {
+function showSipgateNotification(message, type = 'info') {
     // Use existing notification system if available
     if (typeof showNotification === 'function') {
         showNotification(message, type);
     } else {
-        console.log(`[SIP ${type}] ${message}`);
+        console.log(`[Sipgate ${type}] ${message}`);
+        alert(message);
     }
 }
 
@@ -508,8 +343,9 @@ function showSIPNotification(message, type = 'info') {
 window.SIPPhone = {
     init: initSIPPhone,
     makeCall: makeExternalCall,
-    endCall: endSIPCall,
-    toggleMute: toggleSIPMute,
-    isConnected: () => sipPhone.isRegistered,
-    isInCall: () => sipPhone.isInCall
+    endCall: endSipgateCall,
+    isInCall: () => sipgateState.isInCall
 };
+
+// Also keep initSIPPhone as global for app.js
+window.initSIPPhone = initSIPPhone;
