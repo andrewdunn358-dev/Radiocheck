@@ -544,8 +544,11 @@ function setupLiveChatRequestListeners() {
     // Listen for chat request confirmation (when we accept)
     socket.off('chat_request_confirmed');
     socket.on('chat_request_confirmed', function(data) {
-        console.log('Chat request confirmed, room:', data.room_id);
+        console.log('=== CHAT REQUEST CONFIRMED ===');
+        console.log('chat_request_confirmed received:', data);
+        console.log('room_id:', data.room_id);
         // Join the chat room
+        console.log('Calling joinLiveChat with room_id:', data.room_id);
         joinLiveChat(data.room_id);
     });
     
