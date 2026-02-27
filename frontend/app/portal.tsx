@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 
 export default function PortalRouter() {
-  const { user, isLoading } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -14,19 +14,21 @@ export default function PortalRouter() {
       } else {
         switch (user.role) {
           case 'admin':
-            // Use WebView for admin portal on mobile, redirect on web
             if (Platform.OS === 'web') {
-              router.replace('/admin');
+              // On web, redirect to external admin portal with token
+              window.location.href = `https://admin.radiocheck.me?token=${token}`;
             } else {
+              // On mobile, use WebView
               router.replace('/admin-webview');
             }
             break;
           case 'counsellor':
           case 'peer':
-            // Use WebView for staff portal on mobile, existing screens on web
             if (Platform.OS === 'web') {
-              router.replace('/counsellor-portal');
+              // On web, redirect to external staff portal with token
+              window.location.href = `https://staff.radiocheck.me?token=${token}`;
             } else {
+              // On mobile, use WebView
               router.replace('/staff-webview');
             }
             break;
@@ -40,7 +42,7 @@ export default function PortalRouter() {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#4a90d9" />
-      <Text style={styles.text}>Loading...</Text>
+      <Text style={styles.text}>Redirecting to portal...</Text>
     </View>
   );
 }
