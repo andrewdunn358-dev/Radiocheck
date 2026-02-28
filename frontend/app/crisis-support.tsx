@@ -189,14 +189,24 @@ export default function CrisisSupport() {
               <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>First point of contact for veterans seeking support. Connects you to the right services.</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={{ flexDirection: 'row', backgroundColor: '#2563eb', borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            onPress={() => handleCall('08088021212')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="call" size={24} color="#ffffff" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>0808 802 1212</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity
+              style={{ flex: 1, flexDirection: 'row', backgroundColor: '#2563eb', borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              onPress={() => handleCall('08088021212')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call" size={24} color="#ffffff" />
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>0808 802 1212</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', backgroundColor: colors.surfaceHover, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border }}
+              onPress={() => handleWebsite('https://www.veteransgateway.org.uk')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="globe-outline" size={18} color={colors.textSecondary} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Website</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* SSAFA */}
