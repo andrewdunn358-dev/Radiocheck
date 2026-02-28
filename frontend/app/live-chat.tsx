@@ -154,7 +154,8 @@ export default function LiveChat() {
     });
 
     socket.on('new_chat_message', (data) => {
-      console.log('New message:', data);
+      // Don't log message content for privacy
+      console.log('New message received from:', data.sender_type);
       // Only add messages from others (not our own)
       if (data.sender_id !== userId) {
         setMessages(prev => [...prev, {
