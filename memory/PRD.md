@@ -224,14 +224,14 @@ The call connection was failing because of a **call_id mismatch**:
 
 ## Latest Update - December 28, 2025
 
-### Age Gate Bug Fix (COMPLETED - Critical)
+### Age Gate Bug Fix (COMPLETED - Critical) - VERIFIED
 - **BUG FIXED**: Under-18 users could previously access peer-to-peer support despite the age restriction
-- The `canMakePeerCalls` variable was defined but never used to block access
-- **FIX**: Added age restriction screen in `peer-support.tsx` that:
-  - Shows when user is verified as under-18
-  - Displays a friendly "Extra Protection Active" message
-  - Provides alternative options (AI Battle Buddies, Contact Support Staff)
-  - Completely blocks access to peer matching and direct calls
+- **Root Cause**: Race condition - `isLoading` state from useAgeGateContext was not being used, causing `isUnder18` to be `false` during initial render
+- **FIX APPLIED**:
+  1. Added `isLoading: isAgeLoading` from useAgeGateContext (line 30-31)
+  2. Added loading spinner while age data loads from AsyncStorage (line 557-562)
+  3. Updated both restriction screen and main content conditions to check `!isAgeLoading` first
+- **VERIFIED**: Testing agent confirmed the fix - restriction screen shows immediately without any content flash
 
 ### Website Links for Crisis Organizations (COMPLETED)
 Added website links to all organizations on the Crisis Support page:
