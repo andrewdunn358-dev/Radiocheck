@@ -5364,7 +5364,7 @@ async function viewSafeguardingAlert(alertId) {
     try {
         const alert = await apiCall(`/safeguarding-alerts/${alertId}`);
         if (!alert) {
-            showToast('Alert not found', 'error');
+            showNotification('Alert not found', 'error');
             return;
         }
         
@@ -5457,29 +5457,29 @@ async function viewSafeguardingAlert(alertId) {
         showModal('Safeguarding Alert Details', modalContent);
     } catch (error) {
         console.error('Error viewing safeguarding alert:', error);
-        showToast('Failed to load alert details', 'error');
+        showNotification('Failed to load alert details', 'error');
     }
 }
 
 async function acknowledgeSafeguardingAlert(alertId) {
     try {
         await apiCall(`/safeguarding-alerts/${alertId}/acknowledge`, { method: 'PATCH' });
-        showToast('Alert acknowledged', 'success');
+        showNotification('Alert acknowledged', 'success');
         loadLogs(); // Refresh the logs view
     } catch (error) {
         console.error('Error acknowledging alert:', error);
-        showToast('Failed to acknowledge alert', 'error');
+        showNotification('Failed to acknowledge alert', 'error');
     }
 }
 
 async function resolveSafeguardingAlert(alertId) {
     try {
         await apiCall(`/safeguarding-alerts/${alertId}/resolve`, { method: 'PATCH' });
-        showToast('Alert resolved', 'success');
+        showNotification('Alert resolved', 'success');
         loadLogs(); // Refresh the logs view
     } catch (error) {
         console.error('Error resolving alert:', error);
-        showToast('Failed to resolve alert', 'error');
+        showNotification('Failed to resolve alert', 'error');
     }
 }
 
@@ -5553,7 +5553,7 @@ async function testSafeguardingPhrase() {
     var resultEl = document.getElementById('test-result');
     
     if (!phraseInput || !phraseInput.value.trim()) {
-        showToast('Please enter a phrase to test', 'warning');
+        showNotification('Please enter a phrase to test', 'warning');
         return;
     }
     
@@ -5585,7 +5585,7 @@ async function testSafeguardingPhrase() {
         
     } catch (error) {
         console.error('Error testing phrase:', error);
-        showToast('Failed to test phrase', 'error');
+        showNotification('Failed to test phrase', 'error');
     }
 }
 
@@ -5641,11 +5641,11 @@ async function loadTriggerPhrases() {
         html += '</ul></div>';
         
         triggerEl.innerHTML = html;
-        showToast('Trigger phrases loaded', 'success');
+        showNotification('Trigger phrases loaded', 'success');
         
     } catch (error) {
         console.error('Error loading triggers:', error);
-        showToast('Failed to load trigger phrases', 'error');
+        showNotification('Failed to load trigger phrases', 'error');
     }
 }
 
@@ -5658,7 +5658,7 @@ async function refreshSafeguardingMonitor() {
         
         if (data.recent_alerts.length === 0) {
             activityEl.innerHTML = '<p class="no-data">No safeguarding alerts in the last 24 hours</p>';
-            showToast('No recent activity', 'info');
+            showNotification('No recent activity', 'info');
             return;
         }
         
@@ -5682,10 +5682,10 @@ async function refreshSafeguardingMonitor() {
         html += '</div>';
         
         activityEl.innerHTML = html;
-        showToast('Monitor refreshed - ' + data.recent_alerts.length + ' alerts', 'success');
+        showNotification('Monitor refreshed - ' + data.recent_alerts.length + ' alerts', 'success');
         
     } catch (error) {
         console.error('Error refreshing monitor:', error);
-        showToast('Failed to refresh monitor', 'error');
+        showNotification('Failed to refresh monitor', 'error');
     }
 }
