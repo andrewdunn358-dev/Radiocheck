@@ -554,6 +554,13 @@ export default function PeerSupport() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       
+      {/* Loading State - while age data loads from AsyncStorage */}
+      {isAgeLoading && (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
+      
       {/* Age Restriction Screen - shown for under-18 users */}
       {!isAgeLoading && isAgeVerified && isUnder18 && !canMakePeerCalls && (
         <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
