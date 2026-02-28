@@ -123,14 +123,24 @@ export default function CrisisSupport() {
               <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>24/7 emotional support for anyone in distress. Free to call, always confidential.</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={{ flexDirection: 'row', backgroundColor: '#16a34a', borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            onPress={() => handleCall('116123')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="call" size={24} color="#ffffff" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>Call 116 123</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity
+              style={{ flex: 1, flexDirection: 'row', backgroundColor: '#16a34a', borderRadius: 8, padding: 16, alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              onPress={() => handleCall('116123')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call" size={24} color="#ffffff" />
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>116 123</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', backgroundColor: colors.surfaceHover, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border }}
+              onPress={() => handleWebsite('https://www.samaritans.org')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="globe-outline" size={18} color={colors.textSecondary} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Website</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Combat Stress */}
