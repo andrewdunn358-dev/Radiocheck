@@ -27,7 +27,7 @@ export default function PeerSupport() {
   const { colors, isDark } = useTheme();
   
   // Age gate context - for restricting direct peer calls
-  const { isUnder18, isAgeVerified } = useAgeGateContext();
+  const { isUnder18, isAgeVerified, isLoading: isAgeLoading } = useAgeGateContext();
   const canMakePeerCalls = isFeatureAvailable('direct_peer_calls', isUnder18);
   
   const [email, setEmail] = useState('');
