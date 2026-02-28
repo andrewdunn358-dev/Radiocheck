@@ -1790,6 +1790,7 @@ class BuddyChatRequest(BaseModel):
     message: str
     sessionId: str
     character: str = "tommy"  # "tommy" or "doris"
+    is_under_18: bool = False  # Age gate flag for enhanced safeguarding
 
 class BuddyChatResponse(BaseModel):
     reply: str
