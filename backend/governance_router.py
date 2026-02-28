@@ -15,6 +15,17 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 import logging
+import os
+import asyncio
+
+# Email notifications
+try:
+    import resend
+    RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+    if RESEND_API_KEY:
+        resend.api_key = RESEND_API_KEY
+except ImportError:
+    RESEND_API_KEY = None
 
 from governance import (
     Hazard, HazardCreate, HazardStatus, HazardSeverity, HazardLikelihood,
