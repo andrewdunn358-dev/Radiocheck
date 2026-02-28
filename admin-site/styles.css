@@ -2969,3 +2969,171 @@ body {
     text-align: center;
     padding: 25px;
 }
+
+/* ============================================================================
+   GOVERNANCE MODULE STYLES
+   ============================================================================ */
+
+/* KPI Cards */
+.kpi-card {
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.kpi-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.kpi-target {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+/* Risk Badges */
+.risk-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.risk-badge.risk-low { background: #22c55e; color: white; }
+.risk-badge.risk-medium { background: #fbbf24; color: #1e293b; }
+.risk-badge.risk-high { background: #f97316; color: white; }
+.risk-badge.risk-critical { background: #ef4444; color: white; }
+
+/* Severity Badges */
+.severity-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.severity-badge.severity-negligible { background: #e0f2fe; color: #0369a1; }
+.severity-badge.severity-minor { background: #dcfce7; color: #166534; }
+.severity-badge.severity-moderate { background: #fef3c7; color: #92400e; }
+.severity-badge.severity-major { background: #fed7aa; color: #c2410c; }
+.severity-badge.severity-catastrophic { background: #fee2e2; color: #dc2626; }
+
+/* Likelihood Badges */
+.likelihood-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.status-badge.status-active { background: #dbeafe; color: #1e40af; }
+.status-badge.status-mitigated { background: #d1fae5; color: #065f46; }
+.status-badge.status-closed { background: #f3f4f6; color: #6b7280; }
+.status-badge.status-pending { background: #fef3c7; color: #92400e; }
+.status-badge.status-open { background: #fee2e2; color: #dc2626; }
+.status-badge.status-investigating { background: #dbeafe; color: #1e40af; }
+.status-badge.status-resolved { background: #d1fae5; color: #065f46; }
+
+/* Level Badges */
+.level-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.level-badge.level-moderate { background: #fef3c7; color: #92400e; }
+.level-badge.level-high { background: #fed7aa; color: #c2410c; }
+.level-badge.level-critical { background: #fee2e2; color: #dc2626; }
+
+/* Governance Subtabs */
+.governance-subtab.active {
+    background: var(--primary) !important;
+    color: white !important;
+}
+
+/* Table Container */
+.table-container {
+    overflow-x: auto;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.data-table td {
+    font-size: 14px;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover td {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+/* Button sizes */
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-success {
+    background: #22c55e;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #16a34a;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
