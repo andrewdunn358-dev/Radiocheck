@@ -238,29 +238,40 @@ export default function LocalServicesPage() {
     setIsSearching(true);
     setError(null);
     setNameSearchResults([]);
+    setSearchResult(null); // Reset previous result
     
     setTimeout(() => {
       const query = postcode.trim();
+      console.log('[Search] Query:', query);
       
       // First try postcode lookup
       let region = getRegionFromPostcode(query);
+      console.log('[Search] Postcode region:', region);
       
       // If not a postcode, try town name
       if (!region) {
         region = getRegionFromTown(query);
+        console.log('[Search] Town region:', region);
       }
       
       // Also search by organization name
       const nameResults = searchByName(query);
+      console.log('[Search] Name results:', nameResults.length);
       
       if (region) {
+        console.log('[Search] Setting region:', region);
         setSearchResult(region);
         setNameSearchResults([]);
+        setError(null);
       } else if (nameResults.length > 0) {
+        console.log('[Search] Setting name results');
         setSearchResult(null);
         setNameSearchResults(nameResults);
+        setError(null);
       } else {
+        console.log('[Search] No results found');
         setError('Could not find services. Try a postcode, town name, or organisation name.');
+        setSearchResult(null);
       }
       setIsSearching(false);
     }, 500);
