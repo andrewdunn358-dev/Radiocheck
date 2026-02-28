@@ -3536,10 +3536,19 @@ function resetUserPassword(userId, name) {
             <p style="margin-bottom: 16px;">Reset password for <strong>${name}</strong></p>
             <form id="reset-password-form">
                 <input type="hidden" name="user_id" value="${userId}">
+                <input type="hidden" name="user_name" value="${name}">
                 <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" name="new_password" required minlength="8" placeholder="Minimum 8 characters">
+                    <label>New Password *</label>
+                    <input type="password" name="new_password" id="new-password" required minlength="8" placeholder="Minimum 8 characters">
+                    <small style="color: var(--text-secondary); display: block; margin-top: 4px;">
+                        Must be 8+ characters with uppercase and lowercase letters. Cannot contain user's name.
+                    </small>
                 </div>
+                <div class="form-group">
+                    <label>Confirm Password *</label>
+                    <input type="password" name="confirm_password" id="confirm-password" required minlength="8" placeholder="Re-enter password">
+                </div>
+                <div id="password-error" style="color: var(--danger); font-size: 14px; margin-bottom: 12px; display: none;"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Reset Password</button>
@@ -3551,22 +3560,74 @@ function resetUserPassword(userId, name) {
     document.getElementById('reset-password-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
+        const newPassword = formData.get('new_password');
+        const confirmPassword = formData.get('confirm_password');
+        const userName = formData.get('user_name');
+        const errorDiv = document.getElementById('password-error');
+        
+        // Validate passwords match
+        if (newPassword !== confirmPassword) {
+            errorDiv.textContent = 'Passwords do not match';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        // Validate password complexity
+        const validationError = validatePasswordComplexity(newPassword, userName);
+        if (validationError) {
+            errorDiv.textContent = validationError;
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
         try {
             await apiCall('/auth/admin-reset-password', {
                 method: 'POST',
                 body: JSON.stringify({
                     user_id: formData.get('user_id'),
-                    new_password: formData.get('new_password')
+                    new_password: newPassword
                 })
             });
             showNotification('Password reset successfully', 'success');
             closeModal();
         } catch (error) {
-            showNotification('Failed to reset password: ' + error.message, 'error');
+            errorDiv.textContent = error.message || 'Failed to reset password';
+            errorDiv.style.display = 'block';
         }
     });
     
     document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+// Password complexity validation
+function validatePasswordComplexity(password, userName) {
+    // Minimum 8 characters
+    if (password.length < 8) {
+        return 'Password must be at least 8 characters long';
+    }
+    
+    // Must contain uppercase
+    if (!/[A-Z]/.test(password)) {
+        return 'Password must contain at least one uppercase letter';
+    }
+    
+    // Must contain lowercase
+    if (!/[a-z]/.test(password)) {
+        return 'Password must contain at least one lowercase letter';
+    }
+    
+    // Cannot contain user's name (case insensitive)
+    if (userName) {
+        const nameParts = userName.toLowerCase().split(/\s+/);
+        const passwordLower = password.toLowerCase();
+        for (const part of nameParts) {
+            if (part.length >= 3 && passwordLower.includes(part)) {
+                return 'Password cannot contain your name';
+            }
+        }
+    }
+    
+    return null; // Valid
 }
 
 // Open Status Modal
