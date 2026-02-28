@@ -30,9 +30,12 @@ export default function SplashScreen() {
       const consent = await AsyncStorage.getItem('cookie_consent');
       if (!consent) {
         setShowCookieNotice(true);
+        return false; // Not consented yet
       }
+      return true; // Already consented
     } catch (error) {
       setShowCookieNotice(true);
+      return false;
     }
   };
 
@@ -43,9 +46,12 @@ export default function SplashScreen() {
       if (!permissionAsked) {
         // Show permission modal on first launch
         setShowPermissionModal(true);
+        return false; // Not asked yet
       }
+      return true; // Already asked
     } catch (error) {
       console.log('Error checking permissions:', error);
+      return true; // Default to not showing
     }
   };
   
@@ -59,9 +65,14 @@ export default function SplashScreen() {
   }, [ageLoading, isAgeVerified, showCookieNotice, showPermissionModal, hasCheckedModals]);
   
   useEffect(() => {
-    checkCookieConsent();
-    checkPermissions();
-    setHasCheckedModals(true);
+    // Run checks and set hasCheckedModals only after both complete
+    const initModals = async () => {
+      const cookiesDone = await checkCookieConsent();
+      const permsDone = await checkPermissions();
+      // Only set hasCheckedModals after we know if other modals should show
+      setHasCheckedModals(true);
+    };
+    initModals();
   }, []);
 
   const handleAllowPermissions = async () => {
