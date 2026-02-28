@@ -50,6 +50,7 @@ from enhanced_safety_layer import (
 
 # Import governance router for clinical safety & compliance
 from governance_router import governance_router, set_db as set_governance_db
+from case_router import case_router, set_dependencies as set_case_dependencies
 
 # ============ RATE LIMITING & BOT PROTECTION ============
 
