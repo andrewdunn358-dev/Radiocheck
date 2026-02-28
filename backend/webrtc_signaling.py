@@ -246,10 +246,20 @@ async def call_initiate(sid, data):
     caller_info = connected_users.get(sid, {})
     call_type = data.get('call_type', 'audio')
     
+    logger.info(f"=== CALL INITIATE ===")
+    logger.info(f"Caller SID: {sid}")
+    logger.info(f"Caller info: {caller_info}")
+    logger.info(f"Target user_id: {target_user_id}")
+    logger.info(f"All connected users: {list(connected_users.keys())}")
+    logger.info(f"User to socket mapping: {user_to_socket}")
+    
     # Find target's socket
     target_sid = user_to_socket.get(target_user_id)
     
+    logger.info(f"Found target_sid: {target_sid}")
+    
     if not target_sid:
+        logger.warning(f"Target user {target_user_id} not found in user_to_socket mapping!")
         await sio.emit('call_failed', {
             'reason': 'user_offline',
             'message': 'The person you are trying to call is not available'
@@ -257,8 +267,10 @@ async def call_initiate(sid, data):
         return
     
     target_info = connected_users.get(target_sid, {})
+    logger.info(f"Target info: {target_info}")
     
     if target_info.get('status') != 'available':
+        logger.warning(f"Target user {target_user_id} is not available, status: {target_info.get('status')}")
         await sio.emit('call_failed', {
             'reason': 'user_busy',
             'message': 'The person you are trying to call is busy'
