@@ -224,6 +224,39 @@ The call connection was failing because of a **call_id mismatch**:
 
 ## Latest Update - December 28, 2025
 
+### Clinical Safety Governance Implementation (COMPLETED)
+Implemented comprehensive NHS DCB0129-aligned governance system:
+
+**Backend Components:**
+- `/app/backend/governance.py` - Governance models (Hazards, Incidents, KPIs, Moderation)
+- `/app/backend/governance_router.py` - API endpoints for governance
+
+**Admin Portal Features:**
+- **Hazard Register**: Track and manage safety hazards with risk scoring
+- **Safeguarding KPIs**: Monitor response times, SLA compliance, alert volumes
+- **Incident Management**: Log and track safety incidents by severity level
+- **Peer Moderation**: Review user reports, issue warnings/suspensions/bans
+- **CSO Approvals**: Clinical Safety Officer sign-off workflow
+
+**API Endpoints:**
+- `GET/POST /api/governance/hazards` - Hazard log management
+- `GET /api/governance/kpis` - Safeguarding performance metrics
+- `GET/POST /api/governance/incidents` - Incident management
+- `GET/POST /api/governance/peer-reports` - Peer moderation queue
+- `GET/POST /api/governance/cso/approvals` - CSO approval workflow
+- `GET /api/governance/export` - Audit data export
+
+**Pre-populated 7 Core Hazards:**
+- H1: AI fails to detect suicidal ideation
+- H2: AI over-escalates benign content
+- H3: Staff miss urgent alert
+- H4: Under-18 falsely declares 18+
+- H5: Peer messaging abuse
+- H6: System outage during crisis
+- H7: AI safety drift after update
+
+**Samaritans AI Policy Compliance**: 9/9 applicable areas addressed
+
 ### Age Gate Implementation (COMPLETED)
 Implemented comprehensive age safeguarding system per user requirements:
 
@@ -252,8 +285,15 @@ Implemented comprehensive age safeguarding system per user requirements:
 - Enhanced safety layer applies 1.3x multiplier for under-18 users
 - Risk level automatically elevated for young users
 
-**Documentation Created:**
-- `/app/docs/AI_SAFEGUARDING_FEATURES.md` - Complete safety system documentation
+**Documentation Updated:**
+- `/app/docs/AI_SAFEGUARDING_FEATURES.md` - Complete safety & governance documentation
+- Samaritans compliance scorecard added
+- Clinical Safety Governance section added
+- Hazard Log documented
+- KPI targets documented
+
+**Configuration:**
+- Peer registration emails now sent to: `admin@radiocheck.me`
 
 ## 3rd Party Integrations
 - **OpenAI GPT-4**: AI chat personas
