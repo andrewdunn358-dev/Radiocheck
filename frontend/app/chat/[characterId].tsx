@@ -212,6 +212,7 @@ export default function DynamicAIChat() {
           message: messageText,
           character: character.id,
           sessionId: sessionId,
+          is_under_18: isUnder18,
         }),
       });
 
