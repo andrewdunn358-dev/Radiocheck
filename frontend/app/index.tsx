@@ -298,6 +298,12 @@ export default function SplashScreen() {
         </View>
       </Modal>
 
+      {/* Age Gate Modal */}
+      <AgeGateModal
+        visible={showAgeGateModal}
+        onSubmit={handleAgeGateSubmit}
+      />
+
       {/* Cookie Notice */}
       {showCookieNotice && (
         <View style={styles.cookieNotice}>
