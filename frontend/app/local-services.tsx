@@ -82,6 +82,7 @@ const REGIONAL_SERVICES: { [key: string]: { name: string; phone: string; url: st
   ],
   'North East': [
     { name: 'Veterans Mental Health TIL (North East)', phone: '0191 566 5454', url: 'https://www.tewv.nhs.uk/veterans' },
+    { name: 'East Durham Veterans Trust', phone: '0191 581 5677', url: 'https://www.eastdurhamveterans.co.uk/' },
     { name: 'Walking With The Wounded (Newcastle)', phone: '01011 462156', url: 'https://walkingwiththewounded.org.uk/' }
   ]
 };
