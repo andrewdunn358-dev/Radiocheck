@@ -152,7 +152,7 @@ export default function CrisisSupport() {
               <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>Veterans' mental health charity. Specialist support from people who understand military life.</Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
             <TouchableOpacity
               style={{ flex: 1, flexDirection: 'row', backgroundColor: '#dc2626', borderRadius: 8, padding: 14, alignItems: 'center', justifyContent: 'center', gap: 8 }}
               onPress={() => handleCall('08001381619')}
@@ -170,6 +170,14 @@ export default function CrisisSupport() {
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Text</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', backgroundColor: colors.surfaceHover, borderRadius: 8, padding: 12, alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border }}
+            onPress={() => handleWebsite('https://combatstress.org.uk')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="globe-outline" size={18} color={colors.textSecondary} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Visit Website</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Veterans Gateway */}
