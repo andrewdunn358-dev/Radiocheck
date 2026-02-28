@@ -51,6 +51,9 @@ export default function UnifiedAIChat() {
   const { colors, theme } = useTheme();
   const isDark = theme === 'dark';
   
+  // Age gate context - for enhanced safeguarding
+  const { isUnder18 } = useAgeGateContext();
+  
   // Get character config
   const character = useMemo(() => getCharacter(characterId), [characterId]);
   
