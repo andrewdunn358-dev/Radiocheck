@@ -257,5 +257,164 @@ When intervention is triggered, users see:
 
 ---
 
+## Clinical Safety Governance (DCB0129 Aligned)
+
+Radio Check operates under a structured Clinical Safety Governance model aligned with NHS Digital Clinical Risk Management principles.
+
+### Clinical Safety Officer (CSO) Responsibilities
+
+A designated Clinical Safety Officer is responsible for:
+
+| Responsibility | Frequency | Status |
+|---------------|-----------|--------|
+| Review safeguarding system performance | Monthly | ✅ Enabled |
+| Monitor escalation thresholds | Ongoing | ✅ Enabled |
+| Review high-risk cases | As needed | ✅ Enabled |
+| Approve risk model changes | Before deployment | ✅ Enabled |
+| Maintain the Hazard Log | Ongoing | ✅ Enabled |
+| Review safeguarding KPIs | Monthly | ✅ Enabled |
+| Oversee serious incident investigations | As needed | ✅ Enabled |
+
+### CSO Qualifications Required
+- Recognised clinical qualification (e.g., Registered Mental Health Nurse, Psychologist, Counsellor Level 4+)
+- Safeguarding training completed
+- Reviews AI safety model updates before deployment
+- Signs off annual safeguarding review
+
+### Key Principle
+**Escalation responsibility remains human-led. AI does not replace clinical judgement.**
+
+---
+
+## Hazard Log
+
+Radio Check maintains a formal Hazard Log for governance purposes.
+
+### Pre-Populated Core Hazards
+
+| ID | Hazard | Severity | Likelihood | Risk Rating | Mitigation | Status |
+|----|--------|----------|------------|-------------|------------|--------|
+| H1 | AI fails to detect suicidal ideation | Catastrophic | Low | 10 | Multi-layer detection, contextual scoring, escalation review | Active |
+| H2 | AI over-escalates benign content | Minor | Medium | 6 | Staff review required before intervention | Active |
+| H3 | Staff miss urgent alert | Major | Low | 8 | Email + dashboard alert + escalation timer | Active |
+| H4 | Under-18 falsely declares 18+ | Moderate | Medium | 9 | Clear declaration + heightened universal safeguards | Active |
+| H5 | Peer messaging abuse | Moderate | Low | 6 | Moderation reporting + suspension process | Active |
+| H6 | System outage during crisis | Major | Very Low | 4 | Crisis numbers always visible + redundancy hosting | Active |
+| H7 | AI safety drift after update | Major | Low | 8 | CSO approval required before release | Active |
+
+---
+
+## Safeguarding KPIs
+
+### Monthly Operational Metrics
+
+| KPI | Target | Measurement |
+|-----|--------|-------------|
+| High-risk alert review time | < 15 minutes | Time from alert to staff acknowledgement |
+| Imminent risk contact attempt | < 5 minutes | Time to first contact attempt |
+| % of high-risk cases contacted | > 90% | Cases where contact was made |
+| Escalation accuracy rate | > 85% | Confirmed true positives |
+| False positive rate | < 15% | Confirmed false alerts |
+| Repeated medium-risk users reviewed | 100% | All flagged for follow-up |
+| Staff acknowledgement time | < 10 minutes | Alert to acknowledgement |
+
+### Accessing KPIs
+KPIs are available in the Admin Portal under **Governance > Safeguarding KPIs**.
+
+---
+
+## Automated Decision Transparency (GDPR Article 22)
+
+### User Notice
+
+Radio Check uses automated systems to assess conversational risk levels for safeguarding purposes.
+
+**This includes:**
+- Detection of distress signals
+- Risk scoring based on language patterns
+- Escalation triggers for staff review
+
+**Important:**
+- Automated scoring does **not** replace human judgement
+- Where high or imminent risk is detected, a trained staff member reviews the alert
+- Users may request human review of automated decisions
+- No fully automated decisions with legal or similarly significant effects are made without human oversight
+
+---
+
+## Peer Moderation Framework
+
+### Peer Messaging Behaviour Standards
+
+Users must not:
+- Encourage self-harm
+- Harass or threaten others
+- Share harmful content
+- Attempt exploitation
+
+### Automated Monitoring
+
+Peer messages are scanned for:
+- Self-harm encouragement
+- Threats and abuse
+- Grooming language
+
+### Reporting & Moderation
+
+Users can:
+- Report peer messages
+- Block users
+- Request staff review
+
+**Moderation Workflow:**
+1. Report logged
+2. Staff review within 24 hours (immediately if risk detected)
+3. Outcomes: Warning / Suspension / Ban
+4. All actions logged
+
+### Safeguarding Override
+If a peer message contains suicide ideation:
+- Same AI risk scoring applies
+- Staff alerted immediately
+
+---
+
+## Incident Management
+
+### Incident Levels
+
+| Level | Classification | Response Time |
+|-------|---------------|---------------|
+| Level 1 | Moderate | Within 24 hours |
+| Level 2 | High | Within 4 hours |
+| Level 3 | Critical | Immediate |
+
+### Incident Process
+1. Incident created (auto or manual)
+2. Assigned to staff member
+3. Investigation documented
+4. Resolution summary recorded
+5. Incident closed with learnings captured
+
+---
+
+## Audit Export
+
+Governance data can be exported for audit purposes via:
+- **Admin Portal**: Governance > Export
+- **API**: `GET /api/governance/export`
+
+Export includes:
+- Hazard log (full history)
+- KPI metrics (specified period)
+- Escalation statistics
+- Clinical sign-offs
+- Incident reports
+
+**Privacy:** No chat content is included in exports.
+
+---
+
 *Last Updated: December 2025*
-*Version: 1.0*
+*Version: 2.0 - Clinical Safety Governance Edition*
+
