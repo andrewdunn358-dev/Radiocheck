@@ -107,6 +107,16 @@ export default function SplashScreen() {
     }
   };
 
+  // Handle DOB submission from Age Gate
+  const handleAgeGateSubmit = async (dob: Date) => {
+    try {
+      await setDateOfBirth(dob);
+      setShowAgeGateModal(false);
+    } catch (error) {
+      console.error('Error saving DOB:', error);
+    }
+  };
+
   const handleYes = () => {
     router.replace('/crisis-support');
   };
