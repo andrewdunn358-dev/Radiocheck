@@ -31,6 +31,7 @@ import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 import { getCharacter, AICharacter } from '../src/config/ai-characters';
 import AIConsentModal from '../src/components/AIConsentModal';
+import { useAgeGateContext } from '../src/context/AgeGateContext';
 
 interface Message {
   id: string;
