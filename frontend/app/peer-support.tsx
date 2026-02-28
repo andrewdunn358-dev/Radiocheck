@@ -555,7 +555,7 @@ export default function PeerSupport() {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       
       {/* Age Restriction Screen - shown for under-18 users */}
-      {isAgeVerified && isUnder18 && !canMakePeerCalls && (
+      {!isAgeLoading && isAgeVerified && isUnder18 && !canMakePeerCalls && (
         <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', position: 'absolute', top: 16, left: 0 }}>
