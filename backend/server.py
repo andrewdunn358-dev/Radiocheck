@@ -37,6 +37,17 @@ from safety import (
     get_emergency_number,
 )
 
+# Import enhanced safety layer (wraps around personas, doesn't replace them)
+from enhanced_safety_layer import (
+    analyze_message_safety,
+    get_session_safety_summary,
+    get_user_safety_summary,
+    get_safety_audit_log,
+    export_safety_audit_log,
+    check_age_for_features,
+    RiskLevel,
+)
+
 # ============ RATE LIMITING & BOT PROTECTION ============
 
 # Rate limit configuration
