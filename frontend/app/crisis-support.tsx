@@ -17,6 +17,10 @@ export default function CrisisSupport() {
     Linking.openURL(`sms:${number}`);
   };
 
+  const handleWebsite = (url: string) => {
+    Linking.openURL(url);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
