@@ -4417,7 +4417,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             session_id=request.sessionId,
             user_id=request.sessionId,  # Anonymous users use session as ID
             character=character,
-            is_under_18=getattr(request, 'is_under_18', False)
+            is_under_18=request.is_under_18
         )
         
         # Check for hard fail-safe (method requests, validation of suicidal intent)
