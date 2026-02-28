@@ -57,8 +57,16 @@ export default function SplashScreen() {
   
   // Check if age gate should be shown after other modals are closed
   useEffect(() => {
+    console.log('[AgeGate Debug]', {
+      ageLoading,
+      isAgeVerified,
+      showCookieNotice,
+      showPermissionModal,
+      hasCheckedModals
+    });
     if (!ageLoading && !showCookieNotice && !showPermissionModal && hasCheckedModals) {
       if (!isAgeVerified) {
+        console.log('[AgeGate] Showing age gate modal');
         setShowAgeGateModal(true);
       }
     }
