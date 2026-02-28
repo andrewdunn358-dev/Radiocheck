@@ -539,6 +539,7 @@ function makeOutboundCall(targetUserId) {
     console.log('Socket connected:', socket?.connected);
     console.log('Is registered:', isRegistered);
     console.log('Current call ID:', currentCallId);
+    console.log('Peer connection state:', peerConnection?.connectionState);
     
     if (!socket || !isRegistered) {
         showNotification('Phone not connected. Please wait...', 'error');
@@ -546,8 +547,12 @@ function makeOutboundCall(targetUserId) {
     }
     
     if (currentCallId) {
-        // Check if we're actually in an active call by checking peer connection state
-        if (peerConnection && peerConnection.connectionState === 'connected') {
+        // Check if we're actually in an active call
+        var isActiveCall = peerConnection && 
+            (peerConnection.connectionState === 'connected' || 
+             peerConnection.connectionState === 'connecting');
+        
+        if (isActiveCall) {
             showNotification('Already in a call', 'warning');
             return;
         } else {
@@ -555,6 +560,12 @@ function makeOutboundCall(targetUserId) {
             console.log('Stale call ID detected, cleaning up...');
             cleanupCall();
         }
+    }
+    
+    // Double-check cleanup happened
+    if (currentCallId) {
+        console.log('Force clearing currentCallId');
+        currentCallId = null;
     }
     
     console.log('Initiating call to:', targetUserId);
