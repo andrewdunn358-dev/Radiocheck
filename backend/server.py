@@ -5915,6 +5915,10 @@ app.include_router(shift_swaps.router, prefix="/api")
 set_governance_db(db)
 app.include_router(governance_router, prefix="/api")
 
+# Case Management routes (counsellor triage system)
+set_case_dependencies(db, get_current_user)
+app.include_router(case_router, prefix="/api")
+
 # Serve static files for Staff Portal and Admin Site
 # This allows testing the portals from the preview environment
 PORTAL_PATH = Path(__file__).parent.parent / "staff-portal"
