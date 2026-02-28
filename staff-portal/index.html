@@ -154,45 +154,8 @@
                             <button class="btn btn-icon btn-secondary" onclick="loadSafeguardingAlerts()">
                                 <i class="fas fa-sync"></i>
                             </button>
-                            <button class="btn btn-icon btn-secondary" onclick="toggleSafeguardingMonitor()" title="Safeguarding Monitor">
-                                <i class="fas fa-chart-line"></i>
-                            </button>
                         </div>
                         <div id="safeguarding-list" class="cards-list"></div>
-                        
-                        <!-- Safeguarding Monitor Panel (Hidden by default) -->
-                        <div id="safeguarding-monitor" class="monitor-panel" style="display: none;">
-                            <div class="monitor-header">
-                                <h3><i class="fas fa-microscope"></i> Safeguarding Monitor</h3>
-                                <button class="btn btn-small btn-secondary" onclick="refreshMonitor()">
-                                    <i class="fas fa-sync"></i> Refresh
-                                </button>
-                            </div>
-                            
-                            <!-- Test Phrase -->
-                            <div class="monitor-section">
-                                <h4>Test a Phrase</h4>
-                                <div class="test-phrase-input">
-                                    <input type="text" id="test-phrase" placeholder="Enter a phrase to test..." />
-                                    <button class="btn btn-primary" onclick="testSafeguardingPhrase()">Test</button>
-                                </div>
-                                <div id="test-result" class="test-result"></div>
-                            </div>
-                            
-                            <!-- Trigger Phrases -->
-                            <div class="monitor-section">
-                                <h4>Trigger Phrases <button class="btn btn-small btn-outline" onclick="loadTriggerPhrases()">Load</button></h4>
-                                <div id="trigger-phrases" class="trigger-list"></div>
-                            </div>
-                            
-                            <!-- Recent Activity -->
-                            <div class="monitor-section">
-                                <h4>Recent AI Analysis</h4>
-                                <div id="monitor-activity" class="monitor-activity">
-                                    <p class="no-data">Click Refresh to load data</p>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Live Chats Section -->
