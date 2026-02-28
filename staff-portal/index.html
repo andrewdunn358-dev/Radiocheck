@@ -386,6 +386,103 @@
         </div>
     </div>
 
+    <!-- Incident Report Modal -->
+    <div id="incident-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Report Incident</h3>
+                <button class="btn btn-icon" onclick="closeIncidentModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Use this form to report any safeguarding incident, near-miss, or significant event.
+                </p>
+                <div class="form-group">
+                    <label>Incident Title *</label>
+                    <input type="text" id="incident-title" placeholder="Brief description of what happened" required>
+                </div>
+                <div class="form-group">
+                    <label>Severity Level *</label>
+                    <select id="incident-level" required>
+                        <option value="">Select level...</option>
+                        <option value="level_1_moderate">Level 1 - Moderate (handled locally)</option>
+                        <option value="level_2_high">Level 2 - High (required escalation)</option>
+                        <option value="level_3_critical">Level 3 - Critical (serious safeguarding)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>What happened? *</label>
+                    <textarea id="incident-description" rows="4" placeholder="Describe what happened, who was involved, and what action was taken" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Related Session ID (if known)</label>
+                    <input type="text" id="incident-session" placeholder="e.g., hugo-1234567890">
+                </div>
+                <div class="incident-examples" style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-top: 15px;">
+                    <strong style="font-size: 13px; color: #475569;">When to report:</strong>
+                    <ul style="font-size: 12px; color: #64748b; margin: 8px 0 0 20px; padding: 0;">
+                        <li>User expressed suicidal thoughts</li>
+                        <li>Emergency services contacted</li>
+                        <li>External safeguarding referral made</li>
+                        <li>System failure during support</li>
+                        <li>Near-miss (almost went wrong)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeIncidentModal()">Cancel</button>
+                <button class="btn btn-warning" onclick="submitIncidentReport()">
+                    <i class="fas fa-paper-plane"></i> Submit Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Peer Report Modal -->
+    <div id="peer-report-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-shield" style="color: #6366f1;"></i> Report Peer Concern</h3>
+                <button class="btn btn-icon" onclick="closePeerReportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Report concerning behaviour from a peer supporter in the buddy matching system.
+                </p>
+                <div class="form-group">
+                    <label>Peer User ID / Name *</label>
+                    <input type="text" id="peer-reported-user" placeholder="Username or ID of the peer" required>
+                </div>
+                <div class="form-group">
+                    <label>Reason for Report *</label>
+                    <select id="peer-report-reason" required>
+                        <option value="">Select reason...</option>
+                        <option value="harassment">Harassment or bullying</option>
+                        <option value="self_harm_encouragement">Encouraging self-harm</option>
+                        <option value="threatening">Threatening behaviour</option>
+                        <option value="inappropriate_content">Inappropriate content</option>
+                        <option value="suspected_grooming">Suspected grooming</option>
+                        <option value="other">Other concern</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Details *</label>
+                    <textarea id="peer-report-details" rows="4" placeholder="Describe what you observed and why it's concerning" required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePeerReportModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitPeerReport()">
+                    <i class="fas fa-paper-plane"></i> Submit Report
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div id="notification" class="notification hidden"></div>
 
