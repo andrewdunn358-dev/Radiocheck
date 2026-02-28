@@ -181,6 +181,21 @@
                         </div>
                         <div id="screening-list" class="cards-list"></div>
                     </div>
+                    
+                    <!-- Quick Actions Section -->
+                    <div class="section quick-actions-section" style="margin-top: 20px;">
+                        <div class="section-header">
+                            <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; padding: 15px;">
+                            <button class="btn btn-warning" onclick="openIncidentReportModal()">
+                                <i class="fas fa-exclamation-triangle"></i> Report Incident
+                            </button>
+                            <button class="btn btn-secondary" onclick="openPeerReportModal()">
+                                <i class="fas fa-user-shield"></i> Report Peer Concern
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- RIGHT Column: Callbacks & Notes -->
