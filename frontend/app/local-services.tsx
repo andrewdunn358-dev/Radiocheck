@@ -308,16 +308,16 @@ export default function LocalServicesPage() {
 
         {/* Postcode Search */}
         <View style={styles.searchCard}>
-          <Text style={styles.searchLabel}>Enter your postcode</Text>
+          <Text style={styles.searchLabel}>Search by postcode, town, or organisation</Text>
           <View style={styles.searchRow}>
             <TextInput
               style={styles.postcodeInput}
-              placeholder="e.g. SW1A 1AA"
+              placeholder="e.g. SR7, Durham, East Durham"
               placeholderTextColor="#94a3b8"
               value={postcode}
               onChangeText={setPostcode}
               autoCapitalize="characters"
-              maxLength={8}
+              maxLength={30}
             />
             <TouchableOpacity 
               style={styles.searchButton}
