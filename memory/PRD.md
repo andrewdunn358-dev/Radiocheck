@@ -241,6 +241,65 @@ Added website links to all organizations on the Crisis Support page:
 - SSAFA → ssafa.org.uk
 - East Durham Veterans Trust → eastdurhamveteranstrust.org.uk
 
+## Case Management System Implementation - December 28, 2025
+
+### Backend Implementation (COMPLETED)
+Created comprehensive Case Management backend:
+
+**New Files:**
+- `/app/backend/case_management.py` - Models and helpers
+- `/app/backend/case_router.py` - API endpoints
+
+**API Endpoints:**
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/cases` | GET | List counsellor's cases |
+| `/api/cases` | POST | Create case from alert |
+| `/api/cases/{id}` | GET | Get full case details |
+| `/api/cases/{id}/status` | PATCH | Update case status |
+| `/api/cases/{id}/sessions` | POST | Add triage session |
+| `/api/cases/{id}/session-override` | POST | Override 3-session cap |
+| `/api/cases/{id}/safety-plan` | PUT | Create/update safety plan |
+| `/api/cases/{id}/referral` | POST | Create referral |
+| `/api/cases/{id}/referral/status` | PATCH | Update referral status |
+| `/api/cases/{id}/handoff-summary` | GET | Generate handoff text |
+| `/api/cases/{id}/check-ins` | POST | Log follow-up check-in |
+| `/api/cases/{id}/share` | POST | Share with another counsellor |
+| `/api/cases/morning-queue` | GET | Get overnight alerts for review |
+| `/api/cases/monitoring` | GET | Get cases in monitoring status |
+
+**Features:**
+- Full conversation capture (changed from last 20 to ALL messages)
+- Privacy controls (counsellors see own cases only, admin sees all)
+- Session cap (soft warning at 3, override with reason)
+- Risk level tracking with history
+- Timeline with all events logged
+- Safety plan template (Stanley-Brown style)
+- Referral tracking with status workflow
+- Check-in logging for monitoring period
+- Handoff summary generation for external referrals
+
+### Staff Portal V2 (CREATED - Pending Manual Upload)
+Created new tabbed interface: `/app/staff-portal/index-v2.html`
+
+**Tabs:**
+1. **Dashboard** - Stats, morning queue, phone status
+2. **My Cases** - Case list with privacy controls
+3. **Alerts** - Safeguarding alerts
+4. **Callbacks** - Callback requests
+5. **Live Chat** - Chat room management
+
+**Features:**
+- Clean HTML5 tabbed layout (not single scrolling page)
+- Case detail modal with sub-tabs (Overview, Timeline, Sessions, Conversation, Safety Plan, Referral)
+- Session form with protective factors, warning signs, actions checkboxes
+- Operating hours notice (Mon-Fri 9am-5pm)
+- Full AI conversation viewer
+
+**NOTE:** Staff Portal is a static site. User must manually upload to 20i hosting to test:
+1. Rename `index-v2.html` to `index.html` (backup old one first)
+2. Upload to 20i staff portal hosting
+
 ### Governance Email Notifications (COMPLETED)
 Implemented automatic email notifications for the governance system:
 
