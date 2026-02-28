@@ -342,12 +342,32 @@ Downloadable governance data for compliance reporting and DPIA.
 
 **For technical issues:** admin@radiocheck.me
 
-**For clinical concerns:** [CSO Email - To be assigned]
+**For clinical concerns:** admin@radiocheck.me (CSO notifications)
 
 **For safeguarding emergencies:** Follow standard safeguarding escalation procedures
 
+### Email Notification Configuration
+
+The system automatically sends email notifications for:
+1. **New Incidents** (Level 2/3) → CSO + Admin
+2. **CSO Approval Requests** → CSO
+
+**Current Email Recipients:**
+- CSO Email: `admin@radiocheck.me`
+- Admin Email: `admin@radiocheck.me`
+
+To change these settings:
+1. Go to Admin Portal → Settings
+2. Update the email fields
+3. Save changes
+
+**Note:** Email sending requires the domain (`radiocheck.me`) to be verified in Resend. If notifications aren't being received, check:
+1. Resend dashboard for verified domains
+2. Spam/junk folders
+3. Backend logs for error messages
+
 ---
 
-*Document Version: 1.0*
+*Document Version: 1.1*
 *Last Updated: December 2025*
 *Review Date: March 2026*
