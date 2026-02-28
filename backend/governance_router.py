@@ -780,7 +780,8 @@ async def create_approval_request(
             proposed_value=proposed_value
         )
         
-        await db.cso_approvals.insert_one(request.dict())
+        request_dict = request.dict()
+        await db.cso_approvals.insert_one(request_dict)
         
         audit_entry = log_governance_event(
             event_type=GovernanceEventType.CSO_APPROVAL_REQUIRED,
@@ -794,7 +795,10 @@ async def create_approval_request(
         )
         await db.governance_audit.insert_one(audit_entry.dict())
         
-        return request.dict()
+        # Send email notification to CSO
+        await send_cso_approval_notification(request_dict)
+        
+        return request_dict
     except Exception as e:
         logging.error(f"Error creating approval request: {e}")
         raise HTTPException(status_code=500, detail="Failed to create approval request")
