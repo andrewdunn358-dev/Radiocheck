@@ -13,6 +13,7 @@ Flow:
 
 import socketio
 import logging
+import asyncio
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -39,6 +40,13 @@ active_calls: Dict[str, dict] = {}
 
 # Reverse lookup: user_id -> socket_id
 user_to_socket: Dict[str, str] = {}
+
+# Track pending disconnect notifications (for grace period)
+# Format: {user_id: asyncio.Task}
+pending_disconnects: Dict[str, asyncio.Task] = {}
+
+# Grace period in seconds before notifying about disconnect
+DISCONNECT_GRACE_PERIOD = 10
 
 
 @sio.event
