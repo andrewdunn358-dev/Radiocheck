@@ -349,15 +349,74 @@ async def reset_password(reset_data: ResetPassword):
 
 @router.post("/admin-reset-password")
 async def admin_reset_password(data: AdminResetPassword, current_user: User = Depends(require_role("admin"))):
-    """Admin can reset any user's password"""
+    """Admin can reset any user's password with complexity requirements"""
     db = get_database()
+    
+    # Get the user
+    user = await db.users.find_one({"id": data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    new_password = data.new_password
+    user_name = user.get("name", "")
+    
+    # Validate password complexity
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+    
+    if not any(c.isupper() for c in new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter")
+    
+    if not any(c.islower() for c in new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter")
+    
+    # Check if password contains user's name
+    if user_name:
+        name_parts = user_name.lower().split()
+        password_lower = new_password.lower()
+        for part in name_parts:
+            if len(part) >= 3 and part in password_lower:
+                raise HTTPException(status_code=400, detail="Password cannot contain your name")
+    
+    # Check password history (last 3 passwords)
+    password_history = user.get("password_history", [])
+    new_hash = hash_password(new_password)
+    
+    for old_hash in password_history[-3:]:
+        try:
+            if verify_password(new_password, old_hash):
+                raise HTTPException(status_code=400, detail="Cannot reuse any of your last 3 passwords")
+        except:
+            pass  # If hash comparison fails, skip
+    
+    # Also check current password
+    current_hash = user.get("hashed_password") or user.get("password_hash")
+    if current_hash:
+        try:
+            if verify_password(new_password, current_hash):
+                raise HTTPException(status_code=400, detail="Cannot reuse any of your last 3 passwords")
+        except:
+            pass
+    
+    # Update password history (keep last 3)
+    if current_hash:
+        password_history.append(current_hash)
+    password_history = password_history[-3:]  # Keep only last 3
+    
+    # Update user's password
     result = await db.users.update_one(
         {"id": data.user_id},
-        {"$set": {"hashed_password": hash_password(data.new_password)}}
+        {"$set": {
+            "hashed_password": new_hash,
+            "password_hash": new_hash,  # Some places use this field name
+            "password_history": password_history,
+            "password_changed_at": datetime.utcnow(),
+            "password_changed_by": current_user.id
+        }}
     )
     
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=500, detail="Failed to update password")
     
     return {"message": "Password reset successfully"}
 
