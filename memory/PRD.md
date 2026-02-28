@@ -204,7 +204,8 @@ The call connection was failing because of a **call_id mismatch**:
 1. ✅ WebRTC audio working
 2. ✅ Safeguarding popup with Call/Chat options
 3. ✅ Phase 2 - Link chat requests to safeguarding alerts
-4. User testing of complete safeguarding flow
+4. ✅ Age Gate System - DOB collection and under-18 restrictions
+5. User testing of complete safeguarding flow
 
 ### P1 - Phase 3: Waiting Experience
 1. "Staff busy" fallback screen
@@ -213,13 +214,46 @@ The call connection was failing because of a **call_id mismatch**:
 4. "Switch to chat" option
 
 ### P2 - Backlog
-1. External Callback Phone Integration (Twilio migration)
+1. External Callback Phone Integration (Twilio migration - pending phone number)
 2. Full CMS Control - Migrate AI personas and Crisis Numbers to database
 3. Ringtone improvements (current requires user click first)
 4. Push notifications
 5. Mood tracker journal
 6. CMS editor overhaul
 7. Production CORS/500 error on `/api/surveys/status/`
+
+## Latest Update - December 28, 2025
+
+### Age Gate Implementation (COMPLETED)
+Implemented comprehensive age safeguarding system per user requirements:
+
+**Frontend Components:**
+- `/app/frontend/src/hooks/useAgeGate.ts` - Age state management
+- `/app/frontend/src/context/AgeGateContext.tsx` - Global age context
+- `/app/frontend/src/components/AgeGateModal.tsx` - DOB collection UI
+- `/app/frontend/src/components/AgeRestrictedBanner.tsx` - Restriction display
+
+**Features:**
+- DOB collection at first launch (after cookie/permission modals)
+- DOB stored LOCALLY on device only (privacy-first)
+- Under-18 detection with feature restrictions:
+  - Peer Matching: DISABLED
+  - Direct Peer Calls: DISABLED  
+  - AI Chat Support: ENABLED
+  - Crisis Support: ENABLED
+  - Staff Chat: ENABLED
+- 30% increased crisis sensitivity for minors
+- 1.3x risk score multiplier
+- Friendly "Extra Protection Enabled" info screen
+- Greyed-out restricted features with alternatives
+
+**Backend Updates:**
+- `is_under_18` flag added to `/api/ai-buddies/chat` request
+- Enhanced safety layer applies 1.3x multiplier for under-18 users
+- Risk level automatically elevated for young users
+
+**Documentation Created:**
+- `/app/docs/AI_SAFEGUARDING_FEATURES.md` - Complete safety system documentation
 
 ## 3rd Party Integrations
 - **OpenAI GPT-4**: AI chat personas
