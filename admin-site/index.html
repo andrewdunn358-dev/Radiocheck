@@ -966,6 +966,50 @@
                     <span id="monitoring-last-updated">Last updated: -</span>
                     <span class="auto-refresh-note">Auto-refreshes every 30 seconds</span>
                 </div>
+                
+                <!-- Safeguarding Monitor Section -->
+                <div class="monitoring-section safeguarding-monitor-section">
+                    <h3><i class="fas fa-shield-alt"></i> Safeguarding Monitor</h3>
+                    
+                    <!-- Test Phrase -->
+                    <div class="monitor-subsection">
+                        <h4>Test a Phrase</h4>
+                        <p class="monitor-description">Test how the safeguarding AI would analyze a message (no alert created)</p>
+                        <div class="test-phrase-input">
+                            <input type="text" id="test-phrase" placeholder="Enter a phrase to test against safeguarding triggers..." />
+                            <button class="btn btn-primary" onclick="testSafeguardingPhrase()">
+                                <i class="fas fa-search"></i> Analyze
+                            </button>
+                        </div>
+                        <div id="test-result" class="test-result"></div>
+                    </div>
+                    
+                    <!-- Trigger Phrases -->
+                    <div class="monitor-subsection">
+                        <h4>
+                            Trigger Phrases 
+                            <button class="btn btn-small btn-outline" onclick="loadTriggerPhrases()">
+                                <i class="fas fa-list"></i> Load All Triggers
+                            </button>
+                        </h4>
+                        <p class="monitor-description">View and review all safeguarding trigger phrases and their weights</p>
+                        <div id="trigger-phrases" class="trigger-list"></div>
+                    </div>
+                    
+                    <!-- Recent Activity -->
+                    <div class="monitor-subsection">
+                        <h4>
+                            Recent AI Analysis (24h)
+                            <button class="btn btn-small btn-outline" onclick="refreshSafeguardingMonitor()">
+                                <i class="fas fa-sync"></i> Refresh
+                            </button>
+                        </h4>
+                        <p class="monitor-description">View recent safeguarding AI analysis results (message content hidden for privacy)</p>
+                        <div id="monitor-activity" class="monitor-activity">
+                            <p class="no-data">Click Refresh to load recent safeguarding activity</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Settings Tab -->
