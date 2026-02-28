@@ -2701,3 +2701,271 @@ body {
     font-size: 18px;
     font-weight: 600;
 }
+
+/* ============ SAFEGUARDING MONITOR STYLES ============ */
+
+.safeguarding-monitor-section {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 30px;
+    color: #e2e8f0;
+}
+
+.safeguarding-monitor-section h3 {
+    color: white;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #334155;
+}
+
+.monitor-subsection {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #0f172a;
+    border-radius: 8px;
+}
+
+.monitor-subsection h4 {
+    font-size: 15px;
+    margin-bottom: 8px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.monitor-description {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 15px;
+}
+
+/* Test phrase input */
+.test-phrase-input {
+    display: flex;
+    gap: 12px;
+}
+
+.test-phrase-input input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    background: #1e293b;
+    color: white;
+    font-size: 14px;
+}
+
+.test-phrase-input input:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.test-phrase-input input::placeholder {
+    color: #64748b;
+}
+
+/* Test result */
+.test-result {
+    margin-top: 15px;
+}
+
+.test-result-card {
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid;
+}
+
+.test-result-card.green { border-color: #16a34a; background: rgba(22, 163, 74, 0.15); }
+.test-result-card.yellow { border-color: #d97706; background: rgba(217, 119, 6, 0.15); }
+.test-result-card.amber { border-color: #f59e0b; background: rgba(245, 158, 11, 0.15); }
+.test-result-card.red { border-color: #dc2626; background: rgba(220, 38, 38, 0.15); }
+
+.result-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.score {
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.alert-badge {
+    background: #dc2626;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.no-alert-badge {
+    background: #16a34a;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Risk badges */
+.risk-badge {
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.risk-badge.green { background: #16a34a; color: white; }
+.risk-badge.yellow { background: #d97706; color: white; }
+.risk-badge.amber { background: #f59e0b; color: #1e293b; }
+.risk-badge.red { background: #dc2626; color: white; }
+
+/* Trigger badges */
+.triggers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.trigger-badge {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.trigger-badge.red { background: rgba(220, 38, 38, 0.25); color: #fca5a5; border: 1px solid rgba(220, 38, 38, 0.4); }
+.trigger-badge.amber { background: rgba(245, 158, 11, 0.25); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.4); }
+.trigger-badge.modifier { background: rgba(59, 130, 246, 0.25); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); }
+
+/* Activity list */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    padding: 14px;
+    border-radius: 8px;
+    border-left: 4px solid;
+}
+
+.activity-item.green { border-color: #16a34a; background: rgba(22, 163, 74, 0.1); }
+.activity-item.yellow { border-color: #d97706; background: rgba(217, 119, 6, 0.1); }
+.activity-item.amber { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.activity-item.red { border-color: #dc2626; background: rgba(220, 38, 38, 0.1); }
+
+.activity-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: capitalize;
+}
+
+.status-badge.active { background: #f59e0b; color: #1e293b; }
+.status-badge.acknowledged { background: #3b82f6; color: white; }
+.status-badge.resolved { background: #16a34a; color: white; }
+
+.timestamp {
+    font-size: 12px;
+    color: #64748b;
+    margin-left: auto;
+}
+
+/* Trigger phrases list */
+.trigger-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.trigger-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.trigger-section.red { background: rgba(220, 38, 38, 0.15); }
+.trigger-section.amber { background: rgba(245, 158, 11, 0.15); }
+.trigger-section.modifier { background: rgba(59, 130, 246, 0.15); }
+
+.trigger-section h5 {
+    font-size: 13px;
+    margin-bottom: 12px;
+    color: #94a3b8;
+}
+
+.trigger-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.trigger-pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.trigger-pill.red { background: #dc2626; color: white; }
+.trigger-pill.amber { background: #f59e0b; color: #1e293b; }
+.trigger-pill.modifier { background: #3b82f6; color: white; }
+
+.more-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    background: #334155;
+    color: #94a3b8;
+}
+
+.scoring-rules {
+    padding: 15px;
+    background: rgba(59, 130, 246, 0.15);
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+.scoring-rules h5 {
+    font-size: 13px;
+    margin-bottom: 12px;
+    color: #94a3b8;
+}
+
+.scoring-rules ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.scoring-rules li {
+    padding: 6px 0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #e2e8f0;
+}
+
+.no-data, .no-triggers {
+    color: #64748b;
+    font-size: 14px;
+    text-align: center;
+    padding: 25px;
+}
