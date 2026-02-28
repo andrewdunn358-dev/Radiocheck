@@ -612,7 +612,8 @@ function setupLiveChatRequestListeners() {
     // Listen for new safeguarding alerts (real-time notification)
     socket.off('new_safeguarding_alert');
     socket.on('new_safeguarding_alert', function(data) {
-        console.log('New safeguarding alert received via Socket.IO:', data);
+        // Don't log full alert data for privacy - only log risk level
+        console.log('New safeguarding alert received - level:', data.risk_level);
         
         // Play alert sound
         playAlertSound();
