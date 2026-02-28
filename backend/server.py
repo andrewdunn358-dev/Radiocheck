@@ -5906,6 +5906,10 @@ app.include_router(surveys.router, prefix="/api")
 app.include_router(data_retention.router)
 app.include_router(shift_swaps.router, prefix="/api")
 
+# Clinical Safety Governance routes
+set_governance_db(db)
+app.include_router(governance_router, prefix="/api")
+
 # Serve static files for Staff Portal and Admin Site
 # This allows testing the portals from the preview environment
 PORTAL_PATH = Path(__file__).parent.parent / "staff-portal"
