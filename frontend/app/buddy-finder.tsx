@@ -672,46 +672,53 @@ export default function BuddyFinderPage() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Tab Buttons */}
-      <View style={styles.tabs}>
-        <TouchableOpacity 
-          style={[styles.tab, view === 'browse' && styles.tabActive]}
-          onPress={() => setView('browse')}
-          data-testid="browse-tab"
-        >
-          <Ionicons name="search" size={18} color={view === 'browse' ? '#fff' : '#94a3b8'} />
-          <Text style={[styles.tabText, view === 'browse' && styles.tabTextActive]}>Browse</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, view === 'inbox' && styles.tabActive]}
-          onPress={() => { setView('inbox'); loadInbox(); }}
-          data-testid="inbox-tab"
-        >
-          <View style={styles.inboxTabIcon}>
-            <Ionicons name="mail" size={18} color={view === 'inbox' ? '#fff' : '#94a3b8'} />
-            {unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+      {/* Show restriction banner for under-18 users */}
+      {!ageLoading && isAgeVerified && !canAccessFeature ? (
+        <AgeRestrictedBanner feature="peer_matching" showAlternatives={true} />
+      ) : (
+        <>
+          {/* Tab Buttons */}
+          <View style={styles.tabs}>
+            <TouchableOpacity 
+              style={[styles.tab, view === 'browse' && styles.tabActive]}
+              onPress={() => setView('browse')}
+              data-testid="browse-tab"
+            >
+              <Ionicons name="search" size={18} color={view === 'browse' ? '#fff' : '#94a3b8'} />
+              <Text style={[styles.tabText, view === 'browse' && styles.tabTextActive]}>Browse</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tab, view === 'inbox' && styles.tabActive]}
+              onPress={() => { setView('inbox'); loadInbox(); }}
+              data-testid="inbox-tab"
+            >
+              <View style={styles.inboxTabIcon}>
+                <Ionicons name="mail" size={18} color={view === 'inbox' ? '#fff' : '#94a3b8'} />
+                {unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
               </View>
-            )}
+              <Text style={[styles.tabText, view === 'inbox' && styles.tabTextActive]}>Inbox</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tab, view === 'signup' && styles.tabActive]}
+              onPress={() => setView('signup')}
+              data-testid="signup-tab"
+            >
+              <Ionicons name="person-add" size={18} color={view === 'signup' ? '#fff' : '#94a3b8'} />
+              <Text style={[styles.tabText, view === 'signup' && styles.tabTextActive]}>Sign Up</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={[styles.tabText, view === 'inbox' && styles.tabTextActive]}>Inbox</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, view === 'signup' && styles.tabActive]}
-          onPress={() => setView('signup')}
-          data-testid="signup-tab"
-        >
-          <Ionicons name="person-add" size={18} color={view === 'signup' ? '#fff' : '#94a3b8'} />
-          <Text style={[styles.tabText, view === 'signup' && styles.tabTextActive]}>Sign Up</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.container}>
-        {view === 'browse' && renderBrowse()}
-        {view === 'inbox' && renderInbox()}
-        {view === 'signup' && renderSignup()}
-      </View>
+          <View style={styles.container}>
+            {view === 'browse' && renderBrowse()}
+            {view === 'inbox' && renderInbox()}
+            {view === 'signup' && renderSignup()}
+          </View>
+        </>
+      )}
 
       {/* Message Modal */}
       <Modal
