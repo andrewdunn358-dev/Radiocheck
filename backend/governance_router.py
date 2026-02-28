@@ -46,6 +46,190 @@ def set_db(database):
     db = database
 
 # ============================================================================
+# EMAIL NOTIFICATION FUNCTIONS
+# ============================================================================
+
+async def send_incident_notification(incident_dict: dict, recipient_type: str = "cso"):
+    """
+    Send email notification when an incident is created
+    
+    Recipients based on incident level:
+    - Level 3 (Critical): CSO + Admin immediately
+    - Level 2 (High): CSO + Admin within shift
+    - Level 1 (Moderate): Admin (CSO on monthly review)
+    """
+    if not RESEND_API_KEY:
+        logging.warning("Cannot send incident notification - RESEND_API_KEY not configured")
+        return False
+    
+    try:
+        # Get notification emails from settings
+        settings = await db.settings.find_one({"_id": "site_settings"})
+        
+        # CSO email - should be configured in settings
+        cso_email = settings.get("cso_email", "") if settings else ""
+        admin_email = settings.get("admin_notification_email", "admin@radiocheck.me") if settings else "admin@radiocheck.me"
+        
+        # Determine recipients based on level
+        level = incident_dict.get("level", "level_1_moderate")
+        recipients = []
+        
+        if "critical" in level:
+            # Critical - notify both CSO and Admin immediately
+            if cso_email:
+                recipients.append(cso_email)
+            recipients.append(admin_email)
+            urgency = "🔴 CRITICAL - IMMEDIATE ACTION REQUIRED"
+            priority_color = "#dc2626"
+        elif "high" in level:
+            # High - notify CSO and Admin
+            if cso_email:
+                recipients.append(cso_email)
+            recipients.append(admin_email)
+            urgency = "🟠 HIGH PRIORITY"
+            priority_color = "#f97316"
+        else:
+            # Moderate - notify Admin only
+            recipients.append(admin_email)
+            urgency = "🟡 MODERATE"
+            priority_color = "#fbbf24"
+        
+        if not recipients:
+            logging.warning("No recipients configured for incident notifications")
+            return False
+        
+        # Build email
+        incident_number = incident_dict.get("incident_number", "Unknown")
+        title = incident_dict.get("title", "No title")
+        description = incident_dict.get("description", "No description")
+        created_by = incident_dict.get("created_by", "Unknown")
+        
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: {priority_color}; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0;">{urgency}</h2>
+                <p style="margin: 5px 0 0 0; opacity: 0.9;">New Incident Reported - {incident_number}</p>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-top: none;">
+                <h3 style="margin-top: 0; color: #1e293b;">{title}</h3>
+                
+                <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <p style="margin: 0; color: #475569;">{description}</p>
+                </div>
+                
+                <table style="width: 100%; font-size: 14px; color: #64748b;">
+                    <tr>
+                        <td><strong>Incident #:</strong></td>
+                        <td>{incident_number}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Level:</strong></td>
+                        <td>{level.replace('_', ' ').title()}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Reported by:</strong></td>
+                        <td>{created_by}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Time:</strong></td>
+                        <td>{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</td>
+                    </tr>
+                </table>
+                
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+                    <p style="margin: 0; font-size: 13px; color: #64748b;">
+                        <strong>Action Required:</strong> Please review this incident in the Admin Portal 
+                        under Governance → Incident Management.
+                    </p>
+                </div>
+            </div>
+            
+            <div style="padding: 15px; text-align: center; font-size: 12px; color: #94a3b8;">
+                <p>Radio Check - Clinical Safety Governance</p>
+            </div>
+        </div>
+        """
+        
+        params = {
+            "from": "Radio Check <notifications@radiocheck.me>",
+            "to": recipients,
+            "subject": f"[{urgency.split(' ')[0]}] Incident {incident_number}: {title}",
+            "html": html_content
+        }
+        
+        await asyncio.to_thread(resend.Emails.send, params)
+        logging.info(f"Incident notification sent to {recipients} for {incident_number}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Failed to send incident notification: {str(e)}")
+        return False
+
+async def send_cso_approval_notification(approval_dict: dict):
+    """Send email to CSO when approval is required"""
+    if not RESEND_API_KEY:
+        return False
+    
+    try:
+        settings = await db.settings.find_one({"_id": "site_settings"})
+        cso_email = settings.get("cso_email", "") if settings else ""
+        
+        if not cso_email:
+            logging.warning("CSO email not configured - cannot send approval notification")
+            return False
+        
+        request_type = approval_dict.get("request_type", "Unknown")
+        description = approval_dict.get("description", "")
+        requested_by = approval_dict.get("requested_by", "Unknown")
+        
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #8b5cf6; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0;">CSO Approval Required</h2>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-top: none;">
+                <p style="color: #475569;">A change has been requested that requires Clinical Safety Officer approval before it can be implemented.</p>
+                
+                <table style="width: 100%; font-size: 14px; color: #64748b; margin: 15px 0;">
+                    <tr>
+                        <td><strong>Type:</strong></td>
+                        <td>{request_type.replace('_', ' ').title()}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Description:</strong></td>
+                        <td>{description}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Requested by:</strong></td>
+                        <td>{requested_by}</td>
+                    </tr>
+                </table>
+                
+                <p style="font-size: 13px; color: #64748b;">
+                    Please review this request in the Admin Portal under Governance → CSO Approvals.
+                </p>
+            </div>
+        </div>
+        """
+        
+        params = {
+            "from": "Radio Check <notifications@radiocheck.me>",
+            "to": [cso_email],
+            "subject": f"[CSO Approval Required] {request_type.replace('_', ' ').title()}",
+            "html": html_content
+        }
+        
+        await asyncio.to_thread(resend.Emails.send, params)
+        logging.info(f"CSO approval notification sent to {cso_email}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Failed to send CSO approval notification: {str(e)}")
+        return False
+
+# ============================================================================
 # HAZARD LOG ENDPOINTS
 # ============================================================================
 
