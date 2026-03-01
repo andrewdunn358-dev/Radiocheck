@@ -5,6 +5,7 @@ import { AuthProvider } from '../src/context/AuthContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { FavoritesProvider } from '../src/context/FavoritesContext';
 import { AgeGateProvider } from '../src/context/AgeGateContext';
+import { SiteGateProvider } from '../src/context/SiteGateContext';
 
 function AppContent() {
   const { theme, colors } = useTheme();
