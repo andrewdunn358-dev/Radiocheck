@@ -1,8 +1,16 @@
 {
   "version": 2,
-  "buildCommand": "npx expo export --platform web",
+  "buildCommand": "rm -rf dist && npx expo export --platform web",
   "outputDirectory": "dist",
   "installCommand": "yarn install",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
