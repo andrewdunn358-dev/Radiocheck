@@ -2096,20 +2096,23 @@ async function createCaseFromAlert(alertId) {
 
 // Open case detail view
 async function openCaseDetail(caseId) {
+    // Clear modal stack when opening a case fresh
+    modalStack = [];
+    
     try {
         var caseData = await apiCall('/cases/' + caseId);
         
         // Create modal content
         var sessionsHtml = '';
         if (caseData.sessions && caseData.sessions.length > 0) {
-            sessionsHtml = '<h4 style="margin: 16px 0 8px;">Session History</h4>';
+            sessionsHtml = '<h4 style="margin: 16px 0 8px; color: #374151;">Session History</h4>';
             sessionsHtml += caseData.sessions.map(function(s, idx) {
-                return '<div style="background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 8px;">' +
+                return '<div style="background: #f3f4f6; padding: 12px; border-radius: 8px; margin-bottom: 8px;">' +
                     '<div style="display: flex; justify-content: space-between;">' +
-                        '<strong>Session ' + (idx + 1) + '</strong>' +
-                        '<span style="font-size: 12px; color: var(--text-muted);">' + formatDate(s.session_date) + '</span>' +
+                        '<strong style="color: #1f2937;">Session ' + (idx + 1) + '</strong>' +
+                        '<span style="font-size: 12px; color: #6b7280;">' + formatDate(s.session_date) + '</span>' +
                     '</div>' +
-                    '<p style="margin: 8px 0; font-size: 14px;">' + escapeHtml(s.presenting_issue || 'No notes') + '</p>' +
+                    '<p style="margin: 8px 0; font-size: 14px; color: #374151;">' + escapeHtml(s.presenting_issue || 'No notes') + '</p>' +
                     '<span class="case-tag risk-' + (s.risk_level || 'moderate').toLowerCase() + '">' + (s.risk_level || 'moderate') + ' risk</span>' +
                 '</div>';
             }).join('');
@@ -2117,26 +2120,26 @@ async function openCaseDetail(caseId) {
         
         var safetyPlanHtml = '';
         if (caseData.safety_plan) {
-            safetyPlanHtml = '<h4 style="margin: 16px 0 8px;"><i class="fas fa-shield-alt"></i> Safety Plan</h4>' +
+            safetyPlanHtml = '<h4 style="margin: 16px 0 8px; color: #374151;"><i class="fas fa-shield-alt"></i> Safety Plan</h4>' +
                 '<div style="background: rgba(34,197,94,0.1); padding: 12px; border-radius: 8px;">' +
-                    '<p style="margin: 0; font-size: 14px;">Safety plan on file - Last updated: ' + formatDate(caseData.safety_plan.updated_at) + '</p>' +
+                    '<p style="margin: 0; font-size: 14px; color: #16a34a;">Safety plan on file - Last updated: ' + formatDate(caseData.safety_plan.updated_at) + '</p>' +
                 '</div>';
         }
         
-        var content = '<div style="padding: 20px;">' +
-            '<h3><i class="fas fa-user-shield"></i> Case: ' + escapeHtml(caseData.user_name || 'Unknown') + '</h3>' +
-            '<div class="case-meta" style="margin: 16px 0;">' +
-                '<span class="case-tag status">' + escapeHtml(caseData.status || 'active') + '</span>' +
+        var content = '<div style="padding: 20px; background: #ffffff;">' +
+            '<h3 style="color: #1f2937; margin-bottom: 16px;"><i class="fas fa-user-shield"></i> Case: ' + escapeHtml(caseData.user_name || 'Unknown') + '</h3>' +
+            '<div class="case-meta" style="margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap;">' +
+                '<span style="padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; background: #dbeafe; color: #1d4ed8;">' + escapeHtml(caseData.status || 'active') + '</span>' +
                 '<span class="case-tag risk-' + (caseData.current_risk_level || 'moderate').toLowerCase() + '">' + escapeHtml(caseData.current_risk_level || 'moderate') + ' risk</span>' +
-                '<span class="case-tag" style="background: var(--bg);">Sessions: ' + (caseData.session_count || 0) + '/6</span>' +
+                '<span style="padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; background: #f3f4f6; color: #374151;">Sessions: ' + (caseData.session_count || 0) + '/6</span>' +
             '</div>' +
             safetyPlanHtml +
             sessionsHtml +
             '<div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">' +
-                '<button class="btn btn-primary" onclick="addSessionNote(\'' + caseId + '\')"><i class="fas fa-plus"></i> Add Session Note</button>' +
-                '<button class="btn btn-secondary" onclick="editSafetyPlan(\'' + caseId + '\')"><i class="fas fa-shield-alt"></i> ' + (caseData.safety_plan ? 'Edit' : 'Create') + ' Safety Plan</button>' +
-                '<button class="btn btn-warning" onclick="createReferral(\'' + caseId + '\')"><i class="fas fa-hospital"></i> Create Referral</button>' +
-                '<button class="btn btn-outline" onclick="closeModal()"><i class="fas fa-times"></i> Close</button>' +
+                '<button class="btn btn-primary" onclick="addSessionNote(\'' + caseId + '\')" style="background: #2563eb; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-plus"></i> Add Session Note</button>' +
+                '<button class="btn btn-secondary" onclick="editSafetyPlan(\'' + caseId + '\')" style="background: #6b7280; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-shield-alt"></i> ' + (caseData.safety_plan ? 'Edit' : 'Create') + ' Safety Plan</button>' +
+                '<button class="btn btn-warning" onclick="createReferral(\'' + caseId + '\')" style="background: #f59e0b; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-hospital"></i> Create Referral</button>' +
+                '<button class="btn btn-outline" onclick="closeModal()" style="background: #f3f4f6; color: #374151; padding: 10px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer;"><i class="fas fa-times"></i> Close</button>' +
             '</div>' +
         '</div>';
         
