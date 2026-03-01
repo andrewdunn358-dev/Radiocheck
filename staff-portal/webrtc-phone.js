@@ -1024,6 +1024,16 @@ window.acceptChatRequest = acceptChatRequest;
 window.dismissChatRequest = dismissChatRequest;
 
 
+// Update status via Socket.IO
+function updateSocketStatus(status) {
+    if (socket && socket.connected) {
+        socket.emit('update_status', { status: status });
+        console.log('Socket.IO status updated to:', status);
+    } else {
+        console.warn('Socket not connected, cannot update status');
+    }
+}
+
 // Export for use
 window.webRTCPhone = {
     init: initWebRTCPhone,
@@ -1031,6 +1041,7 @@ window.webRTCPhone = {
     rejectCall: rejectCall,
     endCall: endCall,
     setAvailability: setAvailability,
+    updateStatus: updateSocketStatus,  // For syncing status with Socket.IO
     cleanupCall: cleanupCall,  // Expose for manual cleanup
     isConnected: () => isRegistered,
     get isRegistered() { return isRegistered; },
