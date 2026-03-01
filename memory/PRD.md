@@ -1,7 +1,7 @@
 # Radio Check - Mental Health Veterans Support Platform
 
 ## Product Requirements Document (PRD)
-**Version 3.1 | March 2026**
+**Version 3.2 | March 2026**
 
 ---
 
@@ -75,167 +75,112 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 
 ## Implementation Status
 
-### COMPLETED - March 2026 Update
+### COMPLETED - March 2026 Session 3
 
-#### Staff Portal Fixes (This Session)
-- [x] Fixed `loadTeamOnDuty()` - was using undefined `API_URL` and `getAuthHeaders()`
-- [x] Added missing `loadSwapRequests()` placeholder function
-- [x] Fixed inline JavaScript in `index.html` - removed ES6 syntax, added function existence checks
-- [x] All backend API tests passing (20/20)
+#### Staff Portal Live Chat Fixes (This Session)
+- [x] Added `chat_request_confirmed` Socket.IO listener to auto-open chat modal when staff accepts
+- [x] Staff now joins Socket.IO room when accepting chat for real-time messaging
+- [x] Added `new_chat_message` listener for real-time message display in staff portal
+- [x] Added `user_left_chat` listener for disconnect notifications
+- [x] Updated `sendChatMessage()` to emit via Socket.IO for real-time delivery
+- [x] Backend `accept_chat_request` handler now creates room in both memory and database
 
-#### Site Password Gate (This Session)
-- [x] Added SiteGateContext to protect the entire app
-- [x] Password screen appears before any app content loads
-- [x] Password stored in environment variable `EXPO_PUBLIC_SITE_PASSWORD`
-- [x] Default password: `radiocheck2025` (change this in production)
-- [x] Unlocked state persisted in localStorage
+#### Frontend Character Loading Improvements (This Session)
+- [x] Reordered render checks: loading state now always shows before consent modal
+- [x] Fixed consent check timing - waits for `characterLoading` to be false
+- [x] Added debug logging for character merge process
+- [x] Character service merges API data with static fallbacks correctly
 
-#### Staff Portal Major Fixes (Session 2)
-- [x] **CRITICAL FIX**: Fixed token extraction bug - was using `data.access_token` but backend returns `data.token`
-- [x] Added Cases tab with full case management (create, view, add sessions, safety plans, referrals)
-- [x] Made tabs more prominent with new styling (blue gradient background, larger text, hover effects)
-- [x] Fixed shift creation - now includes required `user_id` query parameter
-- [x] Added morning review queue for overnight alerts
-- [x] Added generic modal system for case detail views
-- [x] All 18 backend API tests passing (100%)
+### COMPLETED - Previous Sessions
 
-#### Previous Work - December 2025
+#### Site Password Gate
+- [x] SiteGateContext protects entire app
+- [x] Password stored in `EXPO_PUBLIC_SITE_PASSWORD`
+- [x] Default: `radiocheck2025`
 
-#### Case Management System
-- [x] Backend API with 15+ endpoints
-- [x] Case creation from safeguarding alerts
-- [x] Privacy controls (counsellors see own cases only)
-- [x] Triage session documentation
-- [x] 3-session soft cap with override
-- [x] Safety plan (Stanley-Brown template)
-- [x] Referral tracking workflow
-- [x] Check-in logging for monitoring
-- [x] Handoff summary generation
-- [x] Full conversation capture
-
-#### Staff Portal V2
-- [x] Tabbed interface (Dashboard, Cases, Alerts, Callbacks, Chat)
+#### Staff Portal Fixes
+- [x] Fixed token extraction (`data.token` not `data.access_token`)
+- [x] Added Cases tab with case management
+- [x] Fixed shift creation with `user_id` parameter
 - [x] Morning review queue for overnight alerts
-- [x] Case detail modal with sub-tabs
-- [x] Session notes form
-- [x] Safety plan editor
-- [x] Referral form
-- [x] Operating hours notice
 
-#### Admin Portal Enhancements
-- [x] Password reset with confirmation
-- [x] Password complexity requirements
-- [x] Password history (no reuse of last 3)
-- [x] Email settings management
-- [x] AI Compliance Checker
-- [x] AI Personas CMS (create, edit, delete AI characters via database)
+#### Core Features
+- [x] AI Chat with 8 characters (Tommy, Doris/Rachel, Bob, Finch, Margie, Hugo, Rita, Catherine)
+- [x] Safeguarding detection and alerts
+- [x] WebRTC voice/video calls
+- [x] Live chat between users and staff
+- [x] Case management system
+- [x] Staff rota/shift management
 
-#### User App Features
-- [x] Age gate with race condition fix
-- [x] Website links on crisis support
-- [x] Peer moderation (Report/Block)
-- [x] Staff busy notice in safeguarding modal
+---
 
-#### Backend Improvements
-- [x] Full conversation capture (not just last 20)
-- [x] Trailing slash redirect fix
-- [x] AI characters CMS-ready
-- [x] Governance email notifications
+## Known Issues / User Action Required
 
-#### Governance System
-- [x] Hazard Register (7 core hazards)
-- [x] KPI Dashboard
-- [x] Incident Management with email alerts
-- [x] CSO Approval workflow
-- [x] Peer Moderation queue
-- [x] Audit export
+### AI Character Name (Doris → Rachel)
+**Status:** Frontend static config has "Rachel", but production database has "Doris"
+**Action Required:** User must update the character name in Admin CMS:
+1. Go to Admin Portal → AI Personas
+2. Edit "Doris" and change name to "Rachel"
+3. Click Save
+4. Refresh the app (may need to clear browser cache)
 
-### PENDING - Requires Manual Action
+**Technical Note:** The frontend correctly merges API data with static fallbacks. When the database is updated to "Rachel", the app will display "Rachel" everywhere.
 
-#### Upload to 20i Hosting
-- [ ] Admin portal files (app.js, index.html)
-- [ ] Staff portal V2 (index-v2.html → index.html)
+### Deployment to 20i
+**Important:** After any changes to `staff-portal/app.js` or `webrtc-phone.js`:
+1. Download the updated files from this environment
+2. Upload to 20i hosting
+3. Force browser cache clear (Ctrl+Shift+R)
 
-#### Configuration
-- [ ] Verify radiocheck.me domain in Resend
-- [ ] Production WebRTC testing
+---
 
-### BACKLOG
+## Upcoming Tasks
 
-#### P1 - High Priority
-- [ ] Twilio integration (browser-to-phone calling)
-- [ ] Request claiming (dismiss for other staff)
-- [ ] Push notifications
+### P0 - Critical
+- [ ] Verify live chat connection works end-to-end after staff-portal deploy
+- [ ] Update database character name from "Doris" to "Rachel" via Admin CMS
 
-#### P2 - Medium Priority
-- [ ] Mood tracker journal
+### P1 - High Priority
+- [ ] Twilio browser-to-phone integration
+- [ ] Safeguarding request claiming (prevent multiple staff responding)
+- [ ] Fix chat close navigation (return to AI chat, not home)
+
+### P2 - Medium Priority
+- [ ] Convert Expo app to Next.js for better performance
+- [ ] Mood tracker journal feature
 - [ ] Welsh language support
 
-#### P3 - Future
-- [ ] Convert to pure Next.js
-- [ ] Appointment booking
-- [ ] Achievement badges
-- [ ] CBT courses
+---
+
+## Key API Endpoints
+
+### AI Characters
+- `GET /api/ai-characters` - Get all enabled characters
+- `PUT /api/ai-characters/{id}` - Update character (admin auth required)
+
+### Live Chat
+- Socket.IO events:
+  - `incoming_chat_request` - Staff receives chat request
+  - `accept_chat_request` - Staff accepts
+  - `chat_request_confirmed` - Server confirms room created
+  - `new_chat_message` - Real-time message
+  - `user_left_chat` - User disconnected
+
+### Staff Portal
+- `POST /api/auth/login` - Staff login
+- `GET /api/cases/morning-queue` - Morning review queue
+- `POST /api/cases` - Create case
 
 ---
 
-## Non-Negotiable Boundaries
+## Files Modified This Session
 
-1. **We Do Not Provide Therapy** - Sessions capped at 3
-2. **Peers Are Not Clinicians** - All risk concerns escalate
-3. **No Fully Automated High-Risk Decisions** - Humans decide escalation
-4. **Emergency Situations Escalate Immediately** - No delay
-5. **Clear Role Separation** - Peer ≠ Triage ≠ Therapist
+### Staff Portal
+- `/app/staff-portal/webrtc-phone.js` - Added Socket.IO handlers for chat confirmation and messages
+- `/app/staff-portal/app.js` - Updated sendChatMessage to emit via Socket.IO
 
----
+### Frontend
+- `/app/frontend/app/unified-chat.tsx` - Fixed character loading order and consent timing
 
-## Operating Hours
-
-- **Human Support:** Monday - Friday, 9am - 5pm GMT
-- **AI Engagement:** 24/7
-- **Overnight Alerts:** Queued for morning review
-
----
-
-## Compliance Frameworks
-
-| Framework | Status |
-|-----------|--------|
-| NHS DCB0129 | Implemented |
-| Samaritans AI Policy | Implemented |
-| Online Safety Act | Implemented |
-| ICO Data Protection | Implemented |
-
----
-
-## Key Contacts
-
-| Role | Email |
-|------|-------|
-| Admin Notifications | admin@radiocheck.me |
-| CSO Notifications | admin@radiocheck.me |
-| Peer Registration | admin@radiocheck.me |
-
----
-
-## Documentation
-
-- `/app/docs/RADIO_CHECK_FEATURES.md` - Complete feature list
-- `/app/docs/DEVELOPER_HANDOVER.md` - Technical documentation
-- `/app/docs/GOVERNANCE_OPERATIONS_GUIDE.md` - Governance procedures
-- `/app/docs/IMPLEMENTATION_SUMMARY.md` - This session's changes
-- `/app/docs/AI_SAFEGUARDING_FEATURES.md` - Safety system details
-
----
-
-## Test Credentials
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@veteran.dbty.co.uk | ChangeThisPassword123! |
-| Staff | sharon@radiocheck.me | ChangeThisPassword123! |
-
----
-
-*Last Updated: March 2026*
-*Next Review: June 2026*
+### Backend
+- `/app/backend/webrtc_signaling.py` - Chat room creation in accept_chat_request handler (unchanged, verified)
