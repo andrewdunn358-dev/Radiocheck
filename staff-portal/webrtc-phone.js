@@ -141,6 +141,16 @@ function setupSocketHandlers() {
             // Set current room globally
             window.currentChatRoom = roomId;
             
+            // Join the Socket.IO room for real-time messages
+            var staffUser = window.currentUser || {};
+            socket.emit('join_chat_room', {
+                room_id: roomId,
+                user_id: staffUser.id || 'staff',
+                user_type: staffUser.role || 'counsellor',
+                name: staffUser.name || 'Staff'
+            });
+            console.log('Joined Socket.IO room:', roomId);
+            
             // Open the live chat modal with this room
             if (typeof showLiveChatModal === 'function') {
                 console.log('Opening live chat modal for room:', roomId);
