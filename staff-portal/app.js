@@ -2347,8 +2347,12 @@ async function submitReferral(event, caseId) {
     return false;
 }
 
-// Generic modal helper
-function openGenericModal(title, content) {
+// Generic modal helper - with stacking support
+var modalStack = [];
+
+function openGenericModal(title, content, options) {
+    options = options || {};
+    
     // Check if modal already exists
     var modal = document.getElementById('generic-modal');
     if (!modal) {
@@ -2356,14 +2360,22 @@ function openGenericModal(title, content) {
         modal = document.createElement('div');
         modal.id = 'generic-modal';
         modal.className = 'modal-overlay';
-        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000;';
         document.body.appendChild(modal);
     }
     
-    modal.innerHTML = '<div class="modal-content" style="background: var(--card); border-radius: 16px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">' +
-        '<div class="modal-header" style="padding: 20px 20px 0; display: flex; justify-content: space-between; align-items: center;">' +
-            '<h3 style="margin: 0;">' + title + '</h3>' +
-            '<button class="btn btn-icon btn-secondary" onclick="closeModal()" style="border: none; background: none; font-size: 20px; cursor: pointer;">&times;</button>' +
+    // Save current state to stack if we're opening a sub-modal
+    if (options.isSubModal && modal.innerHTML) {
+        modalStack.push({
+            title: modal.querySelector('h3') ? modal.querySelector('h3').textContent : '',
+            content: modal.innerHTML
+        });
+    }
+    
+    modal.innerHTML = '<div class="modal-content" style="background: #ffffff; border-radius: 16px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">' +
+        '<div class="modal-header" style="padding: 20px 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 0;">' +
+            '<h3 style="margin: 0; color: #1f2937;">' + title + '</h3>' +
+            '<button class="btn btn-icon btn-secondary" onclick="closeModal()" style="border: none; background: #f3f4f6; width: 32px; height: 32px; border-radius: 8px; font-size: 20px; cursor: pointer; color: #6b7280;">&times;</button>' +
         '</div>' +
         content +
     '</div>';
@@ -2372,13 +2384,31 @@ function openGenericModal(title, content) {
 }
 
 function closeModal() {
+    // If there's something in the stack, go back to it
+    if (modalStack.length > 0) {
+        var previous = modalStack.pop();
+        var modal = document.getElementById('generic-modal');
+        if (modal) {
+            modal.innerHTML = previous.content;
+        }
+        return;
+    }
+    
+    // Otherwise close completely
     var modal = document.getElementById('generic-modal');
     if (modal) {
         modal.style.display = 'none';
+        modal.innerHTML = '';
     }
     // Also try to close any existing modals
     var overlays = document.querySelectorAll('.modal-overlay');
     overlays.forEach(function(o) { o.style.display = 'none'; });
+}
+
+function goBackToCase(caseId) {
+    // Clear the stack and re-open case details
+    modalStack = [];
+    openCaseDetail(caseId);
 }
 
 // Helper function
