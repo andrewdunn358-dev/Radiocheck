@@ -2205,7 +2205,8 @@ async function submitSessionNote(event, caseId) {
     try {
         await apiCall('/cases/' + caseId + '/sessions', 'POST', data);
         showNotification('Session note added successfully', 'success');
-        closeModal();
+        // Go back to case details to see the updated session
+        goBackToCase(caseId);
         loadCases();
     } catch (error) {
         console.error('Error adding session:', error);
