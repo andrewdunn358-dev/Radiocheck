@@ -6527,8 +6527,8 @@ function renderPersonasGrid() {
                             <i class="fas fa-trash"></i> Delete
                         </button>
                     ` : `
-                        <button class="btn btn-outline btn-small" disabled title="Hardcoded characters cannot be deleted">
-                            <i class="fas fa-lock"></i> Protected
+                        <button class="btn btn-outline btn-small" onclick="editPersona('${persona.id}')" title="Create a database copy to customize this character">
+                            <i class="fas fa-copy"></i> Override
                         </button>
                     `}
                 </div>
