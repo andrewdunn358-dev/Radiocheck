@@ -969,6 +969,49 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- ROTA TAB -->
+            <div id="tab-rota" class="tab-pane">
+                <div class="card-header" style="margin-bottom: 20px;">
+                    <h2 class="card-title"><i class="fas fa-calendar-alt"></i> My Shifts & Rota</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-outline btn-sm" onclick="loadMyShifts()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="openSwapRequestModal()">
+                            <i class="fas fa-exchange-alt"></i> Request Cover
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- My Upcoming Shifts -->
+                <div class="rota-section">
+                    <h3><i class="fas fa-clock"></i> My Upcoming Shifts</h3>
+                    <div id="my-shifts-list" class="shifts-list">
+                        <p class="empty-state">Loading shifts...</p>
+                    </div>
+                </div>
+                
+                <!-- Available Swap Requests -->
+                <div class="rota-section" style="margin-top: 24px;">
+                    <h3>
+                        <i class="fas fa-hand-paper"></i> Cover Requests
+                        <span id="swap-count" class="tab-badge">0</span>
+                    </h3>
+                    <p style="color: var(--text-muted); margin-bottom: 12px;">Other staff members looking for cover</p>
+                    <div id="available-swaps" class="swaps-list">
+                        <p class="empty-state">No cover requests available</p>
+                    </div>
+                </div>
+                
+                <!-- My Swap Requests -->
+                <div class="rota-section" style="margin-top: 24px;">
+                    <h3><i class="fas fa-paper-plane"></i> My Cover Requests</h3>
+                    <div id="my-swap-requests" class="swaps-list">
+                        <p class="empty-state">You haven't requested any cover</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
