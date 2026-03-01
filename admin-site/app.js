@@ -5835,6 +5835,9 @@ function showGovernanceSubtab(subtab) {
         case 'approvals':
             loadCSOApprovals();
             break;
+        case 'compliance':
+            loadComplianceStatus();
+            break;
     }
 }
 
