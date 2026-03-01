@@ -350,6 +350,55 @@
                     </div>
                 </div>
 
+                <!-- CASES TAB -->
+                <div id="tab-cases" class="tab-pane">
+                    <div class="section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-folder-open"></i> My Cases</h2>
+                            <span id="my-cases-count" class="badge info">0</span>
+                            <button class="btn btn-icon btn-secondary" onclick="loadCases()">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Case Filters -->
+                        <div class="case-filters" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+                            <select id="case-status-filter" onchange="loadCases()" style="padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--card);">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="monitoring">Monitoring</option>
+                                <option value="referred">Referred</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                            <select id="case-risk-filter" onchange="loadCases()" style="padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--card);">
+                                <option value="">All Risk Levels</option>
+                                <option value="critical">Critical</option>
+                                <option value="high">High</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        
+                        <div id="cases-list" class="cases-list">
+                            <p style="color: var(--text-muted); text-align: center; padding: 40px;">Loading cases...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Morning Review Queue -->
+                    <div class="section" style="margin-top: 20px;">
+                        <div class="section-header">
+                            <h2><i class="fas fa-sun"></i> Morning Review Queue</h2>
+                            <span id="review-queue-count" class="badge warning">0</span>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">
+                            Overnight alerts requiring triage review
+                        </p>
+                        <div id="morning-review-list" class="cards-list">
+                            <p style="color: var(--text-muted); text-align: center; padding: 20px;">No items in review queue</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- CALLBACKS TAB -->
                 <div id="tab-callbacks" class="tab-pane">
                     <div class="section">
