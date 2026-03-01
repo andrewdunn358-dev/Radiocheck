@@ -955,6 +955,74 @@ async function resolveSafeguardingAlert(id) {
     }
 }
 
+// Create Case from Safeguarding Alert
+async function createCaseFromSafeguardingAlert(alertId, sessionId, triggerMessage, riskLevel) {
+    // Show modal to collect additional info
+    var content = '<div style="padding: 20px; background: #ffffff;">' +
+        '<p style="color: #6b7280; margin-bottom: 16px;">Create a case from this safeguarding alert. The case will be assigned to you.</p>' +
+        '<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin-bottom: 16px;">' +
+            '<div style="font-weight: 600; color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Alert Info</div>' +
+            '<div style="font-size: 14px; color: #78350f; margin-top: 8px;">Session: ' + escapeHtml(sessionId || 'Unknown') + '</div>' +
+            '<div style="font-size: 14px; color: #78350f;">Risk Level: ' + escapeHtml(riskLevel || 'AMBER') + '</div>' +
+            (triggerMessage ? '<div style="font-size: 14px; color: #78350f; margin-top: 8px;"><em>"' + escapeHtml(triggerMessage) + '..."</em></div>' : '') +
+        '</div>' +
+        '<form id="create-case-form" onsubmit="return submitCreateCaseFromAlert(event, \'' + alertId + '\')">' +
+            '<div class="form-group" style="margin-bottom: 16px;">' +
+                '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">User Name (if known)</label>' +
+                '<input type="text" id="case-user-name" placeholder="e.g., John D. or Anonymous" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;">' +
+            '</div>' +
+            '<div class="form-group" style="margin-bottom: 16px;">' +
+                '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Initial Notes</label>' +
+                '<textarea id="case-initial-notes" rows="3" placeholder="Brief summary of the situation..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;">Case created from safeguarding alert. Risk level: ' + escapeHtml(riskLevel || 'AMBER') + '. Trigger: ' + escapeHtml(triggerMessage || 'N/A') + '</textarea>' +
+            '</div>' +
+            '<div style="display: flex; gap: 12px; margin-top: 20px;">' +
+                '<button type="submit" class="btn btn-primary" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-folder-plus"></i> Create Case</button>' +
+                '<button type="button" class="btn btn-outline" onclick="closeModal()" style="background: #f3f4f6; color: #374151; padding: 12px 24px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer;">Cancel</button>' +
+            '</div>' +
+        '</form>' +
+    '</div>';
+    
+    openGenericModal('Create Case from Alert', content);
+}
+
+// Submit create case from alert
+async function submitCreateCaseFromAlert(event, alertId) {
+    event.preventDefault();
+    
+    var userName = document.getElementById('case-user-name').value || 'Anonymous User';
+    var initialNotes = document.getElementById('case-initial-notes').value || 'Case created from safeguarding alert';
+    
+    try {
+        var result = await apiCall('/cases', 'POST', {
+            safeguarding_alert_id: alertId,
+            initial_notes: initialNotes,
+            user_name: userName
+        });
+        
+        showNotification('Case created successfully!', 'success');
+        closeModal();
+        
+        // Refresh alerts and cases
+        loadSafeguardingAlerts();
+        loadCases();
+        
+        // Switch to Cases tab and open the new case
+        switchTab('cases');
+        
+        if (result && result.id) {
+            setTimeout(function() {
+                openCaseDetail(result.id);
+            }, 500);
+        }
+        
+    } catch (error) {
+        console.error('Error creating case:', error);
+        showNotification('Failed to create case: ' + error.message, 'error');
+    }
+    
+    return false;
+}
+
 // ============ LIVE CHAT FUNCTIONALITY ============
 
 var activeLiveChats = [];
