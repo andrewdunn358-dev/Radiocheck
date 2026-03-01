@@ -3,13 +3,15 @@ AI Characters CMS Router
 Manages AI persona definitions stored in database
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 import uuid
 import logging
+import os
+import base64
 
 router = APIRouter(prefix="/ai-characters", tags=["AI Characters CMS"])
 security = HTTPBearer()
@@ -19,12 +21,18 @@ db = None
 get_current_user = None
 AI_CHARACTERS_FALLBACK = None
 
+# Directory for storing uploaded avatars
+AVATAR_UPLOAD_DIR = "/app/backend/static/avatars"
+
 def set_dependencies(database, current_user_func, fallback_characters):
     """Set database and auth dependencies from main server"""
     global db, get_current_user, AI_CHARACTERS_FALLBACK
     db = database
     get_current_user = current_user_func
     AI_CHARACTERS_FALLBACK = fallback_characters
+    
+    # Ensure avatar upload directory exists
+    os.makedirs(AVATAR_UPLOAD_DIR, exist_ok=True)
 
 
 # ============================================================================
