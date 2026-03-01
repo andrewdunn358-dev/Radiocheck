@@ -343,7 +343,16 @@ export default function LiveChat() {
         user_id: userId
       });
     }
-    safeGoBack(router, '/peer-support');
+    
+    // Try to go back to the AI chat they came from
+    // If we have an alertId, they came from safeguarding flow in AI chat
+    // Use router.back() first, with fallback to home (where they can choose a buddy)
+    if (typeof window !== 'undefined' && window.history.length > 2) {
+      router.back();
+    } else {
+      // Can't go back - navigate to home where they can choose an AI buddy
+      router.replace('/home');
+    }
   };
 
   const scrollToBottom = () => {
