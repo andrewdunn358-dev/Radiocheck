@@ -7,13 +7,65 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Leaflet CSS for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Socket.IO for WebRTC signaling -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <!-- WebRTC Phone styles -->
     <link rel="stylesheet" href="webrtc-phone.css">
+    <style>
+        /* Tab Navigation Styles */
+        .tabs-container {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+        .tab:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        .tab-badge {
+            background: var(--danger);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .tab-badge.warning {
+            background: var(--warning);
+            color: #000;
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        /* Phone section always visible */
+        .phone-section-fixed {
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
     <!-- Login Screen -->
@@ -28,11 +80,11 @@
                 <form id="login-form" onsubmit="return handleLogin(event)">
                     <div class="form-group">
                         <label><i class="fas fa-envelope"></i> Email</label>
-                        <input type="email" id="email" required placeholder="Enter your email">
+                        <input type="email" id="email" required placeholder="Enter your email" autocomplete="email">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-lock"></i> Password</label>
-                        <input type="password" id="password" required placeholder="Enter your password">
+                        <input type="password" id="password" required placeholder="Enter your password" autocomplete="current-password">
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">
                         <i class="fas fa-sign-in-alt"></i> Sign In
@@ -55,9 +107,6 @@
                 </div>
             </div>
             <div class="header-right">
-                <button id="sound-toggle" class="btn btn-icon" onclick="toggleAlertSound()" title="Sound ON - Click to mute">
-                    <i class="fas fa-volume-up"></i>
-                </button>
                 <span id="user-name">Welcome</span>
                 <button class="btn btn-outline" onclick="handleLogout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
@@ -66,8 +115,8 @@
         </header>
 
         <main class="portal-content">
-            <!-- WebRTC PHONE SECTION - TOP OF PAGE -->
-            <div id="webrtc-phone-section" class="section phone-section">
+            <!-- WebRTC PHONE SECTION - ALWAYS VISIBLE AT TOP -->
+            <div id="webrtc-phone-section" class="section phone-section phone-section-fixed">
                 <div class="phone-status-bar">
                     <div class="phone-icon">
                         <i class="fas fa-phone-alt"></i>
@@ -101,9 +150,8 @@
                 </div>
             </div>
 
-            <!-- TOP ROW: Status + Panic -->
-            <div class="top-row">
-                <!-- Status Section -->
+            <!-- Status Bar -->
+            <div class="top-row" style="margin-bottom: 20px;">
                 <div class="status-section">
                     <span class="status-label">My Status:</span>
                     <div class="status-buttons">
@@ -123,16 +171,7 @@
                     </button>
                 </div>
 
-                <!-- Panic Alerts Section (Counsellors Only) - TOP -->
-                <div id="panic-section" class="section panic-section" style="display: none;">
-                    <div class="section-header">
-                        <h2><i class="fas fa-exclamation-triangle"></i> Panic Alerts</h2>
-                        <span id="panic-count" class="badge danger"></span>
-                    </div>
-                    <div id="panic-list" class="cards-list"></div>
-                </div>
-
-                <!-- Panic Button (Peers Only) - TOP -->
+                <!-- Panic Button (Peers Only) -->
                 <div id="panic-button-section" class="section" style="display: none;">
                     <button class="panic-button" onclick="triggerPanic()">
                         <i class="fas fa-exclamation-triangle"></i>
@@ -142,20 +181,79 @@
                 </div>
             </div>
 
-            <!-- MAIN GRID: Safeguarding/Chats LEFT | Callbacks/Notes RIGHT -->
-            <div class="dashboard-grid">
-                <!-- LEFT Column: Safeguarding & Live Chats -->
-                <div class="dashboard-column urgent-column">
-                    <!-- Safeguarding Alerts Section -->
-                    <div id="safeguarding-section" class="section safeguarding-section" style="display: none;">
+            <!-- TAB NAVIGATION -->
+            <div class="tabs-container">
+                <button class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">
+                    <i class="fas fa-home"></i> Dashboard
+                </button>
+                <button class="tab" data-tab="alerts" onclick="switchTab('alerts')">
+                    <i class="fas fa-shield-alt"></i> Alerts
+                    <span id="alerts-badge" class="tab-badge hidden">0</span>
+                </button>
+                <button class="tab" data-tab="callbacks" onclick="switchTab('callbacks')">
+                    <i class="fas fa-phone-volume"></i> Callbacks
+                    <span id="callbacks-badge" class="tab-badge warning hidden">0</span>
+                </button>
+                <button class="tab" data-tab="rota" onclick="switchTab('rota')">
+                    <i class="fas fa-calendar-alt"></i> Rota
+                </button>
+                <button class="tab" data-tab="team" onclick="switchTab('team')">
+                    <i class="fas fa-users"></i> Team
+                </button>
+                <button class="tab" data-tab="notes" onclick="switchTab('notes')">
+                    <i class="fas fa-sticky-note"></i> Notes
+                </button>
+            </div>
+
+            <!-- TAB CONTENT -->
+            <div class="tab-content-container">
+                
+                <!-- DASHBOARD TAB -->
+                <div id="tab-dashboard" class="tab-pane active">
+                    <!-- Panic Alerts (Counsellors) -->
+                    <div id="panic-section" class="section panic-section" style="display: none;">
                         <div class="section-header">
-                            <h2><i class="fas fa-shield-alt"></i> Safeguarding Alerts</h2>
-                            <span id="safeguarding-count" class="badge danger"></span>
-                            <button class="btn btn-icon btn-secondary" onclick="loadSafeguardingAlerts()">
-                                <i class="fas fa-sync"></i>
-                            </button>
+                            <h2><i class="fas fa-exclamation-triangle"></i> Panic Alerts</h2>
+                            <span id="panic-count" class="badge danger"></span>
                         </div>
-                        <div id="safeguarding-list" class="cards-list"></div>
+                        <div id="panic-list" class="cards-list"></div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                        <div class="stat-card" style="background: var(--card); padding: 20px; border-radius: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 48px; height: 48px; background: var(--primary-light); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-phone" style="color: var(--primary); font-size: 20px;"></i>
+                                </div>
+                                <div>
+                                    <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Active Callbacks</p>
+                                    <h3 id="stat-active-callbacks" style="margin: 4px 0 0; font-size: 24px;">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="background: var(--card); padding: 20px; border-radius: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 48px; height: 48px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-shield-alt" style="color: var(--danger); font-size: 20px;"></i>
+                                </div>
+                                <div>
+                                    <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Active Alerts</p>
+                                    <h3 id="stat-active-alerts" style="margin: 4px 0 0; font-size: 24px;">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="background: var(--card); padding: 20px; border-radius: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 48px; height: 48px; background: rgba(34, 197, 94, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-users" style="color: var(--success); font-size: 20px;"></i>
+                                </div>
+                                <div>
+                                    <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Team Online</p>
+                                    <h3 id="stat-team-online" style="margin: 4px 0 0; font-size: 24px;">0</h3>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Live Chats Section -->
@@ -171,19 +269,35 @@
                     </div>
                 </div>
 
-                <!-- RIGHT Column: Callbacks & Notes -->
-                <div class="dashboard-column">
-                    <!-- My Active Callbacks -->
+                <!-- ALERTS TAB -->
+                <div id="tab-alerts" class="tab-pane">
+                    <div id="safeguarding-section" class="section safeguarding-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-shield-alt"></i> Safeguarding Alerts</h2>
+                            <span id="safeguarding-count" class="badge danger"></span>
+                            <button class="btn btn-icon btn-secondary" onclick="loadSafeguardingAlerts()">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </div>
+                        <div id="safeguarding-list" class="cards-list">
+                            <p style="color: var(--text-muted); text-align: center; padding: 40px;">Loading alerts...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CALLBACKS TAB -->
+                <div id="tab-callbacks" class="tab-pane">
                     <div class="section">
                         <div class="section-header">
                             <h2><i class="fas fa-phone-volume"></i> Active Callbacks</h2>
                             <span id="active-count" class="badge"></span>
                         </div>
-                        <div id="active-callbacks" class="cards-list"></div>
+                        <div id="active-callbacks" class="cards-list">
+                            <p style="color: var(--text-muted); text-align: center; padding: 40px;">No active callbacks</p>
+                        </div>
                     </div>
 
-                    <!-- Pending Callbacks -->
-                    <div class="section">
+                    <div class="section" style="margin-top: 20px;">
                         <div class="section-header">
                             <h2><i class="fas fa-phone"></i> Pending Callbacks</h2>
                             <span id="pending-count" class="badge"></span>
@@ -191,22 +305,15 @@
                                 <i class="fas fa-sync"></i>
                             </button>
                         </div>
-                        <div id="pending-callbacks" class="cards-list"></div>
-                    </div>
-
-                    <!-- Available Cover Requests -->
-                    <div class="section swap-section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-exchange-alt"></i> Cover Requests</h2>
-                            <span id="swap-count" class="badge">0</span>
-                        </div>
-                        <div id="available-swaps" class="swap-list">
-                            <p class="loading-text">Loading...</p>
+                        <div id="pending-callbacks" class="cards-list">
+                            <p style="color: var(--text-muted); text-align: center; padding: 40px;">No pending callbacks</p>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Availability Section -->
-                    <div id="availability-section" class="section availability-section">
+                <!-- ROTA TAB -->
+                <div id="tab-rota" class="tab-pane">
+                    <div class="section">
                         <div class="section-header">
                             <h2><i class="fas fa-calendar-alt"></i> My Availability</h2>
                             <button class="btn btn-small btn-primary" onclick="openShiftModal()">
@@ -231,7 +338,7 @@
                                 <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
                             </div>
                             <div id="calendar-days" class="calendar-days">
-                                <!-- Days will be rendered by JS -->
+                                <!-- Days rendered by JS -->
                             </div>
                         </div>
                         
@@ -248,7 +355,20 @@
                         </div>
                     </div>
 
-                    <!-- Who's On Today Section -->
+                    <!-- Cover Requests -->
+                    <div class="section swap-section" style="margin-top: 20px;">
+                        <div class="section-header">
+                            <h2><i class="fas fa-exchange-alt"></i> Cover Requests</h2>
+                            <span id="swap-count" class="badge">0</span>
+                        </div>
+                        <div id="available-swaps" class="swap-list">
+                            <p style="color: var(--text-muted); text-align: center; padding: 20px;">No cover requests</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TEAM TAB -->
+                <div id="tab-team" class="tab-pane">
                     <div class="section team-section">
                         <div class="section-header">
                             <h2><i class="fas fa-users"></i> Team On Duty</h2>
@@ -261,11 +381,13 @@
                             <button class="team-tab" onclick="switchTeamTab('tomorrow')" data-tab="tomorrow">Tomorrow</button>
                         </div>
                         <div id="team-on-duty" class="team-list">
-                            <p class="loading-text">Loading team...</p>
+                            <p style="color: var(--text-muted); text-align: center; padding: 40px;">Loading team...</p>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Notes Section -->
+                <!-- NOTES TAB -->
+                <div id="tab-notes" class="tab-pane">
                     <div class="section notes-section">
                         <div class="section-header">
                             <h2><i class="fas fa-sticky-note"></i> Notes</h2>
@@ -278,7 +400,9 @@
                             <button class="notes-tab active" onclick="switchNotesTab('my')" data-tab="my">My Notes</button>
                             <button class="notes-tab" onclick="switchNotesTab('shared')" data-tab="shared">Shared</button>
                         </div>
-                        <div id="notes-list" class="cards-list"></div>
+                        <div id="notes-list" class="cards-list">
+                            <p style="color: var(--text-muted); text-align: center; padding: 40px;">No notes yet</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -315,8 +439,7 @@
                 </div>
                 <div class="form-group" id="share-group" style="display: none;">
                     <label>Share with</label>
-                    <select id="note-share" multiple>
-                    </select>
+                    <select id="note-share" multiple></select>
                     <small>Hold Ctrl/Cmd to select multiple</small>
                 </div>
             </div>
@@ -359,14 +482,69 @@
         </div>
     </div>
 
+    <!-- Livechat Modal -->
+    <div id="livechat-modal" class="modal-overlay hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fas fa-comments"></i> Live Chat</h3>
+                <button class="modal-close" onclick="closeLivechatModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="livechat-messages" class="chat-messages"></div>
+                <div class="chat-input-container">
+                    <input type="text" id="livechat-input" placeholder="Type a message..." onkeypress="handleLivechatKeypress(event)">
+                    <button class="btn btn-primary" onclick="sendLivechatMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div id="notification" class="notification hidden"></div>
 
-    <!-- Remote Audio Element for WebRTC -->
+    <!-- Remote Audio for WebRTC -->
     <audio id="remote-audio" autoplay style="display: none;"></audio>
 
     <script src="config.js"></script>
     <script src="app.js"></script>
     <script src="webrtc-phone.js"></script>
+    
+    <script>
+        // Tab switching function
+        function switchTab(tabId) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            
+            // Load data for the tab
+            if (tabId === 'alerts') loadSafeguardingAlerts();
+            if (tabId === 'callbacks') loadCallbacks();
+            if (tabId === 'rota') { loadShifts(); loadSwapRequests(); }
+            if (tabId === 'team') loadTeamOnDuty();
+            if (tabId === 'notes') loadNotes();
+        }
+        
+        // Update dashboard stats
+        function updateDashboardStats() {
+            var activeEl = document.getElementById('stat-active-callbacks');
+            var alertsEl = document.getElementById('stat-active-alerts');
+            var teamEl = document.getElementById('stat-team-online');
+            
+            if (activeEl && typeof allCallbacks !== 'undefined') {
+                var active = allCallbacks.filter(function(c) { return c.status === 'in_progress'; });
+                activeEl.textContent = active.length;
+            }
+            if (alertsEl && typeof safeguardingAlerts !== 'undefined') {
+                var activeAlerts = safeguardingAlerts.filter(function(a) { return a.status === 'active'; });
+                alertsEl.textContent = activeAlerts.length;
+            }
+        }
+    </script>
 </body>
 </html>
