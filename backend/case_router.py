@@ -284,8 +284,12 @@ async def create_case(
             risk_map = {"red": "high", "amber": "moderate", "green": "low", "yellow": "moderate"}
             alert_risk = risk_map.get(alert_risk, "moderate")
         
+        # Use provided user_name or default from alert/session
+        case_user_name = request.user_name or alert.get("user_name") or f"Session {alert.get('session_id', 'unknown')[:8]}"
+        
         case = CaseRecord(
             session_id=alert.get("session_id", "unknown"),
+            user_name=case_user_name,
             safeguarding_alert_id=request.safeguarding_alert_id,
             assigned_to=user_id,
             assigned_to_name=user_name,
