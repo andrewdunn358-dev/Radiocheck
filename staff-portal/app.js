@@ -1935,3 +1935,463 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 1500);
 });
+
+
+
+// ===========================================
+// CASE MANAGEMENT FUNCTIONS
+// ===========================================
+
+var allCases = [];
+
+// Load all cases for the current counsellor
+async function loadCases() {
+    var container = document.getElementById('cases-list');
+    if (!container) return;
+    
+    container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Loading cases...</p>';
+    
+    try {
+        var statusFilter = document.getElementById('case-status-filter');
+        var riskFilter = document.getElementById('case-risk-filter');
+        
+        var params = new URLSearchParams();
+        if (statusFilter && statusFilter.value) params.append('status', statusFilter.value);
+        if (riskFilter && riskFilter.value) params.append('risk_level', riskFilter.value);
+        
+        var queryString = params.toString() ? '?' + params.toString() : '';
+        var cases = await apiCall('/cases' + queryString);
+        allCases = cases || [];
+        
+        // Update badge
+        var badge = document.getElementById('cases-badge');
+        var activeCases = allCases.filter(function(c) { return c.status === 'active'; });
+        if (badge) {
+            badge.textContent = activeCases.length;
+            badge.classList.toggle('hidden', activeCases.length === 0);
+        }
+        
+        // Update count
+        var countEl = document.getElementById('my-cases-count');
+        if (countEl) countEl.textContent = allCases.length;
+        
+        renderCases(allCases, container);
+        
+        // Also load morning review queue
+        loadMorningReviewQueue();
+        
+    } catch (error) {
+        console.error('Error loading cases:', error);
+        container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle"></i> Failed to load cases. Please try again.</p>';
+    }
+}
+
+// Render cases list
+function renderCases(cases, container) {
+    if (!cases || cases.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px;"><i class="fas fa-folder-open"></i> No cases found</p>';
+        return;
+    }
+    
+    var html = cases.map(function(c) {
+        var riskClass = 'risk-' + (c.current_risk_level || 'moderate').toLowerCase();
+        var statusDisplay = (c.status || 'active').replace('_', ' ');
+        var sessionCount = c.sessions ? c.sessions.length : 0;
+        var lastSession = sessionCount > 0 ? c.sessions[sessionCount - 1] : null;
+        
+        return '<div class="case-card ' + riskClass + '">' +
+            '<div class="case-header">' +
+                '<div class="case-title"><i class="fas fa-user-shield"></i> Case: ' + escapeHtml(c.user_name || 'Unknown') + '</div>' +
+                '<span class="session-count">' + sessionCount + ' session(s)</span>' +
+            '</div>' +
+            '<div class="case-meta">' +
+                '<span class="case-tag status">' + escapeHtml(statusDisplay) + '</span>' +
+                '<span class="case-tag ' + riskClass + '">' + escapeHtml(c.current_risk_level || 'moderate') + ' risk</span>' +
+                (c.has_safety_plan ? '<span class="case-tag" style="background: rgba(34,197,94,0.1); color: #16a34a;"><i class="fas fa-shield-alt"></i> Safety Plan</span>' : '') +
+            '</div>' +
+            (lastSession ? '<p style="color: var(--text-muted); font-size: 14px; margin: 8px 0;">Last: ' + escapeHtml(lastSession.presenting_issue || 'No notes').substring(0, 100) + '...</p>' : '') +
+            '<div class="case-actions">' +
+                '<button class="btn btn-small btn-primary" onclick="openCaseDetail(\'' + c.id + '\')"><i class="fas fa-eye"></i> View</button>' +
+                '<button class="btn btn-small btn-secondary" onclick="addSessionNote(\'' + c.id + '\')"><i class="fas fa-plus"></i> Add Note</button>' +
+                (c.status === 'active' ? '<button class="btn btn-small btn-warning" onclick="escalateCase(\'' + c.id + '\')"><i class="fas fa-arrow-up"></i> Escalate</button>' : '') +
+            '</div>' +
+        '</div>';
+    }).join('');
+    
+    container.innerHTML = html;
+}
+
+// Load morning review queue (overnight alerts needing triage)
+async function loadMorningReviewQueue() {
+    var container = document.getElementById('morning-review-list');
+    if (!container) return;
+    
+    try {
+        var queue = await apiCall('/cases/morning-review-queue');
+        var queueBadge = document.getElementById('review-queue-count');
+        
+        if (queueBadge) {
+            queueBadge.textContent = queue.length || 0;
+        }
+        
+        if (!queue || queue.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;"><i class="fas fa-check-circle"></i> No items in review queue</p>';
+            return;
+        }
+        
+        var html = queue.map(function(item) {
+            return '<div class="alert-card" style="background: var(--card); padding: 16px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid var(--warning);">' +
+                '<div style="display: flex; justify-content: space-between; align-items: start;">' +
+                    '<div>' +
+                        '<strong>' + escapeHtml(item.user_name || 'Unknown User') + '</strong>' +
+                        '<p style="color: var(--text-muted); font-size: 13px; margin: 4px 0;">' + escapeHtml(item.details || item.presenting_issue || 'No details') + '</p>' +
+                        '<span style="font-size: 12px; color: var(--text-muted);">' + formatTimeAgo(item.created_at) + '</span>' +
+                    '</div>' +
+                    '<div>' +
+                        '<button class="btn btn-small btn-primary" onclick="createCaseFromAlert(\'' + item.id + '\')"><i class="fas fa-folder-plus"></i> Create Case</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading morning review queue:', error);
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Could not load review queue</p>';
+    }
+}
+
+// Create a case from a safeguarding alert
+async function createCaseFromAlert(alertId) {
+    if (!confirm('Create a new case from this alert? This will assign the case to you.')) return;
+    
+    try {
+        var result = await apiCall('/cases', 'POST', {
+            safeguarding_alert_id: alertId,
+            initial_notes: 'Case created from safeguarding alert'
+        });
+        
+        showNotification('Case created successfully', 'success');
+        loadCases();
+        loadMorningReviewQueue();
+        loadSafeguardingAlerts();
+        
+        // Open the new case
+        if (result && result.id) {
+            openCaseDetail(result.id);
+        }
+        
+    } catch (error) {
+        console.error('Error creating case:', error);
+        showNotification('Failed to create case: ' + error.message, 'error');
+    }
+}
+
+// Open case detail view
+async function openCaseDetail(caseId) {
+    try {
+        var caseData = await apiCall('/cases/' + caseId);
+        
+        // Create modal content
+        var sessionsHtml = '';
+        if (caseData.sessions && caseData.sessions.length > 0) {
+            sessionsHtml = '<h4 style="margin: 16px 0 8px;">Session History</h4>';
+            sessionsHtml += caseData.sessions.map(function(s, idx) {
+                return '<div style="background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 8px;">' +
+                    '<div style="display: flex; justify-content: space-between;">' +
+                        '<strong>Session ' + (idx + 1) + '</strong>' +
+                        '<span style="font-size: 12px; color: var(--text-muted);">' + formatDate(s.session_date) + '</span>' +
+                    '</div>' +
+                    '<p style="margin: 8px 0; font-size: 14px;">' + escapeHtml(s.presenting_issue || 'No notes') + '</p>' +
+                    '<span class="case-tag risk-' + (s.risk_level || 'moderate').toLowerCase() + '">' + (s.risk_level || 'moderate') + ' risk</span>' +
+                '</div>';
+            }).join('');
+        }
+        
+        var safetyPlanHtml = '';
+        if (caseData.safety_plan) {
+            safetyPlanHtml = '<h4 style="margin: 16px 0 8px;"><i class="fas fa-shield-alt"></i> Safety Plan</h4>' +
+                '<div style="background: rgba(34,197,94,0.1); padding: 12px; border-radius: 8px;">' +
+                    '<p style="margin: 0; font-size: 14px;">Safety plan on file - Last updated: ' + formatDate(caseData.safety_plan.updated_at) + '</p>' +
+                '</div>';
+        }
+        
+        var content = '<div style="padding: 20px;">' +
+            '<h3><i class="fas fa-user-shield"></i> Case: ' + escapeHtml(caseData.user_name || 'Unknown') + '</h3>' +
+            '<div class="case-meta" style="margin: 16px 0;">' +
+                '<span class="case-tag status">' + escapeHtml(caseData.status || 'active') + '</span>' +
+                '<span class="case-tag risk-' + (caseData.current_risk_level || 'moderate').toLowerCase() + '">' + escapeHtml(caseData.current_risk_level || 'moderate') + ' risk</span>' +
+                '<span class="case-tag" style="background: var(--bg);">Sessions: ' + (caseData.session_count || 0) + '/6</span>' +
+            '</div>' +
+            safetyPlanHtml +
+            sessionsHtml +
+            '<div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">' +
+                '<button class="btn btn-primary" onclick="addSessionNote(\'' + caseId + '\')"><i class="fas fa-plus"></i> Add Session Note</button>' +
+                '<button class="btn btn-secondary" onclick="editSafetyPlan(\'' + caseId + '\')"><i class="fas fa-shield-alt"></i> ' + (caseData.safety_plan ? 'Edit' : 'Create') + ' Safety Plan</button>' +
+                '<button class="btn btn-warning" onclick="createReferral(\'' + caseId + '\')"><i class="fas fa-hospital"></i> Create Referral</button>' +
+                '<button class="btn btn-outline" onclick="closeModal()"><i class="fas fa-times"></i> Close</button>' +
+            '</div>' +
+        '</div>';
+        
+        openGenericModal('Case Details', content);
+        
+    } catch (error) {
+        console.error('Error loading case:', error);
+        showNotification('Failed to load case details: ' + error.message, 'error');
+    }
+}
+
+// Add a session note to a case
+async function addSessionNote(caseId) {
+    var content = '<div style="padding: 20px;">' +
+        '<form id="session-note-form" onsubmit="return submitSessionNote(event, \'' + caseId + '\')">' +
+            '<div class="form-group">' +
+                '<label>Presenting Issue / Notes</label>' +
+                '<textarea id="session-presenting-issue" rows="4" required placeholder="Describe the main issues discussed..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Risk Level</label>' +
+                '<select id="session-risk-level" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">' +
+                    '<option value="low">Low</option>' +
+                    '<option value="moderate" selected>Moderate</option>' +
+                    '<option value="high">High</option>' +
+                    '<option value="critical">Critical</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Outcome</label>' +
+                '<select id="session-outcome" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">' +
+                    '<option value="continue_monitoring">Continue Monitoring</option>' +
+                    '<option value="escalate_to_nhs">Escalate to NHS</option>' +
+                    '<option value="refer_to_service">Refer to External Service</option>' +
+                    '<option value="close_case">Close Case</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Next Steps (optional)</label>' +
+                '<textarea id="session-next-steps" rows="2" placeholder="What should happen next..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '</div>' +
+            '<div style="display: flex; gap: 12px; margin-top: 16px;">' +
+                '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Session</button>' +
+                '<button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>' +
+            '</div>' +
+        '</form>' +
+    '</div>';
+    
+    openGenericModal('Add Session Note', content);
+}
+
+// Submit session note
+async function submitSessionNote(event, caseId) {
+    event.preventDefault();
+    
+    var data = {
+        presenting_issue: document.getElementById('session-presenting-issue').value,
+        risk_level: document.getElementById('session-risk-level').value,
+        outcome: document.getElementById('session-outcome').value,
+        next_steps: document.getElementById('session-next-steps').value || null
+    };
+    
+    try {
+        await apiCall('/cases/' + caseId + '/sessions', 'POST', data);
+        showNotification('Session note added successfully', 'success');
+        closeModal();
+        loadCases();
+    } catch (error) {
+        console.error('Error adding session:', error);
+        showNotification('Failed to add session: ' + error.message, 'error');
+    }
+    
+    return false;
+}
+
+// Escalate a case
+async function escalateCase(caseId) {
+    if (!confirm('Escalate this case? This will flag it as critical and notify senior staff.')) return;
+    
+    try {
+        await apiCall('/cases/' + caseId + '/sessions', 'POST', {
+            presenting_issue: 'Case escalated by counsellor',
+            risk_level: 'critical',
+            outcome: 'escalate_to_nhs',
+            next_steps: 'Requires immediate senior review'
+        });
+        
+        showNotification('Case escalated successfully', 'success');
+        loadCases();
+    } catch (error) {
+        console.error('Error escalating case:', error);
+        showNotification('Failed to escalate case: ' + error.message, 'error');
+    }
+}
+
+// Edit/create safety plan
+async function editSafetyPlan(caseId) {
+    var content = '<div style="padding: 20px;">' +
+        '<form id="safety-plan-form" onsubmit="return submitSafetyPlan(event, \'' + caseId + '\')">' +
+            '<p style="color: var(--text-muted); margin-bottom: 16px;">Create or update the safety plan for this case.</p>' +
+            '<div class="form-group">' +
+                '<label>Warning Signs (one per line)</label>' +
+                '<textarea id="sp-warning-signs" rows="3" placeholder="What signs indicate crisis?..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Coping Strategies (one per line)</label>' +
+                '<textarea id="sp-coping" rows="3" placeholder="Internal coping strategies..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Reasons for Living (one per line)</label>' +
+                '<textarea id="sp-reasons" rows="3" placeholder="What keeps them going..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '</div>' +
+            '<div style="display: flex; gap: 12px; margin-top: 16px;">' +
+                '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Safety Plan</button>' +
+                '<button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>' +
+            '</div>' +
+        '</form>' +
+    '</div>';
+    
+    openGenericModal('Safety Plan', content);
+}
+
+// Submit safety plan
+async function submitSafetyPlan(event, caseId) {
+    event.preventDefault();
+    
+    var data = {
+        warning_signs: document.getElementById('sp-warning-signs').value.split('\n').filter(function(s) { return s.trim(); }),
+        internal_coping: document.getElementById('sp-coping').value.split('\n').filter(function(s) { return s.trim(); }),
+        reasons_for_living: document.getElementById('sp-reasons').value.split('\n').filter(function(s) { return s.trim(); })
+    };
+    
+    try {
+        await apiCall('/cases/' + caseId + '/safety-plan', 'PUT', data);
+        showNotification('Safety plan saved successfully', 'success');
+        closeModal();
+        loadCases();
+    } catch (error) {
+        console.error('Error saving safety plan:', error);
+        showNotification('Failed to save safety plan: ' + error.message, 'error');
+    }
+    
+    return false;
+}
+
+// Create referral
+async function createReferral(caseId) {
+    var content = '<div style="padding: 20px;">' +
+        '<form id="referral-form" onsubmit="return submitReferral(event, \'' + caseId + '\')">' +
+            '<div class="form-group">' +
+                '<label>Service Type</label>' +
+                '<select id="referral-service-type" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">' +
+                    '<option value="nhs_mental_health">NHS Mental Health</option>' +
+                    '<option value="crisis_team">Crisis Team</option>' +
+                    '<option value="gp">GP</option>' +
+                    '<option value="veterans_charity">Veterans Charity</option>' +
+                    '<option value="other">Other</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Service Name</label>' +
+                '<input type="text" id="referral-service-name" required placeholder="e.g., Local NHS IAPT..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Urgency</label>' +
+                '<select id="referral-urgency" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">' +
+                    '<option value="routine">Routine</option>' +
+                    '<option value="urgent">Urgent</option>' +
+                    '<option value="emergency">Emergency</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Notes</label>' +
+                '<textarea id="referral-notes" rows="3" placeholder="Additional information..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '</div>' +
+            '<div style="display: flex; gap: 12px; margin-top: 16px;">' +
+                '<button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Create Referral</button>' +
+                '<button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>' +
+            '</div>' +
+        '</form>' +
+    '</div>';
+    
+    openGenericModal('Create Referral', content);
+}
+
+// Submit referral
+async function submitReferral(event, caseId) {
+    event.preventDefault();
+    
+    var data = {
+        service_type: document.getElementById('referral-service-type').value,
+        service_name: document.getElementById('referral-service-name').value,
+        service_id: document.getElementById('referral-service-type').value,
+        urgency: document.getElementById('referral-urgency').value,
+        notes: document.getElementById('referral-notes').value || null
+    };
+    
+    try {
+        await apiCall('/cases/' + caseId + '/referrals', 'POST', data);
+        showNotification('Referral created successfully', 'success');
+        closeModal();
+        loadCases();
+    } catch (error) {
+        console.error('Error creating referral:', error);
+        showNotification('Failed to create referral: ' + error.message, 'error');
+    }
+    
+    return false;
+}
+
+// Generic modal helper
+function openGenericModal(title, content) {
+    // Check if modal already exists
+    var modal = document.getElementById('generic-modal');
+    if (!modal) {
+        // Create modal
+        modal = document.createElement('div');
+        modal.id = 'generic-modal';
+        modal.className = 'modal-overlay';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;';
+        document.body.appendChild(modal);
+    }
+    
+    modal.innerHTML = '<div class="modal-content" style="background: var(--card); border-radius: 16px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">' +
+        '<div class="modal-header" style="padding: 20px 20px 0; display: flex; justify-content: space-between; align-items: center;">' +
+            '<h3 style="margin: 0;">' + title + '</h3>' +
+            '<button class="btn btn-icon btn-secondary" onclick="closeModal()" style="border: none; background: none; font-size: 20px; cursor: pointer;">&times;</button>' +
+        '</div>' +
+        content +
+    '</div>';
+    
+    modal.style.display = 'flex';
+}
+
+function closeModal() {
+    var modal = document.getElementById('generic-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    // Also try to close any existing modals
+    var overlays = document.querySelectorAll('.modal-overlay');
+    overlays.forEach(function(o) { o.style.display = 'none'; });
+}
+
+// Helper function
+function formatTimeAgo(dateString) {
+    if (!dateString) return 'Unknown';
+    var date = new Date(dateString);
+    var now = new Date();
+    var diffMs = now - date;
+    var diffMins = Math.floor(diffMs / 60000);
+    var diffHours = Math.floor(diffMs / 3600000);
+    var diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 60) return diffMins + ' min ago';
+    if (diffHours < 24) return diffHours + ' hours ago';
+    return diffDays + ' days ago';
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'Unknown';
+    var date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
