@@ -6585,7 +6585,7 @@ async function handleAvatarUpload(input) {
         const response = await fetch(`${CONFIG.API_URL}/api/ai-characters/upload-avatar`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${token}`
             },
             body: formData
         });
