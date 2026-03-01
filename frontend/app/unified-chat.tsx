@@ -7,7 +7,7 @@
  * Usage: Navigate to /unified-chat/[characterId] e.g., /unified-chat/hugo
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,9 @@ import { getCharacter as getStaticCharacter, AICharacter } from '../src/config/a
 import { getCharacter as getAPICharacter } from '../src/services/characterService';
 import AIConsentModal from '../src/components/AIConsentModal';
 import { useAgeGateContext } from '../src/context/AgeGateContext';
+
+// Default values for when character is loading
+const DEFAULT_ACCENT_COLOR = '#3b82f6';
 
 interface Message {
   id: string;
