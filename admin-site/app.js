@@ -5607,7 +5607,7 @@ function showModal(title, content) {
         <div class="modal-content large-modal">
             <div class="modal-header">
                 <h3>${title}</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
+                <button class="modal-close" onclick="closeSafeguardingModal()">&times;</button>
             </div>
             <div class="modal-body">
                 ${content}
