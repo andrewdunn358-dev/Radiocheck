@@ -2150,42 +2150,42 @@ async function openCaseDetail(caseId) {
 
 // Add a session note to a case
 async function addSessionNote(caseId) {
-    var content = '<div style="padding: 20px;">' +
+    var content = '<div style="padding: 20px; background: #ffffff;">' +
         '<form id="session-note-form" onsubmit="return submitSessionNote(event, \'' + caseId + '\')">' +
-            '<div class="form-group">' +
-                '<label>Presenting Issue / Notes</label>' +
-                '<textarea id="session-presenting-issue" rows="4" required placeholder="Describe the main issues discussed..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '<div class="form-group" style="margin-bottom: 16px;">' +
+                '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Presenting Issue / Notes</label>' +
+                '<textarea id="session-presenting-issue" rows="4" required placeholder="Describe the main issues discussed..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;"></textarea>' +
             '</div>' +
-            '<div class="form-group">' +
-                '<label>Risk Level</label>' +
-                '<select id="session-risk-level" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">' +
+            '<div class="form-group" style="margin-bottom: 16px;">' +
+                '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Risk Level</label>' +
+                '<select id="session-risk-level" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;">' +
                     '<option value="low">Low</option>' +
                     '<option value="moderate" selected>Moderate</option>' +
                     '<option value="high">High</option>' +
                     '<option value="critical">Critical</option>' +
                 '</select>' +
             '</div>' +
-            '<div class="form-group">' +
-                '<label>Outcome</label>' +
-                '<select id="session-outcome" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">' +
+            '<div class="form-group" style="margin-bottom: 16px;">' +
+                '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Outcome</label>' +
+                '<select id="session-outcome" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;">' +
                     '<option value="continue_monitoring">Continue Monitoring</option>' +
                     '<option value="escalate_to_nhs">Escalate to NHS</option>' +
                     '<option value="refer_to_service">Refer to External Service</option>' +
                     '<option value="close_case">Close Case</option>' +
                 '</select>' +
             '</div>' +
-            '<div class="form-group">' +
-                '<label>Next Steps (optional)</label>' +
-                '<textarea id="session-next-steps" rows="2" placeholder="What should happen next..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"></textarea>' +
+            '<div class="form-group" style="margin-bottom: 16px;">' +
+                '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Next Steps (optional)</label>' +
+                '<textarea id="session-next-steps" rows="2" placeholder="What should happen next..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;"></textarea>' +
             '</div>' +
-            '<div style="display: flex; gap: 12px; margin-top: 16px;">' +
-                '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Session</button>' +
-                '<button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>' +
+            '<div style="display: flex; gap: 12px; margin-top: 20px;">' +
+                '<button type="submit" class="btn btn-primary" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-save"></i> Save Session</button>' +
+                '<button type="button" class="btn btn-outline" onclick="goBackToCase(\'' + caseId + '\')" style="background: #f3f4f6; color: #374151; padding: 12px 24px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer;"><i class="fas fa-arrow-left"></i> Back to Case</button>' +
             '</div>' +
         '</form>' +
     '</div>';
     
-    openGenericModal('Add Session Note', content);
+    openGenericModal('Add Session Note', content, { isSubModal: true });
 }
 
 // Submit session note
