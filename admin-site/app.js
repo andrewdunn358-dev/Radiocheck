@@ -4960,12 +4960,7 @@ function exportSurveyData() {
 // ============================================
 
 // Escape HTML for security
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml function defined at line 565 - DO NOT DUPLICATE
 
 // Initialize compliance tab when clicked
 document.addEventListener('DOMContentLoaded', function() {
