@@ -193,12 +193,15 @@ export default function UnifiedAIChat() {
     });
   };
 
-  // Check consent on mount
+  // Check consent on mount - wait for character to load
   useEffect(() => {
-    checkAIConsent();
-  }, [character.consentKey]);
+    if (character) {
+      checkAIConsent();
+    }
+  }, [character?.consentKey]);
 
   const checkAIConsent = async () => {
+    if (!character) return;
     try {
       const consent = await AsyncStorage.getItem(character.consentKey);
       if (consent === 'true') {
