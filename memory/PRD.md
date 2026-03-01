@@ -75,7 +75,15 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 
 ## Implementation Status
 
-### COMPLETED - December 2025
+### COMPLETED - March 2026 Update
+
+#### Staff Portal Fixes (This Session)
+- [x] Fixed `loadTeamOnDuty()` - was using undefined `API_URL` and `getAuthHeaders()`
+- [x] Added missing `loadSwapRequests()` placeholder function
+- [x] Fixed inline JavaScript in `index.html` - removed ES6 syntax, added function existence checks
+- [x] All backend API tests passing (20/20)
+
+#### Previous Work - December 2025
 
 #### Case Management System
 - [x] Backend API with 15+ endpoints
