@@ -2276,7 +2276,8 @@ async function submitSafetyPlan(event, caseId) {
     try {
         await apiCall('/cases/' + caseId + '/safety-plan', 'PUT', data);
         showNotification('Safety plan saved successfully', 'success');
-        closeModal();
+        // Go back to case details to see the updated safety plan
+        goBackToCase(caseId);
         loadCases();
     } catch (error) {
         console.error('Error saving safety plan:', error);
