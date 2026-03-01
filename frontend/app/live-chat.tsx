@@ -462,7 +462,73 @@ export default function LiveChat() {
         >
           <FontAwesome5 name="times" size={16} color="#dc2626" />
         </TouchableOpacity>
+        
+        {/* Report/Block dropdown */}
+        {!waitingForStaff && staffName && (
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.reportButton}
+              onPress={() => setShowReportModal(true)}
+              data-testid="report-button"
+            >
+              <FontAwesome5 name="flag" size={14} color="#f59e0b" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.blockButton}
+              onPress={handleBlock}
+              data-testid="block-button"
+            >
+              <FontAwesome5 name="ban" size={14} color="#dc2626" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
+
+      {/* Report Modal */}
+      <Modal
+        visible={showReportModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowReportModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.reportModal}>
+            <View style={styles.reportModalHeader}>
+              <Text style={styles.reportModalTitle}>Report User</Text>
+              <TouchableOpacity onPress={() => setShowReportModal(false)}>
+                <FontAwesome5 name="times" size={18} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.reportModalSubtitle}>
+              Help us maintain a safe environment by reporting inappropriate behaviour.
+            </Text>
+            <TextInput
+              style={styles.reportInput}
+              placeholder="Describe the issue..."
+              placeholderTextColor="#9ca3af"
+              value={reportReason}
+              onChangeText={setReportReason}
+              multiline
+              numberOfLines={4}
+            />
+            <View style={styles.reportModalButtons}>
+              <TouchableOpacity 
+                style={styles.reportCancelButton}
+                onPress={() => setShowReportModal(false)}
+              >
+                <Text style={styles.reportCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.reportSubmitButton}
+                onPress={handleReport}
+              >
+                <FontAwesome5 name="paper-plane" size={14} color="#fff" />
+                <Text style={styles.reportSubmitText}>Submit Report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Waiting Banner */}
       {waitingForStaff && (
