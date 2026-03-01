@@ -4203,6 +4203,42 @@ def get_openai_client():
 
 buddy_openai_client = get_openai_client()
 
+# Helper function to get character config from database with fallback to hardcoded
+async def get_character_config(character_id: str) -> dict:
+    """
+    Get character configuration from database first, fallback to hardcoded.
+    Returns dict with: name, prompt, avatar, description, is_enabled
+    """
+    # Try database first
+    db_char = await db.ai_characters.find_one({"id": character_id, "is_enabled": True}, {"_id": 0})
+    if db_char:
+        return {
+            "name": db_char.get("name", character_id.title()),
+            "prompt": db_char.get("prompt", ""),
+            "avatar": db_char.get("avatar", f"{AVATAR_BASE_URL}/{character_id}.png"),
+            "description": db_char.get("description", ""),
+            "source": "database"
+        }
+    
+    # Fallback to hardcoded
+    if character_id in AI_CHARACTERS:
+        return {
+            "name": AI_CHARACTERS[character_id]["name"],
+            "prompt": AI_CHARACTERS[character_id]["prompt"],
+            "avatar": AI_CHARACTERS[character_id]["avatar"],
+            "description": "",
+            "source": "hardcoded"
+        }
+    
+    # Default to Tommy if character not found
+    return {
+        "name": AI_CHARACTERS["tommy"]["name"],
+        "prompt": AI_CHARACTERS["tommy"]["prompt"],
+        "avatar": AI_CHARACTERS["tommy"]["avatar"],
+        "description": "",
+        "source": "fallback"
+    }
+
 @api_router.get("/ai-buddies/characters")
 async def get_ai_characters():
     """Get available AI Battle Buddy characters (supports DB override)"""
