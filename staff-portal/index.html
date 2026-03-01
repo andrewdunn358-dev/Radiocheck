@@ -5,19 +5,746 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Portal - Radio Check</title>
     <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Leaflet CSS for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Socket.IO for WebRTC signaling -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <!-- WebRTC Phone styles -->
-    <link rel="stylesheet" href="webrtc-phone.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --danger: #dc2626;
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --border: #334155;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius: 8px;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        .hidden { display: none !important; }
+        
+        /* LOGIN SCREEN */
+        .login-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+        }
+        
+        .login-header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .login-header p {
+            color: var(--text-muted);
+        }
+        
+        .login-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 32px;
+            border: 1px solid var(--border);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 16px;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-block {
+            width: 100%;
+        }
+        
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-outline:hover { background: var(--bg-hover); }
+        .btn-sm { padding: 8px 12px; font-size: 13px; }
+        .btn-icon { padding: 8px 12px; }
+        
+        .error-message {
+            color: var(--danger);
+            font-size: 14px;
+            margin-top: 16px;
+            text-align: center;
+        }
+        
+        /* PORTAL LAYOUT */
+        .portal-screen {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .portal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .header-logo {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .header-left h1 {
+            font-size: 20px;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: var(--primary);
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        #user-name {
+            color: var(--text-muted);
+        }
+        
+        /* TABS */
+        .tabs-container {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .tab {
+            padding: 16px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tab:hover {
+            color: var(--text);
+            background: var(--bg-hover);
+        }
+        
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        .tab-badge.warning {
+            background: var(--warning);
+        }
+        
+        /* TAB CONTENT */
+        .tab-content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        
+        .tab-pane {
+            display: none;
+        }
+        
+        .tab-pane.active {
+            display: block;
+        }
+        
+        /* PHONE BAR */
+        .phone-bar {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .phone-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .phone-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        
+        .status-dot.online { background: var(--success); }
+        .status-dot.offline { background: var(--text-muted); }
+        .status-dot.busy { background: var(--warning); }
+        
+        .incoming-call-banner {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .incoming-call-banner .caller-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+        
+        .incoming-call-banner .call-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        /* CARDS */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        /* DASHBOARD GRID */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+        
+        .stat-card h3 {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        
+        .stat-value.danger { color: var(--danger); }
+        .stat-value.warning { color: var(--warning); }
+        .stat-value.success { color: var(--success); }
+        
+        /* ALERT CARDS */
+        .alert-card {
+            background: var(--bg-card);
+            border-left: 4px solid var(--danger);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-bottom: 12px;
+        }
+        
+        .alert-card.amber {
+            border-left-color: var(--warning);
+        }
+        
+        .alert-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .alert-time {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        .risk-badge {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .risk-badge.red { background: var(--danger); }
+        .risk-badge.amber { background: var(--warning); }
+        .risk-badge.green { background: var(--success); }
+        
+        .alert-message {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: var(--radius);
+            font-family: monospace;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--text-muted);
+        }
+        
+        .alert-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        /* CASE CARDS */
+        .case-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .case-card:hover {
+            border-color: var(--primary);
+        }
+        
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .case-number {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .case-status {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .case-status.active { background: var(--primary); }
+        .case-status.monitoring { background: var(--warning); }
+        .case-status.referred { background: var(--success); }
+        .case-status.closed { background: var(--text-muted); }
+        
+        .case-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        /* CASE DETAIL MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .modal-close:hover {
+            color: var(--text);
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .modal-tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        
+        .modal-tab {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        
+        .modal-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        /* TIMELINE */
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 2px solid var(--bg-card);
+        }
+        
+        .timeline-item.ai::before { background: #8b5cf6; }
+        .timeline-item.session::before { background: var(--success); }
+        .timeline-item.referral::before { background: var(--warning); }
+        
+        .timeline-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        
+        .timeline-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .timeline-description {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        /* FORMS */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .form-group textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            resize: vertical;
+        }
+        
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+        }
+        
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg);
+            border-radius: var(--radius);
+            cursor: pointer;
+        }
+        
+        .checkbox-item:hover {
+            background: var(--bg-hover);
+        }
+        
+        .checkbox-item input {
+            width: 18px;
+            height: 18px;
+        }
+        
+        /* CONVERSATION VIEW */
+        .conversation-container {
+            background: var(--bg);
+            border-radius: var(--radius);
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .message {
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+        }
+        
+        .message.user {
+            background: var(--primary);
+            margin-left: 20%;
+        }
+        
+        .message.assistant {
+            background: var(--bg-hover);
+            margin-right: 20%;
+        }
+        
+        .message-role {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        /* OPERATING HOURS NOTICE */
+        .hours-notice {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .hours-notice i {
+            font-size: 24px;
+        }
+        
+        .hours-notice strong {
+            color: #93c5fd;
+        }
+        
+        /* LOADING */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <!-- Login Screen -->
-    <div id="login-screen" class="screen active">
+    <div id="login-screen" class="login-screen">
         <div class="login-container">
             <div class="login-header">
                 <img src="logo.png" alt="Radio Check Logo" class="login-logo">
@@ -25,7 +752,7 @@
                 <p>Radio Check - Veterans Support</p>
             </div>
             <div class="login-card">
-                <form id="login-form" onsubmit="return handleLogin(event)">
+                <form id="login-form">
                     <div class="form-group">
                         <label><i class="fas fa-envelope"></i> Email</label>
                         <input type="email" id="email" required placeholder="Enter your email">
@@ -40,22 +767,24 @@
                     <div id="login-error" class="error-message hidden"></div>
                 </form>
             </div>
-            <p class="login-footer">For Counsellors & Peer Supporters</p>
+            <p style="text-align: center; margin-top: 24px; color: var(--text-muted);">
+                Human Support: Mon-Fri 9am-5pm
+            </p>
         </div>
     </div>
 
     <!-- Portal Screen -->
-    <div id="portal-screen" class="screen">
+    <div id="portal-screen" class="portal-screen hidden">
         <header class="portal-header">
             <div class="header-left">
                 <img src="logo.png" alt="Logo" class="header-logo">
                 <div>
-                    <h1 id="portal-title">Staff Portal</h1>
-                    <span id="user-role-badge" class="role-badge"></span>
+                    <h1>Staff Portal</h1>
+                    <span id="user-role-badge" class="role-badge">Counsellor</span>
                 </div>
             </div>
             <div class="header-right">
-                <button id="sound-toggle" class="btn btn-icon" onclick="toggleAlertSound()" title="Sound ON - Click to mute">
+                <button id="sound-toggle" class="btn btn-icon" title="Sound ON">
                     <i class="fas fa-volume-up"></i>
                 </button>
                 <span id="user-name">Welcome</span>
@@ -64,30 +793,61 @@
                 </button>
             </div>
         </header>
-
-        <main class="portal-content">
-            <!-- WebRTC PHONE SECTION - TOP OF PAGE -->
-            <div id="webrtc-phone-section" class="section phone-section">
-                <div class="phone-status-bar">
-                    <div class="phone-icon">
-                        <i class="fas fa-phone-alt"></i>
-                    </div>
-                    <div class="phone-info">
-                        <h3>In-App Calling</h3>
-                        <div id="webrtc-status" class="phone-status-text">
-                            <span class="status-dot offline"></span>
-                            <span id="webrtc-status-text">Initializing...</span>
+        
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <div class="tab active" data-tab="dashboard">
+                    <i class="fas fa-home"></i> Dashboard
+                </div>
+                <div class="tab" data-tab="cases">
+                    <i class="fas fa-folder-open"></i> My Cases
+                    <span id="cases-badge" class="tab-badge hidden">0</span>
+                </div>
+                <div class="tab" data-tab="alerts">
+                    <i class="fas fa-exclamation-triangle"></i> Alerts
+                    <span id="alerts-badge" class="tab-badge">0</span>
+                </div>
+                <div class="tab" data-tab="callbacks">
+                    <i class="fas fa-phone-volume"></i> Callbacks
+                    <span id="callbacks-badge" class="tab-badge warning hidden">0</span>
+                </div>
+                <div class="tab" data-tab="chat">
+                    <i class="fas fa-comments"></i> Live Chat
+                    <span id="chat-badge" class="tab-badge hidden">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- DASHBOARD TAB -->
+            <div id="tab-dashboard" class="tab-pane active">
+                <!-- Phone Bar -->
+                <div class="phone-bar">
+                    <div class="phone-status">
+                        <div class="phone-icon">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                        <div>
+                            <strong>In-App Calling</strong>
+                            <div id="phone-status-text">
+                                <span class="status-dot offline"></span>
+                                <span>Initializing...</span>
+                            </div>
                         </div>
                     </div>
-                    <div id="webrtc-call-controls" class="phone-controls hidden">
+                    <div id="phone-controls" class="hidden">
                         <button class="btn btn-danger btn-sm" onclick="WebRTCPhone.endCall()">
                             <i class="fas fa-phone-slash"></i> End Call
                         </button>
                     </div>
                 </div>
-                <div id="webrtc-incoming-call" class="incoming-call-banner hidden">
+                
+                <!-- Incoming Call Banner (hidden by default) -->
+                <div id="incoming-call-banner" class="incoming-call-banner hidden">
                     <div class="caller-info">
-                        <i class="fas fa-user"></i>
+                        <i class="fas fa-phone-volume"></i>
                         <span id="incoming-caller-name">Incoming Call...</span>
                     </div>
                     <div class="call-actions">
@@ -99,398 +859,1408 @@
                         </button>
                     </div>
                 </div>
-            </div>
-
-            <!-- TOP ROW: Status + Panic -->
-            <div class="top-row">
-                <!-- Status Section -->
-                <div class="status-section">
-                    <span class="status-label">My Status:</span>
-                    <div class="status-buttons">
-                        <button class="status-btn available" onclick="updateMyStatus('available')">
-                            <i class="fas fa-check-circle"></i> Available
-                        </button>
-                        <button class="status-btn busy" onclick="updateMyStatus('limited')">
-                            <i class="fas fa-clock"></i> Busy
-                        </button>
-                        <button class="status-btn off" onclick="updateMyStatus('unavailable')">
-                            <i class="fas fa-moon"></i> Off Duty
+                
+                <!-- Operating Hours Notice -->
+                <div class="hours-notice">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <strong>Human Support Hours:</strong> Monday - Friday, 9am - 5pm<br>
+                        <span style="font-size: 13px; opacity: 0.8;">AI engagement available 24/7. Overnight alerts queued for morning review.</span>
+                    </div>
+                </div>
+                
+                <!-- Stats Grid -->
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <h3><i class="fas fa-exclamation-circle"></i> Pending Alerts</h3>
+                        <div id="stat-alerts" class="stat-value danger">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><i class="fas fa-folder-open"></i> Active Cases</h3>
+                        <div id="stat-cases" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><i class="fas fa-phone-volume"></i> Callbacks Due</h3>
+                        <div id="stat-callbacks" class="stat-value warning">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><i class="fas fa-eye"></i> Monitoring</h3>
+                        <div id="stat-monitoring" class="stat-value success">0</div>
+                    </div>
+                </div>
+                
+                <!-- Morning Queue Section -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-sun"></i> Morning Review Queue</h2>
+                        <button class="btn btn-outline btn-sm" onclick="loadMorningQueue()">
+                            <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
-                    <span id="current-status" class="current-status"></span>
-                    <button id="sound-toggle" class="btn btn-icon btn-secondary" onclick="toggleAlertSound()" title="Toggle alert sound">
-                        <i class="fas fa-volume-up"></i>
+                    <div id="morning-queue-content">
+                        <div class="loading"><div class="spinner"></div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CASES TAB -->
+            <div id="tab-cases" class="tab-pane">
+                <div class="card-header" style="margin-bottom: 20px;">
+                    <h2 class="card-title"><i class="fas fa-folder-open"></i> My Cases</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="cases-filter" style="padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text);">
+                            <option value="">All Cases</option>
+                            <option value="active">Active</option>
+                            <option value="monitoring">Monitoring</option>
+                            <option value="referred">Referred</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm" onclick="loadMyCases()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="cases-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+            
+            <!-- ALERTS TAB -->
+            <div id="tab-alerts" class="tab-pane">
+                <div class="card-header" style="margin-bottom: 20px;">
+                    <h2 class="card-title"><i class="fas fa-exclamation-triangle"></i> Safeguarding Alerts</h2>
+                    <button class="btn btn-outline btn-sm" onclick="loadAlerts()">
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
-
-                <!-- Panic Alerts Section (Counsellors Only) - TOP -->
-                <div id="panic-section" class="section panic-section" style="display: none;">
-                    <div class="section-header">
-                        <h2><i class="fas fa-exclamation-triangle"></i> Panic Alerts</h2>
-                        <span id="panic-count" class="badge danger"></span>
-                    </div>
-                    <div id="panic-list" class="cards-list"></div>
-                </div>
-
-                <!-- Panic Button (Peers Only) - TOP -->
-                <div id="panic-button-section" class="section" style="display: none;">
-                    <button class="panic-button" onclick="triggerPanic()">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span class="panic-text">NEED COUNSELLOR HELP</span>
-                        <span class="panic-subtext">Click to alert a counsellor</span>
-                    </button>
+                <div id="alerts-list">
+                    <div class="loading"><div class="spinner"></div></div>
                 </div>
             </div>
-
-            <!-- MAIN GRID: Safeguarding/Chats LEFT | Callbacks/Notes RIGHT -->
-            <div class="dashboard-grid">
-                <!-- LEFT Column: Safeguarding & Live Chats -->
-                <div class="dashboard-column urgent-column">
-                    <!-- Safeguarding Alerts Section -->
-                    <div id="safeguarding-section" class="section safeguarding-section" style="display: none;">
-                        <div class="section-header">
-                            <h2><i class="fas fa-shield-alt"></i> Safeguarding Alerts</h2>
-                            <span id="safeguarding-count" class="badge danger"></span>
-                            <button class="btn btn-icon btn-secondary" onclick="loadSafeguardingAlerts()">
-                                <i class="fas fa-sync"></i>
-                            </button>
-                        </div>
-                        <div id="safeguarding-list" class="cards-list"></div>
+            
+            <!-- CALLBACKS TAB -->
+            <div id="tab-callbacks" class="tab-pane">
+                <div class="card-header" style="margin-bottom: 20px;">
+                    <h2 class="card-title"><i class="fas fa-phone-volume"></i> Callback Requests</h2>
+                    <button class="btn btn-outline btn-sm" onclick="loadCallbacks()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="callbacks-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+            
+            <!-- CHAT TAB -->
+            <div id="tab-chat" class="tab-pane">
+                <div class="card-header" style="margin-bottom: 20px;">
+                    <h2 class="card-title"><i class="fas fa-comments"></i> Live Chat</h2>
+                    <button class="btn btn-outline btn-sm" onclick="loadChatRooms()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="chat-rooms-list">
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <p>No active chat requests</p>
                     </div>
-
-                    <!-- Live Chats Section -->
-                    <div id="livechat-section" class="section livechat-section" style="display: none;">
-                        <div class="section-header">
-                            <h2><i class="fas fa-comments"></i> Live Chats</h2>
-                            <span id="livechat-count" class="badge primary"></span>
-                            <button class="btn btn-icon btn-secondary" onclick="loadLiveChats()">
-                                <i class="fas fa-sync"></i>
-                            </button>
-                        </div>
-                        <div id="livechat-list" class="cards-list"></div>
-                    </div>
-
-                    <!-- Screening Submissions Section -->
-                    <div id="screening-section" class="section screening-section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-clipboard-check"></i> Screening Results</h2>
-                            <span id="screening-count" class="badge warning"></span>
-                            <button class="btn btn-icon btn-secondary" onclick="loadScreeningSubmissions()">
-                                <i class="fas fa-sync"></i>
-                            </button>
-                        </div>
-                        <div id="screening-list" class="cards-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Case Detail Modal -->
+    <div id="case-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="case-modal-title">Case Details</h2>
+                <button class="modal-close" onclick="closeCaseModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <div class="modal-tab active" data-modal-tab="overview">Overview</div>
+                    <div class="modal-tab" data-modal-tab="timeline">Timeline</div>
+                    <div class="modal-tab" data-modal-tab="sessions">Sessions</div>
+                    <div class="modal-tab" data-modal-tab="conversation">AI Conversation</div>
+                    <div class="modal-tab" data-modal-tab="safety">Safety Plan</div>
+                    <div class="modal-tab" data-modal-tab="referral">Referral</div>
+                </div>
+                <div id="case-modal-content">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Session Modal -->
+    <div id="session-modal" class="modal-overlay hidden">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Add Triage Session</h2>
+                <button class="modal-close" onclick="closeSessionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="session-form">
+                    <input type="hidden" id="session-case-id">
+                    
+                    <div class="form-group">
+                        <label>Presenting Issue *</label>
+                        <textarea id="session-presenting-issue" required placeholder="Describe the main concerns discussed..."></textarea>
                     </div>
                     
-                    <!-- Quick Actions Section -->
-                    <div class="section quick-actions-section" style="margin-top: 20px;">
-                        <div class="section-header">
-                            <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Risk Level *</label>
+                            <select id="session-risk-level" required>
+                                <option value="low">Low</option>
+                                <option value="moderate" selected>Moderate</option>
+                                <option value="high">High</option>
+                                <option value="imminent">Imminent</option>
+                            </select>
                         </div>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap; padding: 15px;">
-                            <button class="btn btn-warning" onclick="openIncidentReportModal()">
-                                <i class="fas fa-exclamation-triangle"></i> Report Incident
-                            </button>
-                            <button class="btn btn-secondary" onclick="openPeerReportModal()">
-                                <i class="fas fa-user-shield"></i> Report Peer Concern
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT Column: Callbacks & Notes -->
-                <div class="dashboard-column">
-                    <!-- My Active Callbacks -->
-                    <div class="section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-phone-volume"></i> Active Callbacks</h2>
-                            <span id="active-count" class="badge"></span>
-                        </div>
-                        <div id="active-callbacks" class="cards-list"></div>
-                    </div>
-
-                    <!-- Pending Callbacks -->
-                    <div class="section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-phone"></i> Pending Callbacks</h2>
-                            <span id="pending-count" class="badge"></span>
-                            <button class="btn btn-icon btn-secondary" onclick="loadCallbacks()">
-                                <i class="fas fa-sync"></i>
-                            </button>
-                        </div>
-                        <div id="pending-callbacks" class="cards-list"></div>
-                    </div>
-
-                    <!-- Available Cover Requests -->
-                    <div class="section swap-section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-exchange-alt"></i> Cover Requests</h2>
-                            <span id="swap-count" class="badge">0</span>
-                        </div>
-                        <div id="available-swaps" class="swap-list">
-                            <p class="loading-text">Loading...</p>
+                        <div class="form-group">
+                            <label>Session Outcome *</label>
+                            <select id="session-outcome" required>
+                                <option value="continue_monitoring">Continue Monitoring</option>
+                                <option value="schedule_followup">Schedule Follow-up</option>
+                                <option value="initiate_referral">Initiate Referral</option>
+                                <option value="emergency_escalation">Emergency Escalation</option>
+                            </select>
                         </div>
                     </div>
-
-                    <!-- Availability Section -->
-                    <div id="availability-section" class="section availability-section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-calendar-alt"></i> My Availability</h2>
-                            <button class="btn btn-small btn-primary" onclick="openShiftModal()">
-                                <i class="fas fa-plus"></i> Add Shift
-                            </button>
+                    
+                    <div class="form-group">
+                        <label>Protective Factors</label>
+                        <div id="protective-factors" class="checkbox-group"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Warning Signs</label>
+                        <div id="warning-signs" class="checkbox-group"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Actions Taken</label>
+                        <div id="session-actions" class="checkbox-group"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Key Quotes (for handoff)</label>
+                        <textarea id="session-quotes" placeholder="Any significant statements to include in referral..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Next Steps</label>
+                        <textarea id="session-next-steps" placeholder="Agreed actions and follow-up plan..."></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Follow-up Date</label>
+                            <input type="date" id="session-follow-up">
                         </div>
-                        
-                        <!-- Month Navigation -->
-                        <div class="availability-nav">
-                            <button class="btn btn-icon btn-secondary" onclick="prevMonth()">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <span id="current-month-display" class="month-display">Loading...</span>
-                            <button class="btn btn-icon btn-secondary" onclick="nextMonth()">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-                        
-                        <!-- Calendar Grid -->
-                        <div id="availability-calendar" class="availability-calendar">
-                            <div class="calendar-header">
-                                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                            </div>
-                            <div id="calendar-days" class="calendar-days">
-                                <!-- Days will be rendered by JS -->
-                            </div>
-                        </div>
-                        
-                        <!-- Legend -->
-                        <div class="availability-legend">
-                            <span class="legend-item"><span class="legend-dot my-shift"></span> Your Shifts</span>
-                            <span class="legend-item"><span class="legend-dot other-shift"></span> Other Staff</span>
-                        </div>
-                        
-                        <!-- Selected Day Shifts -->
-                        <div id="selected-day-panel" class="selected-day-panel" style="display: none;">
-                            <h4 id="selected-day-title">Select a day</h4>
-                            <div id="selected-day-shifts" class="selected-day-shifts"></div>
+                        <div class="form-group">
+                            <label>Session Duration (mins)</label>
+                            <input type="number" id="session-duration" placeholder="e.g. 30">
                         </div>
                     </div>
-
-                    <!-- Who's On Today Section -->
-                    <div class="section team-section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-users"></i> Team On Duty</h2>
-                            <button class="btn btn-icon btn-secondary" onclick="loadTeamOnDuty()">
-                                <i class="fas fa-sync"></i>
-                            </button>
-                        </div>
-                        <div class="team-tabs">
-                            <button class="team-tab active" onclick="switchTeamTab('today')" data-tab="today">Today</button>
-                            <button class="team-tab" onclick="switchTeamTab('tomorrow')" data-tab="tomorrow">Tomorrow</button>
-                        </div>
-                        <div id="team-on-duty" class="team-list">
-                            <p class="loading-text">Loading team...</p>
-                        </div>
+                    
+                    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" onclick="closeSessionModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Session
+                        </button>
                     </div>
-
-                    <!-- Notes Section -->
-                    <div class="section notes-section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-sticky-note"></i> Notes</h2>
-                            <span id="notes-count" class="badge"></span>
-                            <button class="btn btn-small btn-primary" onclick="openNoteModal()">
-                                <i class="fas fa-plus"></i> New
-                            </button>
-                        </div>
-                        <div class="notes-tabs">
-                            <button class="notes-tab active" onclick="switchNotesTab('my')" data-tab="my">My Notes</button>
-                            <button class="notes-tab" onclick="switchNotesTab('shared')" data-tab="shared">Shared</button>
-                        </div>
-                        <div id="notes-list" class="cards-list"></div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Note Modal -->
-    <div id="note-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="note-modal-title"><i class="fas fa-sticky-note"></i> New Note</h3>
-                <button class="modal-close" onclick="closeNoteModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="note-title" placeholder="Note title" required>
-                </div>
-                <div class="form-group">
-                    <label>Content</label>
-                    <textarea id="note-content" rows="6" placeholder="Write your note here..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Link to Callback (optional)</label>
-                    <select id="note-callback">
-                        <option value="">None</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="note-private" checked>
-                        <span>Private note (only I can see)</span>
-                    </label>
-                </div>
-                <div class="form-group" id="share-group" style="display: none;">
-                    <label>Share with</label>
-                    <select id="note-share" multiple>
-                    </select>
-                    <small>Hold Ctrl/Cmd to select multiple</small>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeNoteModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveNote()">
-                    <i class="fas fa-save"></i> Save Note
-                </button>
+                </form>
             </div>
         </div>
     </div>
-
-    <!-- Shift Modal -->
-    <div id="shift-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="shift-modal-title"><i class="fas fa-calendar-plus"></i> Add Shift</h3>
-                <button class="modal-close" onclick="closeShiftModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" id="shift-date" required>
-                </div>
-                <div class="form-group">
-                    <label>Start Time</label>
-                    <input type="time" id="shift-start" value="09:00" required>
-                </div>
-                <div class="form-group">
-                    <label>End Time</label>
-                    <input type="time" id="shift-end" value="17:00" required>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeShiftModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveShift()">
-                    <i class="fas fa-save"></i> Save Shift
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Incident Report Modal -->
-    <div id="incident-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Report Incident</h3>
-                <button class="btn btn-icon" onclick="closeIncidentModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                    Use this form to report any safeguarding incident, near-miss, or significant event.
-                </p>
-                <div class="form-group">
-                    <label>Incident Title *</label>
-                    <input type="text" id="incident-title" placeholder="Brief description of what happened" required>
-                </div>
-                <div class="form-group">
-                    <label>Severity Level *</label>
-                    <select id="incident-level" required>
-                        <option value="">Select level...</option>
-                        <option value="level_1_moderate">Level 1 - Moderate (handled locally)</option>
-                        <option value="level_2_high">Level 2 - High (required escalation)</option>
-                        <option value="level_3_critical">Level 3 - Critical (serious safeguarding)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>What happened? *</label>
-                    <textarea id="incident-description" rows="4" placeholder="Describe what happened, who was involved, and what action was taken" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Related Session ID (if known)</label>
-                    <input type="text" id="incident-session" placeholder="e.g., hugo-1234567890">
-                </div>
-                <div class="incident-examples" style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-top: 15px;">
-                    <strong style="font-size: 13px; color: #475569;">When to report:</strong>
-                    <ul style="font-size: 12px; color: #64748b; margin: 8px 0 0 20px; padding: 0;">
-                        <li>User expressed suicidal thoughts</li>
-                        <li>Emergency services contacted</li>
-                        <li>External safeguarding referral made</li>
-                        <li>System failure during support</li>
-                        <li>Near-miss (almost went wrong)</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeIncidentModal()">Cancel</button>
-                <button class="btn btn-warning" onclick="submitIncidentReport()">
-                    <i class="fas fa-paper-plane"></i> Submit Report
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Peer Report Modal -->
-    <div id="peer-report-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-user-shield" style="color: #6366f1;"></i> Report Peer Concern</h3>
-                <button class="btn btn-icon" onclick="closePeerReportModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                    Report concerning behaviour from a peer supporter in the buddy matching system.
-                </p>
-                <div class="form-group">
-                    <label>Peer User ID / Name *</label>
-                    <input type="text" id="peer-reported-user" placeholder="Username or ID of the peer" required>
-                </div>
-                <div class="form-group">
-                    <label>Reason for Report *</label>
-                    <select id="peer-report-reason" required>
-                        <option value="">Select reason...</option>
-                        <option value="harassment">Harassment or bullying</option>
-                        <option value="self_harm_encouragement">Encouraging self-harm</option>
-                        <option value="threatening">Threatening behaviour</option>
-                        <option value="inappropriate_content">Inappropriate content</option>
-                        <option value="suspected_grooming">Suspected grooming</option>
-                        <option value="other">Other concern</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Details *</label>
-                    <textarea id="peer-report-details" rows="4" placeholder="Describe what you observed and why it's concerning" required></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closePeerReportModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitPeerReport()">
-                    <i class="fas fa-paper-plane"></i> Submit Report
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notification Toast -->
-    <div id="notification" class="notification hidden"></div>
-
-    <!-- Remote Audio Element for WebRTC -->
-    <audio id="remote-audio" autoplay style="display: none;"></audio>
 
     <script src="config.js"></script>
-    <script src="app.js"></script>
-    <script src="webrtc-phone.js"></script>
+    <script>
+        // ============================================================
+        // STATE
+        // ============================================================
+        let currentUser = null;
+        let token = null;
+        let currentCase = null;
+        let socket = null;
+        
+        const PROTECTIVE_FACTORS = [
+            {id: 'family', label: 'Supportive family'},
+            {id: 'partner', label: 'Supportive partner'},
+            {id: 'friends', label: 'Social connections'},
+            {id: 'employment', label: 'Employment (stable)'},
+            {id: 'housing', label: 'Stable housing'},
+            {id: 'hope', label: 'Expressed hope'},
+            {id: 'pets', label: 'Pet/animal care'},
+            {id: 'religion', label: 'Religious/spiritual beliefs'},
+            {id: 'children', label: 'Children/dependents'},
+            {id: 'future_plans', label: 'Future plans mentioned'},
+            {id: 'treatment', label: 'Engaged with treatment'},
+            {id: 'sobriety', label: 'Sober/in recovery'}
+        ];
+        
+        const WARNING_SIGNS = [
+            {id: 'isolation', label: 'Social isolation'},
+            {id: 'substance', label: 'Substance use'},
+            {id: 'recent_loss', label: 'Recent loss/bereavement'},
+            {id: 'access_means', label: 'Access to means'},
+            {id: 'previous_attempt', label: 'Previous attempt(s)'},
+            {id: 'giving_away', label: 'Giving away possessions'},
+            {id: 'hopelessness', label: 'Expressed hopelessness'},
+            {id: 'sleep_changes', label: 'Sleep disturbances'},
+            {id: 'appetite_changes', label: 'Appetite changes'},
+            {id: 'agitation', label: 'Agitation/restlessness'},
+            {id: 'reckless', label: 'Reckless behaviour'},
+            {id: 'withdrawal', label: 'Withdrawal from activities'}
+        ];
+        
+        const SESSION_ACTIONS = [
+            {id: 'safety_plan_created', label: 'Safety plan created'},
+            {id: 'safety_plan_updated', label: 'Safety plan updated'},
+            {id: 'crisis_resources', label: 'Crisis resources provided'},
+            {id: 'gp_contact', label: 'GP contact encouraged'},
+            {id: 'referral_discussed', label: 'Referral discussed'},
+            {id: 'coping_strategies', label: 'Coping strategies discussed'},
+            {id: 'grounding_techniques', label: 'Grounding techniques taught'},
+            {id: 'follow_up_arranged', label: 'Follow-up arranged'}
+        ];
+        
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for saved session
+            const savedToken = localStorage.getItem('staff_token');
+            const savedUser = localStorage.getItem('staff_user');
+            
+            if (savedToken && savedUser) {
+                token = savedToken;
+                currentUser = JSON.parse(savedUser);
+                showPortal();
+            }
+            
+            // Setup event listeners
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+            
+            // Cases filter
+            document.getElementById('cases-filter').addEventListener('change', loadMyCases);
+            
+            // Modal tab switching
+            document.querySelectorAll('.modal-tab').forEach(tab => {
+                tab.addEventListener('click', () => switchModalTab(tab.dataset.modalTab));
+            });
+            
+            // Session form
+            document.getElementById('session-form').addEventListener('submit', handleAddSession);
+            
+            // Populate checkbox options
+            populateCheckboxes();
+        });
+        
+        function populateCheckboxes() {
+            const pfContainer = document.getElementById('protective-factors');
+            const wsContainer = document.getElementById('warning-signs');
+            const actionsContainer = document.getElementById('session-actions');
+            
+            PROTECTIVE_FACTORS.forEach(pf => {
+                pfContainer.innerHTML += `
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="protective_factors" value="${pf.id}">
+                        ${pf.label}
+                    </label>
+                `;
+            });
+            
+            WARNING_SIGNS.forEach(ws => {
+                wsContainer.innerHTML += `
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="warning_signs" value="${ws.id}">
+                        ${ws.label}
+                    </label>
+                `;
+            });
+            
+            SESSION_ACTIONS.forEach(action => {
+                actionsContainer.innerHTML += `
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="session_actions" value="${action.id}">
+                        ${action.label}
+                    </label>
+                `;
+            });
+        }
+        
+        // ============================================================
+        // AUTH
+        // ============================================================
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('login-error');
+            
+            try {
+                const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Login failed');
+                }
+                
+                // Check role
+                if (!['admin', 'counsellor', 'staff'].includes(data.user.role)) {
+                    throw new Error('Access denied. Counsellors and staff only.');
+                }
+                
+                token = data.token;
+                currentUser = data.user;
+                localStorage.setItem('staff_token', token);
+                localStorage.setItem('staff_user', JSON.stringify(currentUser));
+                
+                showPortal();
+            } catch (err) {
+                errorDiv.textContent = err.message;
+                errorDiv.classList.remove('hidden');
+            }
+        }
+        
+        function handleLogout() {
+            token = null;
+            currentUser = null;
+            localStorage.removeItem('staff_token');
+            localStorage.removeItem('staff_user');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('portal-screen').classList.add('hidden');
+        }
+        
+        function showPortal() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('portal-screen').classList.remove('hidden');
+            document.getElementById('user-name').textContent = `Welcome, ${currentUser.name}`;
+            document.getElementById('user-role-badge').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+            
+            // Load initial data
+            loadDashboard();
+            initSocket();
+        }
+        
+        // ============================================================
+        // TAB SWITCHING
+        // ============================================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            
+            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            
+            // Load data for tab
+            switch(tabId) {
+                case 'dashboard': loadDashboard(); break;
+                case 'cases': loadMyCases(); break;
+                case 'alerts': loadAlerts(); break;
+                case 'callbacks': loadCallbacks(); break;
+                case 'chat': loadChatRooms(); break;
+            }
+        }
+        
+        // ============================================================
+        // API CALLS
+        // ============================================================
+        async function apiFetch(url, options = {}) {
+            const res = await fetch(`${CONFIG.API_URL}${url}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                }
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'API error');
+            }
+            return res.json();
+        }
+        
+        // ============================================================
+        // DASHBOARD
+        // ============================================================
+        async function loadDashboard() {
+            try {
+                // Load stats in parallel
+                const [queue, cases, callbacks] = await Promise.all([
+                    apiFetch('/api/cases/morning-queue'),
+                    apiFetch('/api/cases'),
+                    apiFetch('/api/callbacks').catch(() => [])
+                ]);
+                
+                // Update stats
+                const totalAlerts = queue.high_priority.length + queue.standard.length;
+                const activeCases = cases.filter(c => c.status === 'active').length;
+                const monitoringCases = cases.filter(c => c.status === 'monitoring').length;
+                const pendingCallbacks = Array.isArray(callbacks) ? callbacks.filter(c => c.status === 'pending').length : 0;
+                
+                document.getElementById('stat-alerts').textContent = totalAlerts;
+                document.getElementById('stat-cases').textContent = activeCases;
+                document.getElementById('stat-callbacks').textContent = pendingCallbacks;
+                document.getElementById('stat-monitoring').textContent = monitoringCases;
+                
+                // Update badges
+                updateBadge('alerts-badge', totalAlerts);
+                updateBadge('cases-badge', activeCases);
+                updateBadge('callbacks-badge', pendingCallbacks);
+                
+                // Render morning queue
+                renderMorningQueue(queue);
+            } catch (err) {
+                console.error('Dashboard load error:', err);
+            }
+        }
+        
+        function updateBadge(id, count) {
+            const badge = document.getElementById(id);
+            badge.textContent = count;
+            badge.classList.toggle('hidden', count === 0);
+        }
+        
+        async function loadMorningQueue() {
+            try {
+                const queue = await apiFetch('/api/cases/morning-queue');
+                renderMorningQueue(queue);
+            } catch (err) {
+                console.error('Morning queue error:', err);
+            }
+        }
+        
+        function renderMorningQueue(queue) {
+            const container = document.getElementById('morning-queue-content');
+            
+            if (queue.high_priority.length === 0 && queue.standard.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No pending alerts to review</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            if (queue.high_priority.length > 0) {
+                html += '<h3 style="margin-bottom: 12px; color: var(--danger);"><i class="fas fa-exclamation-circle"></i> High Priority</h3>';
+                queue.high_priority.forEach(alert => {
+                    html += renderAlertCard(alert);
+                });
+            }
+            
+            if (queue.standard.length > 0) {
+                html += '<h3 style="margin: 24px 0 12px; color: var(--text-muted);"><i class="fas fa-clipboard-list"></i> Standard Review</h3>';
+                queue.standard.forEach(alert => {
+                    html += renderAlertCard(alert);
+                });
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function renderAlertCard(alert) {
+            const time = new Date(alert.created_at).toLocaleString();
+            const riskClass = alert.risk_level === 'RED' ? 'red' : 'amber';
+            
+            return `
+                <div class="alert-card ${alert.risk_level === 'RED' ? '' : 'amber'}">
+                    <div class="alert-card-header">
+                        <div>
+                            <span class="alert-time"><i class="fas fa-clock"></i> ${time}</span>
+                            <span style="margin-left: 12px; color: var(--text-muted);">Character: ${alert.character}</span>
+                        </div>
+                        <span class="risk-badge ${riskClass}">${alert.risk_level}</span>
+                    </div>
+                    <div class="alert-message">"${escapeHtml(alert.triggering_message)}"</div>
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+                        <strong>Triggers:</strong> ${alert.triggered_indicators.join(', ')}
+                    </div>
+                    <div class="alert-actions">
+                        <button class="btn btn-primary btn-sm" onclick="createCaseFromAlert('${alert.id}')">
+                            <i class="fas fa-folder-plus"></i> Create Case
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="viewConversation('${alert.id}')">
+                            <i class="fas fa-comments"></i> View Conversation
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="dismissAlert('${alert.id}')">
+                            <i class="fas fa-check"></i> Dismiss
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ============================================================
+        // CASES
+        // ============================================================
+        async function loadMyCases() {
+            const container = document.getElementById('cases-list');
+            const filter = document.getElementById('cases-filter').value;
+            
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                let url = '/api/cases';
+                if (filter) url += `?status=${filter}`;
+                
+                const cases = await apiFetch(url);
+                
+                if (cases.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-folder-open"></i>
+                            <p>No cases found</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = cases.map(c => `
+                    <div class="case-card" onclick="openCase('${c.id}')">
+                        <div class="case-header">
+                            <span class="case-number">${c.case_number}</span>
+                            <span class="case-status ${c.status}">${c.status}</span>
+                        </div>
+                        <div class="case-meta">
+                            <span><i class="fas fa-layer-group"></i> Sessions: ${c.session_count}/3</span>
+                            <span><i class="fas fa-exclamation-triangle"></i> Risk: ${c.current_risk}</span>
+                            <span><i class="fas fa-calendar"></i> ${new Date(c.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state"><p>Error loading cases: ${err.message}</p></div>`;
+            }
+        }
+        
+        async function createCaseFromAlert(alertId) {
+            try {
+                const caseData = await apiFetch('/api/cases', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        safeguarding_alert_id: alertId,
+                        initial_notes: 'Created from morning review queue'
+                    })
+                });
+                
+                alert('Case created: ' + caseData.case_number);
+                loadDashboard();
+                loadMyCases();
+            } catch (err) {
+                alert('Error creating case: ' + err.message);
+            }
+        }
+        
+        async function openCase(caseId) {
+            try {
+                currentCase = await apiFetch(`/api/cases/${caseId}`);
+                document.getElementById('case-modal-title').textContent = currentCase.case_number;
+                document.getElementById('case-modal').classList.remove('hidden');
+                switchModalTab('overview');
+            } catch (err) {
+                alert('Error loading case: ' + err.message);
+            }
+        }
+        
+        function closeCaseModal() {
+            document.getElementById('case-modal').classList.add('hidden');
+            currentCase = null;
+        }
+        
+        function switchModalTab(tabId) {
+            document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.modal-tab[data-modal-tab="${tabId}"]`).classList.add('active');
+            
+            const content = document.getElementById('case-modal-content');
+            
+            switch(tabId) {
+                case 'overview':
+                    content.innerHTML = renderCaseOverview();
+                    break;
+                case 'timeline':
+                    content.innerHTML = renderCaseTimeline();
+                    break;
+                case 'sessions':
+                    content.innerHTML = renderCaseSessions();
+                    break;
+                case 'conversation':
+                    content.innerHTML = renderCaseConversation();
+                    break;
+                case 'safety':
+                    content.innerHTML = renderSafetyPlan();
+                    break;
+                case 'referral':
+                    content.innerHTML = renderReferral();
+                    break;
+            }
+        }
+        
+        function renderCaseOverview() {
+            const c = currentCase;
+            return `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                    <div class="card">
+                        <h3 style="margin-bottom: 16px;">Case Information</h3>
+                        <p><strong>Status:</strong> <span class="case-status ${c.status}">${c.status}</span></p>
+                        <p><strong>Current Risk:</strong> ${c.current_risk}</p>
+                        <p><strong>Sessions:</strong> ${c.session_count}/3</p>
+                        <p><strong>Assigned to:</strong> ${c.assigned_to_name}</p>
+                        <p><strong>Created:</strong> ${new Date(c.created_at).toLocaleString()}</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="margin-bottom: 16px;">Quick Actions</h3>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button class="btn btn-primary" onclick="openSessionModal()">
+                                <i class="fas fa-plus"></i> Add Triage Session
+                            </button>
+                            <button class="btn btn-outline" onclick="switchModalTab('safety')">
+                                <i class="fas fa-shield-alt"></i> ${c.safety_plan ? 'Edit' : 'Create'} Safety Plan
+                            </button>
+                            <button class="btn btn-outline" onclick="switchModalTab('referral')">
+                                <i class="fas fa-share-square"></i> ${c.referral ? 'View' : 'Create'} Referral
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                ${c.session_count >= 3 && !c.session_cap_override ? `
+                    <div class="card" style="margin-top: 20px; border-color: var(--warning);">
+                        <h3 style="color: var(--warning);"><i class="fas fa-exclamation-triangle"></i> Session Cap Reached</h3>
+                        <p style="margin: 12px 0;">This case has reached the maximum 3 triage sessions. To add more, you need to override with a reason.</p>
+                        <button class="btn btn-warning" onclick="requestSessionOverride()">Request Override</button>
+                    </div>
+                ` : ''}
+            `;
+        }
+        
+        function renderCaseTimeline() {
+            const timeline = currentCase.timeline || [];
+            if (timeline.length === 0) {
+                return '<div class="empty-state"><p>No timeline entries yet</p></div>';
+            }
+            
+            return `
+                <div class="timeline">
+                    ${timeline.map(entry => `
+                        <div class="timeline-item ${entry.entry_type}">
+                            <div class="timeline-time">${new Date(entry.timestamp).toLocaleString()}</div>
+                            <div class="timeline-title">${escapeHtml(entry.title)}</div>
+                            ${entry.description ? `<div class="timeline-description">${escapeHtml(entry.description)}</div>` : ''}
+                            ${entry.actor_name ? `<div class="timeline-description">By: ${entry.actor_name}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function renderCaseSessions() {
+            const sessions = currentCase.sessions || [];
+            if (sessions.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard"></i>
+                        <p>No triage sessions recorded yet</p>
+                        <button class="btn btn-primary" style="margin-top: 16px;" onclick="openSessionModal()">
+                            <i class="fas fa-plus"></i> Add First Session
+                        </button>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div style="margin-bottom: 16px;">
+                    <button class="btn btn-primary" onclick="openSessionModal()">
+                        <i class="fas fa-plus"></i> Add Session
+                    </button>
+                </div>
+                ${sessions.map(s => `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                            <h3>Session ${s.session_number}</h3>
+                            <span class="risk-badge ${s.risk_level === 'high' || s.risk_level === 'imminent' ? 'red' : s.risk_level === 'moderate' ? 'amber' : 'green'}">${s.risk_level}</span>
+                        </div>
+                        <p><strong>Date:</strong> ${new Date(s.date).toLocaleString()}</p>
+                        <p><strong>Counsellor:</strong> ${s.counsellor_name}</p>
+                        <p style="margin: 12px 0;"><strong>Presenting Issue:</strong><br>${escapeHtml(s.presenting_issue)}</p>
+                        ${s.protective_factors.length > 0 ? `<p><strong>Protective Factors:</strong> ${s.protective_factors.join(', ')}</p>` : ''}
+                        ${s.warning_signs.length > 0 ? `<p><strong>Warning Signs:</strong> ${s.warning_signs.join(', ')}</p>` : ''}
+                        ${s.verbatim_quotes ? `<p style="margin: 12px 0;"><strong>Key Quote:</strong><br><em>"${escapeHtml(s.verbatim_quotes)}"</em></p>` : ''}
+                        <p><strong>Outcome:</strong> ${s.outcome}</p>
+                        ${s.next_steps ? `<p><strong>Next Steps:</strong> ${escapeHtml(s.next_steps)}</p>` : ''}
+                    </div>
+                `).join('')}
+            `;
+        }
+        
+        function renderCaseConversation() {
+            const conversation = currentCase.ai_conversation || [];
+            if (conversation.length === 0) {
+                return '<div class="empty-state"><p>No AI conversation recorded</p></div>';
+            }
+            
+            return `
+                <div class="conversation-container">
+                    ${conversation.map(msg => `
+                        <div class="message ${msg.role}">
+                            <div class="message-role">${msg.role === 'user' ? 'User' : 'AI Companion'}</div>
+                            ${escapeHtml(msg.content)}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function renderSafetyPlan() {
+            const sp = currentCase.safety_plan;
+            if (!sp) {
+                return `
+                    <div class="empty-state">
+                        <i class="fas fa-shield-alt"></i>
+                        <p>No safety plan created yet</p>
+                        <button class="btn btn-primary" style="margin-top: 16px;" onclick="openSafetyPlanEditor()">
+                            <i class="fas fa-plus"></i> Create Safety Plan
+                        </button>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="card">
+                    <h3 style="margin-bottom: 16px;">Safety Plan</h3>
+                    <p><strong>Created:</strong> ${new Date(sp.created_at).toLocaleString()} by ${sp.created_by_name}</p>
+                    ${sp.warning_signs.length > 0 ? `<p><strong>Warning Signs:</strong> ${sp.warning_signs.join(', ')}</p>` : ''}
+                    ${sp.internal_coping.length > 0 ? `<p><strong>Coping Strategies:</strong> ${sp.internal_coping.join(', ')}</p>` : ''}
+                    ${sp.support_people.length > 0 ? `
+                        <p><strong>Support People:</strong></p>
+                        <ul>${sp.support_people.map(p => `<li>${p.name}: ${p.phone}</li>`).join('')}</ul>
+                    ` : ''}
+                    <div style="margin-top: 16px;">
+                        <button class="btn btn-outline" onclick="openSafetyPlanEditor()">
+                            <i class="fas fa-edit"></i> Edit Safety Plan
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderReferral() {
+            const ref = currentCase.referral;
+            if (!ref) {
+                return `
+                    <div class="empty-state">
+                        <i class="fas fa-share-square"></i>
+                        <p>No referral created yet</p>
+                        <button class="btn btn-primary" style="margin-top: 16px;" onclick="openReferralForm()">
+                            <i class="fas fa-plus"></i> Create Referral
+                        </button>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="card">
+                    <h3 style="margin-bottom: 16px;">Referral to ${ref.service_name}</h3>
+                    <p><strong>Status:</strong> ${ref.status}</p>
+                    <p><strong>Urgency:</strong> ${ref.urgency}</p>
+                    <p><strong>Created:</strong> ${new Date(ref.created_at).toLocaleString()}</p>
+                    ${ref.notes ? `<p><strong>Notes:</strong> ${escapeHtml(ref.notes)}</p>` : ''}
+                    <div style="margin-top: 16px; display: flex; gap: 8px;">
+                        <button class="btn btn-primary" onclick="generateHandoffSummary()">
+                            <i class="fas fa-file-pdf"></i> Generate Handoff PDF
+                        </button>
+                        <button class="btn btn-outline" onclick="updateReferralStatus()">
+                            <i class="fas fa-sync-alt"></i> Update Status
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ============================================================
+        // SESSION MODAL
+        // ============================================================
+        function openSessionModal() {
+            if (currentCase.session_count >= 3 && !currentCase.session_cap_override) {
+                if (!confirm('This case has reached the 3-session cap. Do you want to request an override?')) {
+                    return;
+                }
+                requestSessionOverride();
+                return;
+            }
+            
+            document.getElementById('session-case-id').value = currentCase.id;
+            document.getElementById('session-modal').classList.remove('hidden');
+        }
+        
+        function closeSessionModal() {
+            document.getElementById('session-modal').classList.add('hidden');
+            document.getElementById('session-form').reset();
+        }
+        
+        async function handleAddSession(e) {
+            e.preventDefault();
+            
+            const caseId = document.getElementById('session-case-id').value;
+            const protectiveFactors = Array.from(document.querySelectorAll('input[name="protective_factors"]:checked')).map(cb => cb.value);
+            const warningSigns = Array.from(document.querySelectorAll('input[name="warning_signs"]:checked')).map(cb => cb.value);
+            const actions = Array.from(document.querySelectorAll('input[name="session_actions"]:checked')).map(cb => cb.value);
+            
+            const sessionData = {
+                presenting_issue: document.getElementById('session-presenting-issue').value,
+                risk_level: document.getElementById('session-risk-level').value,
+                outcome: document.getElementById('session-outcome').value,
+                protective_factors: protectiveFactors,
+                warning_signs: warningSigns,
+                actions_taken: actions,
+                verbatim_quotes: document.getElementById('session-quotes').value || null,
+                next_steps: document.getElementById('session-next-steps').value || null,
+                follow_up_date: document.getElementById('session-follow-up').value || null,
+                duration_minutes: parseInt(document.getElementById('session-duration').value) || null
+            };
+            
+            try {
+                const result = await apiFetch(`/api/cases/${caseId}/sessions`, {
+                    method: 'POST',
+                    body: JSON.stringify(sessionData)
+                });
+                
+                if (result.warning) {
+                    alert(result.message);
+                    return;
+                }
+                
+                closeSessionModal();
+                openCase(caseId); // Refresh case
+                alert('Session added successfully');
+            } catch (err) {
+                alert('Error adding session: ' + err.message);
+            }
+        }
+        
+        async function requestSessionOverride() {
+            const reason = prompt('Please provide a reason for extending beyond 3 sessions:');
+            if (!reason) return;
+            
+            try {
+                await apiFetch(`/api/cases/${currentCase.id}/session-override`, {
+                    method: 'POST',
+                    body: JSON.stringify({ reason })
+                });
+                
+                alert('Session cap override approved');
+                openCase(currentCase.id);
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+        
+        // ============================================================
+        // ALERTS
+        // ============================================================
+        async function loadAlerts() {
+            const container = document.getElementById('alerts-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const alerts = await apiFetch('/api/safeguarding-alerts?status=active');
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-check-circle"></i>
+                            <p>No active alerts</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = alerts.map(alert => renderAlertCard(alert)).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state"><p>Error: ${err.message}</p></div>`;
+            }
+        }
+        
+        async function dismissAlert(alertId) {
+            if (!confirm('Dismiss this alert? Add a note explaining why.')) return;
+            
+            const note = prompt('Note (required):');
+            if (!note) return;
+            
+            try {
+                await apiFetch(`/api/safeguarding-alerts/${alertId}/resolve`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ notes: note })
+                });
+                
+                loadDashboard();
+                loadAlerts();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+        
+        // ============================================================
+        // CALLBACKS
+        // ============================================================
+        async function loadCallbacks() {
+            const container = document.getElementById('callbacks-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const callbacks = await apiFetch('/api/callbacks');
+                
+                if (!callbacks || callbacks.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-phone-volume"></i>
+                            <p>No callback requests</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = callbacks.map(cb => `
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="fas fa-user"></i> ${escapeHtml(cb.name || 'Anonymous')}</span>
+                            <span class="case-status ${cb.status}">${cb.status}</span>
+                        </div>
+                        <p><strong>Phone:</strong> ${cb.phone || 'Not provided'}</p>
+                        <p><strong>Reason:</strong> ${escapeHtml(cb.reason || 'Not specified')}</p>
+                        <p><strong>Requested:</strong> ${new Date(cb.created_at).toLocaleString()}</p>
+                        ${cb.status === 'pending' ? `
+                            <div style="margin-top: 12px;">
+                                <button class="btn btn-success btn-sm" onclick="takeCallback('${cb.id}')">
+                                    <i class="fas fa-phone"></i> Take Callback
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state"><p>Error: ${err.message}</p></div>`;
+            }
+        }
+        
+        async function takeCallback(id) {
+            try {
+                await apiFetch(`/api/callbacks/${id}/take`, { method: 'POST' });
+                loadCallbacks();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+        
+        // ============================================================
+        // CHAT
+        // ============================================================
+        async function loadChatRooms() {
+            const container = document.getElementById('chat-rooms-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const rooms = await apiFetch('/api/live-chat/rooms');
+                
+                if (!rooms || rooms.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-comments"></i>
+                            <p>No active chat requests</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = rooms.map(room => `
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="fas fa-comments"></i> ${room.id}</span>
+                            <span class="case-status ${room.status}">${room.status}</span>
+                        </div>
+                        <p><strong>Created:</strong> ${new Date(room.created_at).toLocaleString()}</p>
+                        ${room.status === 'waiting' ? `
+                            <div style="margin-top: 12px;">
+                                <button class="btn btn-success btn-sm" onclick="joinChat('${room.id}')">
+                                    <i class="fas fa-sign-in-alt"></i> Join Chat
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state"><p>Error: ${err.message}</p></div>`;
+            }
+        }
+        
+        // ============================================================
+        // SOCKET
+        // ============================================================
+        function initSocket() {
+            socket = io(CONFIG.API_URL, {
+                transports: ['websocket', 'polling']
+            });
+            
+            socket.on('connect', () => {
+                console.log('Socket connected');
+                document.querySelector('#phone-status-text .status-dot').classList.remove('offline');
+                document.querySelector('#phone-status-text .status-dot').classList.add('online');
+                document.querySelector('#phone-status-text span:last-child').textContent = 'Online - Ready';
+                
+                // Register as staff
+                socket.emit('register', {
+                    user_id: currentUser.id,
+                    user_type: 'staff',
+                    name: currentUser.name
+                });
+            });
+            
+            socket.on('disconnect', () => {
+                document.querySelector('#phone-status-text .status-dot').classList.remove('online');
+                document.querySelector('#phone-status-text .status-dot').classList.add('offline');
+                document.querySelector('#phone-status-text span:last-child').textContent = 'Disconnected';
+            });
+            
+            socket.on('new_safeguarding_alert', () => {
+                loadDashboard();
+            });
+        }
+        
+        // ============================================================
+        // UTILS
+        // ============================================================
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#039;');
+        }
+        
+        function viewConversation(alertId) {
+            // For now, open in a simple alert. Can be enhanced later.
+            apiFetch(`/api/safeguarding-alerts/${alertId}`).then(alert => {
+                const conv = alert.conversation_history || [];
+                const text = conv.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+                
+                const win = window.open('', '_blank', 'width=600,height=500');
+                win.document.write(`<html><head><title>Conversation</title></head><body style="font-family: sans-serif; padding: 20px; background: #1e293b; color: #f8fafc;"><h2>AI Conversation</h2><pre style="white-space: pre-wrap;">${escapeHtml(text)}</pre></body></html>`);
+            });
+        }
+        
+        async function generateHandoffSummary() {
+            try {
+                const result = await apiFetch(`/api/cases/${currentCase.id}/handoff-summary`);
+                
+                const win = window.open('', '_blank', 'width=700,height=600');
+                win.document.write(`
+                    <html>
+                    <head><title>Handoff Summary - ${currentCase.case_number}</title></head>
+                    <body style="font-family: monospace; padding: 40px; max-width: 800px; margin: 0 auto;">
+                        <pre style="white-space: pre-wrap;">${escapeHtml(result.summary_text)}</pre>
+                        <hr>
+                        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px;">Print / Save as PDF</button>
+                    </body>
+                    </html>
+                `);
+            } catch (err) {
+                alert('Error generating summary: ' + err.message);
+            }
+        }
+        
+        // Safety Plan Editor
+        function openSafetyPlanEditor() {
+            const sp = currentCase.safety_plan || {};
+            const content = document.getElementById('case-modal-content');
+            
+            content.innerHTML = `
+                <h3 style="margin-bottom: 20px;">Safety Plan</h3>
+                <form id="safety-plan-form">
+                    <div class="form-group">
+                        <label>Warning Signs (one per line)</label>
+                        <textarea id="sp-warning-signs" rows="3" placeholder="What signs do I notice when things are getting tough?">${(sp.warning_signs || []).join('\\n')}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Internal Coping Strategies (one per line)</label>
+                        <textarea id="sp-coping" rows="3" placeholder="Things I can do to help myself feel better...">${(sp.internal_coping || []).join('\\n')}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>People & Places That Help Distract Me (one per line)</label>
+                        <textarea id="sp-distractions" rows="3" placeholder="People I can call, places I can go...">${(sp.distractions || []).join('\\n')}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Support People</label>
+                        <div id="sp-support-people">
+                            ${(sp.support_people || []).map((p, i) => `
+                                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                    <input type="text" placeholder="Name" value="${escapeHtml(p.name || '')}" class="sp-person-name">
+                                    <input type="text" placeholder="Phone" value="${escapeHtml(p.phone || '')}" class="sp-person-phone">
+                                </div>
+                            `).join('')}
+                            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                <input type="text" placeholder="Name" class="sp-person-name">
+                                <input type="text" placeholder="Phone" class="sp-person-phone">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="addSupportPerson()">
+                            <i class="fas fa-plus"></i> Add Person
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Reasons for Living (one per line)</label>
+                        <textarea id="sp-reasons" rows="3" placeholder="Things worth living for...">${(sp.reasons_for_living || []).join('\\n')}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Making My Environment Safer (one per line)</label>
+                        <textarea id="sp-environment" rows="3" placeholder="Steps to make my environment safer...">${(sp.environment_safety || []).join('\\n')}</textarea>
+                    </div>
+                    
+                    <div style="background: var(--bg); padding: 15px; border-radius: 8px; margin-top: 20px;">
+                        <strong>Crisis Contacts (Always Available)</strong>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">
+                            • Samaritans: 116 123 (24/7)<br>
+                            • Emergency Services: 999<br>
+                            • Veterans Gateway: 0808 802 1212
+                        </p>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" onclick="switchModalTab('overview')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Safety Plan
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            document.getElementById('safety-plan-form').addEventListener('submit', saveSafetyPlan);
+        }
+        
+        function addSupportPerson() {
+            const container = document.getElementById('sp-support-people');
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+            div.innerHTML = `
+                <input type="text" placeholder="Name" class="sp-person-name">
+                <input type="text" placeholder="Phone" class="sp-person-phone">
+            `;
+            container.appendChild(div);
+        }
+        
+        async function saveSafetyPlan(e) {
+            e.preventDefault();
+            
+            // Collect support people
+            const names = document.querySelectorAll('.sp-person-name');
+            const phones = document.querySelectorAll('.sp-person-phone');
+            const supportPeople = [];
+            names.forEach((nameInput, i) => {
+                const name = nameInput.value.trim();
+                const phone = phones[i]?.value.trim() || '';
+                if (name) supportPeople.push({ name, phone });
+            });
+            
+            const safetyPlan = {
+                warning_signs: document.getElementById('sp-warning-signs').value.split('\\n').filter(s => s.trim()),
+                internal_coping: document.getElementById('sp-coping').value.split('\\n').filter(s => s.trim()),
+                distractions: document.getElementById('sp-distractions').value.split('\\n').filter(s => s.trim()),
+                support_people: supportPeople,
+                reasons_for_living: document.getElementById('sp-reasons').value.split('\\n').filter(s => s.trim()),
+                environment_safety: document.getElementById('sp-environment').value.split('\\n').filter(s => s.trim()),
+                professionals: []
+            };
+            
+            try {
+                await apiFetch(`/api/cases/${currentCase.id}/safety-plan`, {
+                    method: 'PUT',
+                    body: JSON.stringify(safetyPlan)
+                });
+                
+                alert('Safety plan saved!');
+                openCase(currentCase.id); // Refresh
+            } catch (err) {
+                alert('Error saving safety plan: ' + err.message);
+            }
+        }
+        
+        // Referral Form
+        function openReferralForm() {
+            const content = document.getElementById('case-modal-content');
+            
+            content.innerHTML = `
+                <h3 style="margin-bottom: 20px;">Create Referral</h3>
+                <form id="referral-form">
+                    <div class="form-group">
+                        <label>Referral Service *</label>
+                        <select id="ref-service" required>
+                            <option value="">Select a service...</option>
+                            <optgroup label="Op COURAGE">
+                                <option value="op_courage_ne|Op COURAGE North East|Op COURAGE">Op COURAGE North East</option>
+                                <option value="op_courage_nw|Op COURAGE North West|Op COURAGE">Op COURAGE North West</option>
+                                <option value="op_courage_yh|Op COURAGE Yorkshire & Humber|Op COURAGE">Op COURAGE Yorkshire & Humber</option>
+                                <option value="op_courage_em|Op COURAGE East Midlands|Op COURAGE">Op COURAGE East Midlands</option>
+                                <option value="op_courage_wm|Op COURAGE West Midlands|Op COURAGE">Op COURAGE West Midlands</option>
+                                <option value="op_courage_lon|Op COURAGE London|Op COURAGE">Op COURAGE London</option>
+                                <option value="op_courage_se|Op COURAGE South East|Op COURAGE">Op COURAGE South East</option>
+                                <option value="op_courage_sw|Op COURAGE South West|Op COURAGE">Op COURAGE South West</option>
+                                <option value="op_courage_ee|Op COURAGE East of England|Op COURAGE">Op COURAGE East of England</option>
+                            </optgroup>
+                            <optgroup label="NHS">
+                                <option value="nhs_iapt|NHS IAPT|NHS">NHS IAPT</option>
+                                <option value="nhs_cmht|NHS Community Mental Health Team|NHS">NHS Community Mental Health Team</option>
+                            </optgroup>
+                            <optgroup label="Charities">
+                                <option value="combat_stress|Combat Stress|Charity">Combat Stress</option>
+                                <option value="help_for_heroes|Help for Heroes|Charity">Help for Heroes</option>
+                                <option value="ssafa|SSAFA|Charity">SSAFA</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Urgency *</label>
+                        <select id="ref-urgency" required>
+                            <option value="routine">Routine (4-6 weeks)</option>
+                            <option value="urgent">Urgent (within 2 weeks)</option>
+                            <option value="emergency">Emergency (immediate)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="background: var(--bg); padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <strong>User Information for Referral</strong>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">This information will be included in the handoff summary.</p>
+                        
+                        <div class="form-group">
+                            <label>User's Name (optional until referral)</label>
+                            <input type="text" id="ref-user-name" placeholder="Full name" value="${escapeHtml(currentCase.user_name || '')}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Contact Details</label>
+                            <input type="text" id="ref-user-contact" placeholder="Phone or email" value="${escapeHtml(currentCase.user_contact || '')}">
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                            <div class="form-group">
+                                <label>Service Branch</label>
+                                <select id="ref-branch">
+                                    <option value="">Unknown</option>
+                                    <option value="Army">Army</option>
+                                    <option value="Royal Navy">Royal Navy</option>
+                                    <option value="RAF">RAF</option>
+                                    <option value="Royal Marines">Royal Marines</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Service Dates</label>
+                                <input type="text" id="ref-service-dates" placeholder="e.g. 2005-2015">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Referral Notes</label>
+                        <textarea id="ref-notes" rows="4" placeholder="Additional information for the receiving service..."></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                        <button type="button" class="btn btn-outline" onclick="switchModalTab('overview')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Create Referral
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            document.getElementById('referral-form').addEventListener('submit', createReferral);
+        }
+        
+        async function createReferral(e) {
+            e.preventDefault();
+            
+            const serviceVal = document.getElementById('ref-service').value;
+            if (!serviceVal) {
+                alert('Please select a referral service');
+                return;
+            }
+            
+            const [serviceId, serviceName, serviceType] = serviceVal.split('|');
+            
+            const referralData = {
+                service_id: serviceId,
+                service_name: serviceName,
+                service_type: serviceType,
+                urgency: document.getElementById('ref-urgency').value,
+                notes: document.getElementById('ref-notes').value,
+                user_name: document.getElementById('ref-user-name').value || null,
+                user_contact: document.getElementById('ref-user-contact').value || null,
+                service_info: {}
+            };
+            
+            const branch = document.getElementById('ref-branch').value;
+            const dates = document.getElementById('ref-service-dates').value;
+            if (branch) referralData.service_info.branch = branch;
+            if (dates) referralData.service_info.service_dates = dates;
+            
+            try {
+                await apiFetch(`/api/cases/${currentCase.id}/referral`, {
+                    method: 'POST',
+                    body: JSON.stringify(referralData)
+                });
+                
+                alert('Referral created! Case moved to Monitoring status.');
+                openCase(currentCase.id); // Refresh
+            } catch (err) {
+                alert('Error creating referral: ' + err.message);
+            }
+        }
+        
+        async function updateReferralStatus() {
+            const newStatus = prompt('Update status to:\\n- submitted\\n- acknowledged\\n- waiting\\n- engaged\\n- transferred');
+            if (!newStatus) return;
+            
+            const validStatuses = ['submitted', 'acknowledged', 'waiting', 'engaged', 'transferred'];
+            if (!validStatuses.includes(newStatus)) {
+                alert('Invalid status. Please use one of: ' + validStatuses.join(', '));
+                return;
+            }
+            
+            try {
+                await apiFetch(`/api/cases/${currentCase.id}/referral/status?status=${newStatus}`, {
+                    method: 'PATCH'
+                });
+                
+                alert('Referral status updated to: ' + newStatus);
+                openCase(currentCase.id);
+            } catch (err) {
+                alert('Error updating status: ' + err.message);
+            }
+        }
+        
+        function joinChat(roomId) { alert('Join chat - coming soon'); }
+    </script>
 </body>
 </html>
