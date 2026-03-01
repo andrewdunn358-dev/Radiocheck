@@ -5557,9 +5557,9 @@ async function viewSafeguardingAlert(alertId) {
                 </div>
                 
                 <div class="detail-actions">
-                    ${alert.status === 'active' ? `<button class="btn btn-warning" onclick="acknowledgeSafeguardingAlert('${alert.id}'); closeModal();">Acknowledge</button>` : ''}
-                    ${alert.status !== 'resolved' ? `<button class="btn btn-success" onclick="resolveSafeguardingAlert('${alert.id}'); closeModal();">Mark Resolved</button>` : ''}
-                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                    ${alert.status === 'active' ? `<button class="btn btn-warning" onclick="acknowledgeSafeguardingAlert('${alert.id}'); closeSafeguardingModal();">Acknowledge</button>` : ''}
+                    ${alert.status !== 'resolved' ? `<button class="btn btn-success" onclick="resolveSafeguardingAlert('${alert.id}'); closeSafeguardingModal();">Mark Resolved</button>` : ''}
+                    <button class="btn btn-secondary" onclick="closeSafeguardingModal()">Close</button>
                 </div>
             </div>
         `;
