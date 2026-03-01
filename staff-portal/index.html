@@ -12,48 +12,60 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <link rel="stylesheet" href="webrtc-phone.css">
     <style>
-        /* Tab Navigation Styles */
+        /* Tab Navigation Styles - MORE PROMINENT */
         .tabs-container {
-            background: var(--card);
-            border-radius: 12px;
-            padding: 8px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 24px;
             display: flex;
-            gap: 4px;
+            gap: 8px;
             flex-wrap: wrap;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .tab {
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 14px 24px;
+            border-radius: 10px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-weight: 500;
-            color: var(--text-muted);
-            transition: all 0.2s;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            color: rgba(255,255,255,0.85);
+            transition: all 0.3s ease;
             border: none;
-            background: transparent;
+            background: rgba(255,255,255,0.1);
         }
         .tab:hover {
-            background: var(--bg);
-            color: var(--text);
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            transform: translateY(-2px);
         }
         .tab.active {
-            background: var(--primary);
-            color: white;
+            background: #fff;
+            color: #1a365d;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .tab i {
+            font-size: 16px;
         }
         .tab-badge {
-            background: var(--danger);
+            background: #ef4444;
             color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 3px 10px;
+            border-radius: 12px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
+            min-width: 24px;
+            text-align: center;
         }
         .tab-badge.warning {
-            background: var(--warning);
+            background: #f59e0b;
             color: #000;
+        }
+        .tab-badge.info {
+            background: #3b82f6;
         }
         .tab-pane {
             display: none;
@@ -64,6 +76,55 @@
         /* Phone section always visible */
         .phone-section-fixed {
             margin-bottom: 20px;
+        }
+        /* Case Management Styles */
+        .case-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        .case-card.risk-high { border-left-color: #ef4444; }
+        .case-card.risk-critical { border-left-color: #7c2d12; background: rgba(239,68,68,0.05); }
+        .case-card.risk-moderate { border-left-color: #f59e0b; }
+        .case-card.risk-low { border-left-color: #22c55e; }
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .case-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text);
+        }
+        .case-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .case-tag {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .case-tag.status { background: var(--primary-light); color: var(--primary); }
+        .case-tag.risk-high { background: rgba(239,68,68,0.1); color: #ef4444; }
+        .case-tag.risk-critical { background: rgba(124,45,18,0.1); color: #7c2d12; }
+        .case-tag.risk-moderate { background: rgba(245,158,11,0.1); color: #b45309; }
+        .case-tag.risk-low { background: rgba(34,197,94,0.1); color: #16a34a; }
+        .case-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .session-count {
+            font-size: 13px;
+            color: var(--text-muted);
         }
     </style>
 </head>
