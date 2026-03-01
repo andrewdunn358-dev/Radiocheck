@@ -536,19 +536,26 @@ async def update_safety_plan(
     try:
         existing_plan = case.get("safety_plan")
         
-        safety_plan = SafetyPlan(
-            id=existing_plan["id"] if existing_plan else None,
-            created_at=existing_plan["created_at"] if existing_plan else datetime.now(timezone.utc),
-            created_by=existing_plan["created_by"] if existing_plan else user_id,
-            created_by_name=existing_plan["created_by_name"] if existing_plan else user_name,
-            warning_signs=request.warning_signs,
-            internal_coping=request.internal_coping,
-            distractions=request.distractions,
-            support_people=request.support_people,
-            professionals=request.professionals,
-            environment_safety=request.environment_safety,
-            reasons_for_living=request.reasons_for_living
-        )
+        # Build safety plan kwargs - don't pass id if creating new (let default factory handle it)
+        plan_kwargs = {
+            "warning_signs": request.warning_signs,
+            "internal_coping": request.internal_coping,
+            "distractions": request.distractions,
+            "support_people": request.support_people,
+            "professionals": request.professionals,
+            "environment_safety": request.environment_safety,
+            "reasons_for_living": request.reasons_for_living,
+            "created_by": existing_plan["created_by"] if existing_plan else user_id,
+            "created_by_name": existing_plan["created_by_name"] if existing_plan else user_name,
+        }
+        
+        if existing_plan:
+            plan_kwargs["id"] = existing_plan["id"]
+            plan_kwargs["created_at"] = existing_plan["created_at"]
+        else:
+            plan_kwargs["created_at"] = datetime.now(timezone.utc)
+        
+        safety_plan = SafetyPlan(**plan_kwargs)
         safety_plan.updated_at = datetime.now(timezone.utc)
         
         entry_type = "safety_plan_updated" if existing_plan else "safety_plan_created"
