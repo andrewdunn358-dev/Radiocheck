@@ -216,6 +216,7 @@ export default function UnifiedAIChat() {
   };
 
   const handleAcceptConsent = async () => {
+    if (!character) return;
     try {
       await AsyncStorage.setItem(character.consentKey, 'true');
       await AsyncStorage.setItem('ai_chat_consent_date', new Date().toISOString());
@@ -231,7 +232,7 @@ export default function UnifiedAIChat() {
 
   // Add welcome message when session loads
   useEffect(() => {
-    if (hasLoadedSession && messages.length === 0) {
+    if (hasLoadedSession && messages.length === 0 && character) {
       const welcomeMessage: Message = {
         id: 'welcome',
         text: character.welcomeMessage,
