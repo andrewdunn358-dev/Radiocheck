@@ -83,6 +83,13 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 - [x] Fixed inline JavaScript in `index.html` - removed ES6 syntax, added function existence checks
 - [x] All backend API tests passing (20/20)
 
+#### Site Password Gate (This Session)
+- [x] Added SiteGateContext to protect the entire app
+- [x] Password screen appears before any app content loads
+- [x] Password stored in environment variable `EXPO_PUBLIC_SITE_PASSWORD`
+- [x] Default password: `radiocheck2025` (change this in production)
+- [x] Unlocked state persisted in localStorage
+
 #### Previous Work - December 2025
 
 #### Case Management System
