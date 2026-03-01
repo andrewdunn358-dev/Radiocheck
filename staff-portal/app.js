@@ -1749,7 +1749,13 @@ async function saveShift() {
     }
     
     try {
-        var response = await apiCall('/shifts', {
+        // Build query params with user info
+        var params = new URLSearchParams();
+        params.append('user_id', currentUser.id);
+        params.append('user_name', currentUser.name || '');
+        params.append('user_email', currentUser.email || '');
+        
+        var response = await apiCall('/shifts/?' + params.toString(), {
             method: 'POST',
             body: JSON.stringify({
                 date: date,
