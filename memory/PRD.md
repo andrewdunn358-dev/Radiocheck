@@ -104,6 +104,7 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 - [x] Password history (no reuse of last 3)
 - [x] Email settings management
 - [x] AI Compliance Checker
+- [x] AI Personas CMS (create, edit, delete AI characters via database)
 
 #### User App Features
 - [x] Age gate with race condition fix
