@@ -1,0 +1,140 @@
+{
+  "summary": "Backend API Testing Complete - All 18/18 tests PASSED. Verified all staff portal bug fixes: token extraction, Cases API, Shifts POST with user_id param, Counsellors status update, Safeguarding alerts, and Callbacks APIs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/shifts/",
+        "issue": "Shift notification email fails due to unverified domain (radiocheck.me)",
+        "priority": "LOW",
+        "details": "Resend email notifications fail but shift creation succeeds - not blocking functionality"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_portal_fixes.py",
+    "/app/test_reports/pytest/pytest_staff_portal_fixes.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Login API correctly returns 'token' field (fix at line 230 of staff-portal/app.js confirmed)",
+    "Shifts POST endpoint works correctly with user_id query parameter (fix at lines 1751-1758 confirmed)",
+    "Cases API /api/cases works correctly with authentication",
+    "Counsellors status PATCH endpoint works for all statuses (available, limited, unavailable)",
+    "Safeguarding alerts and Callbacks APIs work correctly",
+    "Full authentication flow validated: login -> extract token -> access protected resources"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_staff_portal_fixes.py"
+  ],
+  "success_rate": {
+    "backend": "100% (18/18 tests passed)",
+    "frontend": "N/A (backend-only testing as requested)"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "admin@veteran.dbty.co.uk",
+      "password": "ChangeThisPassword123!"
+    },
+    "staff": {
+      "email": "sharon@radiocheck.me",
+      "password": "ChangeThisPassword123!"
+    }
+  },
+  "seed_data_creation": "Tests create test shifts and callbacks with TEST_ prefix. Cleanup performed for shifts.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All staff portal bug fixes verified: (1) Token extraction fix - backend returns 'token' field and staff-portal now extracts it correctly at line 230; (2) Shifts POST - now includes user_id query param as required by backend; (3) Cases API added and working; (4) Counsellors status update working for all statuses.",
+  "features_tested": {
+    "authentication_token_extraction": {
+      "POST /api/auth/login": {
+        "status": "PASS",
+        "details": "Returns 'token' field in response - the key fix for staff portal authentication"
+      },
+      "invalid_credentials": {
+        "status": "PASS",
+        "details": "Returns 401 for invalid credentials"
+      }
+    },
+    "cases_api": {
+      "GET /api/cases": {
+        "status": "PASS",
+        "details": "Returns list of cases with authentication"
+      },
+      "GET /api/cases/morning-queue": {
+        "status": "PASS",
+        "details": "Returns morning queue with high_priority and standard fields"
+      },
+      "unauthenticated_access": {
+        "status": "PASS",
+        "details": "Returns 401/403 without authentication"
+      }
+    },
+    "shifts_api": {
+      "GET /api/shifts": {
+        "status": "PASS",
+        "details": "Returns list of shifts"
+      },
+      "POST /api/shifts/?user_id=...": {
+        "status": "PASS",
+        "details": "Creates shift with user_id query parameter - THE KEY FIX"
+      },
+      "GET /api/shifts/today": {
+        "status": "PASS",
+        "details": "Returns today's shifts"
+      }
+    },
+    "counsellors_api": {
+      "GET /api/counsellors": {
+        "status": "PASS",
+        "details": "Returns list of counsellors with authentication"
+      },
+      "PATCH /api/counsellors/{id}/status": {
+        "status": "PASS",
+        "details": "Updates counsellor status to available/limited/unavailable"
+      }
+    },
+    "safeguarding_alerts_api": {
+      "GET /api/safeguarding-alerts": {
+        "status": "PASS",
+        "details": "Returns safeguarding alerts with risk levels and status"
+      }
+    },
+    "callbacks_api": {
+      "GET /api/callbacks": {
+        "status": "PASS",
+        "details": "Returns list of callbacks"
+      },
+      "POST /api/callbacks": {
+        "status": "PASS",
+        "details": "Creates callback request"
+      }
+    },
+    "full_auth_flow": {
+      "status": "PASS",
+      "details": "Complete flow: login -> extract token -> access cases, callbacks, safeguarding alerts all working"
+    }
+  },
+  "fixes_verified": {
+    "staff_portal_app_js_line_230": {
+      "issue": "Token extraction used data.access_token but backend returns data.token",
+      "fix": "Changed to: token = data.token || data.access_token",
+      "verified": true
+    },
+    "staff_portal_app_js_lines_1751_1758": {
+      "issue": "Shift creation didn't include user_id query parameter",
+      "fix": "saveShift now includes user_id, user_name, user_email as query params",
+      "verified": true
+    },
+    "staff_portal_cases_functionality": {
+      "issue": "Cases tab was missing",
+      "fix": "Added case management functions (lines 1939-2398) and Cases tab in HTML",
+      "verified": true
+    }
+  }
+}
