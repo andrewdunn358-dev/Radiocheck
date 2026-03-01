@@ -302,6 +302,48 @@ async def delete_character(character_id: str, user: dict = Depends(require_admin
         raise HTTPException(status_code=500, detail="Failed to delete character")
 
 
+@router.post("/upload-avatar")
+async def upload_avatar(file: UploadFile = File(...), user: dict = Depends(require_admin)):
+    """Upload an avatar image for AI characters (admin only)"""
+    try:
+        # Validate file type
+        allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"]
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file type. Allowed: PNG, JPEG, WebP, GIF"
+            )
+        
+        # Validate file size (max 2MB)
+        content = await file.read()
+        if len(content) > 2 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 2MB")
+        
+        # Generate unique filename
+        ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+        unique_id = str(uuid.uuid4())[:8]
+        filename = f"avatar_{unique_id}.{ext}"
+        filepath = os.path.join(AVATAR_UPLOAD_DIR, filename)
+        
+        # Save file
+        with open(filepath, "wb") as f:
+            f.write(content)
+        
+        # Return the URL path (will be served from /static/avatars/)
+        avatar_url = f"/static/avatars/{filename}"
+        
+        return {
+            "message": "Avatar uploaded successfully",
+            "avatar_url": avatar_url,
+            "filename": filename
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error uploading avatar: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload avatar")
+
+
 @router.post("/seed-from-hardcoded")
 async def seed_characters_from_hardcoded(user: dict = Depends(require_admin)):
     """Seed database with all hardcoded characters (admin only)"""
