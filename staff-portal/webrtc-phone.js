@@ -982,13 +982,16 @@ function acceptChatRequest(requestId, userId, userName) {
         return;
     }
     
+    // Get current user from window (set by app.js)
+    var staffUser = window.currentUser || {};
+    
     // Emit accept event
     socket.emit('accept_chat_request', {
         request_id: requestId,
         user_id: userId,
-        staff_id: currentUser.id,
-        staff_name: currentUser.name || 'Staff',
-        staff_type: currentUser.role
+        staff_id: staffUser.id || 'unknown',
+        staff_name: staffUser.name || 'Staff',
+        staff_type: staffUser.role || 'counsellor'
     });
     
     // Hide banner
