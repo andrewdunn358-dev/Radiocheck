@@ -890,6 +890,19 @@ async def accept_chat_request(sid, data):
     # Update staff status
     connected_users[sid]['status'] = 'in_chat'
     
+    # === CRITICAL: Join both parties to the Socket.IO room ===
+    await sio.enter_room(sid, room_id)  # Staff joins room
+    await sio.enter_room(requester_sid, room_id)  # User joins room
+    
+    # Track room participants
+    active_chat_rooms[room_id] = {
+        'participants': [staff_info.get('user_id'), requester_user_id],
+        'created_at': datetime.utcnow().isoformat(),
+        'staff_sid': sid,
+        'user_sid': requester_sid
+    }
+    
+    logger.info(f"Both parties joined Socket.IO room {room_id}")
     logger.info(f"Staff {staff_info.get('name')} accepted chat request {request_id}, room: {room_id}")
     
     # Notify the requester
