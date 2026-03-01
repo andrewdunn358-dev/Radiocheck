@@ -226,8 +226,8 @@ async function handleLogin(e) {
             throw new Error('Access denied. This portal is for staff only.');
         }
         
-        // Save auth
-        token = data.access_token;
+        // Save auth - support both 'token' and 'access_token' response formats
+        token = data.token || data.access_token;
         currentUser = data.user;
         localStorage.setItem('staff_token', token);
         localStorage.setItem('staff_user', JSON.stringify(currentUser));
