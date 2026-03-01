@@ -1212,6 +1212,12 @@ async function joinLiveChat(roomId) {
 
 // Show Live Chat Modal
 async function showLiveChatModal(roomId) {
+    console.log('showLiveChatModal called with roomId:', roomId);
+    
+    // Set current chat room for message sending
+    currentChatRoom = roomId;
+    window.currentChatRoom = roomId;
+    
     // Get room messages
     try {
         var response = await apiCall('/live-chat/rooms/' + roomId + '/messages');
