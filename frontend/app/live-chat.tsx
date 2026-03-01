@@ -16,6 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../src/config/api';
+import { safeGoBack } from '../src/utils/navigation';
 
 interface Message {
   id: string;
