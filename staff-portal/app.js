@@ -1804,6 +1804,21 @@ initPortal = async function() {
     loadShifts();
 };
 
+// Load swap/cover requests (placeholder for future implementation)
+async function loadSwapRequests() {
+    var container = document.getElementById('available-swaps');
+    if (!container) return;
+    
+    try {
+        // For now, display a message that this feature is coming soon
+        // TODO: Implement swap requests API
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No cover requests at this time</p>';
+        document.getElementById('swap-count').textContent = '0';
+    } catch (error) {
+        console.error('Error loading swap requests:', error);
+    }
+}
+
 // ===========================================
 // Team On Duty Functions
 // ===========================================
