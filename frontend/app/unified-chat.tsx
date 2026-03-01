@@ -241,7 +241,7 @@ export default function UnifiedAIChat() {
       };
       setMessages([welcomeMessage]);
     }
-  }, [hasLoadedSession, character.welcomeMessage]);
+  }, [hasLoadedSession, character?.welcomeMessage]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -251,7 +251,7 @@ export default function UnifiedAIChat() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!inputText.trim() || isLoading || !character) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -308,6 +308,7 @@ export default function UnifiedAIChat() {
   };
 
   const clearConversation = async () => {
+    if (!character) return;
     setMessages([{
       id: 'welcome',
       text: character.welcomeMessage,
