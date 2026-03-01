@@ -3244,6 +3244,9 @@ async function loadSwapRequests() {
     const container = document.getElementById('available-swaps');
     const countBadge = document.getElementById('swap-count');
     
+    // Skip if elements don't exist
+    if (!container) return;
+    
     try {
         const currentUser = JSON.parse(localStorage.getItem('staff_user') || '{}');
         
@@ -3252,7 +3255,7 @@ async function loadSwapRequests() {
         // Filter out user's own requests
         swapData.pending = swaps.filter(s => s.requester_id !== currentUser.id);
         
-        countBadge.textContent = swapData.pending.length;
+        if (countBadge) countBadge.textContent = swapData.pending.length;
         
         if (swapData.pending.length === 0) {
             container.innerHTML = '<p class="no-swaps-text"><i class="fas fa-check-circle"></i> No cover requests available</p>';
