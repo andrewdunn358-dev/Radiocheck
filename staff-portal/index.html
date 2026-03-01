@@ -812,8 +812,9 @@
                     <i class="fas fa-phone-volume"></i> Callbacks
                     <span id="callbacks-badge" class="tab-badge warning hidden">0</span>
                 </div>
-                <div class="tab" data-tab="rota">
-                    <i class="fas fa-calendar-alt"></i> Rota
+                <div class="tab" data-tab="chat">
+                    <i class="fas fa-comments"></i> Live Chat
+                    <span id="chat-badge" class="tab-badge hidden">0</span>
                 </div>
             </div>
         </div>
@@ -962,49 +963,6 @@
                     <div class="empty-state">
                         <i class="fas fa-comments"></i>
                         <p>No active chat requests</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- ROTA TAB -->
-            <div id="tab-rota" class="tab-pane">
-                <div class="card-header" style="margin-bottom: 20px;">
-                    <h2 class="card-title"><i class="fas fa-calendar-alt"></i> My Shifts & Rota</h2>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-outline btn-sm" onclick="loadMyShifts()">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                        <button class="btn btn-primary btn-sm" onclick="openSwapRequestModal()">
-                            <i class="fas fa-exchange-alt"></i> Request Cover
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- My Upcoming Shifts -->
-                <div class="rota-section">
-                    <h3><i class="fas fa-clock"></i> My Upcoming Shifts</h3>
-                    <div id="my-shifts-list" class="shifts-list">
-                        <p class="empty-state">Loading shifts...</p>
-                    </div>
-                </div>
-                
-                <!-- Available Swap Requests -->
-                <div class="rota-section" style="margin-top: 24px;">
-                    <h3>
-                        <i class="fas fa-hand-paper"></i> Cover Requests
-                        <span id="swap-count" class="tab-badge">0</span>
-                    </h3>
-                    <p style="color: var(--text-muted); margin-bottom: 12px;">Other staff members looking for cover</p>
-                    <div id="available-swaps" class="swaps-list">
-                        <p class="empty-state">No cover requests available</p>
-                    </div>
-                </div>
-                
-                <!-- My Swap Requests -->
-                <div class="rota-section" style="margin-top: 24px;">
-                    <h3><i class="fas fa-paper-plane"></i> My Cover Requests</h3>
-                    <div id="my-swap-requests" class="swaps-list">
-                        <p class="empty-state">You haven't requested any cover</p>
                     </div>
                 </div>
             </div>
@@ -2341,148 +2299,7 @@
         }
         
         function joinChat(roomId) { alert('Join chat - coming soon'); }
-        
-        // ============================================
-        // ROTA / SHIFTS FUNCTIONS
-        // ============================================
-        
-        async function loadMyShifts() {
-            const container = document.getElementById('my-shifts-list');
-            if (!container) return;
-            
-            container.innerHTML = '<p class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading shifts...</p>';
-            
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/shifts/my-shifts`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (!response.ok) throw new Error('Failed to load shifts');
-                
-                const shifts = await response.json();
-                
-                if (!shifts || shifts.length === 0) {
-                    container.innerHTML = '<p class="empty-state"><i class="fas fa-calendar-check"></i> No upcoming shifts</p>';
-                    return;
-                }
-                
-                container.innerHTML = shifts.map(shift => `
-                    <div class="shift-item" style="padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--card);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong style="color: var(--text);">${shift.date}</strong>
-                                <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 13px;">
-                                    <i class="fas fa-clock"></i> ${shift.start_time} - ${shift.end_time}
-                                </p>
-                            </div>
-                            <span class="badge" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
-                                ${shift.shift_type || 'Shift'}
-                            </span>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                container.innerHTML = '<p class="empty-state" style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Failed to load shifts</p>';
-            }
-        }
-        
-        async function loadSwapRequests() {
-            const container = document.getElementById('available-swaps');
-            const myContainer = document.getElementById('my-swap-requests');
-            const countBadge = document.getElementById('swap-count');
-            
-            if (!container) return;
-            
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/shift-swaps/pending`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (!response.ok) throw new Error('Failed to load swap requests');
-                
-                const swaps = await response.json();
-                const mySwaps = swaps.filter(s => s.requester_id === currentUser.id);
-                const otherSwaps = swaps.filter(s => s.requester_id !== currentUser.id);
-                
-                if (countBadge) countBadge.textContent = otherSwaps.length;
-                
-                if (otherSwaps.length === 0) {
-                    container.innerHTML = '<p class="empty-state"><i class="fas fa-check-circle"></i> No cover requests available</p>';
-                } else {
-                    container.innerHTML = otherSwaps.map(swap => `
-                        <div class="swap-item" style="padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--card);">
-                            <div>
-                                <strong style="color: var(--text);">${swap.requester_name} needs cover</strong>
-                                <p style="margin: 4px 0; color: var(--text-muted); font-size: 13px;">${swap.reason || 'No reason provided'}</p>
-                                <p style="margin: 0; color: var(--text-muted); font-size: 12px;">
-                                    <i class="fas fa-calendar"></i> ${swap.shift_date} &nbsp;
-                                    <i class="fas fa-clock"></i> ${swap.shift_start} - ${swap.shift_end}
-                                </p>
-                            </div>
-                            <button class="btn btn-primary btn-sm" onclick="acceptSwapRequest('${swap.id}')" style="margin-top: 8px;">
-                                <i class="fas fa-hand-paper"></i> I Can Cover
-                            </button>
-                        </div>
-                    `).join('');
-                }
-                
-                // My requests
-                if (myContainer) {
-                    if (mySwaps.length === 0) {
-                        myContainer.innerHTML = '<p class="empty-state"><i class="fas fa-paper-plane"></i> You haven\'t requested any cover</p>';
-                    } else {
-                        myContainer.innerHTML = mySwaps.map(swap => `
-                            <div class="swap-item" style="padding: 12px; border: 1px solid var(--warning); border-radius: 8px; margin-bottom: 8px; background: var(--card);">
-                                <div>
-                                    <strong style="color: var(--text);">${swap.shift_date}</strong>
-                                    <p style="margin: 4px 0; color: var(--text-muted); font-size: 13px;">${swap.reason || 'No reason'}</p>
-                                    <span class="badge" style="background: var(--warning); color: #000; padding: 2px 6px; border-radius: 4px; font-size: 11px;">
-                                        ${swap.status}
-                                    </span>
-                                </div>
-                            </div>
-                        `).join('');
-                    }
-                }
-            } catch (err) {
-                container.innerHTML = '<p class="empty-state" style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Failed to load requests</p>';
-            }
-        }
-        
-        async function acceptSwapRequest(swapId) {
-            if (!confirm('Are you sure you want to cover this shift?')) return;
-            
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/shift-swaps/${swapId}/accept`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (!response.ok) throw new Error('Failed to accept request');
-                
-                alert('You have accepted this cover request!');
-                loadSwapRequests();
-            } catch (err) {
-                alert('Error: ' + err.message);
-            }
-        }
-        
-        function openSwapRequestModal() {
-            alert('Request Cover feature - coming soon. Please contact your manager directly for now.');
-        }
-        
-        // Load rota data when tab is clicked
-        document.addEventListener('DOMContentLoaded', function() {
-            const rotaTab = document.querySelector('[data-tab="rota"]');
-            if (rotaTab) {
-                rotaTab.addEventListener('click', function() {
-                    setTimeout(() => {
-                        loadMyShifts();
-                        loadSwapRequests();
-                    }, 100);
-                });
-            }
-        });
     </script>
+    <script src="app.js"></script>
 </body>
 </html>
