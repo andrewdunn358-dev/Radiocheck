@@ -1002,12 +1002,40 @@ function acceptChatRequest(requestId, userId, userName) {
         showNotification('Chat request accepted. Opening chat...', 'success');
     }
     
-    // Switch to live chat tab if it exists
-    var liveChatTab = document.querySelector('[data-tab="dashboard"]');
-    if (liveChatTab && typeof switchTab === 'function') {
-        // Stay on dashboard where live chats are shown
-        switchTab('dashboard');
-    }
+    // Note: The actual chat opening happens when we receive 'chat_request_confirmed' from the server
+}
+
+// Listen for chat_request_confirmed to open the chat room
+if (socket) {
+    socket.on('chat_request_confirmed', function(data) {
+        console.log('=== CHAT REQUEST CONFIRMED ===');
+        console.log('Chat confirmed data:', data);
+        
+        var roomId = data.room_id;
+        var userId = data.user_id;
+        
+        if (roomId) {
+            // Open the live chat modal with this room
+            if (typeof showLiveChatModal === 'function') {
+                console.log('Opening live chat modal for room:', roomId);
+                // Set current room globally
+                window.currentChatRoom = roomId;
+                showLiveChatModal(roomId);
+            } else if (typeof joinLiveChat === 'function') {
+                console.log('Joining live chat room:', roomId);
+                joinLiveChat(roomId);
+            } else {
+                console.log('Live chat functions not available, switching to Live Chat tab');
+                // Fallback: switch to Live Chat tab and reload chats
+                if (typeof switchTab === 'function') {
+                    switchTab('livechat');
+                    if (typeof loadLiveChats === 'function') {
+                        loadLiveChats(false);
+                    }
+                }
+            }
+        }
+    });
 }
 
 // Dismiss chat request banner
