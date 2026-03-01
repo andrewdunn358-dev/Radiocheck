@@ -512,38 +512,27 @@
     <script src="webrtc-phone.js"></script>
     
     <script>
-        // Tab switching function
+        // Tab switching function (works with app.js functions)
         function switchTab(tabId) {
             // Update tab buttons
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+            var activeTab = document.querySelector('.tab[data-tab="' + tabId + '"]');
+            if (activeTab) activeTab.classList.add('active');
             
             // Update tab content
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+            var tabPane = document.getElementById('tab-' + tabId);
+            if (tabPane) tabPane.classList.add('active');
             
-            // Load data for the tab
-            if (tabId === 'alerts') loadSafeguardingAlerts();
-            if (tabId === 'callbacks') loadCallbacks();
-            if (tabId === 'rota') { loadShifts(); loadSwapRequests(); }
-            if (tabId === 'team') loadTeamOnDuty();
-            if (tabId === 'notes') loadNotes();
-        }
-        
-        // Update dashboard stats
-        function updateDashboardStats() {
-            var activeEl = document.getElementById('stat-active-callbacks');
-            var alertsEl = document.getElementById('stat-active-alerts');
-            var teamEl = document.getElementById('stat-team-online');
-            
-            if (activeEl && typeof allCallbacks !== 'undefined') {
-                var active = allCallbacks.filter(function(c) { return c.status === 'in_progress'; });
-                activeEl.textContent = active.length;
+            // Load data for the tab (functions defined in app.js)
+            if (tabId === 'alerts' && typeof loadSafeguardingAlerts === 'function') loadSafeguardingAlerts();
+            if (tabId === 'callbacks' && typeof loadCallbacks === 'function') loadCallbacks();
+            if (tabId === 'rota') {
+                if (typeof loadShifts === 'function') loadShifts();
+                if (typeof loadSwapRequests === 'function') loadSwapRequests();
             }
-            if (alertsEl && typeof safeguardingAlerts !== 'undefined') {
-                var activeAlerts = safeguardingAlerts.filter(function(a) { return a.status === 'active'; });
-                alertsEl.textContent = activeAlerts.length;
-            }
+            if (tabId === 'team' && typeof loadTeamOnDuty === 'function') loadTeamOnDuty();
+            if (tabId === 'notes' && typeof loadNotes === 'function') loadNotes();
         }
     </script>
 </body>
