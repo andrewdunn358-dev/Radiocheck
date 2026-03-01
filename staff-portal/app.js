@@ -229,6 +229,11 @@ async function handleLogin(e) {
         // Save auth - support both 'token' and 'access_token' response formats
         token = data.token || data.access_token;
         currentUser = data.user;
+        
+        // Expose to window for other scripts (webrtc-phone.js)
+        window.currentUser = currentUser;
+        window.staffToken = token;
+        
         localStorage.setItem('staff_token', token);
         localStorage.setItem('staff_user', JSON.stringify(currentUser));
         localStorage.setItem('staff_token_time', Date.now().toString());
