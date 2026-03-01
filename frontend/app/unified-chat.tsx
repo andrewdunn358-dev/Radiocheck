@@ -55,8 +55,37 @@ export default function UnifiedAIChat() {
   // Age gate context - for enhanced safeguarding
   const { isUnder18 } = useAgeGateContext();
   
-  // Get character config
-  const character = useMemo(() => getCharacter(characterId), [characterId]);
+  // Character state - loaded from API
+  const [character, setCharacter] = useState<AICharacter | null>(null);
+  const [characterLoading, setCharacterLoading] = useState(true);
+  
+  // Load character from API on mount
+  useEffect(() => {
+    async function loadCharacter() {
+      setCharacterLoading(true);
+      try {
+        // Try API first
+        const apiChar = await getAPICharacter(characterId);
+        if (apiChar) {
+          setCharacter(apiChar);
+          console.log('[Chat] Loaded character from API:', apiChar.name);
+        } else {
+          // Fallback to static config
+          const staticChar = getStaticCharacter(characterId);
+          setCharacter(staticChar);
+          console.log('[Chat] Using static character:', staticChar?.name);
+        }
+      } catch (error) {
+        console.error('[Chat] Error loading character:', error);
+        // Fallback to static
+        const staticChar = getStaticCharacter(characterId);
+        setCharacter(staticChar);
+      } finally {
+        setCharacterLoading(false);
+      }
+    }
+    loadCharacter();
+  }, [characterId]);
   
   // Create dynamic styles
   const styles = useMemo(() => createStyles(colors, isDark, character.accentColor), [colors, isDark, character.accentColor]);
