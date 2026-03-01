@@ -90,6 +90,15 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 - [x] Default password: `radiocheck2025` (change this in production)
 - [x] Unlocked state persisted in localStorage
 
+#### Staff Portal Major Fixes (Session 2)
+- [x] **CRITICAL FIX**: Fixed token extraction bug - was using `data.access_token` but backend returns `data.token`
+- [x] Added Cases tab with full case management (create, view, add sessions, safety plans, referrals)
+- [x] Made tabs more prominent with new styling (blue gradient background, larger text, hover effects)
+- [x] Fixed shift creation - now includes required `user_id` query parameter
+- [x] Added morning review queue for overnight alerts
+- [x] Added generic modal system for case detail views
+- [x] All 18 backend API tests passing (100%)
+
 #### Previous Work - December 2025
 
 #### Case Management System
