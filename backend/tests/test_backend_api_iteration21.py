@@ -316,9 +316,24 @@ class TestCallbacksAPI:
 class TestCounsellorsAPI:
     """Test counsellors management API"""
     
-    def test_get_counsellors(self):
-        """Test GET /api/counsellors returns list of counsellors (public)"""
-        response = requests.get(f"{BASE_URL}/api/counsellors")
+    @pytest.fixture
+    def admin_token(self):
+        """Get admin auth token"""
+        response = requests.post(
+            f"{BASE_URL}/api/auth/login",
+            json=ADMIN_CREDENTIALS,
+            headers={"Content-Type": "application/json"}
+        )
+        if response.status_code == 200:
+            return response.json().get("token")
+        pytest.skip("Admin authentication failed")
+    
+    def test_get_counsellors(self, admin_token):
+        """Test GET /api/counsellors returns list of counsellors (requires auth)"""
+        response = requests.get(
+            f"{BASE_URL}/api/counsellors",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
@@ -332,9 +347,12 @@ class TestCounsellorsAPI:
             assert "name" in counsellor, "Counsellor should have name"
             assert "status" in counsellor, "Counsellor should have status"
     
-    def test_get_available_counsellors(self):
+    def test_get_available_counsellors(self, admin_token):
         """Test GET /api/counsellors/available returns available counsellors"""
-        response = requests.get(f"{BASE_URL}/api/counsellors/available")
+        response = requests.get(
+            f"{BASE_URL}/api/counsellors/available",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
@@ -345,9 +363,24 @@ class TestCounsellorsAPI:
 class TestPeerSupportersAPI:
     """Test peer supporters management API"""
     
-    def test_get_peer_supporters(self):
-        """Test GET /api/peer-supporters returns list of peer supporters (public)"""
-        response = requests.get(f"{BASE_URL}/api/peer-supporters")
+    @pytest.fixture
+    def admin_token(self):
+        """Get admin auth token"""
+        response = requests.post(
+            f"{BASE_URL}/api/auth/login",
+            json=ADMIN_CREDENTIALS,
+            headers={"Content-Type": "application/json"}
+        )
+        if response.status_code == 200:
+            return response.json().get("token")
+        pytest.skip("Admin authentication failed")
+    
+    def test_get_peer_supporters(self, admin_token):
+        """Test GET /api/peer-supporters returns list of peer supporters (requires auth)"""
+        response = requests.get(
+            f"{BASE_URL}/api/peer-supporters",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
@@ -362,9 +395,12 @@ class TestPeerSupportersAPI:
             assert "firstName" in peer or "name" in peer, "Peer should have firstName or name"
             assert "status" in peer, "Peer supporter should have status"
     
-    def test_get_available_peer_supporters(self):
+    def test_get_available_peer_supporters(self, admin_token):
         """Test GET /api/peer-supporters/available returns available peer supporters"""
-        response = requests.get(f"{BASE_URL}/api/peer-supporters/available")
+        response = requests.get(
+            f"{BASE_URL}/api/peer-supporters/available",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
