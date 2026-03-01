@@ -144,7 +144,6 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 - [ ] Push notifications
 
 #### P2 - Medium Priority
-- [ ] Full AI personas CMS management
 - [ ] Mood tracker journal
 - [ ] Welsh language support
 
