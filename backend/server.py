@@ -4204,7 +4204,14 @@ buddy_openai_client = get_openai_client()
 
 @api_router.get("/ai-buddies/characters")
 async def get_ai_characters():
-    """Get available AI Battle Buddy characters"""
+    """Get available AI Battle Buddy characters (supports DB override)"""
+    # Check for CMS-managed characters first
+    cms_characters = await db.ai_characters.find({}, {"_id": 0}).to_list(20)
+    
+    if cms_characters:
+        return {"characters": cms_characters}
+    
+    # Fall back to hardcoded characters
     return {
         "characters": [
             {
