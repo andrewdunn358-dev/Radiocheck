@@ -6594,16 +6594,93 @@ function editPersona(personaId) {
 
 function closePersonaModal() {
     document.getElementById('persona-modal').classList.add('hidden');
+    // Reset file input
+    document.getElementById('persona-avatar-file').value = '';
+    document.getElementById('avatar-upload-status').textContent = '';
 }
 
 function updateAvatarPreview(url) {
     const img = document.getElementById('avatar-preview-img');
+    const placeholder = document.getElementById('avatar-placeholder');
+    
     if (url && url.trim()) {
-        img.src = url;
+        // Resolve relative URLs
+        const resolvedUrl = resolveAvatarUrl(url);
+        img.src = resolvedUrl;
         img.style.display = 'block';
-        img.onerror = () => { img.style.display = 'none'; };
+        if (placeholder) placeholder.style.display = 'none';
+        img.onerror = () => { 
+            img.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+        };
     } else {
         img.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+    }
+}
+
+async function handleAvatarUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const statusEl = document.getElementById('avatar-upload-status');
+    const avatarUrlInput = document.getElementById('persona-avatar');
+    
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+        statusEl.textContent = 'Error: File too large (max 2MB)';
+        statusEl.style.color = 'var(--danger)';
+        return;
+    }
+    
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+        statusEl.textContent = 'Error: Invalid file type';
+        statusEl.style.color = 'var(--danger)';
+        return;
+    }
+    
+    statusEl.textContent = 'Uploading...';
+    statusEl.style.color = 'var(--primary)';
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${CONFIG.API_URL}/api/ai-characters/upload-avatar`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Upload failed');
+        }
+        
+        const data = await response.json();
+        
+        // Set the avatar URL in the form
+        avatarUrlInput.value = data.avatar_url;
+        
+        // Update preview
+        updateAvatarPreview(data.avatar_url);
+        
+        statusEl.textContent = 'Uploaded!';
+        statusEl.style.color = 'var(--success)';
+        
+        // Clear status after 3 seconds
+        setTimeout(() => {
+            statusEl.textContent = '';
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Avatar upload error:', error);
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.style.color = 'var(--danger)';
     }
 }
 
