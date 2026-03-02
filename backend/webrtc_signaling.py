@@ -41,6 +41,9 @@ active_calls: Dict[str, dict] = {}
 # Reverse lookup: user_id -> socket_id
 user_to_socket: Dict[str, str] = {}
 
+# Track claimed chat requests to prevent multiple staff accepting same request
+claimed_chat_requests: set = set()
+
 # Track pending disconnect notifications (for grace period)
 # Format: {user_id: asyncio.Task}
 pending_disconnects: Dict[str, asyncio.Task] = {}
