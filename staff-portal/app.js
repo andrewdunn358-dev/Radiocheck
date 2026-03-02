@@ -1282,7 +1282,7 @@ function handleChatKeypress(event) {
 
 // Send Chat Message
 async function sendChatMessage() {
-    var input = document.getElementById('livechat-input');
+    var input = document.getElementById('livechat-input-dynamic');
     var text = input.value.trim();
     
     console.log('sendChatMessage called, text:', text, 'room:', currentChatRoom);
