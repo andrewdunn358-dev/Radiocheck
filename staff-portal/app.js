@@ -2550,3 +2550,183 @@ function formatDate(dateString) {
     var date = new Date(dateString);
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+
+// ==================== AI RESPONSE FEEDBACK ====================
+
+// Show feedback modal for an AI response
+function showFeedbackModal(conversationId, messageId, characterId, userMessage, aiResponse) {
+    var modalHtml = `
+        <div class="modal-overlay" id="feedback-modal">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3>Provide Feedback on AI Response</h3>
+                    <button class="close-btn" onclick="closeFeedbackModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f3f4f6; border-radius: 5px;">
+                        <strong>User said:</strong>
+                        <p style="margin: 5px 0;">${escapeHtml(userMessage)}</p>
+                    </div>
+                    <div style="margin-bottom: 15px; padding: 10px; background: #e0f2fe; border-radius: 5px;">
+                        <strong>AI responded:</strong>
+                        <p style="margin: 5px 0;">${escapeHtml(aiResponse)}</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Feedback Type *</label>
+                        <select id="feedback-type">
+                            <option value="good">Good Response - Use as example</option>
+                            <option value="needs_improvement">Needs Improvement</option>
+                            <option value="inappropriate">Inappropriate Response</option>
+                            <option value="missed_risk">Missed Safeguarding Risk</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Your Notes</label>
+                        <textarea id="feedback-notes" rows="3" placeholder="Explain why this response was good/bad..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Suggested Better Response (optional)</label>
+                        <textarea id="suggested-response" rows="3" placeholder="How should the AI have responded?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeFeedbackModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="submitFeedback('${conversationId}', '${messageId}', '${characterId}', '${escapeHtml(userMessage).replace(/'/g, "\\'")}', '${escapeHtml(aiResponse).replace(/'/g, "\\'")}')">Submit Feedback</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeFeedbackModal() {
+    var modal = document.getElementById('feedback-modal');
+    if (modal) modal.remove();
+}
+
+async function submitFeedback(conversationId, messageId, characterId, userMessage, aiResponse) {
+    var feedbackType = document.getElementById('feedback-type').value;
+    var staffNotes = document.getElementById('feedback-notes').value.trim();
+    var suggestedResponse = document.getElementById('suggested-response').value.trim();
+    
+    try {
+        await apiCall('/learning/feedback?staff_id=' + currentUser.id, {
+            method: 'POST',
+            body: JSON.stringify({
+                conversation_id: conversationId,
+                message_id: messageId,
+                character_id: characterId,
+                user_message: userMessage,
+                ai_response: aiResponse,
+                feedback_type: feedbackType,
+                staff_notes: staffNotes || null,
+                suggested_response: suggestedResponse || null
+            })
+        });
+        
+        showNotification('Feedback submitted for admin review', 'success');
+        closeFeedbackModal();
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        showNotification('Failed to submit feedback', 'error');
+    }
+}
+
+// Submit a conversation snippet as a learning candidate
+function submitForLearning(conversationId, characterId, contextSummary, responsePattern, outcome) {
+    var modalHtml = `
+        <div class="modal-overlay" id="learning-modal">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3>Submit Conversation for AI Learning</h3>
+                    <button class="close-btn" onclick="closeLearningModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: #6b7280; margin-bottom: 15px;">
+                        This will submit an anonymized version of this conversation for AI learning. 
+                        An admin will review and approve before it's used.
+                    </p>
+                    <div class="form-group">
+                        <label>Category *</label>
+                        <select id="learning-category">
+                            <option value="grief">Grief & Loss</option>
+                            <option value="anxiety">Anxiety & Stress</option>
+                            <option value="loneliness">Loneliness & Isolation</option>
+                            <option value="crisis_deescalation">Crisis De-escalation</option>
+                            <option value="ptsd">PTSD & Trauma</option>
+                            <option value="relationship">Relationship Issues</option>
+                            <option value="transition">Military Transition</option>
+                            <option value="substance">Substance Support</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Context Summary * (anonymized)</label>
+                        <textarea id="learning-context" rows="3" placeholder="Describe the situation without identifying details...">${contextSummary || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Effective Response Pattern *</label>
+                        <textarea id="learning-response" rows="3" placeholder="What approach worked well?">${responsePattern || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Outcome *</label>
+                        <select id="learning-outcome">
+                            <option value="positive">Positive - User calmed/helped</option>
+                            <option value="neutral">Neutral - No significant change</option>
+                            <option value="escalated">Escalated - Needed human intervention</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Additional Notes</label>
+                        <textarea id="learning-notes" rows="2" placeholder="Any other observations..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeLearningModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="submitLearningCandidate('${conversationId}', '${characterId}')">Submit for Review</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeLearningModal() {
+    var modal = document.getElementById('learning-modal');
+    if (modal) modal.remove();
+}
+
+async function submitLearningCandidate(conversationId, characterId) {
+    var category = document.getElementById('learning-category').value;
+    var contextSummary = document.getElementById('learning-context').value.trim();
+    var responsePattern = document.getElementById('learning-response').value.trim();
+    var outcome = document.getElementById('learning-outcome').value;
+    var notes = document.getElementById('learning-notes').value.trim();
+    
+    if (!contextSummary || !responsePattern) {
+        showNotification('Please fill in the context and response pattern', 'error');
+        return;
+    }
+    
+    try {
+        await apiCall('/learning/submit', {
+            method: 'POST',
+            body: JSON.stringify({
+                conversation_id: conversationId,
+                character_id: characterId,
+                category: category,
+                context_summary: contextSummary,
+                ai_response_pattern: responsePattern,
+                outcome: outcome,
+                submitted_by: currentUser.id,
+                notes: notes || null
+            })
+        });
+        
+        showNotification('Learning submitted for admin approval', 'success');
+        closeLearningModal();
+    } catch (error) {
+        console.error('Error submitting learning:', error);
+        showNotification('Failed to submit learning', 'error');
+    }
+}

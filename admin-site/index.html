@@ -88,6 +88,9 @@
             <button class="tab-btn" data-tab="governance">
                 <i class="fas fa-balance-scale"></i> Governance
             </button>
+            <button class="tab-btn" data-tab="learning">
+                <i class="fas fa-brain"></i> AI Learning
+            </button>
             <button class="tab-btn" data-tab="settings">
                 <i class="fas fa-cog"></i> Settings
             </button>
@@ -1344,6 +1347,133 @@
                     <!-- Last Check Info -->
                     <div id="last-compliance-check" style="margin-top: 20px; padding: 15px; background: var(--bg-tertiary); border-radius: 8px; font-size: 13px; color: var(--text-secondary);">
                         <i class="fas fa-clock"></i> No compliance check has been run yet.
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Learning Tab -->
+            <div id="learning-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>AI Learning System</h2>
+                    <p style="color: var(--text-muted); margin-top: 5px;">Manage safety patterns, approve learnings, and review feedback</p>
+                </div>
+                
+                <!-- Learning Sub-tabs -->
+                <div class="sub-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <button class="sub-tab-btn active" data-learning-tab="patterns" onclick="switchLearningTab('patterns')">
+                        <i class="fas fa-shield-alt"></i> Safety Patterns
+                    </button>
+                    <button class="sub-tab-btn" data-learning-tab="queue" onclick="switchLearningTab('queue')">
+                        <i class="fas fa-inbox"></i> Approval Queue <span id="queue-badge" class="badge" style="display:none;">0</span>
+                    </button>
+                    <button class="sub-tab-btn" data-learning-tab="approved" onclick="switchLearningTab('approved')">
+                        <i class="fas fa-check-circle"></i> Approved Learnings
+                    </button>
+                    <button class="sub-tab-btn" data-learning-tab="feedback" onclick="switchLearningTab('feedback')">
+                        <i class="fas fa-comments"></i> Response Feedback <span id="feedback-badge" class="badge" style="display:none;">0</span>
+                    </button>
+                </div>
+
+                <!-- Safety Patterns Section -->
+                <div id="learning-patterns" class="learning-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>Safety Patterns</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" onclick="seedDefaultPatterns()">
+                                <i class="fas fa-database"></i> Seed Defaults
+                            </button>
+                            <button class="btn btn-primary" onclick="showAddPatternModal()">
+                                <i class="fas fa-plus"></i> Add Pattern
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Pattern Filters -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+                        <select id="pattern-category-filter" onchange="loadSafetyPatterns()" style="padding: 8px; border-radius: 5px;">
+                            <option value="">All Categories</option>
+                            <option value="suicide">Suicide</option>
+                            <option value="self_harm">Self Harm</option>
+                            <option value="crisis">Crisis</option>
+                            <option value="distress">Distress</option>
+                            <option value="substance">Substance</option>
+                            <option value="abuse">Abuse</option>
+                            <option value="ptsd">PTSD</option>
+                        </select>
+                        <select id="pattern-severity-filter" onchange="loadSafetyPatterns()" style="padding: 8px; border-radius: 5px;">
+                            <option value="">All Severities</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    
+                    <div id="patterns-list" class="data-grid">
+                        <!-- Patterns will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Approval Queue Section -->
+                <div id="learning-queue" class="learning-section" style="display: none;">
+                    <h3 style="margin-bottom: 20px;">Pending Approval</h3>
+                    <div id="approval-queue-list" class="data-grid">
+                        <!-- Queue items will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Approved Learnings Section -->
+                <div id="learning-approved" class="learning-section" style="display: none;">
+                    <h3 style="margin-bottom: 20px;">Approved Learnings Library</h3>
+                    <select id="learning-category-filter" onchange="loadApprovedLearnings()" style="padding: 8px; border-radius: 5px; margin-bottom: 15px;">
+                        <option value="">All Categories</option>
+                        <option value="grief">Grief</option>
+                        <option value="anxiety">Anxiety</option>
+                        <option value="loneliness">Loneliness</option>
+                        <option value="crisis_deescalation">Crisis De-escalation</option>
+                        <option value="ptsd">PTSD</option>
+                        <option value="relationship">Relationship</option>
+                    </select>
+                    <div id="approved-learnings-list" class="data-grid">
+                        <!-- Approved learnings will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Response Feedback Section -->
+                <div id="learning-feedback" class="learning-section" style="display: none;">
+                    <h3 style="margin-bottom: 20px;">Staff Feedback on AI Responses</h3>
+                    <select id="feedback-type-filter" onchange="loadResponseFeedback()" style="padding: 8px; border-radius: 5px; margin-bottom: 15px;">
+                        <option value="">All Feedback</option>
+                        <option value="good">Good Responses</option>
+                        <option value="needs_improvement">Needs Improvement</option>
+                        <option value="inappropriate">Inappropriate</option>
+                        <option value="missed_risk">Missed Risk</option>
+                    </select>
+                    <div id="feedback-list" class="data-grid">
+                        <!-- Feedback will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Stats Summary -->
+                <div id="learning-stats" style="margin-top: 30px; padding: 20px; background: var(--bg-tertiary); border-radius: 10px;">
+                    <h4 style="margin-bottom: 15px;">System Statistics</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-patterns">0</div>
+                            <div class="stat-label">Active Patterns</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-pending">0</div>
+                            <div class="stat-label">Pending Approval</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-approved">0</div>
+                            <div class="stat-label">Approved Learnings</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-feedback">0</div>
+                            <div class="stat-label">Pending Feedback</div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -6709,3 +6709,453 @@ async function seedPersonasFromCode() {
 }
 
 
+
+
+// ==================== AI LEARNING SYSTEM ====================
+
+// Switch between learning sub-tabs
+function switchLearningTab(tabName) {
+    // Update sub-tab buttons
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-learning-tab="${tabName}"]`).classList.add('active');
+    
+    // Hide all sections
+    document.querySelectorAll('.learning-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show selected section
+    document.getElementById(`learning-${tabName}`).style.display = 'block';
+    
+    // Load data for the selected tab
+    switch(tabName) {
+        case 'patterns':
+            loadSafetyPatterns();
+            break;
+        case 'queue':
+            loadApprovalQueue();
+            break;
+        case 'approved':
+            loadApprovedLearnings();
+            break;
+        case 'feedback':
+            loadResponseFeedback();
+            break;
+    }
+}
+
+// Load learning statistics
+async function loadLearningStats() {
+    try {
+        const data = await apiCall('/learning/stats');
+        
+        document.getElementById('stat-patterns').textContent = data.patterns.active;
+        document.getElementById('stat-pending').textContent = data.learnings.pending;
+        document.getElementById('stat-approved').textContent = data.learnings.approved;
+        document.getElementById('stat-feedback').textContent = data.feedback.pending;
+        
+        // Update badges
+        if (data.learnings.pending > 0) {
+            document.getElementById('queue-badge').textContent = data.learnings.pending;
+            document.getElementById('queue-badge').style.display = 'inline';
+        }
+        if (data.feedback.pending > 0) {
+            document.getElementById('feedback-badge').textContent = data.feedback.pending;
+            document.getElementById('feedback-badge').style.display = 'inline';
+        }
+    } catch (error) {
+        console.error('Error loading learning stats:', error);
+    }
+}
+
+// ==================== SAFETY PATTERNS ====================
+
+async function loadSafetyPatterns() {
+    try {
+        const category = document.getElementById('pattern-category-filter')?.value || '';
+        const severity = document.getElementById('pattern-severity-filter')?.value || '';
+        
+        let url = '/learning/patterns?is_active=true';
+        if (category) url += `&category=${category}`;
+        if (severity) url += `&severity=${severity}`;
+        
+        const data = await apiCall(url);
+        
+        const container = document.getElementById('patterns-list');
+        if (data.patterns.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No patterns found. Click "Seed Defaults" to add standard patterns.</p></div>';
+            return;
+        }
+        
+        container.innerHTML = data.patterns.map(pattern => `
+            <div class="pattern-card" style="padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-secondary);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <span class="pattern-text" style="font-weight: 600; font-size: 16px;">"${escapeHtml(pattern.pattern)}"</span>
+                        <span class="severity-badge severity-${pattern.severity}" style="margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: ${getSeverityColor(pattern.severity)}; color: white;">${pattern.severity.toUpperCase()}</span>
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn btn-small" onclick="editPattern('${pattern.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-small btn-danger" onclick="deletePattern('${pattern.id}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div style="margin-top: 8px; color: var(--text-muted); font-size: 14px;">
+                    <span><i class="fas fa-folder"></i> ${pattern.category}</span>
+                    <span style="margin-left: 15px;"><i class="fas fa-cog"></i> ${pattern.response_action}</span>
+                    <span style="margin-left: 15px;"><i class="fas fa-code"></i> ${pattern.pattern_type}</span>
+                </div>
+                ${pattern.description ? `<div style="margin-top: 5px; color: var(--text-muted); font-size: 13px;">${escapeHtml(pattern.description)}</div>` : ''}
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading patterns:', error);
+        showNotification('Failed to load safety patterns', 'error');
+    }
+}
+
+function getSeverityColor(severity) {
+    const colors = {
+        'critical': '#dc2626',
+        'high': '#ea580c',
+        'medium': '#ca8a04',
+        'low': '#16a34a'
+    };
+    return colors[severity] || '#6b7280';
+}
+
+async function seedDefaultPatterns() {
+    if (!confirm('This will add default safety patterns to the database. Continue?')) return;
+    
+    try {
+        const data = await apiCall(`/learning/patterns/seed-defaults?admin_id=${currentUser.id}`, {
+            method: 'POST'
+        });
+        showNotification(data.message, 'success');
+        loadSafetyPatterns();
+        loadLearningStats();
+    } catch (error) {
+        console.error('Error seeding patterns:', error);
+        showNotification('Failed to seed patterns', 'error');
+    }
+}
+
+function showAddPatternModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'pattern-modal';
+    modal.innerHTML = `
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Add Safety Pattern</h3>
+                <button class="close-btn" onclick="closeModal('pattern-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Pattern Text *</label>
+                    <input type="text" id="new-pattern-text" placeholder="e.g., want to die" required>
+                </div>
+                <div class="form-group">
+                    <label>Pattern Type *</label>
+                    <select id="new-pattern-type">
+                        <option value="phrase">Phrase</option>
+                        <option value="keyword">Keyword</option>
+                        <option value="regex">Regex</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Category *</label>
+                    <select id="new-pattern-category">
+                        <option value="suicide">Suicide</option>
+                        <option value="self_harm">Self Harm</option>
+                        <option value="crisis">Crisis</option>
+                        <option value="distress">Distress</option>
+                        <option value="substance">Substance</option>
+                        <option value="abuse">Abuse</option>
+                        <option value="ptsd">PTSD</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Severity *</label>
+                    <select id="new-pattern-severity">
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Response Action *</label>
+                    <select id="new-pattern-action">
+                        <option value="escalate">Escalate (Alert Staff)</option>
+                        <option value="flag">Flag (Log for Review)</option>
+                        <option value="block">Block (Prevent Response)</option>
+                        <option value="monitor">Monitor (Track Only)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="new-pattern-description" rows="2" placeholder="Optional description..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('pattern-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveNewPattern()">Save Pattern</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function saveNewPattern() {
+    const pattern = {
+        pattern: document.getElementById('new-pattern-text').value.trim(),
+        pattern_type: document.getElementById('new-pattern-type').value,
+        category: document.getElementById('new-pattern-category').value,
+        severity: document.getElementById('new-pattern-severity').value,
+        response_action: document.getElementById('new-pattern-action').value,
+        description: document.getElementById('new-pattern-description').value.trim()
+    };
+    
+    if (!pattern.pattern) {
+        showNotification('Pattern text is required', 'error');
+        return;
+    }
+    
+    try {
+        await apiCall(`/learning/patterns?admin_id=${currentUser.id}`, {
+            method: 'POST',
+            body: JSON.stringify(pattern)
+        });
+        showNotification('Pattern created successfully', 'success');
+        closeModal('pattern-modal');
+        loadSafetyPatterns();
+        loadLearningStats();
+    } catch (error) {
+        console.error('Error creating pattern:', error);
+        showNotification('Failed to create pattern', 'error');
+    }
+}
+
+async function deletePattern(patternId) {
+    if (!confirm('Are you sure you want to delete this pattern?')) return;
+    
+    try {
+        await apiCall(`/learning/patterns/${patternId}`, {
+            method: 'DELETE'
+        });
+        showNotification('Pattern deleted', 'success');
+        loadSafetyPatterns();
+        loadLearningStats();
+    } catch (error) {
+        console.error('Error deleting pattern:', error);
+        showNotification('Failed to delete pattern', 'error');
+    }
+}
+
+// ==================== APPROVAL QUEUE ====================
+
+async function loadApprovalQueue() {
+    try {
+        const data = await apiCall('/learning/queue?status=pending');
+        
+        const container = document.getElementById('approval-queue-list');
+        if (data.learnings.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No items pending approval.</p></div>';
+            return;
+        }
+        
+        container.innerHTML = data.learnings.map(item => `
+            <div class="queue-card" style="padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-secondary);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <span class="category-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: var(--primary-color); color: white;">${item.category}</span>
+                        <span style="margin-left: 10px; color: var(--text-muted); font-size: 12px;">Submitted by: ${item.submitted_by}</span>
+                    </div>
+                    <span style="color: var(--text-muted); font-size: 12px;">${new Date(item.submitted_at).toLocaleDateString()}</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>Context:</strong>
+                    <p style="margin: 5px 0; color: var(--text-primary);">${escapeHtml(item.context_summary)}</p>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>Effective Response Pattern:</strong>
+                    <p style="margin: 5px 0; color: var(--text-primary); font-style: italic;">${escapeHtml(item.ai_response_pattern)}</p>
+                </div>
+                ${item.notes ? `<div style="margin-top: 10px; color: var(--text-muted);"><strong>Staff Notes:</strong> ${escapeHtml(item.notes)}</div>` : ''}
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-success" onclick="approveLearning('${item.id}')"><i class="fas fa-check"></i> Approve</button>
+                    <button class="btn btn-danger" onclick="rejectLearning('${item.id}')"><i class="fas fa-times"></i> Reject</button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading approval queue:', error);
+        showNotification('Failed to load approval queue', 'error');
+    }
+}
+
+async function approveLearning(learningId) {
+    const notes = prompt('Add any admin notes (optional):');
+    
+    try {
+        await apiCall(`/learning/approve/${learningId}?admin_id=${currentUser.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status: 'approved', admin_notes: notes })
+        });
+        showNotification('Learning approved', 'success');
+        loadApprovalQueue();
+        loadLearningStats();
+    } catch (error) {
+        console.error('Error approving learning:', error);
+        showNotification('Failed to approve learning', 'error');
+    }
+}
+
+async function rejectLearning(learningId) {
+    const notes = prompt('Reason for rejection:');
+    if (!notes) return;
+    
+    try {
+        await apiCall(`/learning/approve/${learningId}?admin_id=${currentUser.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status: 'rejected', admin_notes: notes })
+        });
+        showNotification('Learning rejected', 'success');
+        loadApprovalQueue();
+        loadLearningStats();
+    } catch (error) {
+        console.error('Error rejecting learning:', error);
+        showNotification('Failed to reject learning', 'error');
+    }
+}
+
+// ==================== APPROVED LEARNINGS ====================
+
+async function loadApprovedLearnings() {
+    try {
+        const category = document.getElementById('learning-category-filter')?.value || '';
+        let url = '/learning/approved';
+        if (category) url += `?category=${category}`;
+        
+        const data = await apiCall(url);
+        
+        const container = document.getElementById('approved-learnings-list');
+        if (data.learnings.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No approved learnings yet. Learnings will appear here after admin approval.</p></div>';
+            return;
+        }
+        
+        container.innerHTML = data.learnings.map(item => `
+            <div class="learning-card" style="padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-secondary);">
+                <span class="category-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #16a34a; color: white;">${item.category}</span>
+                <span class="outcome-badge" style="margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: ${item.outcome === 'positive' ? '#16a34a' : '#ca8a04'}; color: white;">${item.outcome}</span>
+                <div style="margin-top: 10px;">
+                    <strong>Context:</strong>
+                    <p style="margin: 5px 0;">${escapeHtml(item.context_summary)}</p>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>Effective Response:</strong>
+                    <p style="margin: 5px 0; font-style: italic;">${escapeHtml(item.ai_response_pattern)}</p>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading approved learnings:', error);
+        showNotification('Failed to load approved learnings', 'error');
+    }
+}
+
+// ==================== RESPONSE FEEDBACK ====================
+
+async function loadResponseFeedback() {
+    try {
+        const feedbackType = document.getElementById('feedback-type-filter')?.value || '';
+        let url = '/learning/feedback?status=pending';
+        if (feedbackType) url += `&feedback_type=${feedbackType}`;
+        
+        const data = await apiCall(url);
+        
+        const container = document.getElementById('feedback-list');
+        if (data.feedback.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No pending feedback. Staff can submit feedback on AI responses from the staff portal.</p></div>';
+            return;
+        }
+        
+        container.innerHTML = data.feedback.map(item => `
+            <div class="feedback-card" style="padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-secondary);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <span class="feedback-type-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: ${getFeedbackTypeColor(item.feedback_type)}; color: white;">${item.feedback_type.replace('_', ' ').toUpperCase()}</span>
+                    <span style="color: var(--text-muted); font-size: 12px;">${new Date(item.submitted_at).toLocaleDateString()}</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>User Message:</strong>
+                    <p style="margin: 5px 0; padding: 10px; background: var(--bg-tertiary); border-radius: 5px;">${escapeHtml(item.user_message)}</p>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>AI Response:</strong>
+                    <p style="margin: 5px 0; padding: 10px; background: var(--bg-tertiary); border-radius: 5px;">${escapeHtml(item.ai_response)}</p>
+                </div>
+                ${item.staff_notes ? `<div style="margin-top: 10px;"><strong>Staff Notes:</strong> ${escapeHtml(item.staff_notes)}</div>` : ''}
+                ${item.suggested_response ? `<div style="margin-top: 10px;"><strong>Suggested Response:</strong> ${escapeHtml(item.suggested_response)}</div>` : ''}
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-success" onclick="reviewFeedback('${item.id}', 'reviewed')"><i class="fas fa-check"></i> Mark Reviewed</button>
+                    <button class="btn btn-primary" onclick="convertToLearning('${item.id}')"><i class="fas fa-graduation-cap"></i> Convert to Learning</button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading feedback:', error);
+        showNotification('Failed to load feedback', 'error');
+    }
+}
+
+function getFeedbackTypeColor(type) {
+    const colors = {
+        'good': '#16a34a',
+        'needs_improvement': '#ca8a04',
+        'inappropriate': '#dc2626',
+        'missed_risk': '#7c3aed'
+    };
+    return colors[type] || '#6b7280';
+}
+
+async function reviewFeedback(feedbackId, status) {
+    try {
+        await apiCall(`/learning/feedback/${feedbackId}/review?status=${status}&admin_id=${currentUser.id}`, {
+            method: 'PUT'
+        });
+        showNotification('Feedback reviewed', 'success');
+        loadResponseFeedback();
+        loadLearningStats();
+    } catch (error) {
+        console.error('Error reviewing feedback:', error);
+        showNotification('Failed to review feedback', 'error');
+    }
+}
+
+async function convertToLearning(feedbackId) {
+    // TODO: Open modal to convert feedback to a learning submission
+    showNotification('Feature coming soon - manually create a learning from the Approval Queue', 'info');
+}
+
+// Initialize learning tab when selected
+const originalSwitchTabLearning = window.switchTab || function() {};
+window.switchTab = function(tabName) {
+    originalSwitchTabLearning(tabName);
+    if (tabName === 'learning') {
+        loadLearningStats();
+        loadSafetyPatterns();
+    }
+};
+
+// Helper to close modals
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+}
