@@ -923,6 +923,16 @@ async def accept_chat_request(sid, data):
         'user_id': requester_user_id
     }, to=sid)
     
+    # Notify ALL other staff that this chat has been claimed
+    for staff_sid, staff_data in connected_users.items():
+        if staff_sid != sid and staff_data.get('user_type') in ['counsellor', 'peer']:
+            await sio.emit('chat_request_claimed', {
+                'request_id': request_id,
+                'claimed_by': staff_info.get('name'),
+                'claimed_by_id': staff_info.get('user_id')
+            }, to=staff_sid)
+    
+    logger.info(f"accept_chat_request: Notified other staff that request {request_id} was claimed by {staff_info.get('name')}")
     logger.info(f"accept_chat_request: Done, chat room {room_id} created and both parties notified")
 
 
