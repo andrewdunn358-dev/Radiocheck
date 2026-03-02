@@ -177,7 +177,8 @@ function setupSocketHandlers() {
         console.log('Claimed by:', data.claimed_by);
         
         // Dismiss the chat request banner if it's for this request
-        if (currentChatRequest && currentChatRequest.request_id === data.request_id) {
+        var pending = window.pendingChatRequest;
+        if (pending && pending.request_id === data.request_id) {
             dismissChatRequest();
             if (typeof showNotification === 'function') {
                 showNotification('Chat taken by ' + data.claimed_by, 'info');
