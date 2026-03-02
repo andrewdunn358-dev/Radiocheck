@@ -1261,7 +1261,7 @@ async function showLiveChatModal(roomId) {
         startChatPolling(roomId);
         
         // Focus input
-        document.getElementById('livechat-input').focus();
+        document.getElementById('livechat-input-dynamic').focus();
         
         // Scroll to bottom
         var messagesDiv = document.getElementById('livechat-messages');
