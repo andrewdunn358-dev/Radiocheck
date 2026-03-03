@@ -1364,8 +1364,16 @@ async function sendChatMessage() {
     }
 }
 
-// Start polling for new messages
+// Start polling for new messages - only as fallback when socket not available
 function startChatPolling(roomId) {
+    // Check if socket is connected - if so, rely on real-time socket messages instead
+    var wsocket = window.webRTCPhone && window.webRTCPhone.socket;
+    if (wsocket && wsocket.connected) {
+        console.log('Socket connected - skipping polling, using real-time updates');
+        return; // Don't poll when socket is working
+    }
+    
+    console.log('Starting chat polling as fallback (no socket connection)');
     chatPollingInterval = setInterval(async function() {
         try {
             var response = await apiCall('/live-chat/rooms/' + roomId + '/messages');
