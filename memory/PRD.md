@@ -137,18 +137,20 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 ## Upcoming Tasks
 
 ### P0 - Critical
-- [ ] Verify live chat connection works end-to-end after staff-portal deploy
-- [ ] Update database character name from "Doris" to "Rachel" via Admin CMS
+- [x] ~~Verify live chat connection works end-to-end after staff-portal deploy~~ - COMPLETE
+- [x] ~~Update database character name from "Doris" to "Rachel" via Admin CMS~~ - User confirmed sorted
+- [x] ~~Twilio browser-to-phone integration~~ - COMPLETE (March 2026)
 
 ### P1 - High Priority
-- [ ] Twilio browser-to-phone integration
-- [ ] Safeguarding request claiming (prevent multiple staff responding)
+- [x] ~~Safeguarding request claiming (prevent multiple staff responding)~~ - COMPLETE
 - [ ] Fix chat close navigation (return to AI chat, not home)
+- [ ] Test Twilio calling end-to-end (requires Render env vars and TwiML app config)
 
 ### P2 - Medium Priority
 - [ ] Convert Expo app to Next.js for better performance
 - [ ] Mood tracker journal feature
 - [ ] Welsh language support
+- [ ] AI Learning System user testing
 
 ---
 
@@ -177,10 +179,49 @@ Radio Check is a clinically governed early-intervention and safeguarding platfor
 
 ### Staff Portal
 - `/app/staff-portal/webrtc-phone.js` - Added Socket.IO handlers for chat confirmation and messages
-- `/app/staff-portal/app.js` - Updated sendChatMessage to emit via Socket.IO
+- `/app/staff-portal/app.js` - Updated sendChatMessage to emit via Socket.IO, added Twilio call buttons
+- `/app/staff-portal/twilio-phone.js` - **NEW** Twilio browser-to-phone calling module
+- `/app/staff-portal/styles.css` - Added Twilio call modal styling
+- `/app/staff-portal/index.html` - Added Twilio SDK script
 
 ### Frontend
 - `/app/frontend/app/unified-chat.tsx` - Fixed character loading order and consent timing
 
 ### Backend
 - `/app/backend/webrtc_signaling.py` - Chat room creation in accept_chat_request handler (unchanged, verified)
+- `/app/backend/routers/twilio_calling.py` - **NEW** Twilio voice calling API endpoints
+- `/app/backend/server.py` - Registered Twilio router
+- `/app/backend/requirements.txt` - Added twilio==9.10.2
+
+### Documentation
+- `/app/business_funding_plan.md` - **NEW** Business & funding plan for investors/grants
+- `/app/cost_analysis_sheet.md` - **NEW** Detailed development cost breakdown
+
+---
+
+## Twilio Phone Integration (New - March 2026)
+
+### Configuration Required
+1. Add Twilio env vars to Render backend:
+   - TWILIO_ACCOUNT_SID
+   - TWILIO_AUTH_TOKEN
+   - TWILIO_API_KEY_SID
+   - TWILIO_API_KEY_SECRET
+   - TWILIO_TWIML_APP_SID
+   - TWILIO_PHONE_NUMBER
+
+2. Set TwiML App Voice URL:
+   - `https://veterans-support-api.onrender.com/api/twilio/voice`
+
+### API Endpoints
+- `GET /api/twilio/status` - Check if Twilio is configured
+- `POST /api/twilio/token` - Generate browser SDK access token
+- `POST /api/twilio/call` - Initiate outbound call
+- `POST /api/twilio/voice` - TwiML webhook handler
+- `POST /api/twilio/end-call` - End active call
+
+### Features
+- "Call Now" button on active callbacks
+- "Call Now" button on safeguarding alerts (when phone available)
+- Browser-based calling via Twilio Client SDK
+- Call timer, mute, and end call functionality
