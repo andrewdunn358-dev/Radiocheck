@@ -83,6 +83,12 @@ let currentStaffFilter = 'all';
 
 // API Helper
 async function apiCall(endpoint, options = {}) {
+    // Don't make API calls if not logged in (except for login)
+    if (!token && !endpoint.includes('/auth/login')) {
+        console.log('Skipping API call - not logged in:', endpoint);
+        throw new Error('Not authenticated');
+    }
+    
     const url = `${CONFIG.API_URL}/api${endpoint}`;
     const headers = {
         'Content-Type': 'application/json',
