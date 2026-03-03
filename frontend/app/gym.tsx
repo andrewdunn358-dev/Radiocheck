@@ -8,12 +8,21 @@ import {
   StyleSheet,
   Linking,
   Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../src/context/ThemeContext';
+
+// Known veteran-friendly gyms (can be expanded)
+const VETERAN_FRIENDLY_GYMS = [
+  'puregym', 'the gym', 'anytime fitness', 'nuffield health', 'david lloyd', 
+  'village gym', 'bannatyne', 'better', 'everlast', 'fitness first',
+  'snap fitness', 'xercise4less', 'energie fitness', 'jd gyms'
+];
 
 // Frankie's avatar
 const FRANKIE_AVATAR = '/images/frankie.png';
@@ -84,9 +93,9 @@ const CHALLENGES = [
 
 // Veteran Fitness Resources
 const VETERAN_RESOURCES = [
-  { name: 'Help for Heroes', url: 'https://www.helpforheroes.org.uk/get-support/how-we-can-help-you/physical-health/', description: 'Physical health support for veterans' },
+  { name: 'REORG Charity', url: 'https://reorgcharity.com/', description: 'Brazilian Jiu-Jitsu for veterans mental health' },
   { name: 'Invictus Games', url: 'https://invictusgamesfoundation.org/', description: 'Sport for wounded veterans' },
-  { name: 'Battle Back', url: 'https://www.helpforheroes.org.uk/get-support/how-we-can-help-you/sports-recovery/', description: 'Sports recovery programme' },
+  { name: 'Warrior Strong Fitness', url: 'https://www.warriorstrongfitness.co.uk/', description: 'Fitness training for military & veterans' },
   { name: 'Walking With The Wounded', url: 'https://walkingwiththewounded.org.uk/', description: 'Adventure challenges for veterans' },
   { name: 'Veterans Yoga Project', url: 'https://veteransyoga.org.uk/', description: 'Yoga & mindfulness for veterans' },
 ];
@@ -100,6 +109,12 @@ export default function GymScreen() {
   const [standardsScore, setStandardsScore] = useState(0);
   const [selectedPhase, setSelectedPhase] = useState<number | null>(null);
   const [showChallenges, setShowChallenges] = useState(false);
+  
+  // Gym finder state
+  const [postcode, setPostcode] = useState('');
+  const [gyms, setGyms] = useState<any[]>([]);
+  const [searchingGyms, setSearchingGyms] = useState(false);
+  const [gymSearchError, setGymSearchError] = useState('');
 
   // Load progress from localStorage
   useEffect(() => {
@@ -166,6 +181,89 @@ export default function GymScreen() {
     if (currentWeek <= 4) return 0;
     if (currentWeek <= 8) return 1;
     return 2;
+  };
+
+  // Search for gyms near postcode
+  const searchGyms = async () => {
+    if (!postcode.trim()) {
+      setGymSearchError('Please enter a postcode');
+      return;
+    }
+    
+    setSearchingGyms(true);
+    setGymSearchError('');
+    setGyms([]);
+    
+    try {
+      // First, geocode the postcode using postcodes.io
+      const geocodeResponse = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode.trim())}`);
+      const geocodeData = await geocodeResponse.json();
+      
+      if (geocodeData.status !== 200) {
+        setGymSearchError('Invalid postcode. Please check and try again.');
+        setSearchingGyms(false);
+        return;
+      }
+      
+      const { latitude, longitude } = geocodeData.result;
+      
+      // Use Overpass API (OpenStreetMap) to find gyms nearby
+      const radius = 5000; // 5km radius
+      const overpassQuery = `
+        [out:json][timeout:25];
+        (
+          node["leisure"="fitness_centre"](around:${radius},${latitude},${longitude});
+          node["leisure"="sports_centre"](around:${radius},${latitude},${longitude});
+          node["sport"="fitness"](around:${radius},${latitude},${longitude});
+          way["leisure"="fitness_centre"](around:${radius},${latitude},${longitude});
+          way["leisure"="sports_centre"](around:${radius},${latitude},${longitude});
+        );
+        out body center;
+      `;
+      
+      const overpassResponse = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: `data=${encodeURIComponent(overpassQuery)}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      
+      const overpassData = await overpassResponse.json();
+      
+      if (overpassData.elements && overpassData.elements.length > 0) {
+        const gymResults = overpassData.elements.slice(0, 10).map((element: any) => {
+          const name = element.tags?.name || 'Unnamed Gym';
+          const nameLower = name.toLowerCase();
+          const isVeteranFriendly = VETERAN_FRIENDLY_GYMS.some(vf => nameLower.includes(vf));
+          
+          return {
+            id: element.id,
+            name: name,
+            address: element.tags?.['addr:street'] || element.tags?.['addr:full'] || 'Address not available',
+            lat: element.lat || element.center?.lat,
+            lon: element.lon || element.center?.lon,
+            isVeteranFriendly: isVeteranFriendly,
+            phone: element.tags?.phone || element.tags?.['contact:phone'],
+            website: element.tags?.website || element.tags?.['contact:website'],
+          };
+        });
+        
+        // Sort veteran-friendly gyms first
+        gymResults.sort((a: any, b: any) => (b.isVeteranFriendly ? 1 : 0) - (a.isVeteranFriendly ? 1 : 0));
+        setGyms(gymResults);
+      } else {
+        setGymSearchError('No gyms found within 5km. Try a different postcode.');
+      }
+    } catch (error) {
+      console.log('Gym search error:', error);
+      setGymSearchError('Search failed. Please try again.');
+    }
+    
+    setSearchingGyms(false);
+  };
+
+  const openGymInMaps = (gym: any) => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${gym.lat},${gym.lon}`;
+    Linking.openURL(url);
   };
 
   const styles = createStyles(colors, theme);
@@ -333,6 +431,84 @@ export default function GymScreen() {
             );
           })}
         </ScrollView>
+
+        {/* Find a Gym - Postcode Search */}
+        <View style={styles.sectionHeader}>
+          <Ionicons name="location" size={24} color="#ef4444" />
+          <Text style={styles.sectionTitle}>Find a Gym Near You</Text>
+        </View>
+
+        <View style={styles.gymFinderCard}>
+          <Text style={styles.gymFinderIntro}>
+            Enter your postcode to find gyms nearby. We'll highlight veteran-friendly gyms that offer military discounts or have experience working with veterans.
+          </Text>
+          
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.postcodeInput}
+              placeholder="Enter postcode (e.g. SW1A 1AA)"
+              placeholderTextColor="#9ca3af"
+              value={postcode}
+              onChangeText={setPostcode}
+              autoCapitalize="characters"
+            />
+            <TouchableOpacity 
+              style={styles.searchButton}
+              onPress={searchGyms}
+              disabled={searchingGyms}
+            >
+              {searchingGyms ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Ionicons name="search" size={20} color="#fff" />
+              )}
+            </TouchableOpacity>
+          </View>
+          
+          {gymSearchError ? (
+            <Text style={styles.gymError}>{gymSearchError}</Text>
+          ) : null}
+          
+          {gyms.length > 0 && (
+            <View style={styles.gymResults}>
+              <Text style={styles.gymResultsTitle}>
+                Found {gyms.length} gym{gyms.length !== 1 ? 's' : ''} near you:
+              </Text>
+              {gyms.map((gym) => (
+                <TouchableOpacity 
+                  key={gym.id} 
+                  style={[styles.gymResultCard, gym.isVeteranFriendly && styles.veteranFriendlyGym]}
+                  onPress={() => openGymInMaps(gym)}
+                >
+                  {gym.isVeteranFriendly && (
+                    <View style={styles.veteranBadge}>
+                      <Ionicons name="shield-checkmark" size={14} color="#fff" />
+                      <Text style={styles.veteranBadgeText}>Veteran Friendly</Text>
+                    </View>
+                  )}
+                  <Text style={styles.gymName}>{gym.name}</Text>
+                  <Text style={styles.gymAddress}>{gym.address}</Text>
+                  <View style={styles.gymActions}>
+                    <Text style={styles.gymMapLink}>
+                      <Ionicons name="navigate" size={14} color="#3b82f6" /> Open in Maps
+                    </Text>
+                    {gym.website && (
+                      <TouchableOpacity onPress={() => Linking.openURL(gym.website)}>
+                        <Text style={styles.gymWebLink}>
+                          <Ionicons name="globe" size={14} color="#3b82f6" /> Website
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          
+          <Text style={styles.gymDisclaimer}>
+            Many gyms offer military/veteran discounts - always ask! Look for the Armed Forces Covenant logo.
+          </Text>
+        </View>
 
         {/* Veteran Fitness Resources */}
         <View style={styles.sectionHeader}>
@@ -704,5 +880,118 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     color: '#22c55e',
     fontWeight: '700',
     marginTop: 8,
+  },
+  // Gym Finder styles
+  gymFinderCard: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: theme === 'dark' ? '#374151' : '#fff',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#ef4444',
+  },
+  gymFinderIntro: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  postcodeInput: {
+    flex: 1,
+    backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchButton: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gymError: {
+    color: '#ef4444',
+    fontSize: 14,
+    marginTop: 10,
+  },
+  gymResults: {
+    marginTop: 16,
+  },
+  gymResultsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  gymResultCard: {
+    backgroundColor: theme === 'dark' ? '#1f2937' : '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  veteranFriendlyGym: {
+    borderColor: '#22c55e',
+    borderWidth: 2,
+    backgroundColor: theme === 'dark' ? '#064e3b' : '#ecfdf5',
+  },
+  veteranBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    gap: 4,
+  },
+  veteranBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  gymName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  gymAddress: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  gymActions: {
+    flexDirection: 'row',
+    marginTop: 10,
+    gap: 16,
+  },
+  gymMapLink: {
+    fontSize: 13,
+    color: '#3b82f6',
+    fontWeight: '600',
+  },
+  gymWebLink: {
+    fontSize: 13,
+    color: '#3b82f6',
+    fontWeight: '600',
+  },
+  gymDisclaimer: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 16,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });
