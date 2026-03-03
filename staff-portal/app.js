@@ -2021,6 +2021,8 @@ initPortal = async function() {
     await originalInitPortal();
     // Load shifts after other data
     loadShifts();
+    // Initialize supervisor tab visibility
+    initSupervisorTab();
 };
 
 // Load swap/cover requests (placeholder for future implementation)
@@ -3167,13 +3169,4 @@ function editSupervisionNote(noteId) {
     document.getElementById('supervision-modal-title').innerHTML = '<i class="fas fa-edit"></i> Edit Supervision Note';
     
     document.getElementById('supervision-modal').classList.remove('hidden');
-}
-
-// Initialize supervisor tab visibility after portal loads
-if (typeof initPortal === 'function') {
-    var originalInitPortal = initPortal;
-    initPortal = async function() {
-        await originalInitPortal();
-        initSupervisorTab();
-    };
 }
