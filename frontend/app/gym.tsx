@@ -97,7 +97,7 @@ const VETERAN_RESOURCES = [
   { name: 'Invictus Games', url: 'https://invictusgamesfoundation.org/', description: 'Sport for wounded veterans' },
   { name: 'Warrior Strong Fitness', url: 'https://www.warriorstrongfitness.co.uk/', description: 'Fitness training for military & veterans' },
   { name: 'Walking With The Wounded', url: 'https://walkingwiththewounded.org.uk/', description: 'Adventure challenges for veterans' },
-  { name: 'Veterans Yoga Project', url: 'https://veteransyoga.org.uk/', description: 'Yoga & mindfulness for veterans' },
+  { name: 'Veterans Yoga Project', url: 'https://veteransyogaproject.org/', description: 'Yoga & mindfulness for veterans' },
 ];
 
 export default function GymScreen() {
