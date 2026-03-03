@@ -173,6 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('user-name').textContent = `Welcome, ${currentUser.name}`;
         loadAllData();
         resetInactivityTimer(); // Start the inactivity timer
+        
+        // Start real-time alert counter polling
+        updateAlertCounter();
+        setInterval(updateAlertCounter, 30000); // Poll every 30 seconds
     } else {
         showScreen('login-screen');
     }
@@ -190,6 +194,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+// Real-time alert counter - shows pending safeguarding alerts
+async function updateAlertCounter() {
+    try {
+        const response = await apiCall('/safeguarding/alerts?status=pending');
+        const pendingAlerts = response && Array.isArray(response) ? response.length : 
+                            (response && response.alerts ? response.alerts.filter(a => !a.acknowledged).length : 0);
+        
+        const badge = document.getElementById('alert-counter-badge');
+        if (badge) {
+            if (pendingAlerts > 0) {
+                badge.textContent = pendingAlerts > 99 ? '99+' : pendingAlerts;
+                badge.style.display = 'inline-block';
+                badge.classList.add('pulse-alert');
+            } else {
+                badge.style.display = 'none';
+                badge.classList.remove('pulse-alert');
+            }
+        }
+    } catch (error) {
+        console.log('Error updating alert counter:', error);
+    }
+}
 
 // Login
 async function handleLogin(e) {
@@ -5766,7 +5793,158 @@ function showGovernanceSubtab(subtab) {
         case 'compliance':
             loadComplianceStatus();
             break;
+        case 'reports':
+            // Reports section - no auto-load needed
+            break;
     }
+}
+
+// Generate summary report (weekly or monthly)
+async function generateReport(period) {
+    const reportDisplay = document.getElementById('report-display');
+    const reportLoading = document.getElementById('report-loading');
+    const reportContent = document.getElementById('report-content');
+    
+    reportDisplay.style.display = 'block';
+    reportLoading.style.display = 'block';
+    reportContent.style.display = 'none';
+    
+    try {
+        const report = await apiCall(`/governance/summary-report?period=${period}`);
+        
+        reportLoading.style.display = 'none';
+        reportContent.style.display = 'block';
+        
+        const periodLabel = period === 'weekly' ? 'Weekly' : 'Monthly';
+        const periodDays = report.period_days;
+        
+        reportContent.innerHTML = `
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #fff; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="margin: 0;"><i class="fas fa-file-alt"></i> ${periodLabel} Summary Report</h3>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">
+                    Period: ${new Date(report.period_start).toLocaleDateString()} - ${new Date(report.period_end).toLocaleDateString()} (${periodDays} days)
+                </p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.7;">
+                    Generated: ${new Date(report.generated_at).toLocaleString()}
+                </p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <!-- Safeguarding Card -->
+                <div style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                    <h4 style="margin: 0 0 15px 0; color: #ef4444;"><i class="fas fa-shield-alt"></i> Safeguarding</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${report.safeguarding.total_alerts}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">Total Alerts</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: #ef4444;">${report.safeguarding.imminent_risk}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">Imminent Risk</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: #f59e0b;">${report.safeguarding.high_risk}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">High Risk</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: #8b5cf6;">${report.safeguarding.panic_alerts}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">Panic Alerts</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- KPIs Card -->
+                <div style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h4 style="margin: 0 0 15px 0; color: #10b981;"><i class="fas fa-chart-line"></i> KPIs</h4>
+                    <div style="font-size: 14px;">
+                        <div style="margin-bottom: 10px;">
+                            <strong>Avg Response (High):</strong> ${report.kpis.avg_response_time_high || 'N/A'}
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>Avg Response (Imminent):</strong> ${report.kpis.avg_response_time_imminent || 'N/A'}
+                        </div>
+                        <div>
+                            <strong>SLA Compliance:</strong> ${report.kpis.high_risk_sla_compliance || 'N/A'}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Engagement Card -->
+                <div style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6;">
+                    <h4 style="margin: 0 0 15px 0; color: #3b82f6;"><i class="fas fa-users"></i> Engagement</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${report.engagement.ai_chat_sessions}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">AI Chats</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${report.engagement.live_chats}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">Live Chats</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${report.engagement.callbacks_requested}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">Callbacks</p>
+                        </div>
+                        <div>
+                            <span style="font-size: 24px; font-weight: 700; color: #10b981;">${report.engagement.callback_completion_rate}</span>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-secondary);">Completion</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${report.recommendations && report.recommendations.length > 0 ? `
+            <div style="background: #fef3c7; padding: 15px 20px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <h4 style="margin: 0 0 10px 0; color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Recommendations</h4>
+                <ul style="margin: 0; padding-left: 20px; color: #92400e;">
+                    ${report.recommendations.map(r => `<li style="margin-bottom: 5px;">${r}</li>`).join('')}
+                </ul>
+            </div>
+            ` : `
+            <div style="background: #d1fae5; padding: 15px 20px; border-radius: 8px; border-left: 4px solid #10b981;">
+                <h4 style="margin: 0; color: #065f46;"><i class="fas fa-check-circle"></i> All systems operating within normal parameters</h4>
+            </div>
+            `}
+            
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn btn-secondary" onclick="exportReportPDF()">
+                    <i class="fas fa-download"></i> Export as PDF
+                </button>
+                <button class="btn btn-outline" onclick="printReport()">
+                    <i class="fas fa-print"></i> Print Report
+                </button>
+            </div>
+        `;
+        
+        showNotification(`${periodLabel} report generated successfully`, 'success');
+        
+    } catch (error) {
+        reportLoading.style.display = 'none';
+        reportContent.style.display = 'block';
+        reportContent.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--danger);">
+                <i class="fas fa-exclamation-circle fa-3x"></i>
+                <p style="margin-top: 15px;">Failed to generate report. Please try again.</p>
+                <p style="font-size: 12px; color: var(--text-secondary);">${error.message || error}</p>
+            </div>
+        `;
+    }
+}
+
+function printReport() {
+    const content = document.getElementById('report-content');
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Radio Check Summary Report</title>');
+    printWindow.document.write('<style>body{font-family:Arial,sans-serif;padding:20px;}h3,h4{color:#333;}.no-print{display:none;}</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(content.innerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function exportReportPDF() {
+    showNotification('PDF export coming soon. Use Print for now.', 'info');
 }
 
 // Load hazards

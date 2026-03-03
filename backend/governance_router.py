@@ -605,6 +605,110 @@ async def get_safeguarding_kpis(
         logging.error(f"Error calculating KPIs: {e}")
         raise HTTPException(status_code=500, detail="Failed to calculate KPIs")
 
+
+@governance_router.get("/summary-report")
+async def get_summary_report(period: str = "weekly"):
+    """
+    Generate a comprehensive summary report for governance review.
+    period: 'weekly' (7 days) or 'monthly' (30 days)
+    """
+    try:
+        days = 7 if period == "weekly" else 30
+        period_start = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        # Get KPIs
+        kpis_response = await get_safeguarding_kpis(days=days)
+        kpis = kpis_response.get("kpis", {})
+        
+        # Get alert counts by risk level
+        alert_counts = await db.safeguarding_alerts.aggregate([
+            {"$match": {"created_at": {"$gte": period_start}}},
+            {"$group": {"_id": "$risk_level", "count": {"$sum": 1}}}
+        ]).to_list(100)
+        alerts_by_risk = {item["_id"]: item["count"] for item in alert_counts}
+        
+        # Get callback stats
+        callbacks = await db.callback_requests.count_documents({"created_at": {"$gte": period_start}})
+        callbacks_completed = await db.callback_requests.count_documents({
+            "created_at": {"$gte": period_start},
+            "status": "completed"
+        })
+        
+        # Get panic alerts
+        panic_alerts = await db.panic_alerts.count_documents({"created_at": {"$gte": period_start}})
+        
+        # Get chat sessions
+        chat_sessions = await db.chat_sessions.count_documents({"created_at": {"$gte": period_start}})
+        
+        # Get live chat stats
+        live_chats = await db.live_chat_rooms.count_documents({"created_at": {"$gte": period_start}})
+        
+        # Get staff activity
+        staff_logins = await db.audit_logs.count_documents({
+            "timestamp": {"$gte": period_start},
+            "action": "login"
+        })
+        
+        # Generate report
+        report = {
+            "period": period,
+            "period_days": days,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "period_start": period_start.isoformat(),
+            "period_end": datetime.now(timezone.utc).isoformat(),
+            
+            "safeguarding": {
+                "total_alerts": sum(alerts_by_risk.values()),
+                "by_risk_level": alerts_by_risk,
+                "imminent_risk": alerts_by_risk.get("imminent", 0),
+                "high_risk": alerts_by_risk.get("high", 0),
+                "medium_risk": alerts_by_risk.get("medium", 0),
+                "low_risk": alerts_by_risk.get("low", 0),
+                "panic_alerts": panic_alerts
+            },
+            
+            "kpis": {
+                "avg_response_time_high": kpis.get("avg_response_time_high", "N/A"),
+                "avg_response_time_imminent": kpis.get("avg_response_time_imminent", "N/A"),
+                "high_risk_sla_compliance": kpis.get("high_risk_reviewed_in_sla_percent", "N/A")
+            },
+            
+            "engagement": {
+                "ai_chat_sessions": chat_sessions,
+                "live_chats": live_chats,
+                "callbacks_requested": callbacks,
+                "callbacks_completed": callbacks_completed,
+                "callback_completion_rate": f"{(callbacks_completed/callbacks*100):.1f}%" if callbacks > 0 else "N/A"
+            },
+            
+            "staff_activity": {
+                "logins": staff_logins
+            },
+            
+            "recommendations": []
+        }
+        
+        # Add recommendations based on data
+        if alerts_by_risk.get("imminent", 0) > 5:
+            report["recommendations"].append("High number of imminent risk alerts - consider additional staff coverage")
+        if callbacks > 0 and callbacks_completed / callbacks < 0.8:
+            report["recommendations"].append("Callback completion rate below 80% - review staffing or response times")
+        if kpis.get("high_risk_reviewed_in_sla_percent", 100) < 90:
+            report["recommendations"].append("SLA compliance below target - review alert response procedures")
+        
+        # Save report to database
+        await db.summary_reports.insert_one({
+            **report,
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return report
+        
+    except Exception as e:
+        logging.error(f"Error generating summary report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate summary report")
+
+
 # ============================================================================
 # PEER MODERATION ENDPOINTS
 # ============================================================================
