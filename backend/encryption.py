@@ -127,7 +127,11 @@ ENCRYPTED_FIELDS = {
     'callbacks': ['name', 'phone', 'email', 'message'],
     'notes': ['content', 'subject'],
     'safeguarding_alerts': ['ip_address', 'conversation_history'],
-    'live_chat_rooms': [],  # Messages are time-sensitive, keep unencrypted for now
+    'live_chat_rooms': ['messages', 'user_name'],  # Chat messages encrypted
+    'chat_sessions': ['messages', 'conversation_history'],  # AI chat history encrypted
+    'ai_chat_sessions': ['wellbeing_notes', 'case_notes'],  # Supervision notes
+    'supervision_notes': ['wellbeing_notes', 'case_notes', 'action_items'],  # HR sensitive
+    'escalations': ['description', 'resolution_notes'],  # Escalation details
 }
 
 

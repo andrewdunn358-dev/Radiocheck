@@ -5924,33 +5924,47 @@ async def get_live_chat_room(room_id: str):
 
 @api_router.get("/live-chat/rooms/{room_id}/messages")
 async def get_live_chat_messages(room_id: str):
-    """Get messages for a live chat room"""
-    # First check in-memory
+    """Get messages for a live chat room (decrypted)"""
+    # First check in-memory (already unencrypted)
     if room_id in live_chat_rooms:
         return {"messages": live_chat_rooms[room_id]["messages"]}
     
-    # Fall back to database
+    # Fall back to database (encrypted) - need to decrypt
     room = await db.live_chat_rooms.find_one({"id": room_id}, {"_id": 0})
     if not room:
         raise HTTPException(status_code=404, detail="Chat room not found")
     
-    return {"messages": room.get("messages", [])}
+    # Decrypt messages from database
+    messages = room.get("messages", [])
+    decrypted_messages = []
+    for msg in messages:
+        decrypted_msg = msg.copy()
+        if msg.get("text"):
+            decrypted_msg["text"] = decrypt_field(msg["text"])
+        decrypted_messages.append(decrypted_msg)
+    
+    return {"messages": decrypted_messages}
 
 @api_router.post("/live-chat/rooms/{room_id}/messages")
 async def send_live_chat_message(room_id: str, message: LiveChatMessage):
-    """Send a message in a live chat room"""
+    """Send a message in a live chat room (encrypted)"""
     msg = {
         "id": str(uuid.uuid4()),
-        "text": message.text,
+        "text": encrypt_field(message.text),  # Encrypt message content
         "sender": message.sender,
         "timestamp": datetime.utcnow().isoformat(),
     }
     
-    # Update in-memory
+    # Update in-memory (keep unencrypted for real-time display)
     if room_id in live_chat_rooms:
-        live_chat_rooms[room_id]["messages"].append(msg)
+        live_chat_rooms[room_id]["messages"].append({
+            "id": msg["id"],
+            "text": message.text,  # Unencrypted in memory
+            "sender": message.sender,
+            "timestamp": msg["timestamp"],
+        })
     
-    # Update in database
+    # Update in database (encrypted)
     await db.live_chat_rooms.update_one(
         {"id": room_id},
         {"$push": {"messages": msg}}
