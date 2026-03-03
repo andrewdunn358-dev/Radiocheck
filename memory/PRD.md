@@ -35,7 +35,7 @@ Radio Check is a comprehensive mental health and peer support application design
 4. **Warfare on Lawfare** - Historical investigations
 5. **Support Organisations** - Directory
 6. **Self-Care Tools** - Journal, grounding, breathing
-7. **Friends & Family** - Support for loved ones
+7. **Friends & Family** - Support for loved ones (includes Bereavement Support)
 8. **Addictions** - Substance support
 9. **Criminal Justice Support** - Prison/leaving support
 10. **Recommended Podcasts** - Veteran stories
@@ -61,17 +61,29 @@ Radio Check is a comprehensive mental health and peer support application design
   - Military Challenge Ladder
   - Veteran fitness resources
   - Progress tracking (localStorage)
+- [x] **Bereavement Support** - Military-specific grief support:
+  - 8 specialist resources (DMWS, Cruse, Scotty's Little Soldiers, etc.)
+  - Phone numbers and external links
+  - Featured DMWS card
 
 ## Current Status (March 2026)
 
 ### Recently Implemented (This Session)
+- **Bereavement Support Section** - New feature in Friends & Family page:
+  - 8 military bereavement resources (DMWS, Cruse, Scotty's Little Soldiers, etc.)
+  - Featured DMWS card highlighting Defence Medical Welfare Service
+  - Phone numbers and external links for all resources
+  - Purple theme for sensitive topic
+
+### Previously Implemented
 - **Frankie PTI Character** - Full AI persona with PTI banter
 - **The Gym Page** - Complete fitness feature
 - **Rachel Name Fix** - Doris → Rachel throughout
 
 ### Pending Issues
 - **Live Chat UI** - Messages not visible in staff portal (fix ready, needs 20i upload)
-- **Vercel Build** - Lock file conflict resolved
+- **AI Character Sort Order** - Frankie not appearing first on homepage
+- **Callback Notifications** - Blocked on Resend domain verification
 
 ## File Structure
 ```
