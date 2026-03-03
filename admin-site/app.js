@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Real-time alert counter - shows pending safeguarding alerts
 async function updateAlertCounter() {
     try {
-        const response = await apiCall('/safeguarding/alerts?status=pending');
+        const response = await apiCall('/safeguarding-alerts?status=pending');
         const pendingAlerts = response && Array.isArray(response) ? response.length : 
                             (response && response.alerts ? response.alerts.filter(a => !a.acknowledged).length : 0);
         
