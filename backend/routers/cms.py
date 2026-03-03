@@ -303,14 +303,14 @@ async def seed_cms_public(force: bool = False):
     # Main menu items matching the actual app
     home_menu_items = [
         {"title": "Need to Talk?", "description": "Connect with support now", "icon": "heart", "color": "#3b82f6", "bg_color": "#dbeafe", "route": "/crisis-support", "order": 1, "is_primary": True},
-        {"title": "The Gym", "description": "Frankie's 12-week fitness programme", "icon": "barbell", "color": "#22c55e", "bg_color": "#dcfce7", "route": "/gym", "order": 2},
-        {"title": "Talk to a Veteran", "description": "Peer support from those who understand", "icon": "people", "color": "#22c55e", "bg_color": "#dcfce7", "route": "/peer-support", "order": 3},
-        {"title": "Warfare on Lawfare", "description": "Support for historical investigations", "icon": "shield", "color": "#6366f1", "bg_color": "#e0e7ff", "route": "/historical-investigations", "order": 4},
-        {"title": "Support Organisations", "description": "Directory of veteran services", "icon": "list", "color": "#f59e0b", "bg_color": "#fef3c7", "route": "/organizations", "order": 5},
-        {"title": "Self-Care Tools", "description": "Journal, grounding, breathing & more", "icon": "fitness", "color": "#ec4899", "bg_color": "#fce7f3", "route": "/self-care", "order": 6},
-        {"title": "Friends & Family", "description": "Worried about a veteran?", "icon": "heart-circle", "color": "#7c3aed", "bg_color": "#ede9fe", "route": "/family-friends", "order": 7},
-        {"title": "Addictions", "description": "Alcohol, drugs, gambling & more", "icon": "heart-dislike", "color": "#d97706", "bg_color": "#fef3c7", "route": "/substance-support", "order": 8},
-        {"title": "Criminal Justice Support", "description": "Help for veterans in or leaving prison", "icon": "shield-checkmark", "color": "#4f46e5", "bg_color": "#e0e7ff", "route": "/criminal-justice", "order": 9},
+        {"title": "Talk to a Veteran", "description": "Peer support from those who understand", "icon": "people", "color": "#22c55e", "bg_color": "#dcfce7", "route": "/peer-support", "order": 2},
+        {"title": "Warfare on Lawfare", "description": "Support for historical investigations", "icon": "shield", "color": "#6366f1", "bg_color": "#e0e7ff", "route": "/historical-investigations", "order": 3},
+        {"title": "Support Organisations", "description": "Directory of veteran services", "icon": "list", "color": "#f59e0b", "bg_color": "#fef3c7", "route": "/organizations", "order": 4},
+        {"title": "Self-Care Tools", "description": "Journal, grounding, breathing & more", "icon": "fitness", "color": "#ec4899", "bg_color": "#fce7f3", "route": "/self-care", "order": 5},
+        {"title": "Friends & Family", "description": "Worried about a veteran?", "icon": "heart-circle", "color": "#7c3aed", "bg_color": "#ede9fe", "route": "/family-friends", "order": 6},
+        {"title": "Addictions", "description": "Alcohol, drugs, gambling & more", "icon": "heart-dislike", "color": "#d97706", "bg_color": "#fef3c7", "route": "/substance-support", "order": 7},
+        {"title": "Criminal Justice Support", "description": "Help for veterans in or leaving prison", "icon": "shield-checkmark", "color": "#4f46e5", "bg_color": "#e0e7ff", "route": "/criminal-justice", "order": 8},
+        {"title": "The Gym", "description": "Frankie's 12-week fitness programme", "icon": "barbell", "color": "#22c55e", "bg_color": "#dcfce7", "route": "/gym", "order": 9},
         {"title": "Recommended Podcasts", "description": "Veteran stories & mental health support", "icon": "headset", "color": "#db2777", "bg_color": "#fce7f3", "route": "/podcasts", "order": 10},
         {"title": "Request a Callback", "description": "We'll call you back", "icon": "call", "color": "#22c55e", "bg_color": "#dcfce7", "route": "/callback", "order": 11, "is_callback": True},
     ]
