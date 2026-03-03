@@ -109,7 +109,19 @@ async function apiCall(endpoint, options = {}) {
                 showNotification('Session expired. Please log in again.', 'error');
                 throw new Error('Session expired');
             }
-            throw new Error(data.detail || 'API Error');
+            // Handle validation errors (422) with detailed message
+            let errorMessage = 'API Error';
+            if (data.detail) {
+                if (typeof data.detail === 'string') {
+                    errorMessage = data.detail;
+                } else if (Array.isArray(data.detail)) {
+                    // Pydantic validation errors come as array
+                    errorMessage = data.detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+                } else if (typeof data.detail === 'object') {
+                    errorMessage = JSON.stringify(data.detail);
+                }
+            }
+            throw new Error(errorMessage);
         }
         
         return data;

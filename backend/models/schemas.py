@@ -24,9 +24,17 @@ class UserCreate(BaseModel):
     first_name: str = ""
     last_name: str = ""
     phone: str = ""
+    sms: Optional[str] = None
+    whatsapp: Optional[str] = None
     specialization: str = ""
+    area: Optional[str] = None
+    background: Optional[str] = None
+    yearsServed: Optional[str] = None
     linked_staff_id: str = ""
     linked_staff_type: str = ""
+    
+    class Config:
+        extra = "ignore"  # Ignore any extra fields not defined here
 
 class User(BaseModel):
     id: str
