@@ -394,6 +394,7 @@ async def seed_characters_from_hardcoded(user: dict = Depends(require_admin)):
 def get_character_description(char_id: str) -> str:
     """Get description for hardcoded character"""
     descriptions = {
+        "frankie": "Your PTI - Physical Training Instructor with military fitness discipline.",
         "tommy": "A warm, steady presence - like a reliable mate who's been through it.",
         "doris": "A nurturing, compassionate presence who creates a safe space to talk.",
         "bob": "A down-to-earth mate who keeps things real and offers honest support.",
@@ -409,6 +410,7 @@ def get_character_description(char_id: str) -> str:
 def get_character_bio(char_id: str) -> str:
     """Get bio for hardcoded character"""
     bios = {
+        "frankie": "Frankie is your PTI (Physical Training Instructor). A former British Army PTI who brings proper military fitness discipline with motivating banter.",
         "tommy": "Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back.",
         "doris": "Rachel is a nurturing, compassionate presence who creates a safe space to talk. Think of her as a warm cuppa on a difficult day.",
         "bob": "Bob is a down-to-earth ex-Para who keeps things real. He's been around the block and knows what it's like.",

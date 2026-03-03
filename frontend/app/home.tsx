@@ -52,6 +52,7 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
 
 // Fallback AI Team (used when CMS is empty or unavailable)
 const FALLBACK_AI_TEAM: AITeamMember[] = [
+  { name: 'Frankie', avatar: '/images/frankie.png', description: 'Your PTI - Physical Training', bio: 'Frankie is your PTI (Physical Training Instructor). A former British Army PTI who brings proper military fitness discipline with motivating banter. He offers a 12-week progressive programme to build strength, resilience and mental toughness.', route: '/chat/frankie' },
   { name: 'Tommy', avatar: '/images/tommy.png', description: 'Your battle buddy', bio: 'Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back. He understands military life inside out and provides honest, direct support.', route: '/chat/tommy' },
   { name: 'Rachel', avatar: '/images/doris.png', description: 'Warm support', bio: 'Rachel is a nurturing, compassionate presence who creates a safe space to talk. She offers warmth and understanding, like a caring friend who listens without judgement.', route: '/chat/doris' },
   { name: 'Bob', avatar: '/images/bob.png', description: 'Ex-Para peer support', bio: 'Bob is a down-to-earth ex-Para who keeps things real. He\'s been there, done that, and offers honest peer support from someone who truly understands the military experience.', route: '/chat/bob' },

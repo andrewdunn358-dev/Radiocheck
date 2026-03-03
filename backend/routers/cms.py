@@ -352,14 +352,15 @@ async def seed_cms_public(force: bool = False):
     # Using local avatar paths - images are in frontend/assets/images/
     avatar_base = "/images"
     ai_characters = [
-        {"title": "Tommy", "description": "Your battle buddy", "bio": "Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back.", "image_url": f"{avatar_base}/tommy.png", "route": "/chat/tommy", "order": 1},
-        {"title": "Rachel", "description": "Warm support", "bio": "Rachel is a nurturing, compassionate presence who creates a safe space to talk.", "image_url": f"{avatar_base}/doris.png", "route": "/chat/doris", "order": 2},
-        {"title": "Bob", "description": "Ex-Para peer support", "bio": "Bob is a down-to-earth ex-Para who keeps things real.", "image_url": f"{avatar_base}/bob.png", "route": "/chat/bob", "order": 3},
-        {"title": "Finch", "description": "Military law & legal support", "bio": "Finch is a knowledgeable companion with expertise in UK military law.", "image_url": f"{avatar_base}/finch.png", "route": "/chat/sentry", "order": 4},
-        {"title": "Margie", "description": "Addiction support", "bio": "Margie specialises in supporting those dealing with all types of addiction.", "image_url": f"{avatar_base}/margie.png", "route": "/chat/margie", "order": 5},
-        {"title": "Hugo", "description": "Self-help & wellness", "bio": "Hugo is a 35-year-old wellbeing coach focused on mental health, resilience and daily habits.", "image_url": f"{avatar_base}/hugo.png", "route": "/chat/hugo", "order": 6},
-        {"title": "Rita", "description": "Family support", "bio": "Rita is a warm, grounded family-support companion for partners, spouses, parents and loved ones.", "image_url": f"{avatar_base}/rita.png", "route": "/chat/rita", "order": 7},
-        {"title": "Catherine", "description": "Self-care & mindfulness", "bio": "Catherine offers gentle self-care guidance and mindfulness techniques.", "image_url": f"{avatar_base}/catherine.png", "route": "/chat/catherine", "order": 8},
+        {"title": "Frankie", "description": "Your PTI - Physical Training", "bio": "Frankie is your PTI (Physical Training Instructor). A former British Army PTI who brings proper military fitness discipline with motivating banter. He offers a 12-week progressive programme.", "image_url": f"{avatar_base}/frankie.png", "route": "/chat/frankie", "order": 1},
+        {"title": "Tommy", "description": "Your battle buddy", "bio": "Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back.", "image_url": f"{avatar_base}/tommy.png", "route": "/chat/tommy", "order": 2},
+        {"title": "Rachel", "description": "Warm support", "bio": "Rachel is a nurturing, compassionate presence who creates a safe space to talk.", "image_url": f"{avatar_base}/doris.png", "route": "/chat/doris", "order": 3},
+        {"title": "Bob", "description": "Ex-Para peer support", "bio": "Bob is a down-to-earth ex-Para who keeps things real.", "image_url": f"{avatar_base}/bob.png", "route": "/chat/bob", "order": 4},
+        {"title": "Finch", "description": "Military law & legal support", "bio": "Finch is a knowledgeable companion with expertise in UK military law.", "image_url": f"{avatar_base}/finch.png", "route": "/chat/sentry", "order": 5},
+        {"title": "Margie", "description": "Addiction support", "bio": "Margie specialises in supporting those dealing with all types of addiction.", "image_url": f"{avatar_base}/margie.png", "route": "/chat/margie", "order": 6},
+        {"title": "Hugo", "description": "Self-help & wellness", "bio": "Hugo is a 35-year-old wellbeing coach focused on mental health, resilience and daily habits.", "image_url": f"{avatar_base}/hugo.png", "route": "/chat/hugo", "order": 7},
+        {"title": "Rita", "description": "Family support", "bio": "Rita is a warm, grounded family-support companion for partners, spouses, parents and loved ones.", "image_url": f"{avatar_base}/rita.png", "route": "/chat/rita", "order": 8},
+        {"title": "Catherine", "description": "Self-care & mindfulness", "bio": "Catherine offers gentle self-care guidance and mindfulness techniques.", "image_url": f"{avatar_base}/catherine.png", "route": "/chat/catherine", "order": 9},
     ]
     
     for char in ai_characters:
