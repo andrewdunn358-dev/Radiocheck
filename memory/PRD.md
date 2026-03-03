@@ -17,6 +17,12 @@ Radio Check is a comprehensive mental health and peer support application design
 4. **Resend** - Email notifications
 5. **Socket.IO** - Real-time messaging and signaling
 
+## User Roles (Hierarchy)
+1. **Admin** - Full system access, content management, user creation
+2. **Supervisor** - Team management, escalation handling, 1:1 supervision notes (NEW)
+3. **Counsellor** - Clinical support, case management, live chat
+4. **Peer Supporter** - Peer support, escalate to counsellors/supervisors
+
 ## AI Characters (10 total)
 1. **Frankie** - PTI Physical Training Instructor with 12-week programme & gamification
 2. **Tommy** - Battle buddy, straight-talking support
@@ -65,10 +71,25 @@ Radio Check is a comprehensive mental health and peer support application design
   - 8 specialist resources (DMWS, Cruse, Scotty's Little Soldiers, etc.)
   - Phone numbers and external links
   - Featured DMWS card
+- [x] **Supervisor Role** (NEW - March 2026):
+  - New role between Admin and Staff
+  - Team management - view counsellors and peers
+  - 1:1 Supervision notes for staff members
+  - Escalation workflow - staff can escalate to supervisors
+  - Confidential note marking (HR-sensitive)
+  - Backend: 19/20 tests passed (95% success rate)
 
 ## Current Status (March 2026)
 
 ### Recently Implemented (This Session)
+- **Supervisor Role** - Full implementation:
+  - Backend: `POST/GET /api/supervision/notes`, `GET /api/supervision/team`
+  - Backend: `POST/GET/PATCH /api/escalations` with acknowledge/resolve workflow
+  - Admin Portal: Supervisor option in role dropdown
+  - Staff Portal: Supervision tab, escalation button, team management UI
+  - MongoDB collections: `supervision_notes`, `escalations`
+  - Test accounts: supervisor@radiocheck.me / Sup123!
+
 - **Bereavement Support Section** - New feature in Friends & Family page:
   - 8 military bereavement resources (DMWS, Cruse, Scotty's Little Soldiers, etc.)
   - Featured DMWS card highlighting Defence Medical Welfare Service
@@ -89,31 +110,50 @@ Radio Check is a comprehensive mental health and peer support application design
 ```
 /app
 ├── backend/
-│   ├── server.py              # FRANKIE_SYSTEM_PROMPT
+│   ├── server.py              # Supervisor endpoints, supervision_notes
 │   ├── routers/
+│   │   ├── auth.py            # Supervisor role in login redirect
 │   │   ├── ai_characters.py
 │   │   └── cms.py
 │   └── enhanced_safety_layer.py
 ├── frontend/
 │   ├── app/
 │   │   ├── home.tsx           # The Gym card added
-│   │   └── gym.tsx            # NEW - The Gym page
+│   │   ├── gym.tsx            # The Gym page
+│   │   └── family-friends.tsx # Bereavement support section
 │   └── public/images/
 │       └── frankie.png        # Frankie avatar
-├── staff-portal/              # Needs upload to 20i
+├── admin-site/
+│   └── app.js                 # Supervisor role dropdown (needs upload to 20i)
+├── staff-portal/
+│   ├── app.js                 # Supervisor features (needs upload to 20i)
+│   ├── index.html             # Supervision tab UI (needs upload to 20i)
+│   └── styles.css             # Supervisor badge styles
 └── memory/
     └── PRD.md
 ```
 
+## Files Needing 20i Upload (User Action)
+- `/app/admin-site/app.js` - Supervisor role in user creation
+- `/app/admin-site/index.html` - No changes this session
+- `/app/staff-portal/app.js` - Supervisor features, escalation functions
+- `/app/staff-portal/index.html` - Supervision tab, escalation modal
+- `/app/staff-portal/styles.css` - Supervisor badge styling
+
 ## Backlog (P1/P2)
+- [ ] Fix AI Character Sort Order (P2)
 - [ ] Add Frankie to external website AI Team
+- [ ] Implement Gym Finder API (currently mocked)
 - [ ] Convert Expo to Next.js
 - [ ] Welsh Language Support
 - [ ] Mood Tracker Journal
 - [ ] Appointment Booking System
 - [ ] CBT Courses
+- [ ] Admin Reporting features end-to-end testing
 
 ## Key Credentials/Config
 - Twilio credentials in backend/.env
 - Staff portal: staffportal.radiocheck.me (20i)
 - Production API: veterans-support-api.onrender.com
+- Test supervisor: supervisor@radiocheck.me / Sup123!
+- Test admin: admin@veteran.dbty.co.uk / Admin123!
