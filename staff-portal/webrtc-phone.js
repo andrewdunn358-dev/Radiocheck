@@ -142,7 +142,8 @@ function setupSocketHandlers() {
             window.currentChatRoom = roomId;
             
             // Join the Socket.IO room for real-time messages
-            var staffUser = window.currentUser || {};
+            // Get staff user with localStorage fallback
+            var staffUser = window.currentUser || JSON.parse(localStorage.getItem('staff_user') || '{}') || {};
             socket.emit('join_chat_room', {
                 room_id: roomId,
                 user_id: staffUser.id || 'staff',
@@ -199,7 +200,8 @@ function setupSocketHandlers() {
     socket.on('new_chat_message', (data) => {
         console.log('New chat message received via socket:', data);
         console.log('Current room:', window.currentChatRoom, 'Message room:', data.room_id);
-        var staffUser = window.currentUser || {};
+        // Get staff user with localStorage fallback to fix "Staff ID: undefined" issue
+        var staffUser = window.currentUser || JSON.parse(localStorage.getItem('staff_user') || '{}') || {};
         console.log('Staff ID:', staffUser.id, 'Sender ID:', data.sender_id);
         
         // Only process if we're in a chat and message is not from us
@@ -1102,8 +1104,8 @@ function acceptChatRequest(requestId, userId, userName) {
         return;
     }
     
-    // Get current user from window (set by app.js)
-    var staffUser = window.currentUser || {};
+    // Get current user from window or localStorage fallback
+    var staffUser = window.currentUser || JSON.parse(localStorage.getItem('staff_user') || '{}') || {};
     
     // Emit accept event
     socket.emit('accept_chat_request', {
