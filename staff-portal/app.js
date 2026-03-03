@@ -317,17 +317,21 @@ async function initPortal() {
     await initializeWebRTCPhone();
     
     // Initialize Twilio phone for browser-to-phone calling
-    if (typeof TwilioPhone !== 'undefined' && TwilioPhone.init) {
-        TwilioPhone.init().then(function(ready) {
-            if (ready) {
-                console.log('Twilio Phone ready for calling');
-            } else {
-                console.log('Twilio Phone not available');
-            }
-        }).catch(function(err) {
-            console.error('Twilio Phone init error:', err);
-        });
-    }
+    // Add small delay to ensure window.currentUser is fully set
+    setTimeout(function() {
+        if (typeof TwilioPhone !== 'undefined' && TwilioPhone.init) {
+            console.log('Initializing Twilio Phone, currentUser:', window.currentUser);
+            TwilioPhone.init().then(function(ready) {
+                if (ready) {
+                    console.log('Twilio Phone ready for calling');
+                } else {
+                    console.log('Twilio Phone not available - will use REST API fallback');
+                }
+            }).catch(function(err) {
+                console.error('Twilio Phone init error:', err);
+            });
+        }
+    }, 500);
     
     // Load data
     loadCallbacks();

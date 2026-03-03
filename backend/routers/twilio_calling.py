@@ -147,12 +147,10 @@ async def initiate_call(
     user_name: str = Form(default="User")
 ):
     """
-    Initiate an outbound call from the browser to a phone number.
+    Initiate an outbound notification call (one-way).
+    For two-way browser-to-phone calling, use the Device SDK via /voice webhook.
     
-    The call will:
-    1. Connect from the staff browser to Twilio
-    2. Twilio calls the user's phone number
-    3. Audio is bridged between browser and phone
+    This is a fallback for when Device SDK isn't available.
     """
     if not twilio_client:
         raise HTTPException(
@@ -174,22 +172,30 @@ async def initiate_call(
             clean_number = "+44" + clean_number
     
     try:
-        # Create TwiML for the call
-        # This tells Twilio to dial the user's number
+        # Create TwiML for notification call (one-way)
+        # This plays a message when the person answers
         twiml = VoiceResponse()
         twiml.say(
-            "Connecting your call. Please wait.",
+            f"Hello, this is Radio Check. {staff_name} from our support team is trying to reach you. "
+            "Please hold while we connect you.",
             voice="alice",
             language="en-GB"
         )
-        
-        dial = Dial(
-            caller_id=TWILIO_PHONE_NUMBER,
-            timeout=30,
-            record="record-from-ringing-dual"  # Record call for quality
+        twiml.pause(length=1)
+        twiml.say(
+            "If you requested a callback, a team member will speak with you shortly. "
+            "Thank you for your patience.",
+            voice="alice",
+            language="en-GB"
         )
-        dial.number(clean_number)
-        twiml.append(dial)
+        # Keep the line open for 60 seconds to allow staff to join via conference
+        twiml.pause(length=60)
+        twiml.say(
+            "We're sorry, but we couldn't connect you at this time. "
+            "Please try again or use the app to request another callback.",
+            voice="alice",
+            language="en-GB"
+        )
         
         # Initiate the call
         call = twilio_client.calls.create(
