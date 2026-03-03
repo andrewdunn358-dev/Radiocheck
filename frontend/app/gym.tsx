@@ -235,10 +235,21 @@ export default function GymScreen() {
           const nameLower = name.toLowerCase();
           const isVeteranFriendly = VETERAN_FRIENDLY_GYMS.some(vf => nameLower.includes(vf));
           
+          // Build full address from available tags
+          const addressParts = [];
+          if (element.tags?.['addr:housenumber']) addressParts.push(element.tags['addr:housenumber']);
+          if (element.tags?.['addr:street']) addressParts.push(element.tags['addr:street']);
+          if (element.tags?.['addr:city']) addressParts.push(element.tags['addr:city']);
+          if (element.tags?.['addr:postcode']) addressParts.push(element.tags['addr:postcode']);
+          
+          const address = addressParts.length > 0 
+            ? addressParts.join(', ')
+            : element.tags?.['addr:full'] || 'Tap to view on map';
+          
           return {
             id: element.id,
             name: name,
-            address: element.tags?.['addr:street'] || element.tags?.['addr:full'] || 'Address not available',
+            address: address,
             lat: element.lat || element.center?.lat,
             lon: element.lon || element.center?.lon,
             isVeteranFriendly: isVeteranFriendly,
@@ -487,7 +498,20 @@ export default function GymScreen() {
                     </View>
                   )}
                   <Text style={styles.gymName}>{gym.name}</Text>
-                  <Text style={styles.gymAddress}>{gym.address}</Text>
+                  <Text style={styles.gymAddress}>
+                    <Ionicons name="location" size={14} color="#64748b" /> {gym.address}
+                  </Text>
+                  
+                  {gym.phone && (
+                    <TouchableOpacity 
+                      style={styles.gymContactRow}
+                      onPress={() => Linking.openURL(`tel:${gym.phone}`)}
+                    >
+                      <Ionicons name="call" size={14} color="#22c55e" />
+                      <Text style={styles.gymPhone}>{gym.phone}</Text>
+                    </TouchableOpacity>
+                  )}
+                  
                   <View style={styles.gymActions}>
                     <Text style={styles.gymMapLink}>
                       <Ionicons name="navigate" size={14} color="#3b82f6" /> Open in Maps
@@ -971,6 +995,17 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 4,
+  },
+  gymContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  gymPhone: {
+    fontSize: 13,
+    color: '#22c55e',
+    fontWeight: '600',
   },
   gymActions: {
     flexDirection: 'row',
