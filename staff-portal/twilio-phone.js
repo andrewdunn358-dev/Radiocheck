@@ -70,17 +70,27 @@ var TwilioPhone = (function() {
             }
             
             // Check if Twilio SDK is loaded (Voice SDK 2.x)
-            if (typeof Twilio === 'undefined' || !Twilio.Device) {
-                console.error('Twilio SDK not loaded');
+            // The new SDK exports Device directly or under Twilio namespace
+            var TwilioDevice = null;
+            if (typeof Twilio !== 'undefined' && Twilio.Device) {
+                TwilioDevice = Twilio.Device;
+            } else if (typeof Device !== 'undefined') {
+                TwilioDevice = Device;
+            }
+            
+            if (!TwilioDevice) {
+                console.error('Twilio SDK not loaded - check script tag');
+                console.log('Twilio object:', typeof Twilio, Twilio);
                 updatePhoneUI('unavailable', 'SDK not loaded');
                 return false;
             }
             
+            console.log('Twilio Device found:', TwilioDevice);
+            
             // Initialize device with Voice SDK 2.x
-            device = new Twilio.Device(token, {
-                codecPreferences: [Twilio.Device.Codec.Opus, Twilio.Device.Codec.PCMU],
-                allowIncomingWhileBusy: true,
-                logLevel: 1
+            device = new TwilioDevice(token, {
+                logLevel: 1,
+                edge: 'dublin'  // Use Dublin edge for UK
             });
             
             // Setup event handlers
