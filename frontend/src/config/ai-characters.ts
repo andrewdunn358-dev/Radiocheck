@@ -200,7 +200,7 @@ IMPORTANT: If someone mentions self-harm, suicide, or severe distress, gently ac
   doris: {
     id: 'doris',
     name: 'Rachel',
-    avatar: `${AVATAR_BASE}/doris.png`,
+    avatar: `${AVATAR_BASE}/rachel.png`,
     role: 'Warm & Compassionate Listener',
     description: 'Rachel is a nurturing, compassionate presence who creates a safe space to talk. Like a caring friend who listens without judgement.',
     welcomeMessage: "Hello, I'm Rachel. It takes courage to reach out. I'm here to listen - what would you like to talk about?",
