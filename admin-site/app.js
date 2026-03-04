@@ -948,6 +948,119 @@ async function loadAppUsageStats() {
             }
         }
         
+        // Update device breakdown
+        const deviceContainer = document.getElementById('device-breakdown');
+        if (deviceContainer && stats.devices) {
+            const devices = Object.entries(stats.devices);
+            const deviceIcons = {
+                'desktop': '🖥️',
+                'mobile': '📱',
+                'tablet': '📟',
+                'other': '❓'
+            };
+            if (devices.length > 0) {
+                deviceContainer.innerHTML = devices.map(([device, count]) => `
+                    <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">
+                        <span>${deviceIcons[device] || '📱'} ${device.charAt(0).toUpperCase() + device.slice(1)}</span>
+                        <strong>${count}</strong>
+                    </div>
+                `).join('');
+            } else {
+                deviceContainer.innerHTML = '<div style="color: var(--text-muted);">No data yet</div>';
+            }
+        }
+        
+        // Update browser breakdown
+        const browserContainer = document.getElementById('browser-breakdown');
+        if (browserContainer && stats.browsers) {
+            const browsers = Object.entries(stats.browsers);
+            const browserIcons = {
+                'chrome': '🟢',
+                'safari': '🔵',
+                'firefox': '🟠',
+                'edge': '🔷',
+                'other': '⚪'
+            };
+            if (browsers.length > 0) {
+                browserContainer.innerHTML = browsers.map(([browser, count]) => `
+                    <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">
+                        <span>${browserIcons[browser] || '⚪'} ${browser.charAt(0).toUpperCase() + browser.slice(1)}</span>
+                        <strong>${count}</strong>
+                    </div>
+                `).join('');
+            } else {
+                browserContainer.innerHTML = '<div style="color: var(--text-muted);">No data yet</div>';
+            }
+        }
+        
+        // Update OS breakdown
+        const osContainer = document.getElementById('os-breakdown');
+        if (osContainer && stats.operating_systems) {
+            const osList = Object.entries(stats.operating_systems);
+            const osIcons = {
+                'windows': '🪟',
+                'apple': '🍎',
+                'android': '🤖',
+                'linux': '🐧',
+                'other': '💻'
+            };
+            const osLabels = {
+                'windows': 'Windows',
+                'apple': 'Apple (iOS/Mac)',
+                'android': 'Android',
+                'linux': 'Linux',
+                'other': 'Other'
+            };
+            if (osList.length > 0) {
+                osContainer.innerHTML = osList.map(([os, count]) => `
+                    <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">
+                        <span>${osIcons[os] || '💻'} ${osLabels[os] || os}</span>
+                        <strong>${count}</strong>
+                    </div>
+                `).join('');
+            } else {
+                osContainer.innerHTML = '<div style="color: var(--text-muted);">No data yet</div>';
+            }
+        }
+        
+        // Update return rate
+        if (stats.return_rate) {
+            const rateEl = document.getElementById('return-rate-percentage');
+            const detailEl = document.getElementById('return-rate-detail');
+            if (rateEl) {
+                rateEl.textContent = stats.return_rate.percentage + '%';
+            }
+            if (detailEl) {
+                detailEl.textContent = `${stats.return_rate.returning_visitors} returning / ${stats.return_rate.total_visitors} total visitors`;
+            }
+        }
+        
+        // Update feature usage
+        const featureContainer = document.getElementById('feature-usage');
+        if (featureContainer && stats.feature_usage) {
+            if (stats.feature_usage.length > 0) {
+                // Take top 9 features for a 3x3 grid
+                const topFeatures = stats.feature_usage.slice(0, 9);
+                featureContainer.innerHTML = topFeatures.map(f => {
+                    // Format page names nicely
+                    const pageName = f.page
+                        .replace(/-/g, ' ')
+                        .replace(/\//g, '')
+                        .split(' ')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ') || 'Home';
+                    return `
+                        <div style="background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;" title="${pageName}">${pageName}</span>
+                            <strong style="color: var(--primary);">${f.visits}</strong>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                featureContainer.innerHTML = '<div style="color: var(--text-muted); grid-column: span 3;">No feature data yet</div>';
+            }
+        }
+        
         return stats;
     } catch (error) {
         console.log('App usage stats not available:', error);

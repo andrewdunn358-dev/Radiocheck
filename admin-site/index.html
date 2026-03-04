@@ -904,6 +904,61 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Device / Browser / OS Breakdown (30 days) -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px;">
+                        <!-- Device Type -->
+                        <div>
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 14px;">
+                                <i class="fas fa-mobile-alt" style="margin-right: 8px; color: #8b5cf6;"></i>Device Type
+                            </h4>
+                            <div id="device-breakdown" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Browser -->
+                        <div>
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 14px;">
+                                <i class="fas fa-globe" style="margin-right: 8px; color: #06b6d4;"></i>Browser
+                            </h4>
+                            <div id="browser-breakdown" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Operating System -->
+                        <div>
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 14px;">
+                                <i class="fas fa-laptop" style="margin-right: 8px; color: #f59e0b;"></i>Operating System
+                            </h4>
+                            <div id="os-breakdown" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Return Rate & Feature Usage Row -->
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 20px;">
+                        <!-- Return Rate -->
+                        <div style="background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); padding: 20px; border-radius: 12px; color: #fff;">
+                            <h4 style="margin: 0 0 12px 0; font-size: 14px; opacity: 0.9;">
+                                <i class="fas fa-undo" style="margin-right: 8px;"></i>Return Rate (30 days)
+                            </h4>
+                            <div style="font-size: 36px; font-weight: 700;" id="return-rate-percentage">0%</div>
+                            <div style="font-size: 12px; opacity: 0.8;" id="return-rate-detail">0 returning / 0 total visitors</div>
+                        </div>
+                        
+                        <!-- Feature/Page Usage -->
+                        <div>
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 14px;">
+                                <i class="fas fa-fire" style="margin-right: 8px; color: #ef4444;"></i>Popular Features (30 days)
+                            </h4>
+                            <div id="feature-usage" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px;">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Analytics Charts -->

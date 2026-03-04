@@ -81,7 +81,20 @@ Radio Check is a comprehensive mental health and peer support application design
 
 ## Current Status (March 2026)
 
-### Recently Implemented (This Session)
+### Recently Implemented (This Session - March 4, 2026)
+- **Advanced App Usage Analytics** - Complete implementation:
+  - Backend: `/api/analytics/usage` returns device, browser, OS, return rate, feature usage
+  - Backend: Fixed `first_seen` MongoDB upsert conflict in active_sessions
+  - Frontend: `home.tsx` now sends full user agent string and screen_width for accurate tracking
+  - Admin Portal: New dashboard sections:
+    - Device Type breakdown (Desktop/Mobile/Tablet)
+    - Browser breakdown (Chrome/Safari/Firefox/Edge)
+    - Operating System breakdown (Windows/Apple/Android/Linux)
+    - Return Rate percentage with visitor counts
+    - Popular Features grid showing top visited pages
+  - Privacy-respecting: Uses hashed IP for unique counting, no PII stored
+
+### Previously Implemented (Earlier Sessions)
 - **Supervisor Role** - Full implementation:
   - Backend: `POST/GET /api/supervision/notes`, `GET /api/supervision/team`
   - Backend: `POST/GET/PATCH /api/escalations` with acknowledge/resolve workflow
@@ -89,6 +102,12 @@ Radio Check is a comprehensive mental health and peer support application design
   - Staff Portal: Supervision tab, escalation button, team management UI
   - MongoDB collections: `supervision_notes`, `escalations`
   - Test accounts: supervisor@radiocheck.me / Sup123!
+
+- **Data Encryption at Rest** - AES-256 encryption for:
+  - Live chat messages
+  - AI chat history
+  - Supervision notes
+  - Escalation descriptions
 
 - **Bereavement Support Section** - New feature in Friends & Family page:
   - 8 military bereavement resources (DMWS, Cruse, Scotty's Little Soldiers, etc.)
@@ -133,9 +152,19 @@ Radio Check is a comprehensive mental health and peer support application design
     └── PRD.md
 ```
 
-## Files Needing 20i Upload (User Action)
-- `/app/admin-site/app.js` - Supervisor role in user creation
-- `/app/admin-site/index.html` - No changes this session
+## Files Needing Deployment (User Action)
+
+### Backend (Deploy to Render)
+- `/app/backend/server.py` - Analytics fixes
+
+### Frontend (Deploy to Vercel)
+- `/app/frontend/app/home.tsx` - Enhanced analytics tracking
+
+### Admin Site (Deploy to 20i)
+- `/app/admin-site/app.js` - Analytics display functions
+- `/app/admin-site/index.html` - Analytics UI sections
+
+### Staff Portal (Deploy to 20i - from previous sessions)
 - `/app/staff-portal/app.js` - Supervisor features, escalation functions
 - `/app/staff-portal/index.html` - Supervision tab, escalation modal
 - `/app/staff-portal/styles.css` - Supervisor badge styling

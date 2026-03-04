@@ -95,17 +95,32 @@ export default function Index() {
   // Track app visit for analytics
   const trackAppVisit = async (sessionId: string) => {
     try {
-      const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://radio-check-vet-2.preview.emergentagent.com';
+      const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://mental-health-hub-81.preview.emergentagent.com';
       const region = await AsyncStorage.getItem('user_region'); // Get stored region if available
+      
+      // Get screen dimensions for device type detection
+      const { Dimensions } = require('react-native');
+      const { width: screenWidth } = Dimensions.get('window');
+      
+      // Get full user agent string for better device/browser detection
+      // On web, we can access navigator.userAgent, on native use Platform info
+      let userAgent = Platform.OS;
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
+        userAgent = navigator.userAgent;
+      } else {
+        // For native apps, construct a helpful identifier
+        userAgent = `RadioCheck-${Platform.OS}/${Platform.Version || 'unknown'}`;
+      }
       
       await fetch(`${API_URL}/api/analytics/visit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: sessionId,
-          user_agent: Platform.OS,
+          user_agent: userAgent,
           region: region,
-          referrer: null
+          referrer: null,
+          screen_width: screenWidth
         })
       });
       

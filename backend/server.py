@@ -4617,6 +4617,46 @@ class AppVisit(BaseModel):
     user_agent: Optional[str] = None
     region: Optional[str] = None  # england, scotland, wales, northern_ireland
     referrer: Optional[str] = None
+    page: Optional[str] = None  # Which page/feature visited
+    screen_width: Optional[int] = None  # For device type detection
+
+def parse_user_agent(ua_string: str) -> dict:
+    """Parse user agent to extract device, browser, OS info"""
+    ua = ua_string.lower() if ua_string else ""
+    
+    # Device type
+    if "mobile" in ua or "android" in ua or "iphone" in ua:
+        device = "mobile"
+    elif "tablet" in ua or "ipad" in ua:
+        device = "tablet"
+    else:
+        device = "desktop"
+    
+    # Browser
+    if "chrome" in ua and "edg" not in ua:
+        browser = "chrome"
+    elif "safari" in ua and "chrome" not in ua:
+        browser = "safari"
+    elif "firefox" in ua:
+        browser = "firefox"
+    elif "edg" in ua:
+        browser = "edge"
+    else:
+        browser = "other"
+    
+    # OS
+    if "windows" in ua:
+        os = "windows"
+    elif "mac" in ua or "iphone" in ua or "ipad" in ua:
+        os = "apple"
+    elif "android" in ua:
+        os = "android"
+    elif "linux" in ua:
+        os = "linux"
+    else:
+        os = "other"
+    
+    return {"device": device, "browser": browser, "os": os}
 
 @api_router.post("/analytics/visit")
 async def track_app_visit(visit: AppVisit, request: Request):
@@ -4626,35 +4666,65 @@ async def track_app_visit(visit: AppVisit, request: Request):
     if "," in client_ip:
         client_ip = client_ip.split(",")[0].strip()
     
+    # Parse user agent for device info
+    ua_info = parse_user_agent(visit.user_agent or "")
+    
+    # Determine device from screen width if available
+    if visit.screen_width:
+        if visit.screen_width < 768:
+            ua_info["device"] = "mobile"
+        elif visit.screen_width < 1024:
+            ua_info["device"] = "tablet"
+        else:
+            ua_info["device"] = "desktop"
+    
     visit_data = {
         "id": str(uuid.uuid4()),
         "session_id": visit.session_id,
         "timestamp": datetime.utcnow(),
         "date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "hour": datetime.utcnow().hour,
         "user_agent": visit.user_agent,
         "region": visit.region,
         "referrer": visit.referrer,
+        "page": visit.page or "home",
+        "device": ua_info["device"],
+        "browser": ua_info["browser"],
+        "os": ua_info["os"],
         "ip_hash": hashlib.sha256(client_ip.encode()).hexdigest()[:16],  # Anonymized IP for unique counting
     }
     
     # Upsert - only count unique sessions per day
     await db.app_visits.update_one(
         {"session_id": visit.session_id, "date": visit_data["date"]},
-        {"$set": visit_data},
+        {"$set": visit_data, "$inc": {"page_views": 1}},
         upsert=True
     )
     
     # Track active sessions (expires after 30 min of inactivity)
     await db.active_sessions.update_one(
         {"session_id": visit.session_id},
-        {"$set": {
-            "session_id": visit.session_id,
-            "last_seen": datetime.utcnow(),
-            "region": visit.region,
-            "user_agent": visit.user_agent
-        }},
+        {
+            "$set": {
+                "session_id": visit.session_id,
+                "last_seen": datetime.utcnow(),
+                "region": visit.region,
+                "device": ua_info["device"],
+                "browser": ua_info["browser"],
+                "os": ua_info["os"],
+            },
+            "$setOnInsert": {"first_seen": datetime.utcnow()}
+        },
         upsert=True
     )
+    
+    # Track page/feature usage
+    if visit.page:
+        await db.feature_usage.update_one(
+            {"date": visit_data["date"], "page": visit.page},
+            {"$inc": {"visits": 1}, "$addToSet": {"unique_sessions": visit.session_id}},
+            upsert=True
+        )
     
     return {"status": "tracked"}
 
@@ -4718,6 +4788,72 @@ async def get_app_usage_stats(current_user: User = Depends(require_role("admin")
     ]
     region_stats = await db.app_visits.aggregate(region_pipeline).to_list(10)
     stats["regions"] = {r["_id"]: r["count"] for r in region_stats if r["_id"]}
+    
+    # Device breakdown (last 30 days)
+    device_pipeline = [
+        {"$match": {"timestamp": {"$gte": periods["30_days"]}, "device": {"$ne": None}}},
+        {"$group": {"_id": "$device", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    device_stats = await db.app_visits.aggregate(device_pipeline).to_list(10)
+    stats["devices"] = {d["_id"]: d["count"] for d in device_stats if d["_id"]}
+    
+    # Browser breakdown (last 30 days)
+    browser_pipeline = [
+        {"$match": {"timestamp": {"$gte": periods["30_days"]}, "browser": {"$ne": None}}},
+        {"$group": {"_id": "$browser", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    browser_stats = await db.app_visits.aggregate(browser_pipeline).to_list(10)
+    stats["browsers"] = {b["_id"]: b["count"] for b in browser_stats if b["_id"]}
+    
+    # OS breakdown (last 30 days)
+    os_pipeline = [
+        {"$match": {"timestamp": {"$gte": periods["30_days"]}, "os": {"$ne": None}}},
+        {"$group": {"_id": "$os", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    os_stats = await db.app_visits.aggregate(os_pipeline).to_list(10)
+    stats["operating_systems"] = {o["_id"]: o["count"] for o in os_stats if o["_id"]}
+    
+    # Peak hours (last 30 days) - aggregate by hour
+    peak_pipeline = [
+        {"$match": {"timestamp": {"$gte": periods["30_days"]}}},
+        {"$group": {"_id": "$hour", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    peak_stats = await db.app_visits.aggregate(peak_pipeline).to_list(24)
+    stats["peak_hours"] = {str(p["_id"]): p["count"] for p in peak_stats if p["_id"] is not None}
+    
+    # Feature/page usage (last 30 days)
+    feature_pipeline = [
+        {"$match": {"date": {"$gte": (now - timedelta(days=30)).strftime("%Y-%m-%d")}}},
+        {"$group": {
+            "_id": "$page",
+            "total_visits": {"$sum": "$visits"},
+            "unique_visitors": {"$sum": {"$size": {"$ifNull": ["$unique_sessions", []]}}}
+        }},
+        {"$sort": {"total_visits": -1}},
+        {"$limit": 15}
+    ]
+    feature_stats = await db.feature_usage.aggregate(feature_pipeline).to_list(15)
+    stats["feature_usage"] = [{"page": f["_id"], "visits": f["total_visits"], "unique": f["unique_visitors"]} for f in feature_stats if f["_id"]]
+    
+    # Return visitors (users who visited more than once in last 30 days)
+    return_pipeline = [
+        {"$match": {"timestamp": {"$gte": periods["30_days"]}}},
+        {"$group": {"_id": "$session_id", "visit_count": {"$sum": 1}}},
+        {"$match": {"visit_count": {"$gt": 1}}},
+        {"$count": "returning_visitors"}
+    ]
+    return_result = await db.app_visits.aggregate(return_pipeline).to_list(1)
+    total_unique = len(await db.app_visits.distinct("session_id", {"timestamp": {"$gte": periods["30_days"]}}))
+    returning = return_result[0]["returning_visitors"] if return_result else 0
+    stats["return_rate"] = {
+        "returning_visitors": returning,
+        "total_visitors": total_unique,
+        "percentage": round((returning / total_unique * 100) if total_unique > 0 else 0, 1)
+    }
     
     # Daily trend (last 30 days)
     daily_pipeline = [
@@ -6149,7 +6285,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://radio-check-vet-2.preview.emergentagent.com",
+        "https://mental-health-hub-81.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],
