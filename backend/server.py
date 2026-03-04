@@ -2550,9 +2550,16 @@ async def fix_missing_profiles(current_user: User = Depends(require_role("admin"
     
     fixed_count = 0
     already_linked = 0
+    skipped_no_id = 0
     
     for user in users:
-        user_id = user.get("id")
+        # Handle both 'id' and 'user_id' field names for compatibility
+        user_id = user.get("id") or user.get("user_id")
+        if not user_id:
+            skipped_no_id += 1
+            logging.warning(f"User {user.get('email')} has no id field, skipping")
+            continue
+            
         role = user.get("role")
         name = user.get("name", "Unknown")
         
@@ -2632,9 +2639,10 @@ async def fix_missing_profiles(current_user: User = Depends(require_role("admin"
                 already_linked += 1
     
     return {
-        "message": f"Fixed {fixed_count} missing profiles. {already_linked} were already linked.",
+        "message": f"Fixed {fixed_count} missing profiles. {already_linked} were already linked." + (f" {skipped_no_id} skipped (no user ID)." if skipped_no_id > 0 else ""),
         "fixed": fixed_count,
-        "already_linked": already_linked
+        "already_linked": already_linked,
+        "skipped_no_id": skipped_no_id
     }
 
 class CreateUsersForStaffRequest(BaseModel):
