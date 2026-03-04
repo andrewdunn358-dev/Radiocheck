@@ -1353,7 +1353,7 @@ AI_CHARACTERS = {
     "doris": {
         "name": "Rachel",
         "prompt": DORIS_SYSTEM_PROMPT,
-        "avatar": f"{AVATAR_BASE_URL}/doris.png"
+        "avatar": f"{AVATAR_BASE_URL}/rachel.png"
     },
     "sentry": {
         "name": "Finch",

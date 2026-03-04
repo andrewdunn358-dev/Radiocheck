@@ -86,7 +86,7 @@ export default function CrisisSupport() {
                 style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colors.border }}
               />
               <Image 
-                source={{ uri: '/images/doris.png' }}
+                source={{ uri: '/images/rachel.png' }}
                 style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colors.border, marginLeft: -16 }}
               />
             </View>
