@@ -915,11 +915,11 @@ async function loadAppUsageStats() {
             const regions = Object.entries(stats.regions);
             if (regions.length > 0) {
                 const regionLabels = {
-                    'england': '🏴󠁧󠁢󠁥󠁮󠁧󠁿 England',
-                    'scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland',
-                    'wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales',
-                    'northern_ireland': '🇬🇧 Northern Ireland',
-                    'other': '🌍 Other'
+                    'england': '<i class="fas fa-map-marker-alt" style="color:#e53e3e;margin-right:6px;"></i>England',
+                    'scotland': '<i class="fas fa-map-marker-alt" style="color:#3182ce;margin-right:6px;"></i>Scotland',
+                    'wales': '<i class="fas fa-map-marker-alt" style="color:#38a169;margin-right:6px;"></i>Wales',
+                    'northern_ireland': '<i class="fas fa-map-marker-alt" style="color:#805ad5;margin-right:6px;"></i>Northern Ireland',
+                    'other': '<i class="fas fa-globe" style="color:#6b7280;margin-right:6px;"></i>Other'
                 };
                 regionContainer.innerHTML = regions.map(([region, count]) => `
                     <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px;">
@@ -953,15 +953,15 @@ async function loadAppUsageStats() {
         if (deviceContainer && stats.devices) {
             const devices = Object.entries(stats.devices);
             const deviceIcons = {
-                'desktop': '🖥️',
-                'mobile': '📱',
-                'tablet': '📟',
-                'other': '❓'
+                'desktop': '<i class="fas fa-desktop" style="color:#8b5cf6;margin-right:6px;"></i>',
+                'mobile': '<i class="fas fa-mobile-alt" style="color:#22c55e;margin-right:6px;"></i>',
+                'tablet': '<i class="fas fa-tablet-alt" style="color:#3b82f6;margin-right:6px;"></i>',
+                'other': '<i class="fas fa-question-circle" style="color:#6b7280;margin-right:6px;"></i>'
             };
             if (devices.length > 0) {
                 deviceContainer.innerHTML = devices.map(([device, count]) => `
                     <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">
-                        <span>${deviceIcons[device] || '📱'} ${device.charAt(0).toUpperCase() + device.slice(1)}</span>
+                        <span>${deviceIcons[device] || deviceIcons['other']}${device.charAt(0).toUpperCase() + device.slice(1)}</span>
                         <strong>${count}</strong>
                     </div>
                 `).join('');
@@ -975,16 +975,16 @@ async function loadAppUsageStats() {
         if (browserContainer && stats.browsers) {
             const browsers = Object.entries(stats.browsers);
             const browserIcons = {
-                'chrome': '🟢',
-                'safari': '🔵',
-                'firefox': '🟠',
-                'edge': '🔷',
-                'other': '⚪'
+                'chrome': '<i class="fab fa-chrome" style="color:#22c55e;margin-right:6px;"></i>',
+                'safari': '<i class="fab fa-safari" style="color:#3b82f6;margin-right:6px;"></i>',
+                'firefox': '<i class="fab fa-firefox" style="color:#f97316;margin-right:6px;"></i>',
+                'edge': '<i class="fab fa-edge" style="color:#06b6d4;margin-right:6px;"></i>',
+                'other': '<i class="fas fa-globe" style="color:#6b7280;margin-right:6px;"></i>'
             };
             if (browsers.length > 0) {
                 browserContainer.innerHTML = browsers.map(([browser, count]) => `
                     <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">
-                        <span>${browserIcons[browser] || '⚪'} ${browser.charAt(0).toUpperCase() + browser.slice(1)}</span>
+                        <span>${browserIcons[browser] || browserIcons['other']}${browser.charAt(0).toUpperCase() + browser.slice(1)}</span>
                         <strong>${count}</strong>
                     </div>
                 `).join('');
@@ -998,11 +998,11 @@ async function loadAppUsageStats() {
         if (osContainer && stats.operating_systems) {
             const osList = Object.entries(stats.operating_systems);
             const osIcons = {
-                'windows': '🪟',
-                'apple': '🍎',
-                'android': '🤖',
-                'linux': '🐧',
-                'other': '💻'
+                'windows': '<i class="fab fa-windows" style="color:#0078d4;margin-right:6px;"></i>',
+                'apple': '<i class="fab fa-apple" style="color:#333;margin-right:6px;"></i>',
+                'android': '<i class="fab fa-android" style="color:#3ddc84;margin-right:6px;"></i>',
+                'linux': '<i class="fab fa-linux" style="color:#f97316;margin-right:6px;"></i>',
+                'other': '<i class="fas fa-laptop" style="color:#6b7280;margin-right:6px;"></i>'
             };
             const osLabels = {
                 'windows': 'Windows',
@@ -1014,7 +1014,7 @@ async function loadAppUsageStats() {
             if (osList.length > 0) {
                 osContainer.innerHTML = osList.map(([os, count]) => `
                     <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">
-                        <span>${osIcons[os] || '💻'} ${osLabels[os] || os}</span>
+                        <span>${osIcons[os] || osIcons['other']}${osLabels[os] || os}</span>
                         <strong>${count}</strong>
                     </div>
                 `).join('');
@@ -3411,7 +3411,7 @@ async function fetchActiveCalls() {
                     <div class="card-header">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                             <i class="fas fa-phone-volume" style="color: ${statusColor};"></i>
-                            <strong style="color: var(--text-primary);">${call.caller_name} → ${call.callee_name}</strong>
+                            <strong style="color: var(--text-primary);">${call.caller_name} -&gt; ${call.callee_name}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted);">
                             <span><i class="fas fa-clock"></i> ${duration}</span>
