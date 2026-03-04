@@ -161,12 +161,14 @@ Radio Check is a comprehensive mental health and peer support application design
 - `/app/frontend/app/home.tsx` - Enhanced analytics tracking
 
 ### Admin Site (Deploy to 20i)
-- `/app/admin-site/app.js` - Analytics display functions
-- `/app/admin-site/index.html` - Analytics UI sections
+- `/app/admin-site/app.js` - Analytics display functions (Unicode characters removed)
+- `/app/admin-site/index.html` - Analytics UI sections, manual link updated
+- `/app/admin-site/admin-manual.html` - **NEW** Radio Check branded admin manual
 
-### Staff Portal (Deploy to 20i - from previous sessions)
+### Staff Portal (Deploy to 20i)
 - `/app/staff-portal/app.js` - Supervisor features, escalation functions
-- `/app/staff-portal/index.html` - Supervision tab, escalation modal
+- `/app/staff-portal/index.html` - Manual link added, supervision tab
+- `/app/staff-portal/staff-manual.html` - **NEW** Radio Check branded staff manual
 - `/app/staff-portal/styles.css` - Supervisor badge styling
 
 ## Backlog (P1/P2)

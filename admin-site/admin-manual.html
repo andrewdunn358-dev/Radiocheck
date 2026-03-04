@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Check - Admin Manual</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1e3a5f;
+            --primary-light: #2d4a6f;
+            --accent: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --border-color: #e5e7eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 40px;
+            border-radius: 12px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--primary);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .toc {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .toc h2 {
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+        
+        .toc ul {
+            list-style: none;
+        }
+        
+        .toc li {
+            margin-bottom: 8px;
+        }
+        
+        .toc a {
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        
+        .toc a:hover {
+            background: var(--bg-secondary);
+            color: var(--primary);
+        }
+        
+        .section {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .section h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .section h3 {
+            color: var(--text-primary);
+            font-size: 1.15rem;
+            margin: 20px 0 12px;
+        }
+        
+        .section p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        .section ul, .section ol {
+            margin: 16px 0;
+            padding-left: 24px;
+            color: var(--text-secondary);
+        }
+        
+        .section li {
+            margin-bottom: 8px;
+        }
+        
+        .tip {
+            background: #ecfdf5;
+            border-left: 4px solid var(--accent);
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .tip-title {
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid var(--warning);
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .warning-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .danger {
+            background: #fef2f2;
+            border-left: 4px solid var(--danger);
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .danger-title {
+            font-weight: 600;
+            color: #991b1b;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        
+        .feature-card {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .feature-card i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+        
+        .feature-card h4 {
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+        
+        .feature-card p {
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        
+        .shortcut {
+            display: inline-block;
+            background: var(--bg-secondary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        @media print {
+            .back-link { display: none; }
+            .container { max-width: 100%; }
+            .section { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-broadcast-tower"></i>
+            </div>
+            <h1>Radio Check</h1>
+            <p>Administrator Manual</p>
+        </div>
+        
+        <div class="toc">
+            <h2><i class="fas fa-list"></i> Contents</h2>
+            <ul>
+                <li><a href="#overview"><i class="fas fa-info-circle"></i> 1. Overview</a></li>
+                <li><a href="#getting-started"><i class="fas fa-rocket"></i> 2. Getting Started</a></li>
+                <li><a href="#staff-management"><i class="fas fa-users-cog"></i> 3. Staff Management</a></li>
+                <li><a href="#rota"><i class="fas fa-calendar-check"></i> 4. Rota & Scheduling</a></li>
+                <li><a href="#cms"><i class="fas fa-edit"></i> 5. Content Management</a></li>
+                <li><a href="#analytics"><i class="fas fa-chart-line"></i> 6. Analytics & Reports</a></li>
+                <li><a href="#safeguarding"><i class="fas fa-shield-alt"></i> 7. Safeguarding</a></li>
+                <li><a href="#live-chat"><i class="fas fa-comments"></i> 8. Live Chat Monitoring</a></li>
+                <li><a href="#ai-characters"><i class="fas fa-robot"></i> 9. AI Characters</a></li>
+                <li><a href="#governance"><i class="fas fa-balance-scale"></i> 10. Clinical Governance</a></li>
+                <li><a href="#troubleshooting"><i class="fas fa-wrench"></i> 11. Troubleshooting</a></li>
+            </ul>
+        </div>
+        
+        <div class="section" id="overview">
+            <h2><i class="fas fa-info-circle"></i> 1. Overview</h2>
+            <p>Radio Check is a comprehensive mental health and peer support platform designed specifically for UK military veterans. As an administrator, you have full access to manage staff, content, and monitor all platform activity.</p>
+            
+            <h3>Key Responsibilities</h3>
+            <ul>
+                <li>Managing counsellor and peer supporter accounts</li>
+                <li>Creating and scheduling staff rotas</li>
+                <li>Managing app content through the CMS</li>
+                <li>Monitoring safeguarding alerts and escalations</li>
+                <li>Reviewing analytics and generating reports</li>
+                <li>Managing AI character configurations</li>
+                <li>Ensuring clinical governance compliance</li>
+            </ul>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fas fa-users-cog"></i>
+                    <h4>Staff Management</h4>
+                    <p>Create and manage staff accounts</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-calendar-check"></i>
+                    <h4>Rota System</h4>
+                    <p>Schedule shifts and coverage</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-shield-alt"></i>
+                    <h4>Safeguarding</h4>
+                    <p>Monitor and respond to alerts</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h4>Analytics</h4>
+                    <p>Track usage and outcomes</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section" id="getting-started">
+            <h2><i class="fas fa-rocket"></i> 2. Getting Started</h2>
+            
+            <h3>Logging In</h3>
+            <ol>
+                <li>Navigate to the Admin Dashboard URL</li>
+                <li>Enter your admin email address</li>
+                <li>Enter your password</li>
+                <li>Click "Login"</li>
+            </ol>
+            
+            <div class="tip">
+                <div class="tip-title"><i class="fas fa-lightbulb"></i> Tip</div>
+                <p>If you've forgotten your password, contact the system administrator for a reset.</p>
+            </div>
+            
+            <h3>Dashboard Layout</h3>
+            <p>The admin dashboard is organised into tabs across the top:</p>
+            <ul>
+                <li><strong>Staff</strong> - Manage counsellors, peers, and supervisors</li>
+                <li><strong>Rota</strong> - Create and manage shift schedules</li>
+                <li><strong>CMS</strong> - Edit app content and resources</li>
+                <li><strong>Analytics</strong> - View usage statistics and reports</li>
+                <li><strong>Safeguarding</strong> - Monitor alerts and escalations</li>
+                <li><strong>Organisations</strong> - Manage support organisation directory</li>
+                <li><strong>AI Characters</strong> - Configure AI chat personas</li>
+                <li><strong>Governance</strong> - Clinical safety and compliance</li>
+            </ul>
+        </div>
+        
+        <div class="section" id="staff-management">
+            <h2><i class="fas fa-users-cog"></i> 3. Staff Management</h2>
+            
+            <h3>User Roles</h3>
+            <p>Radio Check has four user roles with different permission levels:</p>
+            <ul>
+                <li><strong>Admin</strong> - Full system access (you)</li>
+                <li><strong>Supervisor</strong> - Team management, escalation handling, supervision notes</li>
+                <li><strong>Counsellor</strong> - Clinical support, case management, live chat</li>
+                <li><strong>Peer Supporter</strong> - Peer support, can escalate to supervisors</li>
+            </ul>
+            
+            <h3>Creating a New Staff Member</h3>
+            <ol>
+                <li>Go to the <strong>Staff</strong> tab</li>
+                <li>Click <strong>+ Add Staff</strong></li>
+                <li>Fill in the required details:
+                    <ul>
+                        <li>Name</li>
+                        <li>Email (used for login)</li>
+                        <li>Role (Admin/Supervisor/Counsellor/Peer)</li>
+                        <li>Phone number</li>
+                        <li>Specialisation (for counsellors)</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+            
+            <div class="warning">
+                <div class="warning-title"><i class="fas fa-exclamation-triangle"></i> Important</div>
+                <p>New staff members will receive an email with their temporary password. They should change this on first login.</p>
+            </div>
+            
+            <h3>Editing Staff Details</h3>
+            <p>Click the <strong>Edit</strong> button next to any staff member to update their details or change their role.</p>
+            
+            <h3>Deactivating Staff</h3>
+            <p>To deactivate a staff member (e.g., when they leave), click <strong>Deactivate</strong>. This preserves their records but prevents login.</p>
+        </div>
+        
+        <div class="section" id="rota">
+            <h2><i class="fas fa-calendar-check"></i> 4. Rota & Scheduling</h2>
+            
+            <h3>Creating Shifts</h3>
+            <ol>
+                <li>Go to the <strong>Rota</strong> tab</li>
+                <li>Click on a date in the calendar</li>
+                <li>Select <strong>Add Shift</strong></li>
+                <li>Choose the staff member</li>
+                <li>Set start and end times</li>
+                <li>Add any notes (optional)</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+            
+            <h3>Shift Coverage</h3>
+            <p>The rota shows coverage status:</p>
+            <ul>
+                <li><span style="color: #22c55e;"><i class="fas fa-check-circle"></i></span> <strong>Green</strong> - Adequate coverage</li>
+                <li><span style="color: #f59e0b;"><i class="fas fa-exclamation-circle"></i></span> <strong>Amber</strong> - Limited coverage</li>
+                <li><span style="color: #ef4444;"><i class="fas fa-times-circle"></i></span> <strong>Red</strong> - No coverage</li>
+            </ul>
+            
+            <div class="tip">
+                <div class="tip-title"><i class="fas fa-lightbulb"></i> Best Practice</div>
+                <p>Aim for at least one counsellor and one peer supporter on each shift to ensure appropriate support coverage.</p>
+            </div>
+        </div>
+        
+        <div class="section" id="cms">
+            <h2><i class="fas fa-edit"></i> 5. Content Management (CMS)</h2>
+            
+            <h3>Editable Content Areas</h3>
+            <ul>
+                <li><strong>Home Page</strong> - Welcome message, featured content</li>
+                <li><strong>Menu Items</strong> - App navigation cards</li>
+                <li><strong>Resources</strong> - Support articles and guides</li>
+                <li><strong>Crisis Support</strong> - Emergency contact information</li>
+                <li><strong>Podcasts</strong> - Recommended podcast list</li>
+            </ul>
+            
+            <h3>Editing Content</h3>
+            <ol>
+                <li>Go to the <strong>CMS</strong> tab</li>
+                <li>Select the content section to edit</li>
+                <li>Make your changes in the editor</li>
+                <li>Click <strong>Preview</strong> to see how it will appear</li>
+                <li>Click <strong>Publish</strong> to make changes live</li>
+            </ol>
+            
+            <div class="warning">
+                <div class="warning-title"><i class="fas fa-exclamation-triangle"></i> Note</div>
+                <p>Content changes go live immediately after publishing. Consider previewing on a test device first.</p>
+            </div>
+        </div>
+        
+        <div class="section" id="analytics">
+            <h2><i class="fas fa-chart-line"></i> 6. Analytics & Reports</h2>
+            
+            <h3>Dashboard Metrics</h3>
+            <p>The Analytics tab shows key metrics including:</p>
+            <ul>
+                <li><strong>Active Users</strong> - Currently connected users</li>
+                <li><strong>Unique Visitors</strong> - 7-day, 30-day, 6-month, 12-month counts</li>
+                <li><strong>Regional Breakdown</strong> - Users by UK region</li>
+                <li><strong>Device Types</strong> - Desktop, mobile, tablet usage</li>
+                <li><strong>Browser & OS</strong> - Technical breakdown</li>
+                <li><strong>Return Rate</strong> - Percentage of returning visitors</li>
+                <li><strong>Popular Features</strong> - Most visited pages/features</li>
+            </ul>
+            
+            <h3>Activity Logs</h3>
+            <p>Review detailed logs for:</p>
+            <ul>
+                <li>Call intents and completions</li>
+                <li>Live chat sessions</li>
+                <li>Safeguarding alerts</li>
+                <li>Callback requests</li>
+                <li>Panic button activations</li>
+            </ul>
+            
+            <h3>Generating Reports</h3>
+            <ol>
+                <li>Go to the <strong>Reports</strong> section</li>
+                <li>Select the report type</li>
+                <li>Choose the date range</li>
+                <li>Click <strong>Generate PDF</strong></li>
+            </ol>
+        </div>
+        
+        <div class="section" id="safeguarding">
+            <h2><i class="fas fa-shield-alt"></i> 7. Safeguarding</h2>
+            
+            <h3>Alert Types</h3>
+            <ul>
+                <li><strong>High Risk</strong> - Immediate attention required (suicidal ideation, self-harm)</li>
+                <li><strong>Medium Risk</strong> - Requires follow-up within 24 hours</li>
+                <li><strong>Low Risk</strong> - Monitor and review</li>
+            </ul>
+            
+            <div class="danger">
+                <div class="danger-title"><i class="fas fa-exclamation-circle"></i> Critical</div>
+                <p>High-risk safeguarding alerts must be actioned immediately. If geolocation is available, emergency services can be contacted.</p>
+            </div>
+            
+            <h3>Responding to Alerts</h3>
+            <ol>
+                <li>Review the alert details and chat history</li>
+                <li>Assess the risk level</li>
+                <li>Take appropriate action (contact user, escalate, contact emergency services)</li>
+                <li>Document the response</li>
+                <li>Mark as resolved with outcome notes</li>
+            </ol>
+            
+            <h3>Escalation Workflow</h3>
+            <p>Staff can escalate concerns to supervisors. As admin, you can view all escalations and ensure they are handled appropriately.</p>
+        </div>
+        
+        <div class="section" id="live-chat">
+            <h2><i class="fas fa-comments"></i> 8. Live Chat Monitoring</h2>
+            
+            <h3>Monitoring Chats</h3>
+            <p>The Chat History tab shows all live chat sessions. You can:</p>
+            <ul>
+                <li>View active and completed chats</li>
+                <li>Read chat transcripts</li>
+                <li>See which staff member handled each chat</li>
+                <li>Review chat duration and outcomes</li>
+            </ul>
+            
+            <div class="tip">
+                <div class="tip-title"><i class="fas fa-lock"></i> Privacy Note</div>
+                <p>Chat messages are encrypted at rest. Only authorised administrators can view chat content for quality assurance purposes.</p>
+            </div>
+        </div>
+        
+        <div class="section" id="ai-characters">
+            <h2><i class="fas fa-robot"></i> 9. AI Characters</h2>
+            
+            <h3>Available Characters</h3>
+            <p>Radio Check includes several AI "Battle Buddies":</p>
+            <ul>
+                <li><strong>Tommy</strong> - Calm, grounded battle buddy</li>
+                <li><strong>Rachel</strong> - Warm, nurturing support</li>
+                <li><strong>Bob</strong> - Ex-Para peer support</li>
+                <li><strong>Frankie</strong> - PTI fitness instructor</li>
+                <li><strong>Hugo</strong> - Services navigator</li>
+                <li><strong>Margie</strong> - Addiction support</li>
+                <li><strong>Rita</strong> - Family support</li>
+                <li><strong>Catherine</strong> - Calm, intelligent support</li>
+                <li><strong>Finch</strong> - Legal information</li>
+            </ul>
+            
+            <h3>Managing Characters</h3>
+            <p>You can edit character details including:</p>
+            <ul>
+                <li>Display name and avatar</li>
+                <li>Short description (shown on homepage)</li>
+                <li>Full bio (shown in chat)</li>
+                <li>Display order</li>
+                <li>Active/Inactive status</li>
+            </ul>
+            
+            <div class="warning">
+                <div class="warning-title"><i class="fas fa-exclamation-triangle"></i> Caution</div>
+                <p>Changes to AI character prompts should only be made by trained personnel. Incorrect prompts could affect safeguarding responses.</p>
+            </div>
+        </div>
+        
+        <div class="section" id="governance">
+            <h2><i class="fas fa-balance-scale"></i> 10. Clinical Governance</h2>
+            
+            <h3>Compliance Requirements</h3>
+            <p>Radio Check maintains compliance with:</p>
+            <ul>
+                <li>NHS Digital Standards</li>
+                <li>GDPR Data Protection</li>
+                <li>Mental Health Act guidelines</li>
+                <li>Safeguarding best practices</li>
+            </ul>
+            
+            <h3>Audit Trails</h3>
+            <p>All significant actions are logged for audit purposes, including:</p>
+            <ul>
+                <li>Staff logins and activities</li>
+                <li>Content changes</li>
+                <li>Safeguarding responses</li>
+                <li>Data access</li>
+            </ul>
+        </div>
+        
+        <div class="section" id="troubleshooting">
+            <h2><i class="fas fa-wrench"></i> 11. Troubleshooting</h2>
+            
+            <h3>Common Issues</h3>
+            
+            <h4>Can't log in</h4>
+            <ul>
+                <li>Check email and password are correct</li>
+                <li>Ensure Caps Lock is off</li>
+                <li>Try clearing browser cache</li>
+                <li>Contact system administrator for password reset</li>
+            </ul>
+            
+            <h4>Dashboard not loading</h4>
+            <ul>
+                <li>Check your internet connection</li>
+                <li>Try refreshing the page</li>
+                <li>Try a different browser</li>
+                <li>Clear browser cache and cookies</li>
+            </ul>
+            
+            <h4>Data not updating</h4>
+            <ul>
+                <li>Click the refresh button on the relevant section</li>
+                <li>Wait a few moments and try again</li>
+                <li>Check if other admin functions are working</li>
+            </ul>
+            
+            <h3>Getting Help</h3>
+            <p>For technical support, contact:</p>
+            <ul>
+                <li>Email: support@radiocheck.me</li>
+                <li>Emergency technical issues: Contact system administrator</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Radio Check</strong> - Supporting UK Veterans</p>
+            <p>Admin Manual v2.0 - March 2026</p>
+            <p>&copy; Radio Check. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
