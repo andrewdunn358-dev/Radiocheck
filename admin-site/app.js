@@ -846,6 +846,9 @@ async function loadLogsData() {
         // Load App Usage stats
         loadAppUsageStats();
         
+        // Load Location Map
+        loadLocationMap();
+        
         // Render charts
         renderActivityTrendChart(logsData.calls, logsData.chats, logsData.safeguarding);
         renderContactTypeChart(logsData.calls);
@@ -1065,6 +1068,153 @@ async function loadAppUsageStats() {
     } catch (error) {
         console.log('App usage stats not available:', error);
         return null;
+    }
+}
+
+// Location Map Variables
+let locationMap = null;
+let locationMarkers = [];
+
+// Load and render location map
+async function loadLocationMap() {
+    try {
+        const data = await apiCall('/analytics/locations');
+        
+        // Update active count
+        const countEl = document.getElementById('map-active-count');
+        if (countEl) {
+            countEl.textContent = (data.active_count || 0) + ' active';
+        }
+        
+        // Initialize or reset map
+        const mapContainer = document.getElementById('location-map');
+        if (!mapContainer) return;
+        
+        if (!locationMap) {
+            // Initialize map centered on UK
+            locationMap = L.map('location-map').setView([54.5, -2], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(locationMap);
+        }
+        
+        // Clear existing markers
+        locationMarkers.forEach(marker => locationMap.removeLayer(marker));
+        locationMarkers = [];
+        
+        // Add markers for recent locations
+        if (data.recent_locations && data.recent_locations.length > 0) {
+            data.recent_locations.forEach(loc => {
+                if (loc.lat && loc.lon) {
+                    const marker = L.circleMarker([loc.lat, loc.lon], {
+                        radius: Math.min(5 + loc.visits * 2, 20),
+                        fillColor: '#3b82f6',
+                        color: '#1d4ed8',
+                        weight: 2,
+                        opacity: 0.8,
+                        fillOpacity: 0.5
+                    }).addTo(locationMap);
+                    
+                    marker.bindPopup(
+                        '<strong>' + (loc.city || 'Unknown') + '</strong>' +
+                        (loc.country ? ', ' + loc.country : '') +
+                        '<br><span style="color: #666;">' + loc.visits + ' visits (24h)</span>'
+                    );
+                    locationMarkers.push(marker);
+                }
+            });
+        }
+        
+        // Add green markers for currently active users
+        if (data.active_users_with_location && data.active_users_with_location.length > 0) {
+            data.active_users_with_location.forEach(user => {
+                if (user.geo_lat && user.geo_lon) {
+                    const marker = L.circleMarker([user.geo_lat, user.geo_lon], {
+                        radius: 10,
+                        fillColor: '#22c55e',
+                        color: '#15803d',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(locationMap);
+                    
+                    marker.bindPopup(
+                        '<strong style="color: #22c55e;">Active Now</strong><br>' +
+                        (user.geo_city || 'Unknown') +
+                        (user.geo_country ? ', ' + user.geo_country : '') +
+                        '<br><span style="color: #666;">' + (user.device || 'Unknown device') + '</span>'
+                    );
+                    locationMarkers.push(marker);
+                }
+            });
+        }
+        
+        // Fit bounds if we have markers
+        if (locationMarkers.length > 0) {
+            const group = L.featureGroup(locationMarkers);
+            locationMap.fitBounds(group.getBounds().pad(0.1));
+        }
+        
+        // Update country breakdown
+        const countryContainer = document.getElementById('country-breakdown');
+        if (countryContainer && data.countries) {
+            if (data.countries.length > 0) {
+                const flagEmoji = {
+                    'United Kingdom': '🇬🇧',
+                    'United States': '🇺🇸',
+                    'Ireland': '🇮🇪',
+                    'Germany': '🇩🇪',
+                    'France': '🇫🇷',
+                    'Canada': '🇨🇦',
+                    'Australia': '🇦🇺',
+                    'Netherlands': '🇳🇱',
+                    'Spain': '🇪🇸',
+                    'Italy': '🇮🇹'
+                };
+                countryContainer.innerHTML = data.countries.map(c => 
+                    '<div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">' +
+                        '<span>' + (flagEmoji[c.country] || '🌍') + ' ' + c.country + '</span>' +
+                        '<strong>' + c.visits + '</strong>' +
+                    '</div>'
+                ).join('');
+            } else {
+                countryContainer.innerHTML = '<div style="color: var(--text-muted);">No data yet</div>';
+            }
+        }
+        
+        // Update city breakdown
+        const cityContainer = document.getElementById('city-breakdown');
+        if (cityContainer && data.cities) {
+            if (data.cities.length > 0) {
+                cityContainer.innerHTML = data.cities.slice(0, 10).map(c => 
+                    '<div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">' +
+                        '<span><i class="fas fa-map-pin" style="color: #8b5cf6; margin-right: 6px;"></i>' + c.city + '</span>' +
+                        '<strong>' + c.visits + '</strong>' +
+                    '</div>'
+                ).join('');
+            } else {
+                cityContainer.innerHTML = '<div style="color: var(--text-muted);">No data yet</div>';
+            }
+        }
+        
+        // Update UK region breakdown
+        const ukRegionContainer = document.getElementById('uk-region-breakdown');
+        if (ukRegionContainer && data.uk_regions) {
+            if (data.uk_regions.length > 0) {
+                ukRegionContainer.innerHTML = data.uk_regions.map(r => 
+                    '<div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px;">' +
+                        '<span><i class="fas fa-map-marker-alt" style="color: #22c55e; margin-right: 6px;"></i>' + r.region + '</span>' +
+                        '<strong>' + r.visits + '</strong>' +
+                    '</div>'
+                ).join('');
+            } else {
+                ukRegionContainer.innerHTML = '<div style="color: var(--text-muted);">No UK data yet</div>';
+            }
+        }
+        
+    } catch (error) {
+        console.log('Location analytics not available:', error);
     }
 }
 

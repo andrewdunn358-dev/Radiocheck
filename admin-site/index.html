@@ -7,7 +7,9 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <!-- Login Screen -->
@@ -955,6 +957,53 @@
                                 <i class="fas fa-fire" style="margin-right: 8px; color: #ef4444;"></i>Popular Features (30 days)
                             </h4>
                             <div id="feature-usage" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px;">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Location Map -->
+                <div class="location-map-section" style="background: var(--card-bg); border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid var(--border-color);">
+                    <h3 style="margin: 0 0 20px 0; color: var(--text-primary); display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-map-marked-alt" style="color: #ef4444;"></i> User Location Map
+                        <span id="map-active-count" style="background: #22c55e; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-left: 8px;">0 active</span>
+                        <button onclick="loadLocationMap()" class="btn btn-small btn-secondary" style="margin-left: auto;">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </h3>
+                    
+                    <!-- Map Container -->
+                    <div id="location-map" style="height: 400px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 20px;"></div>
+                    
+                    <!-- Location Stats Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        <!-- Country Breakdown -->
+                        <div>
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 14px;">
+                                <i class="fas fa-globe-europe" style="margin-right: 8px; color: #3b82f6;"></i>Visitors by Country (30 days)
+                            </h4>
+                            <div id="country-breakdown" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; max-height: 200px; overflow-y: auto;">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- City Breakdown -->
+                        <div>
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 14px;">
+                                <i class="fas fa-city" style="margin-right: 8px; color: #8b5cf6;"></i>Top Cities (30 days)
+                            </h4>
+                            <div id="city-breakdown" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; max-height: 200px; overflow-y: auto;">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- UK Region Breakdown -->
+                        <div>
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 14px;">
+                                <i class="fas fa-map" style="margin-right: 8px; color: #22c55e;"></i>UK Regions (30 days)
+                            </h4>
+                            <div id="uk-region-breakdown" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; max-height: 200px; overflow-y: auto;">
                                 <div style="color: var(--text-muted);">Loading...</div>
                             </div>
                         </div>

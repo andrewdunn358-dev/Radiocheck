@@ -4686,6 +4686,9 @@ async def track_app_visit(visit: AppVisit, request: Request):
         else:
             ua_info["device"] = "desktop"
     
+    # Lookup geolocation for IP address (async, with caching)
+    geo_data = await lookup_ip_geolocation(client_ip)
+    
     visit_data = {
         "id": str(uuid.uuid4()),
         "session_id": visit.session_id,
@@ -4700,6 +4703,12 @@ async def track_app_visit(visit: AppVisit, request: Request):
         "browser": ua_info["browser"],
         "os": ua_info["os"],
         "ip_hash": hashlib.sha256(client_ip.encode()).hexdigest()[:16],  # Anonymized IP for unique counting
+        # Geolocation data
+        "geo_city": geo_data.get("geo_city"),
+        "geo_region": geo_data.get("geo_region"),
+        "geo_country": geo_data.get("geo_country"),
+        "geo_lat": geo_data.get("geo_lat"),
+        "geo_lon": geo_data.get("geo_lon"),
     }
     
     # Upsert - only count unique sessions per day
@@ -4720,6 +4729,12 @@ async def track_app_visit(visit: AppVisit, request: Request):
                 "device": ua_info["device"],
                 "browser": ua_info["browser"],
                 "os": ua_info["os"],
+                # Geolocation data for map
+                "geo_city": geo_data.get("geo_city"),
+                "geo_region": geo_data.get("geo_region"),
+                "geo_country": geo_data.get("geo_country"),
+                "geo_lat": geo_data.get("geo_lat"),
+                "geo_lon": geo_data.get("geo_lon"),
             },
             "$setOnInsert": {"first_seen": datetime.utcnow()}
         },
@@ -4882,6 +4897,112 @@ async def get_app_usage_stats(current_user: User = Depends(require_role("admin")
     stats["daily_trend"] = daily_trend
     
     return stats
+
+@api_router.get("/analytics/locations")
+async def get_location_analytics(current_user: User = Depends(require_role("admin"))):
+    """Get location data for map visualization in admin dashboard"""
+    now = datetime.utcnow()
+    
+    # Get currently active sessions with location data (last 10 minutes)
+    active_cutoff = now - timedelta(minutes=10)
+    active_with_location = await db.active_sessions.find(
+        {
+            "last_seen": {"$gte": active_cutoff},
+            "geo_lat": {"$ne": None},
+            "geo_lon": {"$ne": None}
+        },
+        {"_id": 0, "session_id": 1, "geo_city": 1, "geo_region": 1, "geo_country": 1, 
+         "geo_lat": 1, "geo_lon": 1, "device": 1, "last_seen": 1}
+    ).to_list(1000)
+    
+    # Get location breakdown for last 30 days
+    thirty_days_ago = now - timedelta(days=30)
+    
+    # Country breakdown
+    country_pipeline = [
+        {"$match": {"timestamp": {"$gte": thirty_days_ago}, "geo_country": {"$ne": None}}},
+        {"$group": {
+            "_id": "$geo_country",
+            "visits": {"$sum": 1},
+            "unique_visitors": {"$addToSet": "$session_id"}
+        }},
+        {"$project": {
+            "_id": 1,
+            "visits": 1,
+            "unique_visitors": {"$size": "$unique_visitors"}
+        }},
+        {"$sort": {"visits": -1}},
+        {"$limit": 20}
+    ]
+    country_stats = await db.app_visits.aggregate(country_pipeline).to_list(20)
+    
+    # City breakdown (top 30)
+    city_pipeline = [
+        {"$match": {"timestamp": {"$gte": thirty_days_ago}, "geo_city": {"$ne": None}}},
+        {"$group": {
+            "_id": {"city": "$geo_city", "country": "$geo_country"},
+            "visits": {"$sum": 1},
+            "unique_visitors": {"$addToSet": "$session_id"},
+            "lat": {"$first": "$geo_lat"},
+            "lon": {"$first": "$geo_lon"}
+        }},
+        {"$project": {
+            "_id": 1,
+            "visits": 1,
+            "unique_visitors": {"$size": "$unique_visitors"},
+            "lat": 1,
+            "lon": 1
+        }},
+        {"$sort": {"visits": -1}},
+        {"$limit": 30}
+    ]
+    city_stats = await db.app_visits.aggregate(city_pipeline).to_list(30)
+    
+    # Region breakdown (UK focused)
+    region_pipeline = [
+        {"$match": {"timestamp": {"$gte": thirty_days_ago}, "geo_region": {"$ne": None}, "geo_country": "United Kingdom"}},
+        {"$group": {
+            "_id": "$geo_region",
+            "visits": {"$sum": 1},
+            "unique_visitors": {"$addToSet": "$session_id"}
+        }},
+        {"$project": {
+            "_id": 1,
+            "visits": 1,
+            "unique_visitors": {"$size": "$unique_visitors"}
+        }},
+        {"$sort": {"visits": -1}},
+        {"$limit": 20}
+    ]
+    region_stats = await db.app_visits.aggregate(region_pipeline).to_list(20)
+    
+    # Recent visitor locations (last 24 hours with coordinates for map markers)
+    day_ago = now - timedelta(hours=24)
+    recent_locations = await db.app_visits.aggregate([
+        {"$match": {
+            "timestamp": {"$gte": day_ago},
+            "geo_lat": {"$ne": None},
+            "geo_lon": {"$ne": None}
+        }},
+        {"$group": {
+            "_id": {"lat": "$geo_lat", "lon": "$geo_lon", "city": "$geo_city", "country": "$geo_country"},
+            "visit_count": {"$sum": 1},
+            "last_visit": {"$max": "$timestamp"}
+        }},
+        {"$sort": {"last_visit": -1}},
+        {"$limit": 100}
+    ]).to_list(100)
+    
+    return {
+        "active_users_with_location": active_with_location,
+        "active_count": len(active_with_location),
+        "countries": [{"country": c["_id"], "visits": c["visits"], "unique": c["unique_visitors"]} for c in country_stats],
+        "cities": [{"city": c["_id"]["city"], "country": c["_id"]["country"], "visits": c["visits"], 
+                   "unique": c["unique_visitors"], "lat": c.get("lat"), "lon": c.get("lon")} for c in city_stats],
+        "uk_regions": [{"region": r["_id"], "visits": r["visits"], "unique": r["unique_visitors"]} for r in region_stats],
+        "recent_locations": [{"lat": l["_id"]["lat"], "lon": l["_id"]["lon"], "city": l["_id"]["city"],
+                            "country": l["_id"]["country"], "visits": l["visit_count"]} for l in recent_locations]
+    }
 
 # ============ AI BATTLE BUDDIES CHAT ENDPOINTS ============
 
