@@ -147,13 +147,71 @@ export default function UnifiedAIChat() {
   const [availableStaff, setAvailableStaff] = useState<AvailableStaff>({ counsellors: [], peers: [] });
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [staffAvailable, setStaffAvailable] = useState(false);
+  const [userLocation, setUserLocation] = useState<{lat: number; lon: number; accuracy: number} | null>(null);
+  const [locationRequested, setLocationRequested] = useState(false);
+
+  // Request browser geolocation when safeguarding modal opens
+  const requestUserLocation = async (alertId: string) => {
+    if (locationRequested) return; // Only request once per session
+    
+    // Only works on web platform
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !navigator.geolocation) {
+      console.log('Geolocation not available on this platform');
+      return;
+    }
+    
+    setLocationRequested(true);
+    
+    try {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log('Got user location:', { latitude, longitude, accuracy });
+          
+          setUserLocation({ lat: latitude, lon: longitude, accuracy });
+          
+          // Send the GPS coordinates to update the safeguarding alert
+          try {
+            await fetch(`${API_URL}/api/safeguarding-alerts/${alertId}/location`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                gps_lat: latitude,
+                gps_lon: longitude,
+                gps_accuracy: accuracy,
+                location_source: 'gps'
+              }),
+            });
+            console.log('Safeguarding alert updated with GPS location');
+          } catch (err) {
+            console.error('Failed to update alert with GPS location:', err);
+          }
+        },
+        (error) => {
+          console.log('Geolocation error or denied:', error.message);
+          // User denied or error - we fall back to IP geolocation (already handled server-side)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        }
+      );
+    } catch (err) {
+      console.log('Geolocation request failed:', err);
+    }
+  };
 
   // Check for available staff when safeguarding modal opens
   useEffect(() => {
     if (showSafeguardingModal) {
       checkStaffAvailability();
+      // Request user's precise location for safeguarding (GPS)
+      if (currentAlertId) {
+        requestUserLocation(currentAlertId);
+      }
     }
-  }, [showSafeguardingModal]);
+  }, [showSafeguardingModal, currentAlertId]);
 
   const checkStaffAvailability = async () => {
     setIsCheckingAvailability(true);

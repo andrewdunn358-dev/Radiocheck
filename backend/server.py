@@ -2645,6 +2645,61 @@ async def fix_missing_profiles(current_user: User = Depends(require_role("admin"
         "skipped_no_id": skipped_no_id
     }
 
+class ClearLogsRequest(BaseModel):
+    log_type: str  # 'safeguarding', 'calls', 'chats', 'analytics', 'all'
+    confirm: bool = False
+
+@api_router.post("/admin/clear-logs")
+async def clear_logs_for_testing(request: ClearLogsRequest, current_user: User = Depends(require_role("admin"))):
+    """
+    Clear logs/data for testing purposes. ADMIN ONLY.
+    Use with caution - this permanently deletes data!
+    """
+    if not request.confirm:
+        return {"error": "Please set confirm=true to proceed with deletion"}
+    
+    results = {}
+    
+    if request.log_type in ['safeguarding', 'all']:
+        result = await db.safeguarding_alerts.delete_many({})
+        results['safeguarding_alerts'] = result.deleted_count
+    
+    if request.log_type in ['calls', 'all']:
+        result = await db.call_logs.delete_many({})
+        results['call_logs'] = result.deleted_count
+    
+    if request.log_type in ['chats', 'all']:
+        result = await db.chat_logs.delete_many({})
+        results['chat_logs'] = result.deleted_count
+        # Also clear live chat rooms
+        result2 = await db.live_chat_rooms.delete_many({})
+        results['live_chat_rooms'] = result2.deleted_count
+    
+    if request.log_type in ['analytics', 'all']:
+        result = await db.app_visits.delete_many({})
+        results['app_visits'] = result.deleted_count
+        result2 = await db.active_sessions.delete_many({})
+        results['active_sessions'] = result2.deleted_count
+    
+    if request.log_type in ['callbacks', 'all']:
+        result = await db.callback_requests.delete_many({})
+        results['callback_requests'] = result.deleted_count
+    
+    if request.log_type in ['panic', 'all']:
+        result = await db.panic_alerts.delete_many({})
+        results['panic_alerts'] = result.deleted_count
+    
+    if request.log_type in ['screening', 'all']:
+        result = await db.screening_submissions.delete_many({})
+        results['screening_submissions'] = result.deleted_count
+    
+    logging.warning(f"ADMIN {current_user.email} cleared logs: {request.log_type} - Results: {results}")
+    
+    return {
+        "message": f"Cleared {request.log_type} logs",
+        "deleted": results
+    }
+
 class CreateUsersForStaffRequest(BaseModel):
     default_password: str = "TempPassword123!"
 
@@ -4026,6 +4081,54 @@ async def resolve_safeguarding_alert(
     except Exception as e:
         logging.error(f"Error resolving safeguarding alert: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to resolve safeguarding alert")
+
+class GPSLocationUpdate(BaseModel):
+    gps_lat: float
+    gps_lon: float
+    gps_accuracy: Optional[float] = None
+    location_source: str = "gps"  # 'gps', 'wifi', 'cell'
+
+@api_router.patch("/safeguarding-alerts/{alert_id}/location")
+async def update_safeguarding_alert_location(
+    alert_id: str,
+    location: GPSLocationUpdate
+):
+    """
+    Update a safeguarding alert with precise GPS location from the user's browser.
+    This is called when the user grants location permission during a crisis.
+    No authentication required - this is called from the crisis flow.
+    """
+    try:
+        # Verify alert exists
+        alert = await db.safeguarding_alerts.find_one({"id": alert_id})
+        if not alert:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        
+        # Update with GPS location (more accurate than IP geolocation)
+        update_data = {
+            "gps_lat": location.gps_lat,
+            "gps_lon": location.gps_lon,
+            "gps_accuracy": location.gps_accuracy,
+            "location_source": location.location_source,
+            # Overwrite the IP-based coordinates with GPS coordinates (more accurate)
+            "geo_lat": location.gps_lat,
+            "geo_lon": location.gps_lon,
+            "location_updated_at": datetime.utcnow()
+        }
+        
+        await db.safeguarding_alerts.update_one(
+            {"id": alert_id},
+            {"$set": update_data}
+        )
+        
+        logging.info(f"Safeguarding alert {alert_id} updated with GPS location: {location.gps_lat}, {location.gps_lon} (accuracy: {location.gps_accuracy}m)")
+        
+        return {"message": "Location updated successfully", "accuracy_meters": location.gps_accuracy}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error updating safeguarding alert location: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update location")
 
 # ============ SAFEGUARDING MONITORING ENDPOINTS ============
 

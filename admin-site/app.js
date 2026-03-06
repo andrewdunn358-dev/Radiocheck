@@ -3076,6 +3076,83 @@ async function saveEmailSettings() {
     }
 }
 
+// Clear logs for testing
+async function clearLogs(logType) {
+    const typeLabels = {
+        'safeguarding': 'Safeguarding Alerts',
+        'calls': 'Call Logs',
+        'chats': 'Chat Logs',
+        'analytics': 'Analytics Data',
+        'callbacks': 'Callback Requests',
+        'screening': 'Screening Data',
+        'panic': 'Panic Alerts',
+        'all': 'ALL Logs & Data'
+    };
+    
+    const label = typeLabels[logType] || logType;
+    
+    if (!confirm('Are you sure you want to permanently delete ' + label + '?\n\nThis action cannot be undone!')) {
+        return;
+    }
+    
+    // Double confirm for 'all'
+    if (logType === 'all') {
+        if (!confirm('FINAL WARNING: This will delete ALL data including safeguarding alerts, call logs, chat logs, analytics, callbacks, and screening data.\n\nType "DELETE ALL" in the next prompt to confirm.')) {
+            return;
+        }
+        const confirmText = prompt('Type "DELETE ALL" to confirm:');
+        if (confirmText !== 'DELETE ALL') {
+            showNotification('Deletion cancelled - confirmation text did not match', 'warning');
+            return;
+        }
+    }
+    
+    const statusDiv = document.getElementById('clear-logs-status');
+    
+    try {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = 'rgba(59, 130, 246, 0.2)';
+        statusDiv.style.color = '#3b82f6';
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing ' + label + '...';
+        
+        const result = await apiCall('/admin/clear-logs', {
+            method: 'POST',
+            body: JSON.stringify({
+                log_type: logType,
+                confirm: true
+            })
+        });
+        
+        // Format the result
+        let deletedText = '';
+        if (result.deleted) {
+            const entries = Object.entries(result.deleted);
+            if (entries.length > 0) {
+                deletedText = entries.map(([key, count]) => key.replace(/_/g, ' ') + ': ' + count).join(', ');
+            }
+        }
+        
+        statusDiv.style.background = 'rgba(22, 163, 74, 0.2)';
+        statusDiv.style.color = '#22c55e';
+        statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Cleared ' + label + '. ' + (deletedText ? 'Deleted: ' + deletedText : '');
+        
+        showNotification('Successfully cleared ' + label, 'success');
+        
+        // Refresh the dashboard after a short delay
+        setTimeout(() => {
+            loadDashboardData();
+        }, 1000);
+        
+    } catch (error) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = 'rgba(220, 38, 38, 0.2)';
+        statusDiv.style.color = '#ef4444';
+        statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to clear: ' + error.message;
+        
+        showNotification('Failed to clear logs: ' + error.message, 'error');
+    }
+}
+
 function previewNewLogo(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];
