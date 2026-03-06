@@ -7946,8 +7946,8 @@ window.switchTab = function(tabName) {
     }
 };
 
-// Helper to close modals
-function closeModal(modalId) {
+// Helper to close specific modals by ID (for inline modals)
+function closeSpecificModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.remove();
 }
