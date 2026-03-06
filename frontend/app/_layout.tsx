@@ -6,6 +6,7 @@ import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { FavoritesProvider } from '../src/context/FavoritesContext';
 import { AgeGateProvider } from '../src/context/AgeGateContext';
 import { SiteGateProvider } from '../src/context/SiteGateContext';
+import { LocationPermissionProvider } from '../src/context/LocationPermissionContext';
 import ResponsiveWrapper from '../src/components/ResponsiveWrapper';
 
 function AppContent() {
@@ -47,13 +48,15 @@ export default function RootLayout() {
   return (
     <SiteGateProvider>
       <ThemeProvider>
-        <AgeGateProvider>
-          <FavoritesProvider>
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
-          </FavoritesProvider>
-        </AgeGateProvider>
+        <LocationPermissionProvider>
+          <AgeGateProvider>
+            <FavoritesProvider>
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            </FavoritesProvider>
+          </AgeGateProvider>
+        </LocationPermissionProvider>
       </ThemeProvider>
     </SiteGateProvider>
   );

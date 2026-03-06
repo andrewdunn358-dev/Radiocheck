@@ -31,6 +31,8 @@ import { API_URL } from '../../src/config/api';
 import { getCharacter, AICharacter } from '../../src/config/ai-characters';
 import AIConsentModal from '../../src/components/AIConsentModal';
 import { useAgeGateContext } from '../../src/context/AgeGateContext';
+import { useLocationPermission } from '../../src/context/LocationPermissionContext';
+import SafeguardingCallModal from '../../src/components/SafeguardingCallModal';
 
 interface Message {
   id: string;
@@ -52,6 +54,9 @@ export default function DynamicAIChat() {
   
   // Age gate context - for enhanced safeguarding
   const { isUnder18 } = useAgeGateContext();
+  
+  // Location permission context - for safeguarding GPS
+  const { requestLocation, locationCoords, hasLocationPermission } = useLocationPermission();
   
   // Get character config
   const character = useMemo(() => getCharacter(characterId), [characterId]);
@@ -86,6 +91,11 @@ export default function DynamicAIChat() {
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
   const [availableStaff, setAvailableStaff] = useState<AvailableStaff>({ counsellors: [], peers: [] });
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [userLocation, setUserLocation] = useState<{lat: number; lon: number; accuracy: number} | null>(null);
+  const [locationRequested, setLocationRequested] = useState(false);
+  
+  // In-page call modal state (no redirect to peer-support)
+  const [showInPageCallModal, setShowInPageCallModal] = useState(false);
   const [staffAvailable, setStaffAvailable] = useState(false);
 
   // Check for available staff when safeguarding modal opens
@@ -528,17 +538,46 @@ export default function DynamicAIChat() {
                   {/* Call a Supporter Button */}
                   <TouchableOpacity
                     style={[styles.safeguardingOption, { backgroundColor: '#dcfce7', borderColor: '#16a34a', borderWidth: 2 }]}
-                    onPress={() => {
-                      // Navigate to peer-support for voice call
-                      setShowSafeguardingModal(false);
-                      router.push({
-                        pathname: '/peer-support',
-                        params: { 
-                          alertId: currentAlertId,
-                          preferredType: 'call',
-                          sessionId: sessionId
+                    onPress={async () => {
+                      // Request GPS location before opening call modal
+                      if (currentAlertId) {
+                        console.log('Requesting GPS location before call...');
+                        try {
+                          const coords = await requestLocation();
+                          if (coords) {
+                            setUserLocation(coords);
+                            // Send the GPS coordinates to update the safeguarding alert
+                            await fetch(`${API_URL}/api/safeguarding-alerts/${currentAlertId}/location`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                gps_lat: coords.lat,
+                                gps_lon: coords.lon,
+                                gps_accuracy: coords.accuracy,
+                                location_source: 'gps'
+                              }),
+                            });
+                          } else if (locationCoords) {
+                            // Use cached location
+                            setUserLocation(locationCoords);
+                            await fetch(`${API_URL}/api/safeguarding-alerts/${currentAlertId}/location`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                gps_lat: locationCoords.lat,
+                                gps_lon: locationCoords.lon,
+                                gps_accuracy: locationCoords.accuracy,
+                                location_source: 'gps_cached'
+                              }),
+                            });
+                          }
+                        } catch (err) {
+                          console.error('Failed to get/send location:', err);
                         }
-                      });
+                      }
+                      // Open in-page call modal instead of navigating to peer-support
+                      setShowSafeguardingModal(false);
+                      setShowInPageCallModal(true);
                     }}
                   >
                     <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center' }}>
@@ -685,6 +724,21 @@ export default function DynamicAIChat() {
           </View>
         </View>
       </Modal>
+
+      {/* In-page Safeguarding Call Modal */}
+      <SafeguardingCallModal
+        visible={showInPageCallModal}
+        alertId={currentAlertId}
+        sessionId={sessionId}
+        onClose={() => {
+          setShowInPageCallModal(false);
+          setLocationRequested(false); // Reset for next call
+        }}
+        onCallEnded={() => {
+          setShowInPageCallModal(false);
+          setLocationRequested(false);
+        }}
+      />
     </SafeAreaView>
   );
 }

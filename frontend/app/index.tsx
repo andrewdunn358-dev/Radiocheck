@@ -76,7 +76,7 @@ export default function SplashScreen() {
   }, []);
 
   const handleAllowPermissions = async () => {
-    console.log('Allow Microphone button pressed');
+    console.log('Allow Permissions button pressed');
     try {
       // Request microphone permission using browser API (works on web)
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.mediaDevices) {
@@ -88,6 +88,22 @@ export default function SplashScreen() {
         } catch (err) {
           console.log('Microphone permission: denied or unavailable', err);
         }
+      }
+      
+      // Also request location permission for safeguarding
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log('Location permission: granted', position.coords.latitude, position.coords.longitude);
+            // Store that we have location permission
+            AsyncStorage.setItem('location_permission_asked', 'true');
+          },
+          (error) => {
+            console.log('Location permission: denied or unavailable', error.message);
+            AsyncStorage.setItem('location_permission_asked', 'denied');
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
       }
       
       // Save that we've asked for permissions
@@ -261,20 +277,21 @@ export default function SplashScreen() {
         <View style={styles.permissionOverlay}>
           <View style={styles.permissionModal}>
             <View style={styles.permissionIconContainer}>
-              <Ionicons name="mic" size={48} color="#3b82f6" />
+              <Ionicons name="mic" size={36} color="#3b82f6" />
+              <Ionicons name="location" size={36} color="#3b82f6" style={{ marginLeft: 12 }} />
             </View>
-            <Text style={styles.permissionTitle}>Enable Microphone</Text>
+            <Text style={styles.permissionTitle}>Enable Permissions</Text>
             <Text style={styles.permissionDescription}>
-              Radio Check needs microphone access for peer-to-peer voice calls with other veterans.
+              Radio Check needs permissions for voice calls and to locate you during emergencies.
             </Text>
             <View style={styles.permissionFeatures}>
               <View style={styles.permissionFeature}>
                 <Ionicons name="call" size={20} color="#22c55e" />
-                <Text style={styles.permissionFeatureText}>Talk directly with peer supporters</Text>
+                <Text style={styles.permissionFeatureText}>Voice calls with peer supporters</Text>
               </View>
               <View style={styles.permissionFeature}>
-                <Ionicons name="people" size={20} color="#22c55e" />
-                <Text style={styles.permissionFeatureText}>Connect with fellow veterans</Text>
+                <Ionicons name="location" size={20} color="#22c55e" />
+                <Text style={styles.permissionFeatureText}>Locate you in emergencies (safeguarding)</Text>
               </View>
               <View style={styles.permissionFeature}>
                 <Ionicons name="shield-checkmark" size={20} color="#22c55e" />
@@ -287,10 +304,10 @@ export default function SplashScreen() {
                 pressed && { opacity: 0.8 }
               ]}
               onPress={handleAllowPermissions}
-              data-testid="allow-microphone-btn"
+              data-testid="allow-permissions-btn"
             >
-              <Ionicons name="mic" size={20} color="#fff" />
-              <Text style={styles.permissionAllowText}>Allow Microphone</Text>
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={styles.permissionAllowText}>Allow Permissions</Text>
             </Pressable>
             <Pressable 
               style={({ pressed }) => [
@@ -298,7 +315,7 @@ export default function SplashScreen() {
                 pressed && { opacity: 0.7 }
               ]}
               onPress={handleSkipPermissions}
-              data-testid="skip-microphone-btn"
+              data-testid="skip-permissions-btn"
             >
               <Text style={styles.permissionSkipText}>Maybe Later</Text>
             </Pressable>

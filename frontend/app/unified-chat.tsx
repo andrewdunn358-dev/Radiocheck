@@ -33,6 +33,8 @@ import { getCharacter as getStaticCharacter, AICharacter } from '../src/config/a
 import { getCharacter as getAPICharacter } from '../src/services/characterService';
 import AIConsentModal from '../src/components/AIConsentModal';
 import { useAgeGateContext } from '../src/context/AgeGateContext';
+import { useLocationPermission } from '../src/context/LocationPermissionContext';
+import SafeguardingCallModal from '../src/components/SafeguardingCallModal';
 
 // Default values for when character is loading
 const DEFAULT_ACCENT_COLOR = '#3b82f6';
@@ -57,6 +59,9 @@ export default function UnifiedAIChat() {
   
   // Age gate context - for enhanced safeguarding
   const { isUnder18 } = useAgeGateContext();
+  
+  // Location permission context - for safeguarding GPS
+  const { requestLocation, locationCoords, hasLocationPermission } = useLocationPermission();
   
   // Character state - loaded from API with static fallback
   const [character, setCharacter] = useState<AICharacter | null>(null);
@@ -149,72 +154,66 @@ export default function UnifiedAIChat() {
   const [staffAvailable, setStaffAvailable] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lon: number; accuracy: number} | null>(null);
   const [locationRequested, setLocationRequested] = useState(false);
+  
+  // In-page call modal state (no redirect to peer-support)
+  const [showInPageCallModal, setShowInPageCallModal] = useState(false);
 
   // Request browser geolocation when safeguarding modal opens
+  // Now uses the LocationPermissionContext which was granted on app load
   const requestUserLocation = async (alertId: string) => {
-    console.log('=== REQUESTING USER LOCATION ===');
+    console.log('=== REQUESTING USER LOCATION (via Context) ===');
     console.log('Alert ID:', alertId);
-    console.log('Location already requested:', locationRequested);
-    console.log('Platform:', Platform.OS);
-    console.log('Navigator available:', typeof navigator !== 'undefined');
-    console.log('Geolocation available:', typeof navigator !== 'undefined' && !!navigator.geolocation);
+    console.log('Has location permission:', hasLocationPermission);
+    console.log('Cached coords:', locationCoords);
     
     if (locationRequested) {
-      console.log('Location already requested, skipping');
-      return;
-    }
-    
-    // Only works on web platform
-    if (Platform.OS !== 'web') {
-      console.log('Not on web platform, skipping geolocation');
-      return;
-    }
-    
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      console.log('Geolocation API not available');
+      console.log('Location already requested for this alert, skipping');
       return;
     }
     
     setLocationRequested(true);
-    console.log('Requesting geolocation permission...');
     
     try {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude, accuracy } = position.coords;
-          console.log('Got user location:', { latitude, longitude, accuracy });
-          
-          setUserLocation({ lat: latitude, lon: longitude, accuracy });
-          
-          // Send the GPS coordinates to update the safeguarding alert
-          try {
-            const response = await fetch(`${API_URL}/api/safeguarding-alerts/${alertId}/location`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                gps_lat: latitude,
-                gps_lon: longitude,
-                gps_accuracy: accuracy,
-                location_source: 'gps'
-              }),
-            });
-            console.log('Safeguarding alert updated with GPS location, response:', response.status);
-          } catch (err) {
-            console.error('Failed to update alert with GPS location:', err);
-          }
-        },
-        (error) => {
-          console.log('Geolocation error or denied:', error.code, error.message);
-          // User denied or error - we fall back to IP geolocation (already handled server-side)
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000
-        }
-      );
+      // Try to get fresh location using the context's requestLocation
+      const coords = await requestLocation();
+      
+      if (coords) {
+        console.log('Got fresh GPS location:', coords);
+        setUserLocation(coords);
+        
+        // Send the GPS coordinates to update the safeguarding alert
+        const response = await fetch(`${API_URL}/api/safeguarding-alerts/${alertId}/location`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gps_lat: coords.lat,
+            gps_lon: coords.lon,
+            gps_accuracy: coords.accuracy,
+            location_source: 'gps'
+          }),
+        });
+        console.log('Safeguarding alert updated with GPS location, response:', response.status);
+      } else if (locationCoords) {
+        // Use cached location from context
+        console.log('Using cached location from context:', locationCoords);
+        setUserLocation(locationCoords);
+        
+        const response = await fetch(`${API_URL}/api/safeguarding-alerts/${alertId}/location`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gps_lat: locationCoords.lat,
+            gps_lon: locationCoords.lon,
+            gps_accuracy: locationCoords.accuracy,
+            location_source: 'gps_cached'
+          }),
+        });
+        console.log('Safeguarding alert updated with cached location, response:', response.status);
+      } else {
+        console.log('No location available - falling back to IP geolocation server-side');
+      }
     } catch (err) {
-      console.log('Geolocation request failed:', err);
+      console.error('Failed to get/send location:', err);
     }
   };
 
@@ -832,16 +831,9 @@ export default function UnifiedAIChat() {
                         console.log('Requesting GPS location before call...');
                         requestUserLocation(currentAlertId);
                       }
-                      // Navigate to peer-support for voice call
+                      // Open in-page call modal instead of navigating to peer-support
                       setShowSafeguardingModal(false);
-                      router.push({
-                        pathname: '/peer-support',
-                        params: { 
-                          alertId: currentAlertId,
-                          preferredType: 'call',
-                          sessionId: sessionId
-                        }
-                      });
+                      setShowInPageCallModal(true);
                     }}
                   >
                     <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center' }}>
@@ -988,6 +980,21 @@ export default function UnifiedAIChat() {
           </View>
         </View>
       </Modal>
+
+      {/* In-page Safeguarding Call Modal */}
+      <SafeguardingCallModal
+        visible={showInPageCallModal}
+        alertId={currentAlertId}
+        sessionId={sessionId}
+        onClose={() => {
+          setShowInPageCallModal(false);
+          setLocationRequested(false); // Reset for next call
+        }}
+        onCallEnded={() => {
+          setShowInPageCallModal(false);
+          setLocationRequested(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
