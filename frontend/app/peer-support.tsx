@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, TextInput, Alert, KeyboardAvoidingView, Platform, Linking, ActivityIndicator, Modal, Image, Animated } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -322,6 +322,24 @@ export default function PeerSupport() {
       setIsInitiatingCall(false);
     }
   }, [callState]);
+
+  // Track previous call state to detect when call ends
+  const prevCallStateRef = useRef(callState);
+  
+  // Redirect to home after call ends (when coming from safeguarding flow)
+  useEffect(() => {
+    const prevState = prevCallStateRef.current;
+    prevCallStateRef.current = callState;
+    
+    // If call was active/connected and now ended/idle, redirect to home
+    if ((prevState === 'connected' || prevState === 'connecting' || prevState === 'ringing') && callState === 'idle') {
+      console.log('Call ended - redirecting to home');
+      // Small delay to allow cleanup
+      setTimeout(() => {
+        router.replace('/home');
+      }, 500);
+    }
+  }, [callState, router]);
 
   const handleSMS = (number: string, name: string = 'Peer Supporter', id: string | null = null) => {
     logCallIntent('peer', id, name, number, 'sms');

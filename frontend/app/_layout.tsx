@@ -6,12 +6,13 @@ import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { FavoritesProvider } from '../src/context/FavoritesContext';
 import { AgeGateProvider } from '../src/context/AgeGateContext';
 import { SiteGateProvider } from '../src/context/SiteGateContext';
+import ResponsiveWrapper from '../src/components/ResponsiveWrapper';
 
 function AppContent() {
   const { theme, colors } = useTheme();
   
   return (
-    <>
+    <ResponsiveWrapper>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -38,7 +39,7 @@ function AppContent() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="resources" />
       </Stack>
-    </>
+    </ResponsiveWrapper>
   );
 }
 
