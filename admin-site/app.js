@@ -1092,11 +1092,24 @@ async function loadLocationMap() {
         
         if (!locationMap) {
             // Initialize map centered on UK
-            locationMap = L.map('location-map').setView([54.5, -2], 6);
+            locationMap = L.map('location-map', {
+                center: [54.5, -2],
+                zoom: 6,
+                zoomControl: true,
+                scrollWheelZoom: true
+            });
+            
+            // Use multiple tile layer options for reliability
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
-                maxZoom: 18
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18,
+                crossOrigin: true
             }).addTo(locationMap);
+            
+            // Force a resize after initialization
+            setTimeout(function() {
+                locationMap.invalidateSize();
+            }, 250);
         }
         
         // Clear existing markers
