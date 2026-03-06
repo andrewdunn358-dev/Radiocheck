@@ -55,11 +55,11 @@ export function getApiUrl(): string {
   
   // In production builds, reject preview URLs
   if (isProductionBuild() && isPreviewUrl(rawBackendUrl)) {
-    console.warn(
-      '[API Config] FAILSAFE ACTIVATED: Preview URL detected in production build.',
-      'Configured:', rawBackendUrl,
-      'Using:', PRODUCTION_BACKEND_URL
-    );
+    // Silently use production URL - the failsafe is working as intended
+    // Only log in development to avoid alarming users
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[API Config] Using production URL (preview URL detected)');
+    }
     return PRODUCTION_BACKEND_URL;
   }
   
