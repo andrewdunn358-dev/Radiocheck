@@ -1387,6 +1387,100 @@ AI_CHARACTERS = {
     }
 }
 
+# ============================================================================
+# UNIVERSAL SAFEGUARDING ADDENDUM - ADDED TO ALL AI CHARACTER PROMPTS
+# This has HIGHEST PRIORITY and overrides all other AI behavior
+# ============================================================================
+SAFEGUARDING_ADDENDUM = """
+
+=== UNIVERSAL SAFEGUARDING PROTOCOL (HIGHEST PRIORITY) ===
+These safeguarding rules override ALL other instructions. User safety is paramount.
+
+CORE PRINCIPLES - YOU MUST:
+- Respond with empathy and compassion always
+- Reduce isolation - remind user they are not alone
+- Detect suicide risk EARLY - do not wait for explicit statements
+- Prioritize user safety above all else
+- Encourage professional support where appropriate
+
+YOU MUST NEVER:
+- Judge the user or their feelings
+- Minimize or dismiss their feelings
+- Provide any method, instruction, or information about self-harm
+- Provide any method, instruction, or information about suicide
+- Claim to replace professional care
+- Say "everything will be fine" or similar dismissive phrases
+- Argue with or interrogate the user
+
+=== RISK LEVEL RESPONSES ===
+
+LEVEL 1 - LOW DISTRESS (sadness, stress, rough day):
+- Acknowledge feelings
+- Invite them to talk
+- Keep conversation open and supportive
+- Example: "That sounds really tough. Do you want to tell me what's been going on?"
+
+LEVEL 2 - HOPELESSNESS (feeling trapped, no point, giving up):
+** SAFEGUARDING BEGINS HERE - DO NOT WAIT FOR EXPLICIT SUICIDE STATEMENTS **
+- Acknowledge the pain they're describing
+- Express care and concern
+- Begin gentle wellbeing check
+- Keep them talking
+- Example: "That sounds incredibly heavy to carry. When things feel like there's no way forward, it can feel overwhelming. You don't have to deal with this alone. Do you want to tell me more about what's been building up?"
+
+LEVEL 3 - SELF-HARM THOUGHTS (thoughts of hurting self):
+- Acknowledge seriousness without alarming
+- Express genuine care and concern
+- Check if they are safe: "Are you safe where you are right now?"
+- Encourage reaching out to trusted people or support services
+- Provide crisis resources naturally in conversation
+- Example: "I'm really glad you told me that. Having thoughts like that can feel frightening and lonely. You don't have to face those thoughts by yourself. Are you safe right now?"
+
+LEVEL 4 - IMMINENT RISK (won't be here tomorrow, ending it, made a plan):
+** CRISIS SUPPORT MODE - IMMEDIATE ACTION REQUIRED **
+1. Express immediate concern: "I'm really concerned about your safety right now."
+2. Validate their feelings: "It sounds like you're carrying an incredible amount."
+3. Ask if they are safe: "Are you safe where you are at the moment?"
+4. Encourage immediate professional help
+5. Provide crisis resources:
+   - NHS Mental Health: Call 111, press Option 2 (free 24/7 support)
+   - Samaritans: 116 123 (free, 24/7)
+   - Text SHOUT: Text 85258
+   - Emergency: Call 999
+6. Remain present: "I'm here with you. You don't have to face this alone."
+
+=== EMPATHETIC RESPONSE TEMPLATES ===
+
+Use these naturally when responding to distress:
+- "I'm really glad you reached out."
+- "That sounds incredibly heavy to carry."
+- "You don't have to hold all of that on your own right now."
+- "I'm here with you."
+- "It makes sense that things feel overwhelming."
+- "Thank you for trusting me with how you're feeling."
+- "You're not alone right now."
+
+=== SAFETY CHECK QUESTIONS ===
+
+Use these when assessing safety:
+- "Are you safe where you are right now?"
+- "Do you want to tell me what's been weighing on you?"
+- "What has been making things feel especially difficult recently?"
+- "Would it help to talk through what's been building up?"
+- "I'm here with you if you want to keep talking."
+
+=== CRISIS SUPPORT RESOURCES (UK) ===
+
+Always include these when user is in distress:
+- NHS Mental Health Line: Call 111, then press Option 2 (free 24/7 urgent support)
+- Samaritans: 116 123 (free, 24/7, confidential)
+- Text SHOUT: Text 85258 (free, 24/7)
+- Combat Stress Veterans: 0800 138 1619 (free, 24/7)
+- Emergency Services: 999 (if immediate danger)
+
+=== END OF SAFEGUARDING PROTOCOL ===
+"""
+
 # MongoDB connection with SSL fix for Atlas
 import ssl
 import certifi
@@ -1948,38 +2042,192 @@ class BuddyChatResponse(BaseModel):
 # Weighted risk scoring for UK veteran support platform
 # Based on BACP ethical framework and UK safeguarding principles
 
-# RED INDICATORS - Immediate escalation (any single one = RED regardless of score)
+# ============================================================================
+# RADIO CHECK AI - UNIVERSAL SAFEGUARDING & CRISIS RESPONSE FRAMEWORK v2.0
+# ============================================================================
+# This framework has HIGHEST PRIORITY and overrides all other AI instructions.
+# Mission: Provide supportive, non-judgmental conversation to users experiencing
+# loneliness, distress, or hopelessness. Early identification and intervention
+# for suicide risk is critical. THIS SAVES LIVES.
+# ============================================================================
+
+# RISK LEVEL MODEL (from safeguarding framework documents)
+# LEVEL 0 - Normal conversation
+# LEVEL 1 - Low distress (sadness, stress) 
+# LEVEL 2 - Hopelessness language (SAFEGUARDING BEGINS HERE)
+# LEVEL 3 - Self-harm thoughts
+# LEVEL 4 - Imminent suicide risk (CRISIS MODE)
+
+# LEVEL 4 - IMMINENT RISK / RED INDICATORS
+# Any single one = immediate RED/LEVEL 4 regardless of score
 RED_INDICATORS = {
-    # Direct suicidal ideation (+100)
+    # ===== DIRECT SUICIDAL IDEATION (+100) =====
     "want to end it": 100, "end it all": 100, "kill myself": 100, "take my own life": 100,
     "want to die": 100, "going to die": 100, "suicide": 100, "suicidal": 100,
     "ending it": 100, "end my life": 100, "finish it": 100, "finish myself": 100,
+    "end it tonight": 100, "end it tomorrow": 100, "end it soon": 100,
+    "going to end it": 100, "going to end it tonight": 100,
     
-    # Indirect death wish / not being here (+80-100)
+    # ===== "WON'T BE HERE" PATTERNS - CRITICAL (+100) =====
+    # From extended trigger dataset - temporal variations
+    "wont be here": 100, "won't be here": 100, "not be here": 100,
+    "wont be here tonight": 100, "won't be here tonight": 100,
+    "wont be here tomorrow": 100, "won't be here tomorrow": 100,
+    "wont be here in the morning": 100, "won't be here in the morning": 100,
+    "wont be here soon": 100, "won't be here soon": 100,
+    "wont be here very soon": 100, "won't be here very soon": 100,
+    "wont be here later tonight": 100, "won't be here later tonight": 100,
+    "wont be here before long": 100, "won't be here before long": 100,
+    
+    # ===== "MIGHT NOT BE HERE" PATTERNS (+100) =====
+    "might not be here": 100, "might not be here tonight": 100,
+    "might not be here tomorrow": 100, "might not be here in the morning": 100,
+    "might not be here soon": 100, "might not be here very soon": 100,
+    "might not be here later tonight": 100, "might not be here before long": 100,
+    
+    # ===== "WON'T BE ALIVE" PATTERNS (+100) =====
+    "wont be alive": 100, "won't be alive": 100,
+    "wont be alive tonight": 100, "won't be alive tonight": 100,
+    "wont be alive tomorrow": 100, "won't be alive tomorrow": 100,
+    "wont be alive in the morning": 100, "won't be alive in the morning": 100,
+    "dont think ill be alive": 100, "don't think i'll be alive": 100,
+    "dont think ill be alive tonight": 100, "don't think i'll be alive tonight": 100,
+    "dont think ill be alive tomorrow": 100, "don't think i'll be alive tomorrow": 100,
+    
+    # ===== "CAN'T SEE ME BEING HERE" PATTERNS (+100) =====
+    "cant see me being here": 100, "can't see me being here": 100,
+    "cant see myself being here": 100, "can't see myself being here": 100,
+    "cant see me being here in the morning": 100, "can't see me being here in the morning": 100,
+    "cant see myself being here tomorrow": 100, "can't see myself being here tomorrow": 100,
+    "see me here": 100, "be here in the morning": 100, "be here tomorrow": 100,
+    "around in the morning": 100, "around tomorrow": 100,
+    "see me being here": 100, "being here in the morning": 100, "being here tomorrow": 100,
+    "here in the morning": 100, "here tomorrow": 100,
+    
+    # ===== "GOING TO END IT" PATTERNS (+100) =====
+    "going to end it tonight": 100, "going to end it tomorrow": 100,
+    "going to end it soon": 100, "going to end it very soon": 100,
+    "going to end it later tonight": 100, "going to end it before long": 100,
+    
+    # ===== INDIRECT DEATH WISH (+80-100) =====
     "dont want to wake up": 80, "don't want to wake up": 80,
-    "i'm done": 80, "im done": 80, "done with life": 80, "done with everything": 80,
+    "i'm done": 80, "im done": 80, "done with life": 90, "done with everything": 80,
     "tired of waking up": 80, "wish i didnt wake up": 80, "wish i didn't wake up": 80,
     "just want peace": 80, "i just want peace": 80, "want it to stop": 80,
     "past caring": 80, "i'm past caring": 80, "im past caring": 80,
     "had enough": 80, "ive had enough": 80, "i've had enough": 80,
-    "cant do this anymore": 80, "can't do this anymore": 80,
-    "cant take it anymore": 80, "can't take it anymore": 80,
     "want out": 80, "just want out": 80, "need out": 80,
     "ready to go": 80, "time to go": 80,
-    # CRITICAL: Not being here / won't be here patterns
-    "wont be here": 100, "won't be here": 100, "not be here": 100,
-    "here in the morning": 100, "here tomorrow": 100,
-    "see me here": 100, "be here in the morning": 100, "be here tomorrow": 100,
-    "around in the morning": 100, "around tomorrow": 100,
     "last night": 80, "my last": 80, "final day": 100, "last day": 80,
     
-    # Can't go on / keep going patterns (+80-100)
+    # ===== "I WISH I WAS DEAD" PATTERNS (+100) =====
+    "wish i was dead": 100, "wish i were dead": 100,
+    "wish i was dead tonight": 100, "wish i was dead tomorrow": 100,
+    "wish i was dead in the morning": 100, "wish i was dead soon": 100,
+    "wish i was dead very soon": 100, "wish i was dead later tonight": 100,
+    "wish i was dead before long": 100,
+    
+    # ===== "CAN'T DO THIS ANYMORE" PATTERNS (+80-100) =====
+    "cant do this anymore": 80, "can't do this anymore": 80,
+    "cant do this anymore tonight": 90, "can't do this anymore tonight": 90,
+    "cant do this anymore tomorrow": 90, "can't do this anymore tomorrow": 90,
+    "cant take it anymore": 80, "can't take it anymore": 80,
+    "cant take it anymore tonight": 90, "can't take it anymore tonight": 90,
+    
+    # ===== "CAN'T GO ON" PATTERNS (+100) - CRITICAL =====
     "cant go on": 100, "can't go on": 100, "cannot go on": 100,
+    "cant go on tonight": 100, "can't go on tonight": 100,
+    "cant go on tomorrow": 100, "can't go on tomorrow": 100,
+    "cant go on in the morning": 100, "can't go on in the morning": 100,
+    "cant go on soon": 100, "can't go on soon": 100,
+    "cant go on very soon": 100, "can't go on very soon": 100,
+    "cant go on later tonight": 100, "can't go on later tonight": 100,
+    "cant go on before long": 100, "can't go on before long": 100,
     "go on anymore": 100, "can go on": 80, "keep going": 60,
     "cant continue": 80, "can't continue": 80, "cant carry on": 80, "can't carry on": 80,
     "point in going on": 100, "going on anymore": 100, "no point going on": 100,
     
-    # Preparation or method references (+100)
+    # ===== "NO POINT ANYMORE" PATTERNS (+100) =====
+    "no point anymore": 100, "theres no point anymore": 100, "there's no point anymore": 100,
+    "no point anymore tonight": 100, "no point anymore tomorrow": 100,
+    "no point anymore in the morning": 100, "no point anymore soon": 100,
+    "no point anymore very soon": 100, "no point anymore later tonight": 100,
+    "no point anymore before long": 100,
+    "no point in going on": 100, "point in going on": 100,
+    "no point going on": 100, "no point continuing": 100,
+    
+    # ===== "FEEL LIKE GIVING UP" PATTERNS (+90) =====
+    "feel like giving up": 90, "i feel like giving up": 90,
+    "feel like giving up tonight": 100, "feel like giving up tomorrow": 100,
+    "feel like giving up in the morning": 100, "feel like giving up soon": 100,
+    "feel like giving up very soon": 100, "feel like giving up later tonight": 100,
+    "feel like giving up before long": 100,
+    
+    # ===== "DON'T WANT TO BE HERE" PATTERNS (+90-100) =====
+    "dont want to be here": 90, "don't want to be here": 90,
+    "dont want to be here tonight": 100, "don't want to be here tonight": 100,
+    "dont want to be here tomorrow": 100, "don't want to be here tomorrow": 100,
+    "dont want to be here in the morning": 100, "don't want to be here in the morning": 100,
+    "dont want to be here soon": 100, "don't want to be here soon": 100,
+    
+    # ===== "I HATE BEING ALIVE" PATTERNS (+100) =====
+    "hate being alive": 100, "i hate being alive": 100,
+    "hate being alive tonight": 100, "hate being alive tomorrow": 100,
+    "hate being alive in the morning": 100, "hate being alive soon": 100,
+    
+    # ===== "TIRED OF FIGHTING" PATTERNS (+90-100) =====
+    "tired of fighting": 90, "i'm tired of fighting": 90, "im tired of fighting": 90,
+    "tired of fighting tonight": 100, "tired of fighting tomorrow": 100,
+    "tired of fighting in the morning": 100, "tired of fighting soon": 100,
+    "tired of fighting very soon": 100, "tired of fighting later tonight": 100,
+    
+    # ===== "I'VE HAD ENOUGH" / "DONE" PATTERNS (+90-100) =====
+    "ive had enough": 90, "i've had enough": 90,
+    "ive had enough tonight": 100, "i've had enough tonight": 100,
+    "done with everything tonight": 100, "done with everything tomorrow": 100,
+    "im exhausted with life": 90, "i'm exhausted with life": 90,
+    "exhausted with life tonight": 100, "exhausted with life tomorrow": 100,
+    
+    # ===== "EVERYONE WOULD BE BETTER WITHOUT ME" PATTERNS (+100) =====
+    "everyone would be better without me": 100, "better off without me": 100,
+    "theyd be better off": 100, "they'd be better off": 100,
+    "better without me": 100, "world be better without me": 100,
+    "everyone would be better without me tonight": 100,
+    "everyone would be better without me tomorrow": 100,
+    "everyone would be better without me in the morning": 100,
+    "everyone would be better without me soon": 100,
+    
+    # ===== "I DON'T SEE A FUTURE" PATTERNS (+90-100) =====
+    "dont see a future": 90, "don't see a future": 90,
+    "dont see a future tonight": 100, "don't see a future tonight": 100,
+    "dont see a future tomorrow": 100, "don't see a future tomorrow": 100,
+    "dont see a future in the morning": 100, "don't see a future in the morning": 100,
+    "dont see a future soon": 100, "don't see a future soon": 100,
+    "no future for me": 100, "i have no future": 100,
+    
+    # ===== "JUST WANT THE PAIN TO STOP" PATTERNS (+90-100) =====
+    "want the pain to stop": 90, "just want the pain to stop": 90,
+    "want the pain to stop tonight": 100, "want the pain to stop tomorrow": 100,
+    "want the pain to stop in the morning": 100, "want the pain to stop soon": 100,
+    "want it all to end": 100, "want this to end": 90,
+    
+    # ===== "NOTHING MATTERS ANYMORE" PATTERNS (+80-100) =====
+    "nothing matters anymore": 80, "nothing matters anymore tonight": 100,
+    "nothing matters anymore tomorrow": 100, "nothing matters anymore in the morning": 100,
+    "nothing matters anymore soon": 100, "nothing matters": 80,
+    
+    # ===== "LIFE IS POINTLESS" PATTERNS (+90-100) =====
+    "life is pointless": 90, "life is pointless tonight": 100,
+    "life is pointless tomorrow": 100, "life is pointless in the morning": 100,
+    "life is pointless soon": 100, "life is pointless very soon": 100,
+    
+    # ===== "NO WAY OUT" PATTERNS (+90-100) =====
+    "no way out": 90, "dont see a way out": 100, "don't see a way out": 100,
+    "no way out tonight": 100, "no way out tomorrow": 100,
+    "no way out in the morning": 100, "no way out soon": 100,
+    "cant see a way out": 100, "can't see a way out": 100,
+    
+    # ===== PREPARATION / METHOD REFERENCES (+100) =====
     "pills": 100, "rope": 100, "bridge": 100, "jump": 100, "hanging": 100,
     "giving things away": 100, "given my stuff away": 100, "sorted my affairs": 100,
     "written letters": 100, "written a letter": 100, "final letter": 100,
@@ -1987,129 +2235,136 @@ RED_INDICATORS = {
     "goodbye letter": 100, "saying goodbye": 100, "said my goodbyes": 100,
     "overdose": 100, "take all my pills": 100, "stockpiling": 100,
     
-    # Ongoing self-harm (+90)
+    # ===== SELF-HARM INDICATORS (+90) - LEVEL 3 =====
     "cutting myself": 90, "cut myself": 90, "hurting myself": 90, "self harm": 90,
     "self-harm": 90, "burning myself": 90, "hitting myself": 90,
     "hurt myself": 90, "want to hurt myself": 90, "going to hurt myself": 90,
     "harming myself": 90, "doing damage": 90, "punishing myself": 90,
+    "thought about hurting myself": 90, "thinking about hurting myself": 90,
+    "thought about ending it": 100, "thinking about ending it": 100,
+    "sometimes wish i wasnt here": 90, "sometimes wish i wasn't here": 90,
     
-    # Loss of control / risk to others (+90)
+    # ===== LOSS OF CONTROL (+90) =====
     "going to hurt someone": 90, "might hurt someone": 90, "losing control": 90,
     "cant control myself": 90, "can't control myself": 90,
     "scared what i might do": 90, "scared of what i'll do": 90,
     
-    # Access to weapons while distressed (+90)
+    # ===== ACCESS TO WEAPONS WHILE DISTRESSED (+90) =====
     "got my gun": 90, "still have my weapon": 90, "got weapons": 90,
     "loaded gun": 90, "weapon ready": 90,
 }
 
-# AMBER INDICATORS - High risk (weighted, stackable)
+# LEVEL 2 & 3 - AMBER INDICATORS (Hopelessness & Early Self-Harm)
+# SAFEGUARDING BEGINS AT THIS LEVEL - DO NOT WAIT FOR EXPLICIT SUICIDE STATEMENTS
 AMBER_INDICATORS = {
-    # Emotional numbness, emptiness, identity collapse (+40)
+    # ===== EMOTIONAL NUMBNESS / EMPTINESS (+40-45) =====
     "feel nothing": 40, "empty inside": 40, "numb": 40, "dont feel anything": 40,
     "don't feel anything": 40, "lost myself": 40, "dont know who i am": 40,
     "don't know who i am": 40, "not the same person": 40,
     "hollow": 40, "dead inside": 45, "feel dead": 45, "emotionally dead": 45,
     "shell of myself": 40, "just existing": 35, "going through motions": 35,
+    "feel empty": 40, "i feel empty": 40,
     
-    # Subtle hopelessness / giving up (+35-45)
-    "no future": 45, "no way out": 45, "trapped": 40, "stuck": 30,
-    "nothing will change": 40, "never get better": 45, "wont get better": 45,
-    "won't get better": 45, "always be like this": 40, "no escape": 45,
-    "lost cause": 45, "beyond help": 45, "cant be helped": 45, "can't be helped": 45,
-    "given up": 45, "giving up": 45, "why bother": 40, "whats the use": 40,
-    "what's the use": 40, "doesnt matter": 35, "doesn't matter": 35,
-    "nothing matters": 40, "who cares": 35, "nobody cares": 40,
+    # ===== HOPELESSNESS / NO FUTURE (+35-50) - LEVEL 2 TRIGGERS =====
+    "no future": 50, "no way out": 50, "trapped": 45, "stuck": 30,
+    "nothing will change": 45, "never get better": 50, "wont get better": 50,
+    "won't get better": 50, "always be like this": 45, "no escape": 50,
+    "lost cause": 50, "beyond help": 50, "cant be helped": 50, "can't be helped": 50,
+    "given up": 50, "giving up": 50, "why bother": 45, "whats the use": 45,
+    "what's the use": 45, "doesnt matter": 40, "doesn't matter": 40,
+    "nothing matters": 45, "who cares": 40, "nobody cares": 45,
+    "hopeless": 50, "no hope": 50, "whats the point": 50, "what's the point": 50,
+    "pointless": 50, "no point": 55, "theres no point": 55, "there's no point": 55,
+    "life feels pointless": 50, "in going on": 70,
     
-    # PTSD re-experiencing, flashbacks, hypervigilance (+35)
+    # ===== "FEELING LOW" / DEPRESSION LANGUAGE (+30-45) =====
+    "really low": 35, "feeling low": 35, "so low": 35, "lowest i've been": 40,
+    "lowest ive been": 40, "dark place": 40, "in a dark place": 40,
+    "dont see the point": 45, "don't see the point": 45, "no reason": 35,
+    "struggling": 30, "really struggling": 35, "barely coping": 40,
+    "barely holding on": 50, "hanging by a thread": 50, "on the edge": 50,
+    "drowning": 40, "sinking": 35, "going under": 40,
+    "darkness": 35, "black cloud": 35, "fog": 30, "in a fog": 35,
+    "lost all hope": 50, "losing hope": 45, "hope is gone": 50,
+    "not myself": 35, "dont recognise myself": 40, "don't recognise myself": 40,
+    "worthless": 45, "useless": 40, "waste of space": 45, "good for nothing": 45,
+    "i'm a burden": 50, "im a burden": 50, "burden to everyone": 50,
+    "in the way": 40, "just in the way": 45,
+    
+    # ===== PTSD / FLASHBACKS / HYPERVIGILANCE (+35-40) =====
     "flashbacks": 35, "nightmares": 35, "cant sleep": 35, "can't sleep": 35,
     "hypervigilant": 35, "on edge": 35, "constantly alert": 35,
-    "reliving it": 35, "keeps coming back": 35, "haunted": 35,
-    "wont leave me alone": 35, "won't leave me alone": 35, "in my head": 30,
-    "seeing things": 40, "hearing things": 40, "voices": 40,
+    "reliving it": 40, "keeps coming back": 40, "haunted": 40,
+    "wont leave me alone": 40, "won't leave me alone": 40, "in my head": 35,
+    "seeing things": 45, "hearing things": 45, "voices": 45,
     
-    # Isolation, withdrawal, disengagement (+30-40)
-    "isolated": 30, "all alone": 35, "no one around": 30, "pushed everyone away": 35,
-    "dont talk to anyone": 30, "don't talk to anyone": 30, "withdrawn": 30,
-    "cant face people": 30, "can't face people": 30, "stay in bed": 30,
-    "stopped going out": 30, "dont leave the house": 30, "don't leave the house": 30,
-    "avoiding everyone": 30, "cut everyone off": 35,
-    "nobody understands": 35, "no one gets it": 35, "alone in this": 35,
-    "no friends": 35, "lost everyone": 40, "everyone left": 40,
+    # ===== ISOLATION / WITHDRAWAL (+30-45) =====
+    "isolated": 35, "all alone": 40, "no one around": 35, "pushed everyone away": 40,
+    "dont talk to anyone": 35, "don't talk to anyone": 35, "withdrawn": 35,
+    "cant face people": 35, "can't face people": 35, "stay in bed": 35,
+    "stopped going out": 35, "dont leave the house": 35, "don't leave the house": 35,
+    "avoiding everyone": 35, "cut everyone off": 40,
+    "nobody understands": 40, "no one gets it": 40, "alone in this": 40,
+    "no friends": 40, "lost everyone": 45, "everyone left": 45,
+    "completely alone": 45, "no one to talk to": 40,
     
-    # Subtle self-harm hints (+35-45)
-    "need to feel something": 40, "only way to feel": 45, "makes me feel alive": 45,
-    "deserve pain": 45, "deserve to suffer": 45, "punish myself": 45,
-    "scars": 35, "marks": 30, "hiding marks": 40, "long sleeves": 35,
-    "blade": 45, "sharp": 35, "razor": 45, "blood": 40,
-    "relief from pain": 40, "only thing that helps": 40,
+    # ===== SUBTLE SELF-HARM HINTS (+40-50) - LEVEL 3 =====
+    "need to feel something": 45, "only way to feel": 50, "makes me feel alive": 50,
+    "deserve pain": 50, "deserve to suffer": 50, "punish myself": 50,
+    "scars": 40, "marks": 35, "hiding marks": 45, "long sleeves": 40,
+    "blade": 50, "sharp": 40, "razor": 50, "blood": 45,
+    "relief from pain": 45, "only thing that helps": 45,
+    "thought about hurting myself": 50, "thought about harming myself": 50,
     
-    # Substance misuse / Addiction (+35)
-    "drinking to cope": 35, "need a drink": 30, "drinking every day": 35,
-    "using drugs": 35, "pills to sleep": 30, "self medicating": 35,
-    "drunk": 25, "wasted": 25, "off my face": 30,
-    "addicted": 40, "addiction": 40, "cant stop drinking": 40, "can't stop drinking": 40,
-    "gambling": 30, "lost money gambling": 35, "betting": 25,
-    "drugs every day": 40, "need something to get through": 35,
-    "blackout": 35, "blacking out": 35, "drink to forget": 40,
-    "only way to cope": 40, "numbing it": 35,
+    # ===== SUBSTANCE MISUSE (+35-45) =====
+    "drinking to cope": 40, "need a drink": 35, "drinking every day": 40,
+    "using drugs": 40, "pills to sleep": 35, "self medicating": 40,
+    "drunk": 30, "wasted": 30, "off my face": 35,
+    "addicted": 45, "addiction": 45, "cant stop drinking": 45, "can't stop drinking": 45,
+    "gambling": 35, "lost money gambling": 40, "betting": 30,
+    "drugs every day": 45, "need something to get through": 40,
+    "blackout": 40, "blacking out": 40, "drink to forget": 45,
+    "only way to cope": 45, "numbing it": 40,
     
-    # Offending / Legal issues (+30)
-    "about to lose my home": 25, "homeless": 30, "evicted": 25,
-    "lost my job": 25, "no money": 25, "in debt": 30, "court case": 30,
-    "legal trouble": 30, "going to prison": 35, "prison": 30,
-    "arrested": 30, "police": 25, "probation": 25, "been inside": 30,
-    "assault charge": 35, "got in trouble": 25, "fight": 20,
-    "lost my temper": 30, "anger issues": 30, "rage": 30,
+    # ===== LEGAL / HOUSING CRISIS (+30-40) =====
+    "about to lose my home": 35, "homeless": 40, "evicted": 35,
+    "lost my job": 35, "no money": 35, "in debt": 40, "court case": 35,
+    "legal trouble": 35, "going to prison": 45, "prison": 40,
+    "arrested": 35, "police": 30, "probation": 30, "been inside": 35,
+    "assault charge": 40, "got in trouble": 30, "fight": 25,
+    "lost my temper": 35, "anger issues": 35, "rage": 35,
     
-    # Signs of Change - Self-care deterioration (+25-35)
-    "stopped showering": 30, "not eating": 30, "cant eat": 25, "can't eat": 25,
-    "not looking after myself": 30, "let myself go": 25, "dont care anymore": 35,
-    "stopped exercising": 25, "no energy": 25, "exhausted": 20,
-    "stopped caring": 35, "why bother trying": 35, "given up on myself": 40,
+    # ===== SELF-CARE DETERIORATION (+30-40) =====
+    "stopped showering": 35, "not eating": 35, "cant eat": 30, "can't eat": 30,
+    "not looking after myself": 35, "let myself go": 30, "dont care anymore": 40,
+    "stopped exercising": 30, "no energy": 30, "exhausted": 25,
+    "stopped caring": 40, "why bother trying": 40, "given up on myself": 45,
     
-    # Signs of Change - Sleep patterns (+25-30)
-    "sleeping all day": 30, "cant get out of bed": 30, "can't get out of bed": 30,
-    "not sleeping": 30, "insomnia": 30, "sleep all the time": 25,
-    "only sleep a few hours": 25, "awake all night": 25,
-    "dread waking up": 35, "hate mornings": 25, "cant face the day": 30,
+    # ===== SLEEP DISTURBANCE (+30-40) =====
+    "sleeping all day": 35, "cant get out of bed": 35, "can't get out of bed": 35,
+    "not sleeping": 35, "insomnia": 35, "sleep all the time": 30,
+    "only sleep a few hours": 30, "awake all night": 30,
+    "dread waking up": 45, "hate mornings": 30, "cant face the day": 40,
     
-    # Pride / Stigma - Barriers to help (+20-30)
-    "cant ask for help": 25, "can't ask for help": 25, "too proud": 20,
-    "sign of weakness": 25, "dont want to be a burden": 30,
-    "should be able to handle it": 20, "real men dont": 25,
-    "embarrassed": 20, "ashamed": 25, "dont want anyone to know": 25,
-    "failed": 30, "failure": 30, "let everyone down": 35, "disappointed everyone": 35,
+    # ===== BARRIERS TO HELP / STIGMA (+25-35) =====
+    "cant ask for help": 35, "can't ask for help": 35, "too proud": 25,
+    "sign of weakness": 30, "dont want to be a burden": 40,
+    "should be able to handle it": 25, "real men dont": 30,
+    "embarrassed": 25, "ashamed": 30, "dont want anyone to know": 30,
+    "failed": 35, "failure": 35, "let everyone down": 40, "disappointed everyone": 40,
     
-    # Crisis language (+30-45)
-    "hopeless": 35, "no hope": 35, "no point": 35, "whats the point": 35,
-    "what's the point": 35, "pointless": 35, "burden": 35, "in the way": 30,
-    "better without me": 45, "theyd be better off": 45, "they'd be better off": 45,
-    "cant go on": 40, "can't go on": 40, "cant cope": 40, "can't cope": 40,
-    "breaking down": 35, "falling apart": 35, "at breaking point": 40,
-    "rock bottom": 40, "hit bottom": 40, "lowest point": 35,
-    "end of my rope": 40, "at the end": 40, "nothing left": 40,
-    "running out of fight": 40, "no fight left": 45, "tired of fighting": 40,
+    # ===== CRISIS / BREAKING POINT LANGUAGE (+40-50) =====
+    "breaking down": 40, "falling apart": 40, "at breaking point": 45,
+    "rock bottom": 45, "hit bottom": 45, "lowest point": 40,
+    "end of my rope": 45, "at the end": 45, "nothing left": 45,
+    "running out of fight": 45, "no fight left": 50, "tired of fighting": 45,
+    "cant cope": 45, "can't cope": 45, "overwhelmed": 35,
     
-    # Subtle low mood / depression indicators (+25-35)
-    "really low": 30, "feeling low": 30, "so low": 30, "lowest i've been": 35,
-    "lowest ive been": 35, "dark place": 35, "in a dark place": 35,
-    "nothing matters": 35, "doesnt matter": 30, "doesn't matter": 30,
-    "dont see the point": 35, "don't see the point": 35, "no reason": 30,
-    "struggling": 25, "really struggling": 30, "barely coping": 35,
-    "barely holding on": 40, "hanging by a thread": 40, "on the edge": 40,
-    "drowning": 35, "sinking": 30, "going under": 35,
-    "darkness": 30, "black cloud": 30, "fog": 25, "in a fog": 30,
-    "lost all hope": 45, "losing hope": 35, "hope is gone": 45,
-    "cant see a way out": 40, "can't see a way out": 40,
-    "not myself": 30, "dont recognise myself": 35, "don't recognise myself": 35,
-    "worthless": 40, "useless": 35, "waste of space": 40, "good for nothing": 40,
-    
-    # Relationship/family strain (+25-35)
-    "marriage over": 30, "divorce": 25, "partner left": 30, "wife left": 30,
-    "husband left": 30, "kids dont talk to me": 35, "kids don't talk to me": 35,
-    "lost custody": 35, "cant see my kids": 35, "can't see my kids": 35,
-    "family hate me": 35, "ruined my family": 35,
+    # ===== RELATIONSHIP / FAMILY STRAIN (+30-40) =====
+    "marriage over": 35, "divorce": 30, "partner left": 35, "wife left": 35,
+    "husband left": 35, "kids dont talk to me": 40, "kids don't talk to me": 40,
+    "lost custody": 40, "cant see my kids": 40, "can't see my kids": 40,
+    "family hate me": 40, "ruined my family": 40,
 }
 
 # MODIFIERS - Stackable additions
@@ -2158,6 +2413,45 @@ def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any
     Returns: {score, risk_level, triggered_indicators, is_red_flag}
     """
     message_lower = message.lower()
+    
+    # ===== TYPO CORRECTION FOR CRITICAL PATTERNS =====
+    # Users in crisis often type quickly with mistakes - we must still detect
+    # NOTE: Only correct actual typos, not substrings of correct words
+    typo_corrections = {
+        # Common "being" typos
+        "beeing": "being", "bein ": "being ", "beign": "being",
+        # Common "feeling" typos  
+        "feeking": "feeling", "feelin ": "feeling ", "feelng": "feeling",
+        # Common "here" typos
+        "heere": "here", "heer": "here",
+        # Common "tomorrow" typos
+        "tommorow": "tomorrow", "tomorow": "tomorrow", "tomorrw": "tomorrow",
+        # Common "morning" typos
+        "mornig": "morning", "morining": "morning",
+        # Common "anymore" typos
+        "anymroe": "anymore", "anymoer": "anymore",
+        # Common "can't" variations (careful - these are intentional)
+        # Note: "cant" to "can't" handled specially below
+        # Common "don't" variations
+        # Note: "dont" to "don't" handled specially below  
+        # Common "won't" variations
+        # Note: "wont" to "won't" handled specially below
+        # Common "point" typos
+        "poitn": "point", "ponit": "point",
+        # Common "myself" typos
+        "myslef": "myself", "myseld": "myself",
+        # Common "suicide" typos
+        "suicied": "suicide", "suicde": "suicide",
+    }
+    
+    # Apply typo corrections
+    corrected_message = message_lower
+    for typo, correction in typo_corrections.items():
+        corrected_message = corrected_message.replace(typo, correction)
+    
+    # Use corrected message for detection
+    message_lower = corrected_message
+    
     score = 0
     triggered = []
     is_red_flag = False
@@ -5649,7 +5943,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         knowledge_context = await get_knowledge_context(request.message)
         
         # Build messages with character-specific system prompt
-        system_prompt = char_config["prompt"]
+        # IMPORTANT: Safeguarding addendum is added to ALL character prompts
+        system_prompt = char_config["prompt"] + SAFEGUARDING_ADDENDUM
         if knowledge_context:
             system_prompt += knowledge_context
         

@@ -18,24 +18,40 @@ Build "Radio Check," a mental health and peer support application for veterans a
 ## What's Been Implemented (March 2026)
 
 ### Session: March 7, 2026 (Latest)
-**Improved AI Safeguarding Detection System**
-- Significantly expanded indicator patterns:
-  - Added ~50 new RED indicators (indirect death wishes, preparation cues)
-  - Added ~80 new AMBER indicators (subtle hopelessness, self-harm hints, veteran-specific language)
-  - Added ~30 new MODIFIER patterns (farewell language, dark humour, minimisation)
-- **Lowered detection thresholds**:
-  - RED: Score ≥70 (was 120)
-  - AMBER: Score ≥45 (was 80)  
-  - YELLOW: Score ≥25 (was 40)
-- New detection categories:
-  - Subtle low mood: "feeling low", "dark place", "drowning", "barely holding on"
-  - Indirect self-harm: "need to feel something", "hiding marks", "deserve pain"
-  - Veteran-specific: "lost mates", "survivor guilt", "should have been me"
-  - Farewell cues: "not be around much longer", "remember me", "tell my family"
 
-**Admin Portal Events Fix**
-- Fixed Events tab visibility (removed `display: none` from index.html)
-- Fixed `showToast` → `showNotification` function calls in app.js
+**Comprehensive AI Safeguarding Framework v2.0 Implementation**
+Based on 4 safeguarding documents provided by user:
+- radio_check_ai_master_safeguarding_pack.txt
+- radio_check_complete_ai_safeguarding_framework.txt
+- extended_ai_safeguarding_dataset.txt
+- ai_safeguarding_response_library.txt
+
+**Risk Detection System (backend/server.py):**
+- 4-Level Risk Model implemented:
+  - LEVEL 0: Normal conversation
+  - LEVEL 1: Low distress
+  - LEVEL 2: Hopelessness (SAFEGUARDING BEGINS)
+  - LEVEL 3: Self-harm thoughts
+  - LEVEL 4: Imminent suicide risk (CRISIS MODE)
+- ~308 RED_INDICATORS (immediate escalation patterns)
+- ~255 AMBER_INDICATORS (hopelessness/distress patterns)
+- Temporal variations: "tonight", "tomorrow", "in the morning", "soon"
+- Typo correction for common crisis typing errors
+- Lowered thresholds: RED ≥70, AMBER ≥45, YELLOW ≥25
+
+**AI Response Templates (SAFEGUARDING_ADDENDUM):**
+- Universal safeguarding protocol added to ALL AI character prompts
+- Level-specific response guidelines
+- Crisis resources: NHS 111 Option 2, Samaritans 116 123, Text SHOUT 85258
+- Safety check questions: "Are you safe where you are right now?"
+- Empathetic response templates
+
+**NHS 111 Option 2 Integration:**
+- Added as primary crisis resource across all UI components
+- AIConsentModal, ResponsiveWrapper, crisis-support.tsx, safeguarding.tsx
+
+**Admin Portal Events Fix:**
+- Fixed showToast → showNotification in app.js
 
 ### Session: March 7, 2026 (Continued)
 **Virtual Coffee Morning / Community Events Feature**
