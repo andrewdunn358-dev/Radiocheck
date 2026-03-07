@@ -1955,7 +1955,7 @@ RED_INDICATORS = {
     "want to die": 100, "going to die": 100, "suicide": 100, "suicidal": 100,
     "ending it": 100, "end my life": 100, "finish it": 100, "finish myself": 100,
     
-    # Indirect death wish (+80)
+    # Indirect death wish / not being here (+80-100)
     "dont want to wake up": 80, "don't want to wake up": 80,
     "i'm done": 80, "im done": 80, "done with life": 80, "done with everything": 80,
     "tired of waking up": 80, "wish i didnt wake up": 80, "wish i didn't wake up": 80,
@@ -1966,6 +1966,18 @@ RED_INDICATORS = {
     "cant take it anymore": 80, "can't take it anymore": 80,
     "want out": 80, "just want out": 80, "need out": 80,
     "ready to go": 80, "time to go": 80,
+    # CRITICAL: Not being here / won't be here patterns
+    "wont be here": 100, "won't be here": 100, "not be here": 100,
+    "here in the morning": 100, "here tomorrow": 100,
+    "see me here": 100, "be here in the morning": 100, "be here tomorrow": 100,
+    "around in the morning": 100, "around tomorrow": 100,
+    "last night": 80, "my last": 80, "final day": 100, "last day": 80,
+    
+    # Can't go on / keep going patterns (+80-100)
+    "cant go on": 100, "can't go on": 100, "cannot go on": 100,
+    "go on anymore": 100, "can go on": 80, "keep going": 60,
+    "cant continue": 80, "can't continue": 80, "cant carry on": 80, "can't carry on": 80,
+    "point in going on": 100, "going on anymore": 100, "no point going on": 100,
     
     # Preparation or method references (+100)
     "pills": 100, "rope": 100, "bridge": 100, "jump": 100, "hanging": 100,
