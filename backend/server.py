@@ -6993,7 +6993,7 @@ from routers import (
     callbacks, live_chat, notes, concerns,
     message_queue, ai_feedback, knowledge_base, compliance,
     podcasts, data_retention, shift_swaps, documents, surveys,
-    twilio_calling
+    twilio_calling, events
 )
 
 # Core functionality routers
@@ -7021,6 +7021,10 @@ app.include_router(surveys.router, prefix="/api")
 app.include_router(data_retention.router)
 app.include_router(shift_swaps.router, prefix="/api")
 app.include_router(twilio_calling.router)  # Twilio browser-to-phone calling
+
+# Community Events routes (virtual coffee mornings, etc.)
+events.set_db(db)
+app.include_router(events.router, prefix="/api")
 
 # Clinical Safety Governance routes
 set_governance_db(db)

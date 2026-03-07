@@ -7951,3 +7951,316 @@ function closeSpecificModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.remove();
 }
+
+
+
+// ============================================
+// EVENTS MANAGEMENT (Virtual Coffee Mornings)
+// ============================================
+
+// Load Events - called when events tab is shown
+async function loadEvents() {
+    const statusFilter = document.getElementById('events-status-filter')?.value || '';
+    const includePast = document.getElementById('events-include-past')?.checked || false;
+    const eventsList = document.getElementById('events-list');
+    
+    if (!eventsList) return;
+    
+    eventsList.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Loading events...</p>';
+    
+    try {
+        let url = `${API_BASE_URL}/api/events/admin/all?include_past=${includePast}`;
+        if (statusFilter) url += `&status=${statusFilter}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to load events');
+        
+        const events = await response.json();
+        
+        if (events.length === 0) {
+            eventsList.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                    <i class="fas fa-calendar-times" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <p>No events found</p>
+                    <button class="btn btn-primary" onclick="showCreateEventModal()" style="margin-top: 15px;">
+                        <i class="fas fa-plus"></i> Create Your First Event
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        eventsList.innerHTML = events.map(event => renderEventCard(event)).join('');
+    } catch (error) {
+        console.error('Error loading events:', error);
+        eventsList.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ef4444;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 32px; margin-bottom: 10px;"></i>
+                <p>Failed to load events</p>
+                <button class="btn btn-secondary" onclick="loadEvents()" style="margin-top: 10px;">
+                    <i class="fas fa-redo"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Render a single event card
+function renderEventCard(event) {
+    const eventDate = new Date(event.event_date);
+    const now = new Date();
+    const isLive = event.status === 'live' || (event.status === 'scheduled' && eventDate <= now && new Date(eventDate.getTime() + event.duration_minutes * 60000) >= now);
+    const isPast = new Date(eventDate.getTime() + event.duration_minutes * 60000) < now;
+    
+    const statusBadge = {
+        'scheduled': '<span class="badge badge-info"><i class="fas fa-clock"></i> Scheduled</span>',
+        'live': '<span class="badge badge-success" style="animation: pulse 2s infinite;"><i class="fas fa-broadcast-tower"></i> LIVE</span>',
+        'ended': '<span class="badge badge-secondary"><i class="fas fa-check"></i> Ended</span>',
+        'cancelled': '<span class="badge badge-danger"><i class="fas fa-times"></i> Cancelled</span>',
+    };
+    
+    const status = isLive ? 'live' : (isPast ? 'ended' : event.status);
+    
+    return `
+        <div class="resource-card" style="border-left: 4px solid ${isLive ? '#22c55e' : status === 'cancelled' ? '#ef4444' : '#8b5cf6'};">
+            <div class="resource-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h3 style="margin: 0 0 8px 0; color: var(--text-primary);">
+                        <i class="fas fa-video" style="color: #8b5cf6; margin-right: 8px;"></i>
+                        ${escapeHtml(event.title)}
+                    </h3>
+                    ${statusBadge[status] || ''}
+                    ${event.recurring ? `<span class="badge badge-outline" style="margin-left: 5px;"><i class="fas fa-redo"></i> ${event.recurring}</span>` : ''}
+                </div>
+                <div class="resource-actions">
+                    ${event.status !== 'cancelled' && !isPast ? `
+                        <button class="btn btn-small btn-outline" onclick="editEvent('${event.id}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="cancelEvent('${event.id}')" title="Cancel">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-small btn-outline" onclick="viewEventAttendance('${event.id}')" title="View Attendance">
+                        <i class="fas fa-users"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="resource-body" style="margin-top: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; color: var(--text-secondary); font-size: 14px;">
+                    <div>
+                        <i class="fas fa-calendar" style="width: 20px; color: var(--text-muted);"></i>
+                        ${eventDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div>
+                        <i class="fas fa-clock" style="width: 20px; color: var(--text-muted);"></i>
+                        ${eventDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} (${event.duration_minutes} min)
+                    </div>
+                    <div>
+                        <i class="fas fa-user" style="width: 20px; color: var(--text-muted);"></i>
+                        Host: ${escapeHtml(event.host_name)}
+                    </div>
+                    <div>
+                        <i class="fas fa-users" style="width: 20px; color: var(--text-muted);"></i>
+                        ${event.participant_count} joined ${event.max_participants ? `/ ${event.max_participants} max` : ''}
+                    </div>
+                </div>
+                ${event.description ? `<p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">${escapeHtml(event.description)}</p>` : ''}
+                <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
+                    <i class="fas fa-link"></i> Room: <code style="background: var(--bg-dark); padding: 2px 6px; border-radius: 4px;">${escapeHtml(event.jitsi_room_name)}</code>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Show Create Event Modal
+function showCreateEventModal() {
+    document.getElementById('event-modal-title').innerHTML = '<i class="fas fa-video"></i> Create Event';
+    document.getElementById('event-submit-btn').innerHTML = '<i class="fas fa-save"></i> Create Event';
+    document.getElementById('event-form').reset();
+    document.getElementById('event-id').value = '';
+    
+    // Set default date to tomorrow at 10:00 AM
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    document.getElementById('event-date').value = tomorrow.toISOString().slice(0, 16);
+    
+    document.getElementById('event-modal').classList.remove('hidden');
+}
+
+// Close Event Modal
+function closeEventModal() {
+    document.getElementById('event-modal').classList.add('hidden');
+}
+
+// Edit Event
+async function editEvent(eventId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/events/${eventId}`);
+        if (!response.ok) throw new Error('Event not found');
+        
+        const event = await response.json();
+        
+        document.getElementById('event-modal-title').innerHTML = '<i class="fas fa-edit"></i> Edit Event';
+        document.getElementById('event-submit-btn').innerHTML = '<i class="fas fa-save"></i> Update Event';
+        document.getElementById('event-id').value = event.id;
+        document.getElementById('event-title').value = event.title;
+        document.getElementById('event-description').value = event.description || '';
+        document.getElementById('event-date').value = new Date(event.event_date).toISOString().slice(0, 16);
+        document.getElementById('event-duration').value = event.duration_minutes;
+        document.getElementById('event-host').value = event.host_name;
+        document.getElementById('event-max').value = event.max_participants || '';
+        document.getElementById('event-recurring').value = event.recurring || '';
+        document.getElementById('event-waiting-room').checked = event.waiting_room_enabled;
+        
+        document.getElementById('event-modal').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error loading event:', error);
+        alert('Failed to load event details');
+    }
+}
+
+// Handle Event Form Submit
+async function handleEventSubmit(e) {
+    e.preventDefault();
+    
+    const eventId = document.getElementById('event-id').value;
+    const isEdit = !!eventId;
+    
+    const eventData = {
+        title: document.getElementById('event-title').value,
+        description: document.getElementById('event-description').value || null,
+        event_date: new Date(document.getElementById('event-date').value).toISOString(),
+        duration_minutes: parseInt(document.getElementById('event-duration').value),
+        host_name: document.getElementById('event-host').value,
+        max_participants: document.getElementById('event-max').value ? parseInt(document.getElementById('event-max').value) : null,
+        recurring: document.getElementById('event-recurring').value || null,
+        waiting_room_enabled: document.getElementById('event-waiting-room').checked,
+        requires_moderation: true,
+    };
+    
+    try {
+        const url = isEdit 
+            ? `${API_BASE_URL}/api/events/admin/${eventId}`
+            : `${API_BASE_URL}/api/events/admin/create`;
+        
+        const response = await fetch(url, {
+            method: isEdit ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to save event');
+        }
+        
+        closeEventModal();
+        loadEvents();
+        showToast(isEdit ? 'Event updated successfully!' : 'Event created successfully!', 'success');
+    } catch (error) {
+        console.error('Error saving event:', error);
+        alert(error.message || 'Failed to save event');
+    }
+}
+
+// Cancel Event
+async function cancelEvent(eventId) {
+    if (!confirm('Are you sure you want to cancel this event? This cannot be undone.')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/events/admin/${eventId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) throw new Error('Failed to cancel event');
+        
+        loadEvents();
+        showToast('Event cancelled', 'info');
+    } catch (error) {
+        console.error('Error cancelling event:', error);
+        alert('Failed to cancel event');
+    }
+}
+
+// View Event Attendance
+async function viewEventAttendance(eventId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/events/admin/${eventId}/attendance`);
+        if (!response.ok) throw new Error('Failed to load attendance');
+        
+        const data = await response.json();
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'attendance-modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-users"></i> Event Attendance</h2>
+                    <button class="close-btn" onclick="closeSpecificModal('attendance-modal')">&times;</button>
+                </div>
+                <div style="padding: 20px;">
+                    <h3 style="margin-bottom: 15px; color: var(--text-primary);">${escapeHtml(data.title)}</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                        <i class="fas fa-calendar"></i> ${new Date(data.event_date).toLocaleString('en-GB')}
+                    </p>
+                    <div class="stat-card" style="margin-bottom: 20px;">
+                        <div class="stat-value">${data.total_participants}</div>
+                        <div class="stat-label">Total Participants</div>
+                    </div>
+                    ${data.attendance_log.length > 0 ? `
+                        <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Attendance Log</h4>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${data.attendance_log.map(log => `
+                                <div style="padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+                                    <span style="color: ${log.action === 'joined' ? '#22c55e' : '#94a3b8'};">
+                                        <i class="fas fa-${log.action === 'joined' ? 'sign-in-alt' : 'sign-out-alt'}"></i>
+                                        ${log.display_name || log.user_id}
+                                    </span>
+                                    <span style="color: var(--text-muted); float: right;">
+                                        ${new Date(log.joined_at || log.left_at).toLocaleTimeString('en-GB')}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<p style="color: var(--text-muted);">No attendance data yet</p>'}
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeSpecificModal('attendance-modal')">Close</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        alert('Failed to load attendance data');
+    }
+}
+
+// Update switchTab to load events when events tab is selected
+const originalSwitchTabEvents = window.switchTab;
+window.switchTab = function(tabName) {
+    originalSwitchTabEvents(tabName);
+    if (tabName === 'events') {
+        loadEvents();
+    }
+};
+
+// Add CSS for pulse animation
+const eventStyles = document.createElement('style');
+eventStyles.textContent = `
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    .badge-outline {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+`;
+document.head.appendChild(eventStyles);

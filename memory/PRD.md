@@ -17,7 +17,29 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
-### Session: March 7, 2026
+### Session: March 7, 2026 (Continued)
+**Virtual Coffee Morning / Community Events Feature**
+- Created backend Events API (`backend/routers/events.py`):
+  - CRUD operations for events (create, read, update, delete)
+  - Join event endpoint with Jitsi room details
+  - Attendance tracking and logging
+  - Reminder system for upcoming events
+  - Recurring event support (weekly/monthly)
+- Created frontend EventsSection component (`frontend/src/components/EventsSection.tsx`):
+  - Shows upcoming events on home page (above AI Team section)
+  - Join Now button for live/upcoming events
+  - Remind Me button for future events
+  - Horizontal scrollable event cards
+- Created JitsiMeetComponent (`frontend/src/components/JitsiMeetComponent.tsx`):
+  - Embeds Jitsi Meet video conferencing
+  - Full-screen video call modal
+  - Moderator controls for staff
+- Added Events management to Admin Portal:
+  - New "Events" tab in admin navigation
+  - Create/Edit/Cancel events
+  - View attendance logs
+  - Event status filtering
+
 **Safari/iPhone/Android Onboarding Fixes**
 - Fixed Age Gate modal not working on iPhones - replaced HTML `<select>` with iOS-friendly FlatList pickers
 - Fixed cookie consent being cut off on Safari/small viewports - converted to compact inline banner
@@ -30,7 +52,13 @@ Build "Radio Check," a mental health and peer support application for veterans a
 Files changed:
 - `frontend/src/components/AgeGateModal.tsx` - iOS-friendly pickers, ScrollView, compact styles
 - `frontend/app/index.tsx` - Compact cookie banner, compact permissions modal
-- `frontend/app/home.tsx` - Added Age Gate modal fallback, fixed modal priority over survey
+- `frontend/app/home.tsx` - Added Age Gate modal fallback, fixed modal priority, added EventsSection
+- `backend/routers/events.py` - NEW: Events API
+- `backend/server.py` - Added events router
+- `frontend/src/components/EventsSection.tsx` - NEW: Events UI
+- `frontend/src/components/JitsiMeetComponent.tsx` - NEW: Jitsi embed
+- `admin-site/index.html` - Added Events tab and modals
+- `admin-site/app.js` - Added Events management functions
 
 ### Session: March 6, 2026
 **Location Permission on First Load**

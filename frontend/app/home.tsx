@@ -9,6 +9,7 @@ import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
 import { useAgeGateContext } from '../src/context/AgeGateContext';
 import AgeGateModal from '../src/components/AgeGateModal';
 import BetaSurvey from '../src/components/BetaSurvey';
+import EventsSection from '../src/components/EventsSection';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -331,6 +332,9 @@ export default function Index() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Community Events Section */}
+        <EventsSection />
 
         {/* Meet the AI Team Section */}
         <View style={styles.aiTeamSection}>

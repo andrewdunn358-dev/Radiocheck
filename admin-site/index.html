@@ -90,6 +90,9 @@
             <button class="tab-btn" data-tab="governance">
                 <i class="fas fa-balance-scale"></i> Governance
             </button>
+            <button class="tab-btn" data-tab="events">
+                <i class="fas fa-video"></i> Events
+            </button>
             <button class="tab-btn" data-tab="learning">
                 <i class="fas fa-brain"></i> AI Learning
             </button>
@@ -1625,6 +1628,41 @@
                 </div>
             </div>
 
+            <!-- Events Tab (Virtual Coffee Mornings) -->
+            <div id="events-tab" class="tab-content" style="display: none;">
+                <div class="tab-header">
+                    <h2><i class="fas fa-video"></i> Community Events</h2>
+                    <p style="color: var(--text-muted); margin-top: 5px;">Manage virtual coffee mornings and community meetups</p>
+                </div>
+                
+                <!-- Create Event Button -->
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="showCreateEventModal()">
+                        <i class="fas fa-plus"></i> Create New Event
+                    </button>
+                </div>
+
+                <!-- Events Filter -->
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+                    <select id="events-status-filter" onchange="loadEvents()" style="padding: 8px 12px; border-radius: 5px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary);">
+                        <option value="">All Events</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="live">Live Now</option>
+                        <option value="ended">Ended</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <label style="display: flex; align-items: center; gap: 5px; color: var(--text-secondary);">
+                        <input type="checkbox" id="events-include-past" onchange="loadEvents()">
+                        Include past events
+                    </label>
+                </div>
+
+                <!-- Events List -->
+                <div id="events-list" class="resource-list">
+                    <p style="color: var(--text-muted); text-align: center; padding: 40px;">Loading events...</p>
+                </div>
+            </div>
+
             <!-- AI Learning Tab -->
             <div id="learning-tab" class="tab-content">
                 <div class="tab-header">
@@ -2035,6 +2073,79 @@ Include:
                     <button type="button" class="btn btn-secondary" onclick="closePersonaModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="persona-submit-btn">
                         <i class="fas fa-save"></i> Save Persona
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Event Modal -->
+    <div id="event-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="event-modal-title"><i class="fas fa-video"></i> Create Event</h2>
+                <button class="close-btn" onclick="closeEventModal()">&times;</button>
+            </div>
+            <form id="event-form" onsubmit="handleEventSubmit(event)">
+                <input type="hidden" id="event-id" value="">
+                
+                <div class="form-group">
+                    <label for="event-title"><i class="fas fa-heading"></i> Event Title *</label>
+                    <input type="text" id="event-title" required placeholder="Friday Coffee Morning" style="width: 100%;">
+                </div>
+                
+                <div class="form-group">
+                    <label for="event-description"><i class="fas fa-align-left"></i> Description</label>
+                    <textarea id="event-description" rows="3" placeholder="Join us for a relaxed chat with fellow veterans..." style="width: 100%;"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="event-date"><i class="fas fa-calendar"></i> Date & Time *</label>
+                        <input type="datetime-local" id="event-date" required style="width: 100%;">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="event-duration"><i class="fas fa-clock"></i> Duration</label>
+                        <select id="event-duration" style="width: 100%; padding: 10px;">
+                            <option value="30">30 minutes</option>
+                            <option value="60" selected>1 hour</option>
+                            <option value="90">1.5 hours</option>
+                            <option value="120">2 hours</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="event-host"><i class="fas fa-user"></i> Host Name *</label>
+                        <input type="text" id="event-host" required placeholder="Sarah" style="width: 100%;">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="event-max"><i class="fas fa-users"></i> Max Participants</label>
+                        <input type="number" id="event-max" min="2" max="100" placeholder="No limit" style="width: 100%;">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="event-recurring"><i class="fas fa-redo"></i> Recurring</label>
+                    <select id="event-recurring" style="width: 100%; padding: 10px;">
+                        <option value="">One-time event</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); cursor: pointer;">
+                        <input type="checkbox" id="event-waiting-room" checked>
+                        <span>Waiting room (participants join holding area first)</span>
+                    </label>
+                </div>
+                
+                <div class="modal-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeEventModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="event-submit-btn">
+                        <i class="fas fa-save"></i> Create Event
                     </button>
                 </div>
             </form>
