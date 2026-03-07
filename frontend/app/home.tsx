@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../src/context/ThemeContext';
 import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
+import { useAgeGateContext } from '../src/context/AgeGateContext';
+import AgeGateModal from '../src/components/AgeGateModal';
 import BetaSurvey from '../src/components/BetaSurvey';
 
 // Enable LayoutAnimation for Android
@@ -72,6 +74,29 @@ export default function Index() {
   const [showAbout, setShowAbout] = useState(false);
   const [selectedMember, setSelectedMember] = useState<AITeamMember | null>(null);
   const [userId, setUserId] = useState<string>('');
+  
+  // Age gate context - show modal if not verified
+  const { isAgeVerified, isLoading: ageLoading, setDateOfBirth } = useAgeGateContext();
+  const [showAgeGateModal, setShowAgeGateModal] = useState(false);
+  
+  // Show age gate on home page if not verified (fallback for direct navigation)
+  // Age gate has highest priority - must be shown before survey or anything else
+  useEffect(() => {
+    if (!ageLoading && !isAgeVerified) {
+      setShowAgeGateModal(true);
+    } else {
+      setShowAgeGateModal(false);
+    }
+  }, [ageLoading, isAgeVerified]);
+  
+  // Handle age gate submission
+  const handleAgeSubmit = async (dob: Date) => {
+    await setDateOfBirth(dob);
+    setShowAgeGateModal(false);
+  };
+  
+  // BetaSurvey should only show AFTER age is verified
+  const canShowSurvey = isAgeVerified && !showAgeGateModal;
   
   // Generate or retrieve anonymous user ID for survey tracking
   useEffect(() => {
@@ -203,7 +228,7 @@ export default function Index() {
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       
       {/* Beta Survey - Only shows when enabled in admin */}
-      {userId && <BetaSurvey userId={userId} />}
+      {userId && canShowSurvey && <BetaSurvey userId={userId} />}
       
       <ScrollView 
         style={styles.container}
@@ -404,6 +429,13 @@ export default function Index() {
           <Text style={styles.staffLoginText}>Staff Portal Login</Text>
         </TouchableOpacity>
       </ScrollView>
+      
+      {/* Age Gate Modal - Shows if age not verified */}
+      <AgeGateModal
+        visible={showAgeGateModal}
+        onSubmit={handleAgeSubmit}
+        onSkip={() => setShowAgeGateModal(false)}
+      />
     </SafeAreaView>
   );
 }
