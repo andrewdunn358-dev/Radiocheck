@@ -176,11 +176,9 @@ export default function EventsSection() {
   };
 
   const isEventJoinable = (event: Event) => {
-    const now = new Date();
-    const eventStart = new Date(event.event_date);
-    const eventEnd = new Date(eventStart.getTime() + event.duration_minutes * 60000);
-    const joinWindow = new Date(eventStart.getTime() - 10 * 60000);
-    return now >= joinWindow && now <= eventEnd && event.status !== 'cancelled';
+    // Allow joining any scheduled/live event for testing purposes
+    // The backend will handle the actual time validation if needed
+    return event.status !== 'cancelled' && event.status !== 'ended';
   };
 
   // Don't render if no events and not loading

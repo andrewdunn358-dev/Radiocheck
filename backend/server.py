@@ -54,6 +54,7 @@ from governance_router import governance_router, set_db as set_governance_db
 from case_router import case_router, set_dependencies as set_case_dependencies
 from routers.ai_characters import router as ai_characters_router, set_dependencies as set_ai_char_dependencies
 from routers.learning_system import router as learning_router, set_db as set_learning_db
+from routers.lms import router as lms_router
 
 # ============ RATE LIMITING & BOT PROTECTION ============
 
@@ -6948,7 +6949,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://community-events-12.preview.emergentagent.com",
+        "https://wellness-connect-82.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],
@@ -7473,16 +7474,27 @@ app.include_router(ai_characters_router, prefix="/api")
 set_learning_db(db)
 app.include_router(learning_router)
 
+# LMS - Mental Health First Aid Training for Volunteers
+app.include_router(lms_router)
+
 # Serve static files for Staff Portal and Admin Site
 # This allows testing the portals from the preview environment
 PORTAL_PATH = Path(__file__).parent.parent / "staff-portal"
 ADMIN_PATH = Path(__file__).parent.parent / "admin-site"
+LMS_ADMIN_PATH = Path(__file__).parent.parent / "lms-admin"
+LMS_LEARNER_PATH = Path(__file__).parent.parent / "lms-learner"
 
 if PORTAL_PATH.exists():
     app.mount("/portal", StaticFiles(directory=str(PORTAL_PATH), html=True), name="staff-portal")
     
 if ADMIN_PATH.exists():
     app.mount("/admin", StaticFiles(directory=str(ADMIN_PATH), html=True), name="admin-site")
+
+if LMS_ADMIN_PATH.exists():
+    app.mount("/lms-admin", StaticFiles(directory=str(LMS_ADMIN_PATH), html=True), name="lms-admin")
+
+if LMS_LEARNER_PATH.exists():
+    app.mount("/training", StaticFiles(directory=str(LMS_LEARNER_PATH), html=True), name="lms-learner")
 
 # Mount static files for uploaded avatars
 STATIC_AVATARS_PATH = Path(__file__).parent / "static" / "avatars"

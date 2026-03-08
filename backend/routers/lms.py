@@ -775,7 +775,7 @@ async def register_volunteer_interest(
         "email_sent": False
     }
     
-    result = db.volunteer_registrations.insert_one(reg_data)
+    result = await db.volunteer_registrations.insert_one(reg_data)
     reg_id = str(result.inserted_id)
     
     # Create admin alert
@@ -789,7 +789,7 @@ async def register_volunteer_interest(
         "read": False,
         "created_at": datetime.now(timezone.utc)
     }
-    db.admin_alerts.insert_one(alert_data)
+    await db.admin_alerts.insert_one(alert_data)
     
     # Queue email sending (background task)
     background_tasks.add_task(send_volunteer_registration_email, registration, reg_id)
@@ -883,7 +883,7 @@ async def enroll_learner(enrollment: LearnerEnrollment):
     db = get_db()
     
     # Check if already enrolled
-    existing = db.lms_learners.find_one({"email": enrollment.email})
+    existing = await db.lms_learners.find_one({"email": enrollment.email})
     if existing:
         return {
             "success": True,
@@ -909,7 +909,7 @@ async def enroll_learner(enrollment: LearnerEnrollment):
         "certificate_id": None
     }
     
-    result = db.lms_learners.insert_one(learner_data)
+    result = await db.lms_learners.insert_one(learner_data)
     
     return {
         "success": True,
@@ -924,7 +924,7 @@ async def get_module(module_id: str, learner_email: str):
     db = get_db()
     
     # Find learner
-    learner = db.lms_learners.find_one({"email": learner_email})
+    learner = await db.lms_learners.find_one({"email": learner_email})
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -955,7 +955,7 @@ async def submit_quiz(submission: QuizSubmission, learner_email: str):
     db = get_db()
     
     # Find learner
-    learner = db.lms_learners.find_one({"email": learner_email})
+    learner = await db.lms_learners.find_one({"email": learner_email})
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -997,12 +997,12 @@ async def submit_quiz(submission: QuizSubmission, learner_email: str):
     if passed:
         # Add to completed modules if not already there
         if submission.module_id not in learner["progress"]["completed_modules"]:
-            db.lms_learners.update_one(
+            await db.lms_learners.update_one(
                 {"email": learner_email},
                 {"$push": {"progress.completed_modules": submission.module_id}}
             )
     
-    db.lms_learners.update_one({"email": learner_email}, {"$set": update_data})
+    await db.lms_learners.update_one({"email": learner_email}, {"$set": update_data})
     
     # Record quiz attempt
     attempt_data = {
@@ -1013,7 +1013,7 @@ async def submit_quiz(submission: QuizSubmission, learner_email: str):
         "passed": passed,
         "attempted_at": datetime.now(timezone.utc)
     }
-    db.lms_quiz_attempts.insert_one(attempt_data)
+    await db.lms_quiz_attempts.insert_one(attempt_data)
     
     return {
         "score": score,
@@ -1031,7 +1031,7 @@ async def get_learner_progress(learner_email: str):
     """Get learner's course progress"""
     db = get_db()
     
-    learner = db.lms_learners.find_one({"email": learner_email}, {"_id": 0})
+    learner = await db.lms_learners.find_one({"email": learner_email}, {"_id": 0})
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -1061,7 +1061,7 @@ async def generate_certificate(learner_email: str):
     """Generate certificate for completed course"""
     db = get_db()
     
-    learner = db.lms_learners.find_one({"email": learner_email})
+    learner = await db.lms_learners.find_one({"email": learner_email})
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -1096,10 +1096,10 @@ async def generate_certificate(learner_email: str):
         "valid": True
     }
     
-    db.lms_certificates.insert_one(certificate_data)
+    await db.lms_certificates.insert_one(certificate_data)
     
     # Update learner
-    db.lms_learners.update_one(
+    await db.lms_learners.update_one(
         {"email": learner_email},
         {"$set": {"certificate_issued": True, "certificate_id": certificate_id}}
     )
@@ -1118,7 +1118,7 @@ async def verify_certificate(certificate_id: str):
     """Verify a certificate is valid"""
     db = get_db()
     
-    cert = db.lms_certificates.find_one({"certificate_id": certificate_id}, {"_id": 0})
+    cert = await db.lms_certificates.find_one({"certificate_id": certificate_id}, {"_id": 0})
     if not cert:
         return {"valid": False, "message": "Certificate not found"}
     
@@ -1142,7 +1142,7 @@ async def get_volunteer_registrations(status: str = None):
     if status:
         query["status"] = status
     
-    registrations = list(db.volunteer_registrations.find(query).sort("created_at", -1))
+    registrations = await db.volunteer_registrations.find(query).sort("created_at", -1).to_list(100)
     
     for reg in registrations:
         reg["_id"] = str(reg["_id"])
@@ -1154,7 +1154,7 @@ async def get_all_learners():
     """Get all learners (admin)"""
     db = get_db()
     
-    learners = list(db.lms_learners.find().sort("enrolled_at", -1))
+    learners = await db.lms_learners.find().sort("enrolled_at", -1).to_list(100)
     
     for learner in learners:
         learner["_id"] = str(learner["_id"])
@@ -1173,7 +1173,7 @@ async def get_admin_alerts(unread_only: bool = False):
     if unread_only:
         query["read"] = False
     
-    alerts = list(db.admin_alerts.find(query).sort("created_at", -1).limit(50))
+    alerts = await db.admin_alerts.find(query).sort("created_at", -1).limit(50).to_list(50)
     
     for alert in alerts:
         alert["_id"] = str(alert["_id"])
@@ -1185,9 +1185,198 @@ async def mark_alert_read(alert_id: str):
     """Mark an alert as read"""
     db = get_db()
     
-    db.admin_alerts.update_one(
+    await db.admin_alerts.update_one(
         {"_id": ObjectId(alert_id)},
         {"$set": {"read": True}}
     )
     
     return {"success": True}
+
+
+@router.post("/api/lms/admin/registration/{registration_id}/approve")
+async def approve_registration(registration_id: str, background_tasks: BackgroundTasks):
+    """Approve a volunteer registration and auto-enroll them in the course"""
+    db = get_db()
+    
+    try:
+        reg = await db.volunteer_registrations.find_one({"_id": ObjectId(registration_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid registration ID")
+    
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    
+    if reg["status"] == "approved":
+        return {"success": True, "message": "Already approved", "already_approved": True}
+    
+    # Update registration status
+    await db.volunteer_registrations.update_one(
+        {"_id": ObjectId(registration_id)},
+        {"$set": {"status": "approved", "approved_at": datetime.now(timezone.utc)}}
+    )
+    
+    # Auto-enroll the learner in the course
+    existing_learner = await db.lms_learners.find_one({"email": reg["email"]})
+    if not existing_learner:
+        learner_data = {
+            "email": reg["email"],
+            "full_name": reg["full_name"],
+            "registration_id": registration_id,
+            "enrolled_at": datetime.now(timezone.utc),
+            "course_id": MHFA_CURRICULUM["course_id"],
+            "progress": {
+                "completed_modules": [],
+                "current_module": MHFA_CURRICULUM["modules"][0]["id"],
+                "quiz_scores": {},
+                "total_time_spent_minutes": 0
+            },
+            "certificate_issued": False,
+            "certificate_id": None
+        }
+        await db.lms_learners.insert_one(learner_data)
+    
+    # Send approval email (background task)
+    background_tasks.add_task(send_approval_email, reg["email"], reg["full_name"])
+    
+    return {
+        "success": True,
+        "message": f"Approved and enrolled {reg['full_name']} in the course",
+        "email": reg["email"]
+    }
+
+async def send_approval_email(email: str, name: str):
+    """Send approval notification email"""
+    try:
+        from routers.emails import send_email
+        
+        email_body = f"""
+Dear {name},
+
+Great news! Your application to become a Radio Check peer support volunteer has been approved!
+
+You are now enrolled in the Mental Health First Aid training course. 
+
+To get started:
+1. Visit the Learning Portal
+2. Log in with your email: {email}
+3. Complete the training modules at your own pace
+
+Remember: You'll need to complete a DBS check before you can start volunteering.
+Apply here: https://www.gov.uk/request-copy-criminal-record
+
+If you have any questions, please contact us at course@radiocheck.me
+
+Welcome to the team!
+
+The Radio Check Team
+        """
+        
+        await send_email(
+            to=email,
+            subject="Your Radio Check Volunteer Application is Approved!",
+            body=email_body
+        )
+    except Exception as e:
+        logging.error(f"Failed to send approval email: {e}")
+
+@router.post("/api/lms/admin/registration/{registration_id}/reject")
+async def reject_registration(registration_id: str, reason: str = None, background_tasks: BackgroundTasks = None):
+    """Reject a volunteer registration"""
+    db = get_db()
+    
+    try:
+        reg = await db.volunteer_registrations.find_one({"_id": ObjectId(registration_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid registration ID")
+    
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    
+    # Update registration status
+    await db.volunteer_registrations.update_one(
+        {"_id": ObjectId(registration_id)},
+        {"$set": {
+            "status": "rejected", 
+            "rejected_at": datetime.now(timezone.utc),
+            "rejection_reason": reason
+        }}
+    )
+    
+    # Send rejection email (background task)
+    if background_tasks:
+        background_tasks.add_task(send_rejection_email, reg["email"], reg["full_name"], reason)
+    
+    return {
+        "success": True,
+        "message": f"Registration for {reg['full_name']} has been rejected"
+    }
+
+async def send_rejection_email(email: str, name: str, reason: str = None):
+    """Send rejection notification email"""
+    try:
+        from routers.emails import send_email
+        
+        email_body = f"""
+Dear {name},
+
+Thank you for your interest in becoming a Radio Check peer support volunteer.
+
+After careful consideration, we are unable to proceed with your application at this time.
+
+{f"Reason: {reason}" if reason else ""}
+
+If you have any questions or would like to discuss this further, please contact us at course@radiocheck.me
+
+Best wishes,
+The Radio Check Team
+        """
+        
+        await send_email(
+            to=email,
+            subject="Update on Your Radio Check Volunteer Application",
+            body=email_body
+        )
+    except Exception as e:
+        logging.error(f"Failed to send rejection email: {e}")
+
+@router.post("/api/lms/admin/alerts/mark-all-read")
+async def mark_all_alerts_read():
+    """Mark all alerts as read"""
+    db = get_db()
+    
+    await db.admin_alerts.update_many(
+        {"read": False},
+        {"$set": {"read": True}}
+    )
+    
+    return {"success": True}
+
+@router.get("/api/lms/admin/certificates")
+async def get_all_certificates():
+    """Get all issued certificates"""
+    db = get_db()
+    
+    certificates = await db.lms_certificates.find().sort("issued_at", -1).to_list(100)
+    
+    for cert in certificates:
+        cert["_id"] = str(cert["_id"])
+        if cert.get("issued_at"):
+            cert["issued_at"] = cert["issued_at"].isoformat()
+    
+    return {"certificates": certificates}
+
+@router.post("/api/lms/admin/certificate/{certificate_id}/revoke")
+async def revoke_certificate(certificate_id: str):
+    """Revoke a certificate"""
+    db = get_db()
+    
+    result = await db.lms_certificates.update_one(
+        {"certificate_id": certificate_id},
+        {"$set": {"valid": False, "revoked_at": datetime.now(timezone.utc)}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    
+    return {"success": True, "message": "Certificate revoked"}
+

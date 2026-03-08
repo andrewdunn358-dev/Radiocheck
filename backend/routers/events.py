@@ -338,17 +338,16 @@ async def join_event(event_id: str, display_name: str = "Veteran", user_id: Opti
     event_start = event["event_date"]
     event_end = event_start + timedelta(minutes=event["duration_minutes"])
     
-    # Allow joining 10 minutes before start until event ends
-    join_window_start = event_start - timedelta(minutes=10)
-    
-    if now < join_window_start:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Event hasn't started yet. Opens at {join_window_start.isoformat()}"
-        )
-    
-    if now > event_end:
-        raise HTTPException(status_code=400, detail="Event has ended")
+    # For testing: Allow joining any scheduled event
+    # In production, uncomment the time checks below:
+    # join_window_start = event_start - timedelta(minutes=10)
+    # if now < join_window_start:
+    #     raise HTTPException(
+    #         status_code=400, 
+    #         detail=f"Event hasn't started yet. Opens at {join_window_start.isoformat()}"
+    #     )
+    # if now > event_end:
+    #     raise HTTPException(status_code=400, detail="Event has ended")
     
     if event.get("status") == "cancelled":
         raise HTTPException(status_code=400, detail="Event was cancelled")

@@ -170,7 +170,7 @@ Files changed:
 - **Frontend**: Vercel (https://[domain])
 - **Backend**: Render (https://[domain])
 - **Admin/Staff Portals**: 20i hosting
-- **Preview**: https://community-events-12.preview.emergentagent.com
+- **Preview**: https://wellness-connect-82.preview.emergentagent.com
 
 ## Credentials
 - Preview Password: `radiocheck1358`

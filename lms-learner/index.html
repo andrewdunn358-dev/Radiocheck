@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Check - Mental Health First Aid Training</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Radio Check Training</span>
+            </div>
+            <div class="header-actions" id="headerActions">
+                <button class="btn btn-outline" onclick="showLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Landing Section (shown when not logged in) -->
+        <section id="landingSection" class="landing">
+            <div class="hero">
+                <div class="hero-content">
+                    <h1>Mental Health First Aid Training</h1>
+                    <p class="hero-subtitle">Become a certified Radio Check peer support volunteer</p>
+                    <p class="hero-description">
+                        Learn to recognise signs of mental health difficulties, provide initial support, 
+                        and help fellow veterans access the help they need.
+                    </p>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <span class="stat-value" id="heroModules">14</span>
+                            <span class="stat-label">Modules</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">16</span>
+                            <span class="stat-label">Hours</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">Free</span>
+                            <span class="stat-label">Cost</span>
+                        </div>
+                    </div>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary btn-lg" onclick="showRegister()">
+                            <i class="fas fa-user-plus"></i> Register Interest
+                        </button>
+                        <button class="btn btn-secondary btn-lg" onclick="showLogin()">
+                            <i class="fas fa-sign-in-alt"></i> Already Enrolled? Login
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="course-preview">
+                        <h3><i class="fas fa-book-open"></i> Course Overview</h3>
+                        <ul class="course-topics" id="courseTopics">
+                            <li><i class="fas fa-check"></i> Introduction to Mental Health</li>
+                            <li><i class="fas fa-check"></i> The ALGEE Action Plan</li>
+                            <li><i class="fas fa-check"></i> BACP Ethics & Boundaries</li>
+                            <li><i class="fas fa-check"></i> Communication Skills</li>
+                            <li><i class="fas fa-check"></i> Crisis Response</li>
+                            <li><i class="fas fa-check"></i> Veteran-Specific Challenges</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Course Info Cards -->
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-icon"><i class="fas fa-clock"></i></div>
+                    <h3>Self-Paced Learning</h3>
+                    <p>Complete the course at your own pace. Progress is saved automatically.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon"><i class="fas fa-certificate"></i></div>
+                    <h3>Official Certificate</h3>
+                    <p>Receive a Radio Check Peer Supporter Certificate upon completion.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>BACP Compliant</h3>
+                    <p>Training follows British Association for Counselling & Psychotherapy guidelines.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Section (shown when logged in) -->
+        <section id="dashboardSection" class="dashboard" style="display:none;">
+            <div class="dashboard-header">
+                <div>
+                    <h1>Welcome back, <span id="learnerName">Learner</span></h1>
+                    <p class="dashboard-subtitle">Continue your Mental Health First Aid training</p>
+                </div>
+                <div class="progress-overview">
+                    <div class="progress-circle">
+                        <svg viewBox="0 0 36 36" class="circular-chart">
+                            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="circle" stroke-dasharray="0, 100" id="progressCircle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <text x="18" y="20.35" class="percentage" id="progressPercent">0%</text>
+                        </svg>
+                    </div>
+                    <div class="progress-text">
+                        <span id="completedModules">0</span> of <span id="totalModules">14</span> modules complete
+                    </div>
+                </div>
+            </div>
+
+            <div class="modules-grid" id="modulesGrid">
+                <!-- Modules will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Module Content Section -->
+        <section id="moduleSection" class="module-view" style="display:none;">
+            <div class="module-header">
+                <button class="btn btn-ghost" onclick="showDashboard()">
+                    <i class="fas fa-arrow-left"></i> Back to Course
+                </button>
+                <div class="module-progress">
+                    Module <span id="currentModuleNum">1</span> of <span id="totalModulesView">14</span>
+                </div>
+            </div>
+            
+            <div class="module-container">
+                <div class="module-sidebar">
+                    <h3>Module Contents</h3>
+                    <div id="moduleSidebar"></div>
+                </div>
+                
+                <div class="module-main">
+                    <div class="module-content-wrapper">
+                        <h1 id="moduleTitle">Module Title</h1>
+                        <div class="module-meta">
+                            <span><i class="fas fa-clock"></i> <span id="moduleDuration">60</span> minutes</span>
+                            <span id="criticalBadge" class="badge badge-critical" style="display:none;">
+                                <i class="fas fa-exclamation-triangle"></i> Critical Module - 100% Required
+                            </span>
+                        </div>
+                        
+                        <div class="module-content" id="moduleContent">
+                            <!-- Markdown content will be rendered here -->
+                        </div>
+                        
+                        <div class="module-actions">
+                            <button class="btn btn-primary btn-lg" id="startQuizBtn" onclick="startQuiz()">
+                                <i class="fas fa-clipboard-check"></i> Take Quiz to Complete Module
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quiz Section -->
+        <section id="quizSection" class="quiz-view" style="display:none;">
+            <div class="quiz-container">
+                <div class="quiz-header">
+                    <h2 id="quizTitle">Module Quiz</h2>
+                    <div class="quiz-progress">
+                        Question <span id="currentQuestion">1</span> of <span id="totalQuestions">5</span>
+                    </div>
+                </div>
+                
+                <div class="quiz-content" id="quizContent">
+                    <!-- Quiz questions will be loaded here -->
+                </div>
+                
+                <div class="quiz-navigation">
+                    <button class="btn btn-ghost" id="prevQuestionBtn" onclick="prevQuestion()" disabled>
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <button class="btn btn-primary" id="nextQuestionBtn" onclick="nextQuestion()">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="btn btn-success" id="submitQuizBtn" onclick="submitQuiz()" style="display:none;">
+                        <i class="fas fa-check"></i> Submit Quiz
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quiz Results Section -->
+        <section id="resultsSection" class="results-view" style="display:none;">
+            <div class="results-container">
+                <div class="results-icon" id="resultsIcon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2 id="resultsTitle">Quiz Complete!</h2>
+                <div class="results-score">
+                    <span class="score-value" id="scoreValue">80</span>
+                    <span class="score-label">% Score</span>
+                </div>
+                <p class="results-message" id="resultsMessage">
+                    You passed! Great work.
+                </p>
+                <div class="results-breakdown" id="resultsBreakdown">
+                    <!-- Detailed results will be shown here -->
+                </div>
+                <div class="results-actions">
+                    <button class="btn btn-primary btn-lg" id="continueBtn" onclick="continueAfterQuiz()">
+                        <i class="fas fa-arrow-right"></i> Continue to Next Module
+                    </button>
+                    <button class="btn btn-secondary btn-lg" id="retryBtn" onclick="retryQuiz()" style="display:none;">
+                        <i class="fas fa-redo"></i> Retry Quiz
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Certificate Section -->
+        <section id="certificateSection" class="certificate-view" style="display:none;">
+            <div class="certificate-container">
+                <div class="certificate">
+                    <div class="certificate-border">
+                        <div class="certificate-inner">
+                            <div class="certificate-header">
+                                <i class="fas fa-award"></i>
+                                <h1>Certificate of Completion</h1>
+                            </div>
+                            <p class="certificate-text">This is to certify that</p>
+                            <h2 class="certificate-name" id="certName">Learner Name</h2>
+                            <p class="certificate-text">has successfully completed the</p>
+                            <h3 class="certificate-course">Mental Health First Aid for Peer Supporters</h3>
+                            <p class="certificate-text">training course and is qualified as a</p>
+                            <h3 class="certificate-title">Radio Check Peer Supporter</h3>
+                            <div class="certificate-details">
+                                <div>
+                                    <span class="detail-label">Date Issued</span>
+                                    <span class="detail-value" id="certDate">March 2026</span>
+                                </div>
+                                <div>
+                                    <span class="detail-label">Certificate ID</span>
+                                    <span class="detail-value" id="certId">XXXX-XXXX</span>
+                                </div>
+                            </div>
+                            <p class="certificate-verify">
+                                Verify at: radiocheck.me/verify/<span id="certVerifyId">XXXX</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="certificate-actions">
+                    <button class="btn btn-primary btn-lg" onclick="downloadCertificate()">
+                        <i class="fas fa-download"></i> Download Certificate
+                    </button>
+                    <button class="btn btn-secondary" onclick="showDashboard()">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-sign-in-alt"></i> Learner Login</h2>
+                <button class="modal-close" onclick="closeModal('loginModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">Enter your email to access your training.</p>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-input" id="loginEmail" placeholder="your@email.com" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i> Access Training
+                    </button>
+                </form>
+                <div class="modal-footer-text">
+                    Not enrolled yet? <a href="#" onclick="closeModal('loginModal'); showRegister();">Register Interest</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal-overlay" id="registerModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> Register Interest</h2>
+                <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">
+                    Register your interest in becoming a Radio Check peer support volunteer. 
+                    Once approved, you'll be enrolled in the training course.
+                </p>
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" class="form-input" id="regName" placeholder="Your full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email Address *</label>
+                            <input type="email" class="form-input" id="regEmail" placeholder="your@email.com" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Phone Number (Optional)</label>
+                        <input type="tel" class="form-input" id="regPhone" placeholder="07XXX XXXXXX">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label checkbox-label">
+                            <input type="checkbox" id="regVeteran" onchange="toggleVeteranFields()">
+                            <span>I am a veteran or currently serving</span>
+                        </label>
+                    </div>
+                    
+                    <div id="veteranFields" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Service Branch</label>
+                                <select class="form-select" id="regBranch">
+                                    <option value="">Select...</option>
+                                    <option value="Army">Army</option>
+                                    <option value="Royal Navy">Royal Navy</option>
+                                    <option value="Royal Air Force">Royal Air Force</option>
+                                    <option value="Royal Marines">Royal Marines</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Years Served</label>
+                                <select class="form-select" id="regYears">
+                                    <option value="">Select...</option>
+                                    <option value="< 5 years">&lt; 5 years</option>
+                                    <option value="5-10 years">5-10 years</option>
+                                    <option value="10-20 years">10-20 years</option>
+                                    <option value="20+ years">20+ years</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Why do you want to volunteer? *</label>
+                        <textarea class="form-textarea" id="regWhy" placeholder="Tell us about your motivation to become a peer supporter..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label checkbox-label">
+                            <input type="checkbox" id="regDBS">
+                            <span>I already have a valid DBS check</span>
+                        </label>
+                        <p class="form-help">Don't worry if you don't - we'll help you apply for one.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label checkbox-label">
+                            <input type="checkbox" id="regTerms" required>
+                            <span>I agree to the <a href="#" target="_blank">terms and conditions</a> and understand this is a volunteer position *</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block" id="registerBtn">
+                        <i class="fas fa-paper-plane"></i> Submit Registration
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal">
+            <div class="modal-body" style="text-align:center;padding:2rem;">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2 id="successTitle">Registration Submitted!</h2>
+                <p id="successMessage">
+                    Thank you for registering your interest. We'll review your application and be in touch soon.
+                </p>
+                <button class="btn btn-primary" onclick="closeModal('successModal')">
+                    <i class="fas fa-check"></i> Got it
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

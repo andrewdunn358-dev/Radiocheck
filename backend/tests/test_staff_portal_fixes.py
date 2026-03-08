@@ -16,7 +16,7 @@ import os
 import uuid
 
 # Use production URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://community-events-12.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://wellness-connect-82.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_CREDS = {
