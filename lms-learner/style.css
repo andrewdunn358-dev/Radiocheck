@@ -778,13 +778,53 @@ body {
 .result-answer {
     font-size: 0.9rem;
     color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.answer-correct {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.answer-incorrect {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.result-guidance {
+    background: rgba(201, 162, 39, 0.1);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    border-left: 3px solid var(--secondary);
+}
+
+.result-guidance i {
+    color: var(--secondary);
+    margin-right: 0.5rem;
+}
+
+.result-guidance strong {
+    color: var(--secondary);
 }
 
 .result-explanation {
     font-size: 0.85rem;
     color: var(--text-muted);
-    margin-top: 0.5rem;
-    font-style: italic;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+}
+
+.result-explanation strong {
+    color: var(--text-secondary);
 }
 
 .results-actions {

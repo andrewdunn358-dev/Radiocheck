@@ -795,16 +795,28 @@ function showQuizResults(results) {
     }
     document.getElementById('resultsMessage').textContent = message;
     
-    // Breakdown
+    // Breakdown - Don't reveal correct answers, give guidance instead
     const breakdown = document.getElementById('resultsBreakdown');
     breakdown.innerHTML = results.results.map(r => `
         <div class="result-item ${r.is_correct ? 'correct' : 'incorrect'}">
             <div class="result-question">${r.question}</div>
             <div class="result-answer">
-                Your answer: ${r.your_answer || '(not answered)'}<br>
-                ${!r.is_correct ? `Correct answer: ${r.correct_answer}` : ''}
+                Your answer: ${r.your_answer || '(not answered)'}
+                ${r.is_correct ? 
+                    '<span class="answer-correct"><i class="fas fa-check-circle"></i> Correct!</span>' : 
+                    '<span class="answer-incorrect"><i class="fas fa-times-circle"></i> Not quite right</span>'
+                }
             </div>
-            <div class="result-explanation">${r.explanation}</div>
+            ${!r.is_correct ? `
+                <div class="result-guidance">
+                    <i class="fas fa-lightbulb"></i>
+                    <strong>Guidance:</strong> Review the module content and think about ${getGuidanceHint(r.question)}. 
+                    The explanation below will help point you in the right direction.
+                </div>
+            ` : ''}
+            <div class="result-explanation">
+                <strong>Understanding:</strong> ${r.explanation}
+            </div>
         </div>
     `).join('');
     
@@ -814,6 +826,26 @@ function showQuizResults(results) {
     
     // Refresh progress
     loadDashboard();
+}
+
+// Generate a guidance hint based on the question type
+function getGuidanceHint(question) {
+    const lowerQ = question.toLowerCase();
+    if (lowerQ.includes('first') || lowerQ.includes('initial')) {
+        return 'what should be prioritised first in this situation';
+    } else if (lowerQ.includes('not') || lowerQ.includes("shouldn't") || lowerQ.includes('avoid')) {
+        return 'what actions would be inappropriate or outside your role';
+    } else if (lowerQ.includes('crisis') || lowerQ.includes('emergency') || lowerQ.includes('suicide')) {
+        return 'the key principles of crisis support and safety';
+    } else if (lowerQ.includes('boundary') || lowerQ.includes('boundaries') || lowerQ.includes('ethical')) {
+        return 'the importance of maintaining professional boundaries';
+    } else if (lowerQ.includes('safeguard')) {
+        return 'when and how safeguarding procedures should be followed';
+    } else if (lowerQ.includes('listen') || lowerQ.includes('communication')) {
+        return 'effective communication and active listening techniques';
+    } else {
+        return 'the key principles covered in this module';
+    }
 }
 
 function continueAfterQuiz() {
