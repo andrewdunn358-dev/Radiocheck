@@ -5,6 +5,7 @@ Build "Radio Check," a mental health and peer support application for veterans a
 - React web application (Vercel)
 - Python FastAPI backend (Render)
 - Vanilla JS web portals for Admin and Staff (20i hosting)
+- **NEW: LMS for volunteer training (20i hosting)**
 
 ## Core Architecture
 ```
@@ -12,12 +13,58 @@ Build "Radio Check," a mental health and peer support application for veterans a
 ├── admin-site/          # Vanilla JS admin portal (20i hosting)
 ├── backend/             # FastAPI backend (Render)
 ├── frontend/            # React/Expo frontend (Vercel)
+├── lms-admin/           # LMS Admin Dashboard (20i hosting) - NEW
+├── lms-learner/         # LMS Learner Portal (20i hosting) - NEW
 └── staff-portal/        # Vanilla JS staff portal (20i hosting)
 ```
 
 ## What's Been Implemented (March 2026)
 
-### Session: March 7, 2026 (Latest)
+### Session: March 8, 2026 (Latest)
+
+**LMS (Learning Management System) Implementation**
+1. **LMS Backend API** (`backend/routers/lms.py`):
+   - Volunteer registration with admin alerts
+   - Admin approve/reject registrations with auto-enrollment
+   - Learner enrollment and progress tracking
+   - Module content delivery with sequential learning
+   - Quiz submission and grading
+   - Certificate generation and verification
+   - All endpoints use async MongoDB operations (motor)
+
+2. **LMS Admin Dashboard** (`lms-admin/index.html`):
+   - Dashboard with stats (pending registrations, learners, certificates)
+   - Volunteer registrations management (approve/reject)
+   - Learner progress monitoring
+   - Module and quiz management
+   - Certificate verification and revocation
+   - Alert system for new registrations
+
+3. **LMS Learner Portal** (`lms-learner/`):
+   - Landing page with course overview
+   - Registration of interest form
+   - Login system (email-based)
+   - Dashboard with progress circle
+   - Module cards with completion status
+   - Quiz system with results breakdown
+   - Certificate generation on completion
+
+4. **First 4 Course Modules Populated**:
+   - Module 1: Introduction to Mental Health First Aid
+   - Module 2: The ALGEE Action Plan  
+   - Module 3: BACP Ethics and Boundaries
+   - Module 4: Communication Skills for Peer Supporters
+
+**Event Joining Logic Fix**
+- Removed time-gating from event joining (frontend and backend)
+- Users can now join any scheduled/live event for testing
+- "Join Now" buttons appear for all non-cancelled events
+
+**Bug Fixes**
+- Fixed async MongoDB operations in LMS router (motor driver)
+- All LMS admin endpoints now use `await` and `to_list()`
+
+### Session: March 7, 2026 (Previous)
 
 **Comprehensive AI Safeguarding Framework v2.0 Implementation**
 Based on 4 safeguarding documents provided by user:
