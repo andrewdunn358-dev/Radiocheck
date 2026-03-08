@@ -361,8 +361,8 @@ async def enroll_learner(enrollment: LearnerEnrollment):
     """Enroll a learner in the course"""
     db = get_db()
     
-    # Check if already enrolled
-    existing = await db.lms_learners.find_one({"email": enrollment.email})
+    # Check if already enrolled (case-insensitive)
+    existing = await db.lms_learners.find_one({"email": enrollment.email.lower()})
     if existing:
         return {
             "success": True,
@@ -373,7 +373,7 @@ async def enroll_learner(enrollment: LearnerEnrollment):
     
     # Create learner record
     learner_data = {
-        "email": enrollment.email,
+        "email": enrollment.email.lower(),
         "full_name": enrollment.full_name,
         "registration_id": enrollment.registration_id,
         "enrolled_at": datetime.now(timezone.utc),
@@ -402,8 +402,8 @@ async def get_module(module_id: str, learner_email: str):
     """Get module content for a learner"""
     db = get_db()
     
-    # Find learner
-    learner = await db.lms_learners.find_one({"email": learner_email})
+    # Find learner (case-insensitive)
+    learner = await db.lms_learners.find_one({"email": learner_email.lower()})
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -433,8 +433,9 @@ async def submit_quiz(submission: QuizSubmission, learner_email: str):
     """Submit quiz answers and get results"""
     db = get_db()
     
-    # Find learner
-    learner = await db.lms_learners.find_one({"email": learner_email})
+    # Find learner (case-insensitive)
+    learner_email_lower = learner_email.lower()
+    learner = await db.lms_learners.find_one({"email": learner_email_lower})
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -477,15 +478,15 @@ async def submit_quiz(submission: QuizSubmission, learner_email: str):
         # Add to completed modules if not already there
         if submission.module_id not in learner["progress"]["completed_modules"]:
             await db.lms_learners.update_one(
-                {"email": learner_email},
+                {"email": learner_email_lower},
                 {"$push": {"progress.completed_modules": submission.module_id}}
             )
     
-    await db.lms_learners.update_one({"email": learner_email}, {"$set": update_data})
+    await db.lms_learners.update_one({"email": learner_email_lower}, {"$set": update_data})
     
     # Record quiz attempt
     attempt_data = {
-        "learner_email": learner_email,
+        "learner_email": learner_email_lower,
         "module_id": submission.module_id,
         "answers": submission.answers,
         "score": score,
@@ -510,7 +511,10 @@ async def get_learner_progress(learner_email: str):
     """Get learner's course progress"""
     db = get_db()
     
-    learner = await db.lms_learners.find_one({"email": learner_email}, {"_id": 0})
+    # Case-insensitive email lookup
+    learner = await db.lms_learners.find_one({"email": learner_email.lower()}, {"_id": 0})
+    if not learner:
+        raise HTTPException(status_code=404, detail="Learner not found")
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -540,7 +544,9 @@ async def generate_certificate(learner_email: str):
     """Generate certificate for completed course"""
     db = get_db()
     
-    learner = await db.lms_learners.find_one({"email": learner_email})
+    # Case-insensitive email lookup
+    learner_email_lower = learner_email.lower()
+    learner = await db.lms_learners.find_one({"email": learner_email_lower})
     if not learner:
         raise HTTPException(status_code=404, detail="Learner not found")
     
@@ -568,7 +574,7 @@ async def generate_certificate(learner_email: str):
     certificate_id = secrets.token_urlsafe(16)
     certificate_data = {
         "certificate_id": certificate_id,
-        "learner_email": learner_email,
+        "learner_email": learner_email_lower,
         "learner_name": learner["full_name"],
         "course_title": MHFA_CURRICULUM["title"],
         "issued_at": datetime.now(timezone.utc),
@@ -579,7 +585,7 @@ async def generate_certificate(learner_email: str):
     
     # Update learner
     await db.lms_learners.update_one(
-        {"email": learner_email},
+        {"email": learner_email_lower},
         {"$set": {"certificate_issued": True, "certificate_id": certificate_id}}
     )
     
