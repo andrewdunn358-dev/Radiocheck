@@ -98,6 +98,74 @@ export default function DynamicAIChat() {
   const [showInPageCallModal, setShowInPageCallModal] = useState(false);
   const [staffAvailable, setStaffAvailable] = useState(false);
 
+  // ===== DEVICE-SIDE CONVERSATION MEMORY =====
+  // Stores conversation history locally on the device - NO REGISTRATION REQUIRED
+  // AI characters will remember previous conversations with the user
+  const CONVERSATION_STORAGE_KEY = `radiocheck_chat_history_${character.id}`;
+  const MAX_STORED_MESSAGES = 50; // Keep last 50 messages per character
+  const [previousConversations, setPreviousConversations] = useState<Message[]>([]);
+  const [hasLoadedLocalHistory, setHasLoadedLocalHistory] = useState(false);
+
+  // Load previous conversations from device storage on mount
+  useEffect(() => {
+    const loadLocalConversationHistory = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(CONVERSATION_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          // Convert stored timestamps back to Date objects
+          const messagesWithDates = parsed.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setPreviousConversations(messagesWithDates);
+          console.log(`Loaded ${messagesWithDates.length} previous messages with ${character.name}`);
+        }
+      } catch (error) {
+        console.error('Error loading conversation history:', error);
+      } finally {
+        setHasLoadedLocalHistory(true);
+      }
+    };
+    
+    loadLocalConversationHistory();
+  }, [character.id]);
+
+  // Save conversation to device storage whenever messages change
+  useEffect(() => {
+    const saveConversationToDevice = async () => {
+      if (messages.length === 0) return;
+      
+      try {
+        // Combine previous + current, keep only the last MAX_STORED_MESSAGES
+        const allMessages = [...previousConversations, ...messages];
+        const toStore = allMessages.slice(-MAX_STORED_MESSAGES);
+        await AsyncStorage.setItem(CONVERSATION_STORAGE_KEY, JSON.stringify(toStore));
+      } catch (error) {
+        console.error('Error saving conversation history:', error);
+      }
+    };
+    
+    if (hasLoadedLocalHistory) {
+      saveConversationToDevice();
+    }
+  }, [messages, hasLoadedLocalHistory]);
+
+  // Build conversation context for AI (summary of previous conversations)
+  const buildConversationContext = () => {
+    if (previousConversations.length === 0) return '';
+    
+    // Get the last 10 messages from previous conversations for context
+    const recentPrevious = previousConversations.slice(-10);
+    
+    // Format as a summary for the AI
+    const summary = recentPrevious.map(msg => 
+      `${msg.sender === 'user' ? 'User' : character.name}: ${msg.text}`
+    ).join('\n');
+    
+    return `\n\n[PREVIOUS CONVERSATION CONTEXT - The user has spoken to you before. Here's a summary of your last conversation:\n${summary}\n\nUse this context to provide continuity, but don't explicitly reference "our last conversation" unless relevant.]`;
+  };
+
   // Check for available staff when safeguarding modal opens
   useEffect(() => {
     if (showSafeguardingModal) {
@@ -215,6 +283,9 @@ export default function DynamicAIChat() {
     setIsLoading(true);
 
     try {
+      // Build conversation context from device-stored history
+      const conversationContext = buildConversationContext();
+      
       const response = await fetch(`${API_URL}/api/ai-buddies/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -223,6 +294,8 @@ export default function DynamicAIChat() {
           character: character.id,
           sessionId: sessionId,
           is_under_18: isUnder18,
+          // Include previous conversation context for AI memory
+          conversation_context: conversationContext,
         }),
       });
 
@@ -257,12 +330,22 @@ export default function DynamicAIChat() {
   };
 
   const clearConversation = async () => {
+    // Clear both current messages and device-stored history
     setMessages([{
       id: 'welcome',
       text: character.welcomeMessage,
       sender: 'buddy',
       timestamp: new Date(),
     }]);
+    
+    // Also clear the stored conversation history from device
+    try {
+      await AsyncStorage.removeItem(CONVERSATION_STORAGE_KEY);
+      setPreviousConversations([]);
+      console.log(`Cleared conversation history with ${character.name}`);
+    } catch (error) {
+      console.error('Error clearing conversation history:', error);
+    }
   };
 
   const handleGoBack = () => {

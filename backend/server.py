@@ -2026,6 +2026,7 @@ class BuddyChatRequest(BaseModel):
     sessionId: str
     character: str = "tommy"  # "tommy" or "doris"
     is_under_18: bool = False  # Age gate flag for enhanced safeguarding
+    conversation_context: Optional[str] = None  # Device-stored previous conversation context
 
 class BuddyChatResponse(BaseModel):
     reply: str
@@ -2410,9 +2411,39 @@ session_risk_history: Dict[str, List[Dict]] = {}
 def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any]:
     """
     Calculate safeguarding risk score using weighted indicators.
+    Now includes Anthony's negation detection to reduce false positives.
     Returns: {score, risk_level, triggered_indicators, is_red_flag}
     """
     message_lower = message.lower()
+    
+    # ===== NEGATION DETECTION (from Anthony's Zentrafuge system) =====
+    # These phrases indicate the user is NOT expressing current suicidal ideation
+    NEGATION_PREFIXES = [
+        "don't want to", "do not want to", "dont want to",
+        "never", "not going to", "won't", "wont",
+        "wouldn't", "wouldnt", "didn't", "didnt", "doesn't", "doesnt",
+        "used to", "used to want to",
+        "thought about", "used to think about",  
+        "afraid of", "scared of", "fear",
+        "wouldn't want to", "would never",
+        "joking", "just joking", "only joking", "jk", "lol",
+        "not", "no longer", "not anymore",
+        "friend", "my friend", "mate", "someone i know",
+        "character", "movie", "book", "song", "game",
+        "if i", "what if", "hypothetically",
+    ]
+    NEGATION_WINDOW = 8  # Words to look back for negation context
+    
+    def is_negated(text: str, match_position: int) -> bool:
+        """Check if a match is preceded by a negation phrase within word window."""
+        preceding = text[:match_position]
+        preceding_words = preceding.split()
+        window = " ".join(preceding_words[-NEGATION_WINDOW:]).lower()
+        
+        for negation in NEGATION_PREFIXES:
+            if negation in window:
+                return True
+        return False
     
     # ===== TYPO CORRECTION FOR CRITICAL PATTERNS =====
     # Users in crisis often type quickly with mistakes - we must still detect
@@ -2430,12 +2461,6 @@ def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any
         "mornig": "morning", "morining": "morning",
         # Common "anymore" typos
         "anymroe": "anymore", "anymoer": "anymore",
-        # Common "can't" variations (careful - these are intentional)
-        # Note: "cant" to "can't" handled specially below
-        # Common "don't" variations
-        # Note: "dont" to "don't" handled specially below  
-        # Common "won't" variations
-        # Note: "wont" to "won't" handled specially below
         # Common "point" typos
         "poitn": "point", "ponit": "point",
         # Common "myself" typos
@@ -2455,10 +2480,17 @@ def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any
     score = 0
     triggered = []
     is_red_flag = False
+    negated_indicators = []  # Track what was negated
     
     # Check RED indicators first (any single one = immediate RED)
     for indicator, weight in RED_INDICATORS.items():
         if indicator in message_lower:
+            # Check for negation before flagging
+            match_pos = message_lower.find(indicator)
+            if is_negated(message_lower, match_pos):
+                negated_indicators.append({"indicator": indicator, "reason": "negated"})
+                continue  # Skip this indicator - it was negated
+            
             score += weight
             triggered.append({"indicator": indicator, "weight": weight, "level": "RED"})
             is_red_flag = True
@@ -2467,6 +2499,12 @@ def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any
     amber_count = 0
     for indicator, weight in AMBER_INDICATORS.items():
         if indicator in message_lower:
+            # Check for negation before flagging
+            match_pos = message_lower.find(indicator)
+            if is_negated(message_lower, match_pos):
+                negated_indicators.append({"indicator": indicator, "reason": "negated"})
+                continue  # Skip this indicator - it was negated
+            
             score += weight
             triggered.append({"indicator": indicator, "weight": weight, "level": "AMBER"})
             amber_count += 1
@@ -5947,6 +5985,11 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         system_prompt = char_config["prompt"] + SAFEGUARDING_ADDENDUM
         if knowledge_context:
             system_prompt += knowledge_context
+        
+        # Add device-stored conversation context for AI memory
+        # This allows AI to remember previous conversations without user registration
+        if request.conversation_context:
+            system_prompt += request.conversation_context
         
         messages = [{"role": "system", "content": system_prompt}]
         
