@@ -22,6 +22,38 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ### Session: March 8, 2026 - Evening (Latest)
 
+**AI TUTOR: Mr Clark Implementation**
+
+- **Mr Clark**: AI-powered course tutor with avatar and personalized module introductions
+- **Competency-Based Assessment**: Written reflections evaluated by GPT-4o-mini against BACP competency framework
+- **Critical Module Reflections**: Ethics, Crisis, and Safeguarding modules require written submissions before quiz
+- **Final Assessment**: 3-question scenario/reflection assessment for course completion
+- **Admin Review System**: Flagged submissions can be reviewed and overridden by human admins
+
+**New Backend Files:**
+- `backend/routers/ai_tutor.py` - Complete AI tutor system with:
+  - `/api/lms/tutor/info` - Get Mr Clark's information
+  - `/api/lms/tutor/module-intro/{module_id}` - Module introductions
+  - `/api/lms/tutor/reflection-questions/{module_id}` - Critical module reflections
+  - `/api/lms/tutor/submit-reflection` - Submit and evaluate written responses
+  - `/api/lms/tutor/final-assessment` - Final course assessment
+  - `/api/lms/admin/reflections` - Admin view of submissions
+  - `/api/lms/admin/final-assessments` - Admin view of final assessments
+
+**Mr Clark Features:**
+- Personalized introduction for each of 14 modules
+- Scenario-based questions (e.g., "A veteran tells you...")
+- Reflection questions (e.g., "Explain in your own words...")
+- Key competency checking: Ethics, Crisis, Safeguarding, Communication, PTSD Awareness
+- Constructive feedback with pass/fail/needs-review outcomes
+- Admin flagging for concerning or unclear responses
+
+**LMS Portal Updates:**
+- Tutor introduction card with avatar at top of each module
+- Reflection notice on critical modules
+- Full reflection submission UI with character counting
+- AI-evaluated results display with competency feedback
+
 **CRITICAL SECURITY FIX: Secure Learner Authentication**
 
 - **Password-based login implemented** for learner portal

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radio Check LMS Admin</title>
+    <link rel="icon" type="image/png" href="https://customer-assets.emergentagent.com/job_535ca64e-70e1-4fc8-813d-3b487fc07905/artifacts/14k1x3vl_logo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -899,6 +900,11 @@
                         <input type="email" class="form-input" id="addLearnerEmail" placeholder="Enter learner's email" required>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <input type="password" class="form-input" id="addLearnerPassword" placeholder="Set initial password (min 8 characters)" required minlength="8" autocomplete="new-password">
+                        <small style="color:var(--text-secondary);font-size:0.8rem;margin-top:0.25rem;display:block;">Learner will use this to log in</small>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Notes (Optional)</label>
                         <textarea class="form-input" id="addLearnerNotes" placeholder="Any notes about this learner..." rows="3"></textarea>
                     </div>
@@ -1273,9 +1279,18 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
             
+            const password = document.getElementById('addLearnerPassword').value;
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Add & Enroll Learner';
+                return;
+            }
+            
             const learnerData = {
                 full_name: document.getElementById('addLearnerName').value.trim(),
                 email: document.getElementById('addLearnerEmail').value.trim(),
+                password: password,
                 notes: document.getElementById('addLearnerNotes').value.trim() || null
             };
             

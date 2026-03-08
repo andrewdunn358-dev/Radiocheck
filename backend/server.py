@@ -7425,7 +7425,7 @@ from routers import (
     callbacks, live_chat, notes, concerns,
     message_queue, ai_feedback, knowledge_base, compliance,
     podcasts, data_retention, shift_swaps, documents, surveys,
-    twilio_calling, events
+    twilio_calling, events, ai_tutor
 )
 
 # Core functionality routers
@@ -7476,6 +7476,9 @@ app.include_router(learning_router)
 
 # LMS - Mental Health First Aid Training for Volunteers
 app.include_router(lms_router)
+
+# AI Tutor - Mr Clark
+app.include_router(ai_tutor.router)
 
 # Serve static files for Staff Portal and Admin Site
 # This allows testing the portals from the preview environment

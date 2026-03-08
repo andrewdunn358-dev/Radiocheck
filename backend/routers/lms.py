@@ -61,9 +61,10 @@ class ModuleCompletion(BaseModel):
 
 
 class ManualLearnerAdd(BaseModel):
-    """Admin manually add a learner"""
+    """Admin manually add a learner with password"""
     full_name: str
     email: str
+    password: str
     notes: Optional[str] = None
 
 
@@ -787,8 +788,12 @@ async def admin_add_learner(learner: ManualLearnerAdd, background_tasks: Backgro
     """Admin manually add a learner without requiring registration"""
     db = get_db()
     
+    # Validate password length
+    if len(learner.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
     # Check if already enrolled
-    existing = await db.lms_learners.find_one({"email": learner.email})
+    existing = await db.lms_learners.find_one({"email": learner.email.lower()})
     if existing:
         return {
             "success": True,
@@ -797,10 +802,15 @@ async def admin_add_learner(learner: ManualLearnerAdd, background_tasks: Backgro
             "learner_id": str(existing["_id"])
         }
     
-    # Create learner record
+    # Hash the password
+    password_hash = hash_password(learner.password)
+    
+    # Create learner record with password
     learner_data = {
-        "email": learner.email,
+        "email": learner.email.lower(),
         "full_name": learner.full_name,
+        "password_hash": password_hash,
+        "password_set_at": datetime.now(timezone.utc),
         "registration_id": None,
         "manual_add": True,
         "manual_add_notes": learner.notes,
@@ -819,13 +829,13 @@ async def admin_add_learner(learner: ManualLearnerAdd, background_tasks: Backgro
     result = await db.lms_learners.insert_one(learner_data)
     
     # Send welcome email (background task)
-    background_tasks.add_task(send_approval_email, learner.email, learner.full_name)
+    background_tasks.add_task(send_approval_email, learner.email.lower(), learner.full_name)
     
     return {
         "success": True,
-        "message": f"Successfully enrolled {learner.full_name}",
+        "message": f"Successfully enrolled {learner.full_name}. They can now log in with their email and password.",
         "learner_id": str(result.inserted_id),
-        "email": learner.email
+        "email": learner.email.lower()
     }
 
 

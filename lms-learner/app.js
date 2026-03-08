@@ -511,9 +511,29 @@ async function openModule(moduleId) {
         // Critical badge
         document.getElementById('criticalBadge').style.display = currentModule.is_critical ? 'inline-flex' : 'none';
         
+        // Get Mr Clark's introduction for this module
+        let tutorIntroHtml = '';
+        try {
+            const tutorRes = await fetch(`${API_URL}/api/lms/tutor/module-intro/${moduleId}`);
+            if (tutorRes.ok) {
+                const tutorData = await tutorRes.json();
+                tutorIntroHtml = `
+                    <div class="tutor-intro">
+                        <img src="${tutorData.tutor.avatar_url}" alt="${tutorData.tutor.name}" class="tutor-avatar">
+                        <div class="tutor-message">
+                            <div class="tutor-name">${tutorData.tutor.name} <span class="tutor-title">- ${tutorData.tutor.title}</span></div>
+                            <p>${tutorData.introduction}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.log('Tutor intro not available');
+        }
+        
         // Render content with image (simple markdown to HTML)
         const contentHtml = renderMarkdown(currentModule.content);
-        document.getElementById('moduleContent').innerHTML = renderModuleWithImage(currentModule, contentHtml);
+        document.getElementById('moduleContent').innerHTML = tutorIntroHtml + renderModuleWithImage(currentModule, contentHtml);
         
         // Also show external links if available
         if (currentModule.external_links && currentModule.external_links.length > 0) {
@@ -530,15 +550,47 @@ async function openModule(moduleId) {
             document.getElementById('moduleContent').innerHTML += linksHtml;
         }
         
+        // Check if this module has reflection questions
+        try {
+            const reflectionRes = await fetch(`${API_URL}/api/lms/tutor/reflection-questions/${moduleId}`);
+            if (reflectionRes.ok) {
+                const reflectionData = await reflectionRes.json();
+                if (reflectionData.has_reflection) {
+                    // Store for later use
+                    window.currentReflection = reflectionData;
+                    
+                    // Update quiz button to show reflection first
+                    const quizBtn = document.getElementById('startQuizBtn');
+                    quizBtn.innerHTML = '<i class="fas fa-pen-fancy"></i> Complete Reflection & Quiz';
+                    quizBtn.onclick = () => showReflectionQuestions(moduleId);
+                    
+                    // Add reflection notice
+                    document.getElementById('moduleContent').innerHTML += `
+                        <div class="reflection-notice">
+                            <i class="fas fa-lightbulb"></i>
+                            <div>
+                                <strong>Reflection Required</strong>
+                                <p>This is a critical module. Before taking the quiz, you'll need to answer some reflection questions reviewed by ${reflectionData.tutor.name}.</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        } catch (e) {
+            console.log('No reflection questions for this module');
+        }
+        
         // Update sidebar
         renderModuleSidebar();
         
         // Update quiz button
         const quizBtn = document.getElementById('startQuizBtn');
-        if (data.is_completed) {
+        if (data.is_completed && !window.currentReflection) {
             quizBtn.textContent = `Retake Quiz (Current Score: ${data.quiz_score}%)`;
-        } else {
+            quizBtn.onclick = () => startQuiz();
+        } else if (!window.currentReflection) {
             quizBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Take Quiz to Complete Module';
+            quizBtn.onclick = () => startQuiz();
         }
         
         // Scroll to top
@@ -845,3 +897,206 @@ document.addEventListener('keydown', (e) => {
         document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
     }
 });
+
+// ============ Reflection Questions (Mr Clark AI Tutor) ============
+
+function showReflectionQuestions(moduleId) {
+    if (!window.currentReflection) {
+        startQuiz();
+        return;
+    }
+    
+    const reflection = window.currentReflection;
+    
+    // Create reflection modal if it doesn't exist
+    if (!document.getElementById('reflectionModal')) {
+        createReflectionModal();
+    }
+    
+    // Set up the reflection form
+    document.getElementById('reflectionModuleTitle').textContent = reflection.module_name;
+    document.getElementById('reflectionTutorMessage').textContent = reflection.intro_message;
+    document.getElementById('reflectionTutorAvatar').src = reflection.tutor.avatar_url;
+    document.getElementById('reflectionTutorName').textContent = reflection.tutor.name;
+    
+    // Render questions
+    const questionsHtml = reflection.questions.map((q, idx) => `
+        <div class="reflection-question" data-question-id="${q.id}">
+            <div class="question-header">
+                <span class="question-type ${q.type}">${q.type === 'scenario' ? 'Scenario' : 'Reflection'}</span>
+                <span class="question-num">Question ${idx + 1} of ${reflection.questions.length}</span>
+            </div>
+            <p class="question-text">${q.question}</p>
+            <textarea 
+                class="reflection-textarea" 
+                id="reflection-${q.id}" 
+                placeholder="Write your thoughtful response here (minimum 50 characters)..."
+                rows="6"
+            ></textarea>
+            <div class="char-count" id="count-${q.id}">0 characters</div>
+        </div>
+    `).join('');
+    
+    document.getElementById('reflectionQuestions').innerHTML = questionsHtml;
+    
+    // Add character counters
+    reflection.questions.forEach(q => {
+        const textarea = document.getElementById(`reflection-${q.id}`);
+        const counter = document.getElementById(`count-${q.id}`);
+        textarea.addEventListener('input', () => {
+            const len = textarea.value.length;
+            counter.textContent = `${len} characters`;
+            counter.className = len >= 50 ? 'char-count valid' : 'char-count';
+        });
+    });
+    
+    document.getElementById('reflectionModal').classList.add('active');
+}
+
+function createReflectionModal() {
+    const modal = document.createElement('div');
+    modal.id = 'reflectionModal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal modal-xl">
+            <div class="modal-header reflection-header">
+                <div class="tutor-badge">
+                    <img id="reflectionTutorAvatar" src="" alt="Tutor">
+                    <span id="reflectionTutorName">Mr Clark</span>
+                </div>
+                <h2 id="reflectionModuleTitle">Module Reflection</h2>
+                <button class="modal-close" onclick="closeModal('reflectionModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tutor-intro-message">
+                    <p id="reflectionTutorMessage"></p>
+                </div>
+                
+                <div id="reflectionQuestions"></div>
+                
+                <div class="reflection-submit">
+                    <button type="button" class="btn btn-secondary btn-lg" id="submitReflectionBtn" onclick="submitReflections()">
+                        <i class="fas fa-paper-plane"></i> Submit to ${window.currentReflection?.tutor?.name || 'Mr Clark'} for Review
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function submitReflections() {
+    const reflection = window.currentReflection;
+    if (!reflection) return;
+    
+    const btn = document.getElementById('submitReflectionBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mr Clark is reviewing...';
+    
+    const results = [];
+    let allPassed = true;
+    
+    for (const q of reflection.questions) {
+        const response = document.getElementById(`reflection-${q.id}`).value.trim();
+        
+        if (response.length < 50) {
+            showError(`Please provide a more detailed response for question: "${q.question.substring(0, 50)}..."`);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit to Mr Clark for Review';
+            return;
+        }
+        
+        try {
+            const res = await fetch(`${API_URL}/api/lms/tutor/submit-reflection`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    learner_email: currentLearner.email,
+                    module_id: currentModule.id,
+                    question_id: q.id,
+                    response: response
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                results.push({
+                    question: q.question,
+                    passed: data.evaluation.passed,
+                    feedback: data.evaluation.tutor_message,
+                    competencies: data.evaluation.competencies_demonstrated
+                });
+                
+                if (!data.evaluation.passed) {
+                    allPassed = false;
+                }
+            } else {
+                throw new Error(data.detail || 'Submission failed');
+            }
+        } catch (error) {
+            showError(`Error submitting response: ${error.message}`);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit to Mr Clark for Review';
+            return;
+        }
+    }
+    
+    // Show results
+    showReflectionResults(results, allPassed);
+}
+
+function showReflectionResults(results, allPassed) {
+    const tutor = window.currentReflection?.tutor || { name: 'Mr Clark', avatar_url: '' };
+    
+    let resultsHtml = `
+        <div class="reflection-results">
+            <div class="tutor-feedback-header">
+                <img src="${tutor.avatar_url}" alt="${tutor.name}" class="tutor-avatar-large">
+                <div>
+                    <h3>${tutor.name}'s Feedback</h3>
+                    <p class="feedback-summary ${allPassed ? 'passed' : 'needs-work'}">
+                        ${allPassed ? 'Well done! You\'ve demonstrated good understanding.' : 'Good effort! Some areas need more development.'}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="feedback-list">
+                ${results.map((r, i) => `
+                    <div class="feedback-item ${r.passed ? 'passed' : 'needs-work'}">
+                        <div class="feedback-status">
+                            <i class="fas ${r.passed ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                            ${r.passed ? 'Passed' : 'Needs Development'}
+                        </div>
+                        <p class="feedback-question">${r.question.substring(0, 80)}...</p>
+                        <p class="feedback-text">${r.feedback}</p>
+                        ${r.competencies?.length > 0 ? `
+                            <div class="competencies-shown">
+                                <strong>Competencies demonstrated:</strong>
+                                ${r.competencies.map(c => `<span class="competency-tag">${c}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="reflection-actions">
+                ${allPassed ? `
+                    <p class="success-message"><i class="fas fa-award"></i> You can now proceed to the module quiz!</p>
+                    <button class="btn btn-secondary btn-lg" onclick="closeModal('reflectionModal'); startQuiz();">
+                        <i class="fas fa-clipboard-check"></i> Take Module Quiz
+                    </button>
+                ` : `
+                    <p class="retry-message"><i class="fas fa-redo"></i> Please review the feedback and try again.</p>
+                    <button class="btn btn-outline btn-lg" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                `}
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('reflectionQuestions').innerHTML = resultsHtml;
+    document.getElementById('submitReflectionBtn').style.display = 'none';
+}
+
