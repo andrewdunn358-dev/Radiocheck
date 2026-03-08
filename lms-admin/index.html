@@ -576,7 +576,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="loginPassword" placeholder="Enter your password" required>
+                    <input type="password" class="form-input" id="loginPassword" placeholder="Enter your password" required autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%" id="loginBtn">
                     <i class="fas fa-sign-in-alt"></i> Sign In
@@ -1243,9 +1243,20 @@
                             <td>${new Date(l.enrolled_at).toLocaleDateString()}</td>
                             <td>${l.certificate_issued ? '<span class="badge badge-success">Issued</span>' : '<span class="badge badge-primary">Not yet</span>'}</td>
                             <td>
-                                <button class="btn btn-primary btn-sm" onclick="viewLearnerProgress('${l.email}')">
-                                    <i class="fas fa-chart-bar"></i>
-                                </button>
+                                <div style="display:flex;gap:0.25rem;flex-wrap:wrap;">
+                                    <button class="btn btn-primary btn-sm" onclick="viewLearnerProgress('${l.email}')" title="View Progress">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </button>
+                                    <button class="btn btn-sm" style="background:var(--secondary);color:var(--bg-darker);" onclick="showEditLearnerModal('${l.email}')" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-warning btn-sm" onclick="showResetPasswordModal('${l.email}')" title="Reset Password">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteLearner('${l.email}', '${l.full_name}')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `).join('') :
@@ -1262,6 +1273,200 @@
                 alert(`Progress: ${data.progress_percent}%\nCompleted: ${data.completed_modules} of ${data.total_modules} modules`);
             } catch (error) {
                 console.error('Error:', error);
+            }
+        }
+
+        // Edit Learner
+        async function showEditLearnerModal(email) {
+            try {
+                const res = await fetch(`${API_URL}/api/lms/admin/learner/${encodeURIComponent(email)}`);
+                if (!res.ok) throw new Error('Failed to fetch learner');
+                const data = await res.json();
+                const learner = data.learner;
+                
+                // Create edit modal if it doesn't exist
+                if (!document.getElementById('editLearnerModal')) {
+                    createEditLearnerModal();
+                }
+                
+                document.getElementById('editLearnerEmail').value = learner.email;
+                document.getElementById('editLearnerName').value = learner.full_name;
+                document.getElementById('editLearnerNotes').value = learner.manual_add_notes || '';
+                document.getElementById('editLearnerModal').classList.add('active');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to load learner details');
+            }
+        }
+
+        function createEditLearnerModal() {
+            const modal = document.createElement('div');
+            modal.id = 'editLearnerModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3 class="modal-title"><i class="fas fa-user-edit"></i> Edit Learner</h3>
+                        <button class="modal-close" onclick="closeModal('editLearnerModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form onsubmit="handleEditLearner(event)">
+                            <div class="form-group">
+                                <label class="form-label">Email (cannot be changed)</label>
+                                <input type="email" class="form-input" id="editLearnerEmail" disabled style="opacity:0.7;">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-input" id="editLearnerName" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-input" id="editLearnerNotes" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width:100%" id="editLearnerBtn">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function handleEditLearner(event) {
+            event.preventDefault();
+            const email = document.getElementById('editLearnerEmail').value;
+            const btn = document.getElementById('editLearnerBtn');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            
+            try {
+                const res = await fetch(`${API_URL}/api/lms/admin/learner/${encodeURIComponent(email)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_name: document.getElementById('editLearnerName').value,
+                        notes: document.getElementById('editLearnerNotes').value
+                    })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    alert('Learner updated successfully');
+                    closeModal('editLearnerModal');
+                    loadLearners();
+                } else {
+                    alert('Error: ' + (data.detail || 'Update failed'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to update learner');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+            }
+        }
+
+        // Reset Password
+        function showResetPasswordModal(email) {
+            if (!document.getElementById('resetPasswordModal')) {
+                createResetPasswordModal();
+            }
+            document.getElementById('resetPasswordEmail').value = email;
+            document.getElementById('resetPasswordInput').value = '';
+            document.getElementById('resetPasswordModal').classList.add('active');
+        }
+
+        function createResetPasswordModal() {
+            const modal = document.createElement('div');
+            modal.id = 'resetPasswordModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3 class="modal-title"><i class="fas fa-key"></i> Reset Password</h3>
+                        <button class="modal-close" onclick="closeModal('resetPasswordModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="color:var(--text-secondary);margin-bottom:1rem;">Set a new password for this learner. They will use this to log in.</p>
+                        <form onsubmit="handleResetPassword(event)">
+                            <input type="hidden" id="resetPasswordEmail">
+                            <div class="form-group">
+                                <label class="form-label">New Password</label>
+                                <input type="password" class="form-input" id="resetPasswordInput" required minlength="8" placeholder="Minimum 8 characters" autocomplete="new-password">
+                            </div>
+                            <button type="submit" class="btn btn-warning" style="width:100%" id="resetPasswordBtn">
+                                <i class="fas fa-key"></i> Reset Password
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function handleResetPassword(event) {
+            event.preventDefault();
+            const email = document.getElementById('resetPasswordEmail').value;
+            const newPassword = document.getElementById('resetPasswordInput').value;
+            const btn = document.getElementById('resetPasswordBtn');
+            
+            if (newPassword.length < 8) {
+                alert('Password must be at least 8 characters');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+            
+            try {
+                const res = await fetch(`${API_URL}/api/lms/admin/learner/${encodeURIComponent(email)}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_password: newPassword })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Password reset successfully for ${email}`);
+                    closeModal('resetPasswordModal');
+                } else {
+                    alert('Error: ' + (data.detail || 'Reset failed'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to reset password');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-key"></i> Reset Password';
+            }
+        }
+
+        // Delete Learner
+        function confirmDeleteLearner(email, name) {
+            if (confirm(`Are you sure you want to delete "${name}" (${email})?\n\nThis will permanently remove:\n- Their account\n- All progress data\n- Quiz submissions\n- Chat history\n\nThis cannot be undone!`)) {
+                deleteLearner(email);
+            }
+        }
+
+        async function deleteLearner(email) {
+            try {
+                const res = await fetch(`${API_URL}/api/lms/admin/learner/${encodeURIComponent(email)}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Learner ${email} deleted successfully`);
+                    loadLearners();
+                    loadDashboard();
+                } else {
+                    alert('Error: ' + (data.detail || 'Delete failed'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to delete learner');
             }
         }
 

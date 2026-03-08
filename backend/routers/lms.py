@@ -945,3 +945,112 @@ async def revoke_certificate(certificate_id: str):
     
     return {"success": True, "message": "Certificate revoked"}
 
+
+
+# ============================================================================
+# ADMIN LEARNER MANAGEMENT ENDPOINTS
+# ============================================================================
+
+class LearnerUpdate(BaseModel):
+    """Update learner details"""
+    full_name: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class PasswordReset(BaseModel):
+    """Reset password for a learner"""
+    new_password: str
+
+
+@router.get("/api/lms/admin/learner/{learner_email}")
+async def admin_get_learner(learner_email: str):
+    """Get detailed learner info for admin"""
+    db = get_db()
+    
+    learner = await db.lms_learners.find_one({"email": learner_email.lower()})
+    if not learner:
+        raise HTTPException(status_code=404, detail="Learner not found")
+    
+    # Don't send password hash
+    learner.pop("password_hash", None)
+    learner["_id"] = str(learner["_id"])
+    
+    return {"learner": learner}
+
+
+@router.put("/api/lms/admin/learner/{learner_email}")
+async def admin_update_learner(learner_email: str, data: LearnerUpdate):
+    """Update learner details"""
+    db = get_db()
+    
+    update_data = {}
+    if data.full_name:
+        update_data["full_name"] = data.full_name
+    if data.notes is not None:
+        update_data["manual_add_notes"] = data.notes
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No update data provided")
+    
+    result = await db.lms_learners.update_one(
+        {"email": learner_email.lower()},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Learner not found")
+    
+    return {"success": True, "message": "Learner updated successfully"}
+
+
+@router.post("/api/lms/admin/learner/{learner_email}/reset-password")
+async def admin_reset_password(learner_email: str, data: PasswordReset):
+    """Reset a learner's password"""
+    db = get_db()
+    
+    # Validate password length
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
+    # Check learner exists
+    learner = await db.lms_learners.find_one({"email": learner_email.lower()})
+    if not learner:
+        raise HTTPException(status_code=404, detail="Learner not found")
+    
+    # Hash and update password
+    password_hash = hash_password(data.new_password)
+    
+    await db.lms_learners.update_one(
+        {"email": learner_email.lower()},
+        {"$set": {
+            "password_hash": password_hash,
+            "password_reset_at": datetime.now(timezone.utc),
+            "password_reset_by_admin": True
+        }}
+    )
+    
+    return {"success": True, "message": f"Password reset for {learner_email}"}
+
+
+@router.delete("/api/lms/admin/learner/{learner_email}")
+async def admin_delete_learner(learner_email: str):
+    """Delete a learner and all their data"""
+    db = get_db()
+    
+    # Check learner exists
+    learner = await db.lms_learners.find_one({"email": learner_email.lower()})
+    if not learner:
+        raise HTTPException(status_code=404, detail="Learner not found")
+    
+    # Delete learner
+    await db.lms_learners.delete_one({"email": learner_email.lower()})
+    
+    # Also delete their reflections and assessments
+    await db.lms_reflections.delete_many({"learner_email": learner_email.lower()})
+    await db.lms_final_assessments.delete_many({"learner_email": learner_email.lower()})
+    await db.tutor_conversations.delete_many({"learner_email": learner_email.lower()})
+    
+    # Delete any registration
+    await db.volunteer_registrations.delete_many({"email": learner_email.lower()})
+    
+    return {"success": True, "message": f"Learner {learner_email} and all associated data deleted"}

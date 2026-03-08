@@ -150,12 +150,12 @@ function createSetPasswordModal() {
                     
                     <div class="form-group">
                         <label class="form-label">New Password</label>
-                        <input type="password" id="newPassword" class="form-input" required minlength="8" placeholder="Minimum 8 characters">
+                        <input type="password" id="newPassword" class="form-input" required minlength="8" placeholder="Minimum 8 characters" autocomplete="new-password">
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Confirm Password</label>
-                        <input type="password" id="confirmPassword" class="form-input" required minlength="8" placeholder="Confirm your password">
+                        <input type="password" id="confirmPassword" class="form-input" required minlength="8" placeholder="Confirm your password" autocomplete="new-password">
                     </div>
                     
                     <div class="form-group">
