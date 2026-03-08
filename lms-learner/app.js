@@ -820,12 +820,24 @@ function showQuizResults(results) {
         </div>
     `).join('');
     
-    // Buttons
+    // Buttons - Show appropriate options based on pass/fail
     document.getElementById('continueBtn').style.display = passed ? 'flex' : 'none';
+    document.getElementById('reviewModuleBtn').style.display = passed ? 'none' : 'flex';
     document.getElementById('retryBtn').style.display = passed ? 'none' : 'flex';
     
     // Refresh progress
     loadDashboard();
+}
+
+// Go back to review the module content
+function reviewModule() {
+    // Reset quiz state
+    quizAnswers = {};
+    currentQuestionIndex = 0;
+    window.currentReflection = null;
+    
+    // Go back to module view
+    openModule(currentModule.id);
 }
 
 // Generate a guidance hint based on the question type
