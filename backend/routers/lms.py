@@ -10,11 +10,16 @@ from datetime import datetime, timezone
 from bson import ObjectId
 import secrets
 import logging
+import os
+import resend
 
 # Import the full curriculum
 from routers.lms_curriculum_part2 import get_full_curriculum
 
 router = APIRouter(tags=["LMS"])
+
+# Initialize Resend
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 # Get the full curriculum with all 14 modules
 MHFA_CURRICULUM = get_full_curriculum()
@@ -567,19 +572,21 @@ async def approve_registration(registration_id: str, background_tasks: Backgroun
     }
 
 async def send_approval_email(email: str, name: str):
-    """Send approval notification email"""
+    """Send approval notification email via Resend"""
     try:
-        from routers.emails import send_email
-        
+        if not resend.api_key:
+            logging.warning("No Resend API key configured - skipping email")
+            return
+            
         email_body = f"""
 Dear {name},
 
 Great news! Your application to become a Radio Check peer support volunteer has been approved!
 
-You are now enrolled in the Mental Health First Aid training course. 
+You are now enrolled in the Radio Check Peer to Peer Training course. 
 
 To get started:
-1. Visit the Learning Portal
+1. Visit the Learning Portal at https://radiocheck.me/training
 2. Log in with your email: {email}
 3. Complete the training modules at your own pace
 
@@ -593,11 +600,13 @@ Welcome to the team!
 The Radio Check Team
         """
         
-        await send_email(
-            to=email,
-            subject="Your Radio Check Volunteer Application is Approved!",
-            body=email_body
-        )
+        resend.Emails.send({
+            "from": "Radio Check <noreply@radiocheck.me>",
+            "to": [email],
+            "subject": "Your Radio Check Volunteer Application is Approved!",
+            "text": email_body.strip()
+        })
+        logging.info(f"Approval email sent to {email}")
     except Exception as e:
         logging.error(f"Failed to send approval email: {e}")
 
@@ -682,10 +691,12 @@ async def reject_registration(registration_id: str, reason: str = None, backgrou
     }
 
 async def send_rejection_email(email: str, name: str, reason: str = None):
-    """Send rejection notification email"""
+    """Send rejection notification email via Resend"""
     try:
-        from routers.emails import send_email
-        
+        if not resend.api_key:
+            logging.warning("No Resend API key configured - skipping email")
+            return
+            
         email_body = f"""
 Dear {name},
 
@@ -701,11 +712,13 @@ Best wishes,
 The Radio Check Team
         """
         
-        await send_email(
-            to=email,
-            subject="Update on Your Radio Check Volunteer Application",
-            body=email_body
-        )
+        resend.Emails.send({
+            "from": "Radio Check <noreply@radiocheck.me>",
+            "to": [email],
+            "subject": "Update on Your Radio Check Volunteer Application",
+            "text": email_body.strip()
+        })
+        logging.info(f"Rejection email sent to {email}")
     except Exception as e:
         logging.error(f"Failed to send rejection email: {e}")
 

@@ -3,8 +3,11 @@
  * Handles course enrollment, module learning, quizzes, and certificates
  */
 
-// Configuration
-const API_URL = window.location.origin;
+// Configuration - Update this URL when deploying to production
+// For 20i hosting, set this to your Render backend URL
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname.includes('preview.emergentagent.com')
+    ? window.location.origin  // Use same origin in dev/preview
+    : 'https://your-backend.onrender.com';  // Replace with your Render URL for production
 
 // State
 let currentLearner = null;
