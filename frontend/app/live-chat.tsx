@@ -502,16 +502,19 @@ export default function LiveChat() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      {/* Header */}
+      {/* Header - Clean and centered */}
       <View style={styles.header}>
+        {/* Left: Single close button */}
         <TouchableOpacity 
           onPress={handleEndChat} 
-          style={styles.endButton}
+          style={styles.closeButton}
           data-testid="live-chat-close-button"
         >
-          <FontAwesome5 name="times" size={18} color="#ef4444" />
+          <FontAwesome5 name="arrow-left" size={16} color="#fff" />
         </TouchableOpacity>
-        <View style={styles.headerContent}>
+        
+        {/* Center: Staff info */}
+        <View style={styles.headerCenter}>
           <View style={styles.staffAvatar}>
             <FontAwesome5 
               name={staffType === 'counsellor' ? 'user-md' : 'users'} 
@@ -519,7 +522,7 @@ export default function LiveChat() {
               color="#fff" 
             />
           </View>
-          <View>
+          <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>{displayName}</Text>
             <View style={styles.statusRow}>
               <View style={[styles.onlineDot, waitingForStaff && styles.waitingDot]} />
@@ -527,47 +530,35 @@ export default function LiveChat() {
             </View>
           </View>
         </View>
-        <TouchableOpacity 
-          style={styles.endCallButton}
-          onPress={() => router.back()}
-        >
-          <FontAwesome5 name="times" size={16} color="#dc2626" />
-        </TouchableOpacity>
         
-        {/* Call Button - visible when connected to staff */}
-        {!waitingForStaff && staffName && (
-          <TouchableOpacity 
-            style={[styles.callButton, isRequestingCall && styles.callButtonDisabled]}
-            onPress={handleRequestCall}
-            disabled={isRequestingCall}
-            data-testid="request-call-button"
-          >
-            <FontAwesome5 name="phone" size={14} color="#fff" />
-          </TouchableOpacity>
-        )}
-        
-        {/* Report/Block dropdown */}
-        {!waitingForStaff && staffName && (
-          <View style={styles.headerActions}>
+        {/* Right: Actions (only when connected) */}
+        <View style={styles.headerActions}>
+          {/* Call Button - visible when connected to staff */}
+          {!waitingForStaff && staffName && (
             <TouchableOpacity 
-              style={styles.reportButton}
+              style={[styles.actionButton, styles.callActionBtn, isRequestingCall && styles.actionButtonDisabled]}
+              onPress={handleRequestCall}
+              disabled={isRequestingCall}
+              data-testid="request-call-button"
+            >
+              <FontAwesome5 name="phone" size={14} color="#fff" />
+            </TouchableOpacity>
+          )}
+          
+          {/* More options menu */}
+          {!waitingForStaff && staffName && (
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.moreButton]}
               onPress={() => setShowReportModal(true)}
-              data-testid="report-button"
+              data-testid="more-options-button"
             >
-              <FontAwesome5 name="flag" size={14} color="#f59e0b" />
+              <FontAwesome5 name="ellipsis-v" size={14} color="#94a3b8" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.blockButton}
-              onPress={handleBlock}
-              data-testid="block-button"
-            >
-              <FontAwesome5 name="ban" size={14} color="#dc2626" />
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
       </View>
 
-      {/* Report Modal */}
+      {/* Report/Block Modal */}
       <Modal
         visible={showReportModal}
         transparent={true}
@@ -577,33 +568,57 @@ export default function LiveChat() {
         <View style={styles.modalOverlay}>
           <View style={styles.reportModal}>
             <View style={styles.reportModalHeader}>
-              <Text style={styles.reportModalTitle}>Report User</Text>
+              <Text style={styles.reportModalTitle}>Options</Text>
               <TouchableOpacity onPress={() => setShowReportModal(false)}>
                 <FontAwesome5 name="times" size={18} color="#6b7280" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.reportModalSubtitle}>
-              Help us maintain a safe environment by reporting inappropriate behaviour.
-            </Text>
-            <TextInput
-              style={styles.reportInput}
-              placeholder="Describe the issue..."
-              placeholderTextColor="#9ca3af"
-              value={reportReason}
-              onChangeText={setReportReason}
-              multiline
-              numberOfLines={4}
-            />
-            <View style={styles.reportModalButtons}>
+            
+            {/* Quick Actions */}
+            <View style={styles.modalQuickActions}>
               <TouchableOpacity 
-                style={styles.reportCancelButton}
-                onPress={() => setShowReportModal(false)}
+                style={styles.modalAction}
+                onPress={() => {
+                  setShowReportModal(false);
+                  handleBlock();
+                }}
               >
-                <Text style={styles.reportCancelText}>Cancel</Text>
+                <View style={[styles.modalActionIcon, { backgroundColor: 'rgba(220, 38, 38, 0.1)' }]}>
+                  <FontAwesome5 name="ban" size={16} color="#dc2626" />
+                </View>
+                <Text style={styles.modalActionText}>Block User</Text>
               </TouchableOpacity>
+              
               <TouchableOpacity 
-                style={styles.reportSubmitButton}
+                style={styles.modalAction}
+                onPress={handleEndChat}
+              >
+                <View style={[styles.modalActionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                  <FontAwesome5 name="sign-out-alt" size={16} color="#ef4444" />
+                </View>
+                <Text style={styles.modalActionText}>End Chat</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Report Section */}
+            <View style={styles.reportSection}>
+              <Text style={styles.reportSectionTitle}>Report an Issue</Text>
+              <Text style={styles.reportModalSubtitle}>
+                Help us maintain a safe environment by reporting inappropriate behaviour.
+              </Text>
+              <TextInput
+                style={styles.reportInput}
+                placeholder="Describe the issue..."
+                placeholderTextColor="#9ca3af"
+                value={reportReason}
+                onChangeText={setReportReason}
+                multiline
+                numberOfLines={3}
+              />
+              <TouchableOpacity 
+                style={[styles.reportSubmitButton, !reportReason.trim() && styles.reportSubmitDisabled]}
                 onPress={handleReport}
+                disabled={!reportReason.trim()}
               >
                 <FontAwesome5 name="paper-plane" size={14} color="#fff" />
                 <Text style={styles.reportSubmitText}>Submit Report</Text>
@@ -750,6 +765,7 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 8,
   },
+  // Clean header styles
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -758,16 +774,20 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 16,
   },
-  endButton: {
-    padding: 10,
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#2d3a4d',
-    borderRadius: 8,
-    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  headerContent: {
+  headerCenter: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    justifyContent: 'center',
+    marginHorizontal: 12,
   },
   staffAvatar: {
     width: 44,
@@ -777,6 +797,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  headerInfo: {
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontSize: 17,
@@ -802,20 +825,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94a3b8',
   },
-  callButton: {
-    padding: 12,
-    backgroundColor: '#16a34a',
-    borderRadius: 8,
-    marginRight: 8,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  callButtonDisabled: {
+  actionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callActionBtn: {
+    backgroundColor: '#16a34a',
+  },
+  moreButton: {
+    backgroundColor: '#2d3a4d',
+  },
+  actionButtonDisabled: {
     backgroundColor: '#9ca3af',
     opacity: 0.6,
-  },
-  endCallButton: {
-    padding: 12,
-    backgroundColor: '#fee2e2',
-    borderRadius: 8,
   },
   waitingBanner: {
     flexDirection: 'row',
@@ -1084,22 +1114,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   // Report/Block styles
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginLeft: 8,
-  },
-  reportButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-  },
-  blockButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(220, 38, 38, 0.1)',
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1118,52 +1132,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   reportModalTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#f8fafc',
   },
-  reportModalSubtitle: {
+  modalQuickActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  modalAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  modalActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalActionText: {
     fontSize: 14,
+    fontWeight: '500',
+    color: '#f8fafc',
+  },
+  reportSection: {
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    paddingTop: 16,
+  },
+  reportSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f8fafc',
+    marginBottom: 4,
+  },
+  reportModalSubtitle: {
+    fontSize: 13,
     color: '#94a3b8',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   reportInput: {
     backgroundColor: '#0f172a',
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     color: '#f8fafc',
     fontSize: 14,
-    minHeight: 100,
+    minHeight: 80,
     textAlignVertical: 'top',
     borderWidth: 1,
     borderColor: '#334155',
   },
-  reportModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 16,
-  },
-  reportCancelButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  reportCancelText: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   reportSubmitButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     backgroundColor: '#dc2626',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
+    marginTop: 12,
+  },
+  reportSubmitDisabled: {
+    backgroundColor: '#4b5563',
+    opacity: 0.6,
   },
   reportSubmitText: {
     color: '#fff',
