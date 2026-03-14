@@ -28,21 +28,32 @@ export default function Root({ children }: PropsWithChildren) {
                 background-color: var(--app-background) !important;
                 transition: background-color 0.2s ease;
               }
-              body > div:first-child { 
-                position: fixed !important; 
-                top: 0; 
-                left: 50% !important;
-                transform: translateX(-50%) !important;
-                right: auto !important;
-                bottom: 0; 
-                width: 100%;
-                max-width: 480px !important;
-                box-shadow: 0 0 40px rgba(0,0,0,0.3);
-              }
-              @media (min-width: 481px) {
-                body > div:first-child {
+              /* Only apply mobile container styling on smaller screens */
+              @media (max-width: 900px) {
+                body > div:first-child { 
+                  position: fixed !important; 
+                  top: 0; 
+                  left: 50% !important;
+                  transform: translateX(-50%) !important;
+                  right: auto !important;
+                  bottom: 0; 
+                  width: 100%;
+                  max-width: 480px !important;
+                  box-shadow: 0 0 40px rgba(0,0,0,0.3);
                   border-left: 1px solid var(--app-border);
                   border-right: 1px solid var(--app-border);
+                }
+              }
+              /* On desktop, let ResponsiveWrapper handle the layout */
+              @media (min-width: 901px) {
+                body > div:first-child { 
+                  position: relative !important;
+                  left: auto !important;
+                  transform: none !important;
+                  width: 100% !important;
+                  max-width: none !important;
+                  box-shadow: none;
+                  border: none;
                 }
               }
               [role="tablist"] [role="tab"] * { overflow: visible !important; }
