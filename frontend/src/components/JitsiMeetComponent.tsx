@@ -117,7 +117,7 @@ export default function JitsiMeetComponent({
           startWithAudioMuted: true,
           startWithVideoMuted: false,
           disableDeepLinking: true,
-          prejoinPageEnabled: true,
+          prejoinPageEnabled: false, // Skip prejoin screen - go directly into meeting
           enableClosePage: false,
           hideConferenceSubject: false,
           // Disable features that cause warnings on public Jitsi
