@@ -81,10 +81,27 @@ async def get_twilio_status():
     return {
         "configured": is_configured,
         "phone_number": TWILIO_PHONE_NUMBER if is_configured else None,
+        "twiml_app_sid": TWILIO_TWIML_APP_SID[:10] + "..." if TWILIO_TWIML_APP_SID else None,
         "features": {
             "browser_calling": is_configured,
             "outbound_calls": is_configured
         }
+    }
+
+
+@router.get("/debug")
+async def get_twilio_debug():
+    """Debug endpoint to check Twilio configuration"""
+    return {
+        "account_sid_set": bool(TWILIO_ACCOUNT_SID),
+        "auth_token_set": bool(TWILIO_AUTH_TOKEN),
+        "api_key_sid_set": bool(TWILIO_API_KEY_SID),
+        "api_key_secret_set": bool(TWILIO_API_KEY_SECRET),
+        "twiml_app_sid": TWILIO_TWIML_APP_SID,
+        "phone_number": TWILIO_PHONE_NUMBER,
+        "client_initialized": twilio_client is not None,
+        "voice_webhook_url": "/api/twilio/voice",
+        "expected_twilio_webhook": "https://veterans-support-api.onrender.com/api/twilio/voice"
     }
 
 
@@ -247,7 +264,11 @@ async def handle_voice_webhook(request: Request):
         from_number = form_data.get('From', '')
         call_sid = form_data.get('CallSid', '')
         
+        # Enhanced logging for debugging
+        logger.info(f"=== VOICE WEBHOOK CALLED ===")
         logger.info(f"Voice webhook: CallSid={call_sid}, From={from_number}, To={to_number}")
+        logger.info(f"All form data: {dict(form_data)}")
+        logger.info(f"Request headers: {dict(request.headers)}")
         
         response = VoiceResponse()
         
