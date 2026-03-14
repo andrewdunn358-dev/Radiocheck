@@ -7028,6 +7028,29 @@ async def api_get_active_calls(current_user: User = Depends(require_role("admin"
     """Get list of active calls (admin only)"""
     return {"calls": get_active_calls_list()}
 
+@api_router.get("/webrtc/debug")
+async def api_debug_webrtc():
+    """Debug endpoint to check Socket.IO connected users (no auth for debugging)"""
+    from webrtc_signaling import connected_users, user_to_socket, active_calls
+    
+    users_list = []
+    for socket_id, user in connected_users.items():
+        users_list.append({
+            "socket_id": socket_id[:8] + "...",  # Truncate for privacy
+            "user_id": user.get('user_id'),
+            "user_type": user.get('user_type'),
+            "name": user.get('name'),
+            "status": user.get('status')
+        })
+    
+    return {
+        "connected_users_count": len(connected_users),
+        "connected_users": users_list,
+        "user_to_socket_count": len(user_to_socket),
+        "active_calls_count": len(active_calls),
+        "note": "Staff must be connected and 'available' to receive call/chat requests"
+    }
+
 
 # ============ Human-to-Human Chat API ============
 

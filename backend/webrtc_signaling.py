@@ -721,6 +721,14 @@ async def request_human_chat(sid, data):
     session_id = data.get('session_id', '')  # Original AI chat session ID for matching
     alert_id = data.get('alert_id', '')  # Associated safeguarding alert ID
     
+    logger.info(f"=== REQUEST_HUMAN_CHAT EVENT ===")
+    logger.info(f"From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
+    logger.info(f"Total connected users: {len(connected_users)}")
+    
+    # Log all connected users for debugging
+    for socket_id, user in connected_users.items():
+        logger.info(f"  Connected: {user.get('name')} ({user.get('user_id')}) - type: {user.get('user_type')}, status: {user.get('status')}")
+    
     # Find available staff
     available_staff = []
     for socket_id, user in connected_users.items():
@@ -732,6 +740,8 @@ async def request_human_chat(sid, data):
                     'user_type': user['user_type'],
                     'name': user['name']
                 })
+    
+    logger.info(f"Available staff count: {len(available_staff)}")
     
     if not available_staff:
         # No staff available
