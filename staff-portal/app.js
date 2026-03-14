@@ -2411,6 +2411,28 @@ async function openCaseDetail(caseId) {
                 '</div>';
         }
         
+        // Build action buttons based on role
+        var actionButtons = '';
+        var userRole = currentUser ? currentUser.role : '';
+        
+        // Common buttons for all staff
+        actionButtons += '<button class="btn btn-primary" onclick="addSessionNote(\'' + caseId + '\')" style="background: #2563eb; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-plus"></i> Add Session Note</button>';
+        
+        // Peers get an "Escalate to Counsellor" button prominently
+        if (userRole === 'peer') {
+            actionButtons += '<button class="btn btn-danger" onclick="escalateToCounsellor(\'' + caseId + '\')" style="background: #dc2626; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-arrow-up"></i> Escalate to Counsellor</button>';
+        }
+        
+        // Safety plan and referral buttons (available to all)
+        actionButtons += '<button class="btn btn-secondary" onclick="editSafetyPlan(\'' + caseId + '\')" style="background: #6b7280; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-shield-alt"></i> ' + (caseData.safety_plan ? 'Edit' : 'Create') + ' Safety Plan</button>';
+        
+        // Counsellors and above can create referrals and share cases
+        if (userRole !== 'peer') {
+            actionButtons += '<button class="btn btn-warning" onclick="createReferral(\'' + caseId + '\')" style="background: #f59e0b; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-hospital"></i> Create Referral</button>';
+        }
+        
+        actionButtons += '<button class="btn btn-outline" onclick="closeModal()" style="background: #f3f4f6; color: #374151; padding: 10px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer;"><i class="fas fa-times"></i> Close</button>';
+        
         var content = '<div style="padding: 20px; background: #ffffff;">' +
             '<h3 style="color: #1f2937; margin-bottom: 16px;"><i class="fas fa-user-shield"></i> Case: ' + escapeHtml(caseData.user_name || 'Unknown') + '</h3>' +
             '<div class="case-meta" style="margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap;">' +
@@ -2421,10 +2443,7 @@ async function openCaseDetail(caseId) {
             safetyPlanHtml +
             sessionsHtml +
             '<div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">' +
-                '<button class="btn btn-primary" onclick="addSessionNote(\'' + caseId + '\')" style="background: #2563eb; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-plus"></i> Add Session Note</button>' +
-                '<button class="btn btn-secondary" onclick="editSafetyPlan(\'' + caseId + '\')" style="background: #6b7280; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-shield-alt"></i> ' + (caseData.safety_plan ? 'Edit' : 'Create') + ' Safety Plan</button>' +
-                '<button class="btn btn-warning" onclick="createReferral(\'' + caseId + '\')" style="background: #f59e0b; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-hospital"></i> Create Referral</button>' +
-                '<button class="btn btn-outline" onclick="closeModal()" style="background: #f3f4f6; color: #374151; padding: 10px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer;"><i class="fas fa-times"></i> Close</button>' +
+                actionButtons +
             '</div>' +
         '</div>';
         
@@ -2519,6 +2538,99 @@ async function escalateCase(caseId) {
         console.error('Error escalating case:', error);
         showNotification('Failed to escalate case: ' + error.message, 'error');
     }
+}
+
+// Escalate case to a counsellor (for peer supporters)
+async function escalateToCounsellor(caseId) {
+    try {
+        // Get list of counsellors
+        var staff = await apiCall('/users/staff');
+        var counsellors = staff.filter(function(s) {
+            return s.role === 'counsellor' || s.role === 'supervisor';
+        });
+        
+        if (counsellors.length === 0) {
+            showNotification('No counsellors available. Please contact an admin.', 'error');
+            return;
+        }
+        
+        // Build counsellor selection
+        var counsellorOptions = counsellors.map(function(c) {
+            return '<option value="' + c.id + '">' + escapeHtml(c.name) + ' (' + c.role + ')</option>';
+        }).join('');
+        
+        var content = '<div style="padding: 20px; background: #ffffff;">' +
+            '<form id="escalate-form" onsubmit="return submitEscalateToCounsellor(event, \'' + caseId + '\')">' +
+                '<p style="color: #6b7280; margin-bottom: 16px;">Select a counsellor to escalate this case to. They will receive access to the case and a notification.</p>' +
+                '<div class="form-group" style="margin-bottom: 16px;">' +
+                    '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Select Counsellor</label>' +
+                    '<select id="escalate-counsellor" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;">' +
+                        '<option value="">-- Select a counsellor --</option>' +
+                        counsellorOptions +
+                    '</select>' +
+                '</div>' +
+                '<div class="form-group" style="margin-bottom: 16px;">' +
+                    '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Reason for Escalation</label>' +
+                    '<select id="escalate-reason" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;">' +
+                        '<option value="">-- Select reason --</option>' +
+                        '<option value="high_risk">High Risk - Requires clinical assessment</option>' +
+                        '<option value="complex_needs">Complex needs beyond peer support</option>' +
+                        '<option value="safeguarding">Safeguarding concern</option>' +
+                        '<option value="session_limit">Approaching session limit</option>' +
+                        '<option value="other">Other (please specify)</option>' +
+                    '</select>' +
+                '</div>' +
+                '<div class="form-group" style="margin-bottom: 16px;">' +
+                    '<label style="display: block; margin-bottom: 6px; font-weight: 500; color: #374151;">Additional Notes</label>' +
+                    '<textarea id="escalate-notes" rows="3" placeholder="Any additional information for the counsellor..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb;"></textarea>' +
+                '</div>' +
+                '<div style="display: flex; gap: 12px; margin-top: 20px;">' +
+                    '<button type="submit" class="btn btn-danger" style="background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer;"><i class="fas fa-arrow-up"></i> Escalate Case</button>' +
+                    '<button type="button" class="btn btn-outline" onclick="goBackToCase(\'' + caseId + '\')" style="background: #f3f4f6; color: #374151; padding: 12px 24px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer;"><i class="fas fa-arrow-left"></i> Cancel</button>' +
+                '</div>' +
+            '</form>' +
+        '</div>';
+        
+        openGenericModal('Escalate to Counsellor', content, { isSubModal: true });
+        
+    } catch (error) {
+        console.error('Error loading counsellors:', error);
+        showNotification('Failed to load counsellors: ' + error.message, 'error');
+    }
+}
+
+// Submit escalation to counsellor
+async function submitEscalateToCounsellor(event, caseId) {
+    event.preventDefault();
+    
+    var counsellorId = document.getElementById('escalate-counsellor').value;
+    var reason = document.getElementById('escalate-reason').value;
+    var notes = document.getElementById('escalate-notes').value;
+    
+    try {
+        // Share the case with the counsellor
+        await apiCall('/cases/' + caseId + '/share', 'POST', {
+            counsellor_id: counsellorId
+        });
+        
+        // Add a session note about the escalation
+        await apiCall('/cases/' + caseId + '/sessions', 'POST', {
+            presenting_issue: 'Case escalated to counsellor. Reason: ' + reason + (notes ? '. Notes: ' + notes : ''),
+            risk_level: reason === 'high_risk' ? 'high' : 'moderate',
+            outcome: 'escalate_to_nhs',
+            next_steps: 'Counsellor review required'
+        });
+        
+        showNotification('Case escalated successfully. The counsellor has been notified.', 'success');
+        closeModal();
+        loadCases();
+        
+    } catch (error) {
+        console.error('Error escalating case:', error);
+        showNotification('Failed to escalate case: ' + error.message, 'error');
+    }
+    
+    return false;
 }
 
 // Edit/create safety plan

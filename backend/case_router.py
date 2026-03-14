@@ -104,7 +104,7 @@ class ShareCaseRequest(BaseModel):
 # ============================================================================
 
 async def get_user_with_role_check(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Get current user and verify they're a counsellor or admin"""
+    """Get current user and verify they're a counsellor, peer, or admin"""
     user = await get_current_user(credentials)
     # Convert User model to dict if necessary
     if hasattr(user, 'dict'):
@@ -113,8 +113,9 @@ async def get_user_with_role_check(credentials: HTTPAuthorizationCredentials = D
         user = vars(user)
     
     role = user.get("role", "")
-    if role not in ["admin", "supervisor", "counsellor", "staff"]:
-        raise HTTPException(status_code=403, detail="Only counsellors, supervisors and admins can access case management")
+    # Allow peers to access case management (for their own cases)
+    if role not in ["admin", "supervisor", "counsellor", "staff", "peer"]:
+        raise HTTPException(status_code=403, detail="Only staff members can access case management")
     return user
 
 
@@ -124,16 +125,27 @@ async def check_case_access(case_id: str, user: dict) -> dict:
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     
-    # Admin can see all
-    if user["role"] == "admin":
+    user_role = user.get("role", "")
+    user_id = user.get("id") or user.get("user_id")
+    
+    # Admin and supervisor can see all
+    if user_role in ["admin", "supervisor"]:
         return case
     
-    # Counsellor can only see own cases or shared cases
-    user_id = user.get("id") or user.get("user_id")
-    if case["assigned_to"] != user_id and user_id not in case.get("shared_with", []):
-        raise HTTPException(status_code=403, detail="You don't have access to this case")
+    # Counsellor can see own cases or shared cases
+    if user_role in ["counsellor", "staff"]:
+        if case["assigned_to"] != user_id and user_id not in case.get("shared_with", []):
+            raise HTTPException(status_code=403, detail="You don't have access to this case")
+        return case
     
-    return case
+    # Peer can only see their own assigned cases
+    if user_role == "peer":
+        if case["assigned_to"] != user_id:
+            raise HTTPException(status_code=403, detail="You don't have access to this case")
+        return case
+    
+    # Default: deny access
+    raise HTTPException(status_code=403, detail="You don't have access to this case")
 
 
 # ============================================================================
@@ -145,21 +157,28 @@ async def get_my_cases(
     status: Optional[str] = None,
     user: dict = Depends(get_user_with_role_check)
 ):
-    """Get cases for logged-in counsellor (or all for admin)"""
+    """Get cases for logged-in staff member (or all for admin)"""
     try:
         user_id = user.get("id") or user.get("user_id")
+        user_role = user.get("role", "")
         
-        # Build query
-        if user["role"] == "admin":
+        # Build query based on role
+        if user_role == "admin":
+            # Admin sees all cases
             query = {}
-        else:
-            # Counsellor sees own cases + shared with them
+        elif user_role in ["supervisor", "counsellor", "staff"]:
+            # Counsellors/supervisors see own cases + shared with them
             query = {
                 "$or": [
                     {"assigned_to": user_id},
                     {"shared_with": user_id}
                 ]
             }
+        elif user_role == "peer":
+            # Peers only see their own assigned cases (can escalate but not see others)
+            query = {"assigned_to": user_id}
+        else:
+            query = {"assigned_to": user_id}
         
         if status:
             query["status"] = status
@@ -836,8 +855,8 @@ async def share_case(
         target = await db.users.find_one({"id": request.counsellor_id}, {"_id": 0})
         if not target:
             raise HTTPException(status_code=404, detail="Counsellor not found")
-        if target.get("role") not in ["counsellor", "staff", "admin"]:
-            raise HTTPException(status_code=400, detail="Can only share with counsellors")
+        if target.get("role") not in ["counsellor", "supervisor", "staff", "admin"]:
+            raise HTTPException(status_code=400, detail="Can only share with counsellors or supervisors")
         
         await db.cases.update_one(
             {"id": case_id},
