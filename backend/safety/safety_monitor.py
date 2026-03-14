@@ -158,6 +158,16 @@ class EnhancedSafetyMonitor:
             "hang myself", "hanging myself",
             "goodbye forever", "won't be here tomorrow",
             "final message", "saying goodbye forever",
+            # Vehicle/driving methods (include common typos)
+            "drive off a cliff", "driving off a cliff", "drive into a wall",
+            "drive of a cliff", "driving of a cliff",  # Common typo: "of" instead of "off"
+            "crash my car", "drive off a bridge", "drive into traffic",
+            # Medication/overdose methods (UK phrasing)
+            "take tablets", "take some tablets", "take all my tablets",
+            "take all my pills", "swallow tablets", "overdose",
+            # Going to do it - immediate intent
+            "going to do it", "i'm going to do it", "im going to do it",
+            "about to do it", "doing it now", "doing it tonight",
         ]
         
         # =====================================================================
@@ -221,8 +231,9 @@ class EnhancedSafetyMonitor:
                 "never again", "one last"
             ],
             "means": [
-                "gun", "firearm", "pills", "bridge",
-                "rope", "blade", "knife", "medication"
+                "gun", "firearm", "pills", "bridge", "cliff",
+                "rope", "blade", "knife", "medication", "tablets",
+                "car", "vehicle", "paracetamol", "codeine"
             ],
         }
         
