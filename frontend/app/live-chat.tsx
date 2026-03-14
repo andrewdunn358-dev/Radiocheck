@@ -48,6 +48,12 @@ export default function LiveChat() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [isRequestingCall, setIsRequestingCall] = useState(false);
+  const [showIncomingCallModal, setShowIncomingCallModal] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<{
+    callId: string;
+    callerName: string;
+    callType: string;
+  } | null>(null);
   
   const scrollViewRef = useRef<ScrollView>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -213,7 +219,33 @@ export default function LiveChat() {
       setIsLoading(false);
     });
     
+    // Handle incoming call from staff (when staff clicks call button in chat)
+    socket.on('incoming_call', (data) => {
+      console.log('=== INCOMING CALL ===', data);
+      setIncomingCall({
+        callId: data.call_id,
+        callerName: data.caller_name || 'Staff Member',
+        callType: data.call_type || 'audio',
+      });
+      setShowIncomingCallModal(true);
+    });
+    
+    // Handle call cancelled by staff
+    socket.on('call_cancelled', (data) => {
+      console.log('Call cancelled:', data);
+      setShowIncomingCallModal(false);
+      setIncomingCall(null);
+    });
+    
+    // Handle call timeout
+    socket.on('call_timeout', (data) => {
+      console.log('Call timed out:', data);
+      setShowIncomingCallModal(false);
+      setIncomingCall(null);
+    });
+    
     // Handle staff chat invite (when staff initiates chat from safeguarding alert)
+    socket.on('staff_chat_invite', (data) => {
     socket.on('staff_chat_invite', (data) => {
       console.log('Staff chat invite received:', data);
       setStaffName(data.staff_name);
@@ -458,6 +490,55 @@ export default function LiveChat() {
     }
   };
 
+  // Handle incoming call from staff
+  const handleAcceptCall = () => {
+    if (!incomingCall || !socketRef.current) return;
+    
+    console.log('Accepting incoming call:', incomingCall.callId);
+    
+    // Emit call_accept event
+    socketRef.current.emit('call_accept', {
+      call_id: incomingCall.callId,
+    });
+    
+    setShowIncomingCallModal(false);
+    
+    // Add message to chat
+    setMessages(prev => [...prev, {
+      id: `call-accepted-${Date.now()}`,
+      text: `📞 Voice call with ${incomingCall.callerName} started`,
+      sender: 'staff',
+      senderName: 'System',
+      timestamp: new Date(),
+    }]);
+    
+    // Note: The actual WebRTC connection will be handled by call_accepted and webrtc_offer events
+  };
+
+  const handleRejectCall = () => {
+    if (!incomingCall || !socketRef.current) return;
+    
+    console.log('Rejecting incoming call:', incomingCall.callId);
+    
+    // Emit call_reject event
+    socketRef.current.emit('call_reject', {
+      call_id: incomingCall.callId,
+      reason: 'User declined'
+    });
+    
+    setShowIncomingCallModal(false);
+    setIncomingCall(null);
+    
+    // Add message to chat
+    setMessages(prev => [...prev, {
+      id: `call-rejected-${Date.now()}`,
+      text: 'You declined the voice call request.',
+      sender: 'staff',
+      senderName: 'System',
+      timestamp: new Date(),
+    }]);
+  };
+
   // Block user
   const handleBlock = () => {
     Alert.alert(
@@ -622,6 +703,46 @@ export default function LiveChat() {
               >
                 <FontAwesome5 name="paper-plane" size={14} color="#fff" />
                 <Text style={styles.reportSubmitText}>Submit Report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Incoming Call Modal */}
+      <Modal
+        visible={showIncomingCallModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleRejectCall}
+      >
+        <View style={styles.incomingCallOverlay}>
+          <View style={styles.incomingCallModal}>
+            <View style={styles.incomingCallIcon}>
+              <FontAwesome5 name="phone" size={32} color="#16a34a" />
+            </View>
+            <Text style={styles.incomingCallTitle}>Incoming Call</Text>
+            <Text style={styles.incomingCallSubtitle}>
+              {incomingCall?.callerName || 'Staff Member'} is calling you
+            </Text>
+            
+            <View style={styles.incomingCallActions}>
+              <TouchableOpacity
+                style={styles.rejectCallButton}
+                onPress={handleRejectCall}
+                data-testid="reject-call-button"
+              >
+                <FontAwesome5 name="phone-slash" size={24} color="#fff" />
+                <Text style={styles.callActionText}>Decline</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.acceptCallButton}
+                onPress={handleAcceptCall}
+                data-testid="accept-call-button"
+              >
+                <FontAwesome5 name="phone" size={24} color="#fff" />
+                <Text style={styles.callActionText}>Accept</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1211,5 +1332,62 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Incoming Call Modal styles
+  incomingCallOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  incomingCallModal: {
+    backgroundColor: '#1e293b',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  incomingCallIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(22, 163, 74, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  incomingCallTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f8fafc',
+    marginBottom: 8,
+  },
+  incomingCallSubtitle: {
+    fontSize: 16,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  incomingCallActions: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  rejectCallButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#dc2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  acceptCallButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#16a34a',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
