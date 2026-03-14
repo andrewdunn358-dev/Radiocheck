@@ -53,10 +53,35 @@ export default function JitsiMeetComponent({
   const [error, setError] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState(1);
 
+  // Track if component is mounted to prevent state updates after unmount
+  const [isContainerReady, setIsContainerReady] = useState(false);
+  const isMountedRef = useRef(true);
+
+  // Delay initialization until container is ready
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (Platform.OS !== 'web') {
       setError('Video calls are only available on web browsers');
       setIsLoading(false);
+      return;
+    }
+
+    // Give the DOM a moment to render the container
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        setIsContainerReady(true);
+      }
+    }, 100);
+
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !isContainerReady) {
       return;
     }
 
@@ -81,9 +106,13 @@ export default function JitsiMeetComponent({
       try {
         await loadJitsiScript();
 
-        if (!jitsiContainerRef.current) return;
+        // Double-check container exists and component is still mounted
+        if (!jitsiContainerRef.current || !isMountedRef.current) {
+          console.log('[Jitsi] Container not ready or component unmounted');
+          return;
+        }
 
-        // Default Jitsi configuration
+        // Default Jitsi configuration - optimized for public meet.jit.si
         const defaultConfig = {
           startWithAudioMuted: true,
           startWithVideoMuted: false,
@@ -91,9 +120,37 @@ export default function JitsiMeetComponent({
           prejoinPageEnabled: true,
           enableClosePage: false,
           hideConferenceSubject: false,
+          // Disable features that cause warnings on public Jitsi
+          disableAudioLevels: true, // Prevents audio level related warnings
+          enableNoAudioDetection: false, // Disable to prevent errors
+          enableNoisyMicDetection: false, // Disable to prevent errors
+          // Disable speaker stats completely (fixes speaker-selection error)
+          disableSpeakerStatsSearch: true,
+          speakerStats: {
+            disabled: true,
+          },
+          // Disable features not supported on public meet.jit.si
+          disableThirdPartyRequests: true,
+          analytics: {
+            disabled: true,
+          },
+          // Video settings
+          resolution: 720,
+          constraints: {
+            video: {
+              height: {
+                ideal: 720,
+                max: 1080,
+                min: 240
+              }
+            }
+          },
+          // Disable large video optimization issues
+          channelLastN: -1,
           ...config,
         };
 
+        // Interface configuration - avoid deprecated features
         const defaultInterfaceConfig = {
           SHOW_JITSI_WATERMARK: false,
           SHOW_WATERMARK_FOR_GUESTS: false,
@@ -101,8 +158,22 @@ export default function JitsiMeetComponent({
           DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
           MOBILE_APP_PROMO: false,
           FILM_STRIP_MAX_HEIGHT: 120,
+          // Minimal settings sections to avoid unsupported features
+          SETTINGS_SECTIONS: ['devices', 'language', 'profile'],
+          // Disable speaker stats UI completely
+          DISABLE_SPEAKER_STATS: true,
+          // Disable video quality label (can cause issues)
+          DISABLE_VIDEO_QUALITY_LABEL: true,
+          // Use simpler toolbar without problematic features
+          TOOLBAR_BUTTONS: [
+            'microphone', 'camera', 'desktop', 'fullscreen',
+            'fodeviceselection', 'hangup', 'chat', 'raisehand',
+            'tileview', 'videoquality', 'filmstrip', 'settings'
+          ],
           ...config.interfaceConfigOverwrite,
         };
+
+        console.log('[Jitsi] Initializing with room:', roomName);
 
         // Create Jitsi Meet instance
         const api = new window.JitsiMeetExternalAPI(domain, {
@@ -121,8 +192,13 @@ export default function JitsiMeetComponent({
 
         // Event listeners
         api.addListener('videoConferenceJoined', () => {
-          setIsLoading(false);
           console.log('[Jitsi] Joined conference');
+          // Give Jitsi more time to fully initialize all video components
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setIsLoading(false);
+            }
+          }, 1000);
         });
 
         api.addListener('videoConferenceLeft', () => {
@@ -130,13 +206,36 @@ export default function JitsiMeetComponent({
           onClose();
         });
 
+        // Handle Jitsi errors gracefully - suppress non-critical warnings
+        api.addListener('errorOccurred', (error: any) => {
+          const errorName = error?.error?.name || error?.name || '';
+          const errorMessage = error?.error?.message || error?.message || '';
+          
+          console.warn('[Jitsi] Error/Warning:', errorName, errorMessage);
+          
+          // Only show error to user for critical issues
+          if (errorName === 'gum.general' || errorName === 'gum.permission_denied') {
+            if (isMountedRef.current) {
+              setError('Camera/microphone access denied. Please allow access and try again.');
+            }
+          }
+          // Suppress non-critical warnings like:
+          // - speaker-selection (deprecated feature)
+          // - large-video-not-initialized (timing issue, usually resolves)
+          // - analytics errors (when disabled)
+        });
+
         api.addListener('participantJoined', (participant: any) => {
-          setParticipantCount(prev => prev + 1);
+          if (isMountedRef.current) {
+            setParticipantCount(prev => prev + 1);
+          }
           onParticipantJoined?.(participant);
         });
 
         api.addListener('participantLeft', (participant: any) => {
-          setParticipantCount(prev => Math.max(1, prev - 1));
+          if (isMountedRef.current) {
+            setParticipantCount(prev => Math.max(1, prev - 1));
+          }
           onParticipantLeft?.(participant);
         });
 
@@ -155,8 +254,10 @@ export default function JitsiMeetComponent({
 
       } catch (err) {
         console.error('[Jitsi] Init error:', err);
-        setError('Failed to load video chat. Please try again.');
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setError('Failed to load video chat. Please try again.');
+          setIsLoading(false);
+        }
       }
     };
 
@@ -165,11 +266,15 @@ export default function JitsiMeetComponent({
     // Cleanup
     return () => {
       if (apiRef.current) {
-        apiRef.current.dispose();
+        try {
+          apiRef.current.dispose();
+        } catch (e) {
+          console.warn('[Jitsi] Dispose error:', e);
+        }
         apiRef.current = null;
       }
     };
-  }, [roomName, domain, displayName, config, isModerator, onClose, onParticipantJoined, onParticipantLeft]);
+  }, [roomName, domain, displayName, config, isModerator, onClose, onParticipantJoined, onParticipantLeft, isContainerReady]);
 
   const handleLeave = () => {
     if (apiRef.current) {

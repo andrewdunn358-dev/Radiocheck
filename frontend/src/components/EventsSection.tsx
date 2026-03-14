@@ -303,6 +303,7 @@ export default function EventsSection() {
                   <TouchableOpacity
                     style={styles.cancelButton}
                     onPress={() => setShowJoinModal(false)}
+                    data-testid="event-join-cancel-btn"
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
@@ -311,6 +312,7 @@ export default function EventsSection() {
                     style={[styles.confirmButton, !displayName.trim() && styles.disabledButton]}
                     onPress={handleJoinEvent}
                     disabled={!displayName.trim() || isJoining}
+                    data-testid="event-join-confirm-btn"
                   >
                     {isJoining ? (
                       <ActivityIndicator size="small" color="#fff" />

@@ -246,7 +246,6 @@ export default function LiveChat() {
     
     // Handle staff chat invite (when staff initiates chat from safeguarding alert)
     socket.on('staff_chat_invite', (data) => {
-    socket.on('staff_chat_invite', (data) => {
       console.log('Staff chat invite received:', data);
       setStaffName(data.staff_name);
       setIsConnected(true);

@@ -1,311 +1,226 @@
 <analysis>**original_problem_statement:**
-The user wants to build Radio Check, a mental health and peer support application. This session focused on enhancing the Learning Management System (LMS) portals.
+The user wants to build Radio Check, a mental health and peer support application. The initial focus was on fixing live support connection issues, which then expanded to a major overhaul of the safeguarding system, UI redesigns, and adding several new features like AI-enhanced safety classification and local conversation history.
 
-The user's requests during this session included:
--   Fixing placeholder content in the LMS Admin portal for module editing and quiz viewing.
--   Implementing a secure, password-based login system for learners, a critical security fix.
--   Adding the Radio Check logo and module images to the learner portal.
--   Creating a new feature: an AI Tutor named Mr Clark with an avatar, capable of evaluating written reflections and providing interactive chat guidance based on a detailed prompt.
--   Adding full admin management for learners (add with password, edit, delete, password reset).
--   Improving the quiz experience by hiding correct answers on failure and adding a Review Module option.
--   Making all email-based operations in the LMS case-insensitive.
--   Allowing admins to preview the course content.
--   Expanding the course content with more detail.
--   Creating and displaying a proper Terms & Conditions page.
--   Resolving an issue where Twilio calls were not working.
--   Debugging numerous issues related to the user's production deployment on Render and 20i being out of sync with the agent's changes.
+**PRODUCT REQUIREMENTS:**
+1.  **(P0) Fix Live Support Connection:** User reports that mobile app users requesting calls/chats do not reliably notify the staff portal. This is a critical, recurring issue.
+2.  **(P0) Fix In-Chat Voice Call:** Staff initiating a voice call from within a live chat session does not work. The user on the mobile app does not receive the call.
+3.  **(P0) Overhaul Safeguarding System:** Implement a new, comprehensive safeguarding system that evaluates the entire conversation trajectory. This was completed and then enhanced with an additional AI classification layer.
+    *   Full conversation history monitoring (50 messages).
+    *   A pattern detection engine for crisis escalation (10 patterns implemented).
+    *   A semantic similarity model ().
+    *   A large, structured dataset of over 500 suicide-related phrases (527 implemented).
+    *   An **AI Safety Classifier** using an LLM (OpenAI GPT-4o-mini) as a secondary check.
+4.  **(P0) Fix Jitsi Video Chat in Events:** The embedded Jitsi video chat for events is not working, showing errors like  and .
+5.  **(P1) Staff Status Management:** When a staff member finishes a call or chat, their status should automatically reset to available. (Fix implemented, needs verification).
+6.  **(P1) Peer Supporter Case Management:** Peer supporters should be able to view and manage their own assigned cases and escalate them. (Fix implemented, needs verification).
+7.  **(P1) Implement Local Conversation History:** Store the last 50 messages for each AI chat locally on the user's device to provide conversational memory. This history should be encrypted, auto-delete after 7 days, and have privacy controls (view/delete).
+8.  **(P2) Redesign Home Screen:** Change the home screen character cards from a list to a 2-column grid of squares. (Completed).
+9.  **(P2) Tidy Live Chat UI:** Clean up the cluttered header in the mobile app's live chat view. (Completed).
+10. **(P2) Fix AI Character Sort Order:** The AI characters on the homepage are not displayed in the correct order. (Not Started).
+11. **(P2) Fix Desktop Layout:** Remove the blue bar appearing on the left side of the desktop view. (Completed).
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack application with a React frontend, FastAPI backend, and separate vanilla JS portals for LMS Admin () and LMS Learner ().
--   The LMS learner portal has a secure email and password login system.
--   The LMS admin portal has full CRUD functionality for learners, including password resets.
--   An AI Tutor (Mr Clark) is integrated into the learner portal, offering module-specific reflection assessments and a general chat function, powered by the user's OpenAI API key.
--   The quiz system has been improved to provide guidance instead of direct answers and allows users to review module content before retrying.
--   All LMS backend logic now handles emails in a case-insensitive manner.
--   Admins can generate a temporary token to preview the course as a learner.
--   A Terms & Conditions modal has been added to the learner portal.
--   The UI for both LMS portals has been updated with logos, favicons, and module images.
+A full-stack application with a React/Expo frontend, a FastAPI backend, and several vanilla JS portals. The app features AI chat characters, an LMS, and a multi-layered safeguarding system. A major overhaul of the safeguarding system has been completed, now including keyword matching, semantic similarity (), conversation trajectory analysis (10 patterns), and a secondary AI safety classifier using OpenAI . A local conversation storage system has been implemented on the frontend with encryption and 7-day auto-deletion. Several UI bugs and layout issues on the home screen, live chat screen, and desktop view have been fixed.
 
 **Last working item**:
--   **Last item agent was working**: Investigating why Twilio calls are not working in the . The user provided extensive console logs. The agent determined that Twilio and Socket.IO connections seem to be establishing correctly, but the logs do not show what happens when a call is actually initiated. The agent was about to investigate the backend Twilio configuration.
+-   **Last item agent was working**: Investigating why the Jitsi video chat for events is not working. The agent analyzed user-provided logs and identified the root causes as a deprecated  feature in the public Jitsi API and a timing issue with component initialization. The agent was about to modify the  to fix this.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Manual testing by curl to check backend Twilio token generation and configuration endpoints. If backend is correct, a frontend testing agent will be needed to simulate a call from the .
--   **User Testing Done**: Y (User reported the failure)
+-   **Which testing method agent to use?**: Screenshot tool to verify that the Jitsi video component loads and displays correctly within the event page.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Twilio calls are not working in the staff portal (P0)
--   Issue 2: Deployment Mismatches cause frequent debugging cycles (P0, RECURRING)
--   Issue 3: AI Character Sort Order on the homepage is incorrect (P2)
+-   Issue 1: In-chat call still not working (P0, Recurring)
+-   Issue 2: Live support requests (call/chat) are not reliably appearing in the staff portal (P0, Recurring)
+-   Issue 3: Jitsi video chat in events is not working (P0)
+-   Issue 4: Staff status does not reset to available after a call/chat (P1)
+-   Issue 5: AI Character Sort Order is incorrect (P2, Recurring)
 
 **Issues Detail**:
--   **Issue 1: Twilio calls are not working in the staff portal**
-    -   **Attempted fixes**: The agent analyzed user-provided console logs. The logs showed successful Twilio device registration and live chat functionality but did not contain errors related to placing a call.
+-   **Issue 1: In-chat call still not working**
+    -   **Attempted fixes**: The agent identified that the mobile app frontend was not listening for the  socket event. A full implementation was added to , including state management, UI modal for the incoming call, and handlers to accept/reject. However, the user reported it is still not working.
     -   **Next debug checklist**:
-        1.  Examine the backend code related to Twilio in  (and any other relevant files) to verify the TwiML app SID, API keys, and token generation logic are correct.
-        2.  Check the frontend code in the main React app and the  that initiates the call to ensure it's sending the correct parameters.
-        3.  Use  to test the backend's  endpoint to ensure a valid token is being generated for staff users.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a core feature of the peer support application. Fixing it will re-enable live voice communication between users and staff.
+        1.  Verify the backend () correctly emits the  event to the correct user socket when a staff member calls from the chat.
+        2.  Use frontend console logs to confirm the mobile app client is receiving the  event.
+        3.  Check if the  hook instance is being shared correctly and is connected when the event is supposed to be received.
+    -   **Why fix this issue and what will be achieved with the fix?**: Allows a seamless transition from text chat to voice call, which is a critical support feature.
     -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: Y (Reported in this session)
+    -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on other issue**: None.
--   **Issue 2: Deployment Mismatches**
-    -   **Attempted fixes**: Throughout the session, the agent repeatedly diagnosed that user-reported 404/401 errors were due to the user testing against a production Render backend that was not yet deployed with the latest code. The agent guided the user to deploy their backend to resolve these issues.
-    -   **Next debug checklist**: This is an operational process issue. The next agent MUST ALWAYS assume the user is on their production/staging environment. Before debugging any 404/401/500 error from the user, the agent must first:
-        1.  Confirm with the user that they have pushed the latest code to GitHub.
-        2.  Ask the user to check their Render dashboard for the status and timestamp of the last successful deployment.
-        3.  Remind the user to upload the relevant static files (, ) to their 20i hosting after a successful backend deployment.
-    -   **Why fix this issue and what will be achieved with the fix?**: Establishing a clear deployment-first workflow will prevent wasted time debugging issues that are already solved in the codebase but not yet live in the user's environment.
-    -   **Status**: BLOCKED (on user process)
+-   **Issue 2: Live support requests (call/chat) are not reliably appearing in the staff portal**
+    -   **Attempted fixes**: Agent implemented a robust stuck status reset mechanism in . The  and  handlers now check if an available staff member is actually in a call/chat and resets their status if they are not, making them available again.
+    -   **Next debug checklist**: This is a persistent, hard-to-reproduce issue. The user needs to test this in their production environment to see if the auto-reset logic has resolved the problem. The  endpoint can be used to monitor staff statuses in real-time.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the most critical function of the application. Fixing it will enable real-time peer support.
+    -   **Status**: IN PROGRESS (Fix implemented, user verification pending)
     -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: NA
+    -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on other issue**: None.
--   **Issue 3: AI Character Sort Order**
-    -   **Attempted fixes**: None. This issue from the previous handoff was not addressed.
+-   **Issue 3: Jitsi video chat in events is not working**
+    -   **Attempted fixes**: The agent analyzed logs and identified the cause as Jitsi API configuration issues ( feature) and component initialization timing.
     -   **Next debug checklist**:
-        1.  Check the backend API endpoint in  (or similar) that fetches the AI characters to ensure the MongoDB query includes a .
-        2.  Verify the frontend component () renders the characters in the order received without re-sorting.
-    -   **Why fix this issue and what will be achieved with the fix?**: Fulfills an original product requirement for a specific character display order.
+        1.  Edit .
+        2.  Remove  from the  options.
+        3.  Wrap the  component initialization in a  or use a state flag to delay rendering slightly, ensuring the container  is ready.
+    -   **Why fix this issue and what will be achieved with the fix?**: Enables group video sessions for events, a core feature of the app.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None.
+-   **Issue 4: Staff status does not reset to available after a call/chat**
+    -   **Attempted fixes**: A  socket event was added to the backend. The  and  were updated to call this event when a chat modal is closed, a call ends, or a call fails.
+    -   **Next debug checklist**: This needs to be tested by the user on their production environment. The fix is likely working, but its success is tied to the overall stability of the call/chat lifecycle.
+    -   **Why fix this issue and what will be achieved with the fix?**: Prevents staff from being locked out of taking new support requests.
+    -   **Status**: IN PROGRESS (Fix implemented, user verification pending)
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on other issue**: None.
+-   **Issue 5: AI Character Sort Order**
+    -   **Attempted fixes**: None. This issue from the previous handoff was not addressed.
+    -   **Next debug checklist**: Check the backend API endpoint in  to ensure the MongoDB query includes a .
+    -   **Why fix this issue and what will be achieved with the fix?**: Fulfills an original product requirement for character display order.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Should Test frontend/backend/both after fix?**: Backend
     -   **Blocked on other issue**: None.
 
 **In progress Task List**:
-None.
+-   **Task 1: Complete Local Conversation Storage UI**
+    -   **Where to resume**: The backend storage logic in  is complete (encryption, 50-message limit, 7-day auto-delete). The next step is to build the UI.
+    -   **Next Steps**: Create a new Privacy Settings or Data Management screen in the frontend app where users can view and delete their stored conversation history, as requested.
+    -   **What will be achieved with this?**: Provides users with control over their data, fulfilling a key privacy requirement.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on something**: No.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P1)** Expand course content for all 13 remaining modules, similar to the work done for Module 1.
+    -   **(P1)** Expand course content for all 13 remaining LMS modules.
 -   **Future Tasks**:
-    -   **(P0) CRITICAL**: Rewrite all vanilla JS portals (, , , ) into a single, modern React application to eliminate significant tech debt and streamline deployment.
-    -   **(P1)** Enhance the safeguarding system.
+    -   **(P0) CRITICAL**: Rewrite all vanilla JS portals (, , , ) into a single, modern React application. This will eliminate significant tech debt and deployment friction.
     -   **(P2)** Implement Discussion Forums for the LMS.
     -   **(P2)** Implement Mood Tracker Journal and Appointment Booking.
     -   **(P2)** Add Welsh Language Support.
 
 **Completed work in this session**
--   **Secure Learner Authentication (DONE)**: Implemented password creation and a JWT-based login flow for learners in  and .
--   **AI Tutor Mr Clark (DONE)**:
-    -   Created a new backend router .
-    -   Implemented endpoints for evaluating written reflections and an interactive chat, using the user's specified OpenAI key and a detailed system prompt.
-    -   Added the tutor's avatar, introduction, reflection UI, and a chat widget to the learner portal.
--   **LMS Admin Enhancements (DONE)**:
-    -   Added full learner management (Edit, Delete, Reset Password) to  and .
-    -   Fixed Add Learner to include a password field.
-    -   Replaced placeholder content to show real module and quiz data.
-    -   Added an Admin Preview feature to allow admins to view the course content.
--   **LMS Learner Portal UI/UX (DONE)**:
-    -   Added Radio Check logo, favicon, and module images.
-    -   Implemented a Terms & Conditions modal.
-    -   Improved quiz results to show guidance instead of correct answers, with a Review Module button.
--   **Backend Core Fixes (DONE)**:
-    -   Made all email handling case-insensitive across .
-    -   Fixed static file routing for the vanilla JS portals by adding an  prefix in .
--   **Production Debugging (DONE)**: Successfully guided the user through multiple backend deployments to Render to resolve 404/401 errors and data consistency issues.
+-   **Safeguarding System Overhaul (Complete)**:
+    -   Integrated  combining keyword, semantic, and trajectory analysis into the main AI chat endpoint.
+    -   Expanded phrase dataset to 527 phrases.
+    -   Created  and achieved 100% pass rate on all requirements, including performance targets.
+-   **AI Safety Classifier (New Feature)**:
+    -   Added a secondary safety net using OpenAI's  to classify conversation context and upgrade risk scores.
+    -   Integrated with the  and confirmed it works end-to-end.
+-   **Local Conversation Storage (New Feature)**:
+    -   Created  to store the last 50 messages per AI character on the user's device.
+    -   Implemented AES encryption for stored data and an automatic 7-day deletion policy.
+-   **Crisis Pattern Detection (Enhancement)**:
+    -   Added 4 new crisis detection patterns to the backend (, , etc.), bringing the total to 10 patterns.
+-   **WebRTC/Socket.IO Bug Fixes**:
+    -   Implemented robust status-reset logic in the backend to prevent staff from getting stuck in a busy state.
+    -   Added a  socket event for manual client-side resets.
+-   **Deployment Fix**:
+    -   Removed  from  to fix Render deployment failures. Added a note to  to prevent recurrence.
+-   **UI/UX Fixes**:
+    -   **Home Screen Redesign**: Converted the home screen from a list to a 2-column grid of square cards and fixed the layout centering.
+    -   **Live Chat UI Cleanup**: Redesigned the cluttered header in the mobile app's live chat window.
+    -   **Desktop View Fix**: Removed the blue side bar on the desktop view by correcting a global CSS override in .
 
 **Earlier issues found/mentioned but not fixed**
 -   **AI Character sort order**: This remains pending from a previous session. The characters on the homepage do not respect the  field from the database.
 
 **Known issue recurrence from previous fork**
--   **Deployment Mismatches**: This was the most significant recurring issue. The user tests on their production URLs, which are often out-of-sync with the agent's code. This requires a strict deploy first, then test process.
+-   **Live Support Connection**: The core issue of staff not receiving call/chat notifications persists, though diagnostics and recovery mechanisms have been improved.
+-   **In-chat Call Failure**: The in-chat call button was fixed, but the user reports it's still not working, making this a recurring issue.
+-   **Deployment Mismatches**: User tests on production URLs that can be out-of-sync. The  package was a specific instance of this, which has now been documented in the PRD.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Password Hashing**: Using  to securely hash and verify learner passwords.
--   **JWT Authentication**: Issuing JSON Web Tokens for learner login sessions.
--   **Standard OpenAI Library**: Refactored the AI tutor from  to use the standard usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
-              [-o ORGANIZATION] [-t {openai,azure}]
-              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
-              [--azure-ad-token AZURE_AD_TOKEN] [-V]
-              {api,tools,migrate,grit} ...
-
-positional arguments:
-  {api,tools,migrate,grit}
-    api                 Direct API calls
-    tools               Client side tools for convenience
-
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         Set verbosity.
-  -b API_BASE, --api-base API_BASE
-                        What API base url to use.
-  -k API_KEY, --api-key API_KEY
-                        What API key to use.
-  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
-                        What proxy to use.
-  -o ORGANIZATION, --organization ORGANIZATION
-                        Which organization to run as (will use your default
-                        organization if not specified)
-  -t {openai,azure}, --api-type {openai,azure}
-                        The backend API to call, must be `openai` or `azure`
-  --api-version API_VERSION
-                        The Azure API version, e.g.
-                        'https://learn.microsoft.com/en-us/azure/ai-
-                        services/openai/reference#rest-api-versioning'
-  --azure-endpoint AZURE_ENDPOINT
-                        The Azure endpoint, e.g.
-                        'https://endpoint.openai.azure.com'
-  --azure-ad-token AZURE_AD_TOKEN
-                        A token from Azure Active Directory,
-                        https://www.microsoft.com/en-
-                        us/security/business/identity-access/microsoft-entra-
-                        id
-  -V, --version         show program's version number and exit Python package with the user's own API key.
--   **Static File Serving with FastAPI**: Mounting the vanilla JS portals as static directories, adjusted to work with Kubernetes ingress by using an  prefix.
--   **Case-Insensitive Database Queries**: Systematically adding  to email fields before performing database operations to prevent case-sensitivity issues.
+-   **Conversation Trajectory Analysis**: The core of the new safeguarding system.
+-   **Semantic Similarity**: Using  for meaning-based detection.
+-   **LLM as a Safety Layer**: Using OpenAI  via API call as a secondary, context-aware safety check.
+-   **Encrypted Local Storage**: Using  on the frontend to secure conversation history stored on the user's device ().
+-   **Socket.IO**: The backbone for all real-time communication (chat, call signaling, status updates).
+-   **Vanilla JS vs. React/Expo**: The ongoing challenge of maintaining legacy vanilla JS portals alongside a modern React/Expo frontend.
 
 **key DB schema**
--   : 
--   : (New) 
+-   No changes to the DB schema in this session.
 
 **All files of reference**
 -   **New Files**:
-    -   
+    -   : Implements the OpenAI-based safety analysis.
+    -   : Manages encrypted local storage for chat history.
+    -   : Comprehensive test script for all safeguarding features.
 -   **Heavily Modified Files**:
-    -   : All new auth, admin CRUD, and case-insensitive logic.
-    -   : Complete UI for learner management, quiz viewing.
-    -   : New auth flow, AI tutor integration, quiz results logic.
-    -   : New UI elements for login, tutor, T&C.
-    -   : All new styling for the above features.
-    -   : Updated static mount paths.
-    -   : Expanded content for module 1.
+    -   : Integrated the new AI classifier.
+    -   : Added 4 new crisis detection patterns.
+    -   : Overhauled status management to fix stuck staff members.
+    -   : UI cleanup and added full implementation for handling incoming in-chat calls.
+    -    & : Redesigned the home screen cards into a grid.
+    -   : Fixed a global CSS issue causing layout problems on desktop.
+    -    & : Integrated the new  event to improve status reliability.
 
 **Areas that need refactoring**:
--   The separate vanilla JS portals (, , etc.) continue to be a major source of tech debt and operational friction. The repeated deployment issues (backend to Render, static files to 20i) strongly justify the future task of consolidating everything into a single, modern React application.
+-   **Vanilla JS Portals**: This remains the biggest source of tech debt. The  and  should be rewritten in React to unify the codebase, streamline deployments, and simplify development.
 
 **key api endpoints**
--   : Learner login with email/password.
--   : For initial password creation.
--   : Update learner details.
--   : Delete a learner.
--   : Reset a learner's password.
--   : Manually add a learner with a password.
--   : AI Tutor grades a reflection.
--   : AI Tutor chat endpoint.
--   : Generates a temporary token for admin course preview.
+-   : (Enhanced) Now uses the  with keyword, semantic, pattern, and AI analysis.
+-   : (New) Endpoint to check the status and configuration of all safeguarding modules.
+-   : (New) Endpoint to generate an AI summary of a chat session.
+-   Socket Event : (New) Allows a client to force-reset its status on the server.
+-   Socket Event : (Now Handled) The frontend mobile app now listens for this to handle in-chat calls.
 
 **Critical Info for New Agent**
--   **The user does NOT use the preview environment.** All debugging and verification must be done with the user's production deployment cycle in mind: code change ->  -> Render deploy -> 20i upload. Do not assume a fix is done until the user confirms it works on their live site after a full deployment.
--   The immediate blocker is the Twilio calling feature. This should be the first priority.
--   The AI Tutor was explicitly changed to use the standard usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
-              [-o ORGANIZATION] [-t {openai,azure}]
-              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
-              [--azure-ad-token AZURE_AD_TOKEN] [-V]
-              {api,tools,migrate,grit} ...
-
-positional arguments:
-  {api,tools,migrate,grit}
-    api                 Direct API calls
-    tools               Client side tools for convenience
-
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         Set verbosity.
-  -b API_BASE, --api-base API_BASE
-                        What API base url to use.
-  -k API_KEY, --api-key API_KEY
-                        What API key to use.
-  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
-                        What proxy to use.
-  -o ORGANIZATION, --organization ORGANIZATION
-                        Which organization to run as (will use your default
-                        organization if not specified)
-  -t {openai,azure}, --api-type {openai,azure}
-                        The backend API to call, must be `openai` or `azure`
-  --api-version API_VERSION
-                        The Azure API version, e.g.
-                        'https://learn.microsoft.com/en-us/azure/ai-
-                        services/openai/reference#rest-api-versioning'
-  --azure-endpoint AZURE_ENDPOINT
-                        The Azure endpoint, e.g.
-                        'https://endpoint.openai.azure.com'
-  --azure-ad-token AZURE_AD_TOKEN
-                        A token from Azure Active Directory,
-                        https://www.microsoft.com/en-
-                        us/security/business/identity-access/microsoft-entra-
-                        id
-  -V, --version         show program's version number and exit library and the user's key, not the . Do not change this back.
--   Many issues reported by the user (404s, 401s,  errors) are related to deployment lag or browser extensions. Be prepared to differentiate between code bugs and environmental/operational issues.
+-   **User Environment**: The user tests on their production environment (Render backend, 20i frontend), NOT the preview environment. Always confirm with the user that they have deployed the latest code before debugging.
+-   **Render Deployment**: The  package **must not** be in  for Render deployments. This is documented in .
+-   **AI Safety System**: The new AI Safety Classifier uses the Emergent Universal Key for OpenAI. It is designed as a *secondary check* and only upgrades risk levels; it cannot downgrade a risk determined by the primary rule-based system.
+-   **Recurring Bugs**: The in-chat call and live support notification bugs are the highest priority. They are complex, likely involving interactions between the backend, the staff portal (vanilla JS), and the mobile app (React/Expo). Debugging requires checking all three parts.
 
 **documents and test reports created in this job**
--    (from testing learner auth)
--    (updated multiple times)
+-   
+-    (Updated with deployment instructions)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Asks for more detailed course content and an admin preview feature. (Status: Implemented)
-2.  **User**: Reports the T&C link is broken. (Status: Implemented)
-3.  **User**: Reports Twilio calls are not working and provides console logs. (Status: In Progress)
-4.  **User**: Confirms the case-sensitivity fix for deleting a user worked after deployment.
-5.  **User**: Provides a screenshot of a duplicate user record with different casing. (Status: Resolved via code fix and another deployment)
-6.  **User**: Confirms their Render deployment is live. (Status: Actioned)
-7.  **User**: Expresses frustration that deployments aren't working and asks how to remove a user. (Status: Addressed by troubleshooting the deployment and data)
-8.  **User**: Rejects using the preview environment. (Status: Acknowledged, critical info for next agent)
-9.  **User**: Reports they still can't delete a user from production. (Status: Resolved, was a data/deployment issue)
-10. **User**: Confirms they can't delete  and says emails should be case-insensitive. (Status: Implemented)
+1.  **User**: Reports Jitsi video chat for events is not working and provides logs. (Status: **IN PROGRESS**, agent is about to fix it).
+2.  **User**: Reports in-chat call is still not working and provides staff portal logs. (Status: **IN PROGRESS**, agent implemented a fix on the mobile app, but it seems there's still an issue).
+3.  **User**: Reports a blue bar on the desktop version of the app. (Status: **RESOLVED**, agent fixed the CSS override).
+4.  **User**: Asks to implement a new AI-enhanced safety system based on a document. (Status: **RESOLVED**, agent implemented the system).
+5.  **User**: Asks to add local conversation history storage (50 messages) with privacy controls. (Status: **IN PROGRESS**, storage logic is done, UI is pending).
+6.  **User**: Asks to implement additional patterns and privacy features for the safety/history systems based on a second document. (Status: **RESOLVED**, agent implemented the new patterns and privacy logic).
+7.  **User**: Asks to redesign the home screen cards. (Status: **RESOLVED**, agent redesigned the cards to a 2-column grid).
+8.  **User**: Reports the live chat UI is cluttered. (Status: **RESOLVED**, agent cleaned up the UI).
+9.  **User**: Points out the agent added  to production requirements. (Status: **RESOLVED**, agent fixed  and documented the issue).
+10. **User**: Reports that requesting a call from the mobile app is not working. (Status: **IN PROGRESS**, agent implemented fixes to the backend status management).
 
 **Project Health Check:**
--   **Broken**: Twilio WebRTC calling in the staff portal.
+-   **Broken**:
+    -   In-chat calling (staff to user).
+    -   Jitsi video chat for events.
+    -   Live support request notifications (unreliable).
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   **Jitsi Meet**: Embedded group video conferencing.
--   **Twilio**: WebRTC calling (Currently Broken).
+-   **Jitsi Meet**: Embedded group video conferencing (currently broken).
+-   **Twilio**: WebRTC calling.
 -   **Resend**: Email notifications.
--   **OpenAI gpt-4o-mini**: AI chat personas and the Mr Clark AI Tutor (via standard usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
-              [-o ORGANIZATION] [-t {openai,azure}]
-              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
-              [--azure-ad-token AZURE_AD_TOKEN] [-V]
-              {api,tools,migrate,grit} ...
-
-positional arguments:
-  {api,tools,migrate,grit}
-    api                 Direct API calls
-    tools               Client side tools for convenience
-
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         Set verbosity.
-  -b API_BASE, --api-base API_BASE
-                        What API base url to use.
-  -k API_KEY, --api-key API_KEY
-                        What API key to use.
-  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
-                        What proxy to use.
-  -o ORGANIZATION, --organization ORGANIZATION
-                        Which organization to run as (will use your default
-                        organization if not specified)
-  -t {openai,azure}, --api-type {openai,azure}
-                        The backend API to call, must be `openai` or `azure`
-  --api-version API_VERSION
-                        The Azure API version, e.g.
-                        'https://learn.microsoft.com/en-us/azure/ai-
-                        services/openai/reference#rest-api-versioning'
-  --azure-endpoint AZURE_ENDPOINT
-                        The Azure endpoint, e.g.
-                        'https://endpoint.openai.azure.com'
-  --azure-ad-token AZURE_AD_TOKEN
-                        A token from Azure Active Directory,
-                        https://www.microsoft.com/en-
-                        us/security/business/identity-access/microsoft-entra-
-                        id
-  -V, --version         show program's version number and exit library, not Emergent LLM Key).
--   **Vercel/Render/20i**: User's hosting platforms.
+-   **OpenAI gpt-4o-mini**: Used for AI chat personas and the new AI Safety Classifier. Uses **Emergent LLM Key**.
+-   **sentence-transformers**: For semantic analysis in the safeguarding system.
+-   **crypto-js**: For frontend encryption of local conversation history.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES (for the learner auth flow).
+-   **Testing agent used after significant changes**: YES (for the safeguarding system overhaul, all tests passed).
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None.
--   **Known regressions**: Twilio calling has stopped working.
+-   **Test files created**: []
+-   **Known regressions**: In-chat calling was thought to be fixed but is still failing.
 
 **Credentials to test flow:**
--   **Admin User**: Credentials for  are in the database.
+-   **Admin User**:  (password in DB).
 -   **Test Learner**: , Password: 
+-   **Peer/Staff users**: Can be created via the  portal. Login is .
 
 **What agent forgot to execute**
--   The agent has consistently not addressed the AI Character sort order issue from the original handoff.</analysis>
+-   The UI for the Privacy/Data management screen (view/delete local conversation history) has not been created, even though the underlying service logic is complete.
+-   The AI Character sort order issue remains unresolved.</analysis>
