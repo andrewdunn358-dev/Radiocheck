@@ -95,7 +95,7 @@ function renderTimeEntries(entries) {
     if (entries.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
                     <i class="fas fa-clock" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
                     No time entries found. Click "Add Entry" to log your work hours.
                 </td>
@@ -106,6 +106,7 @@ function renderTimeEntries(entries) {
     
     tbody.innerHTML = entries.map(entry => {
         const totalHours = entry.hours + (entry.minutes / 60);
+        const cost = entry.cost || (totalHours * (entry.hourly_rate || 35));
         const typeIcon = entry.auto_tracked 
             ? '<i class="fas fa-robot" title="Auto-tracked"></i>' 
             : '<i class="fas fa-hand-paper" title="Manual"></i>';
@@ -115,7 +116,8 @@ function renderTimeEntries(entries) {
                 <td>${formatDate(entry.date)}</td>
                 <td>${entry.hours}h ${entry.minutes}m</td>
                 <td><span class="badge" style="background: ${getCategoryColor(entry.category)};">${entry.category}</span></td>
-                <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${entry.description}">${entry.description}</td>
+                <td>£${cost.toFixed(2)}</td>
+                <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${entry.description}">${entry.description}</td>
                 <td>${typeIcon} ${entry.auto_tracked ? 'Auto' : 'Manual'}</td>
                 <td>
                     <button class="btn btn-small btn-secondary" onclick="editTimeEntry('${entry.id}')" title="Edit">
@@ -151,6 +153,12 @@ async function loadTimeSummary() {
         // Update summary cards
         document.getElementById('total-hours-month').textContent = 
             `${data.total.hours}h ${data.total.minutes}m`;
+        
+        // Update total cost
+        const totalCostEl = document.getElementById('total-cost-month');
+        if (totalCostEl) {
+            totalCostEl.textContent = `£${(data.total.total_cost || 0).toFixed(2)}`;
+        }
         
         // Calculate week total (last 7 days from daily breakdown)
         const weekTotal = calculateWeekTotal(data.daily_breakdown);
