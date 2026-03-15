@@ -78,14 +78,7 @@ export default function Organizations() {
           contentContainerStyle={{ padding: 24, paddingTop: 16, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Description */}
-          <View style={{ backgroundColor: colors.card, borderRadius: 8, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.border }}>
-            <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
-              UK organisations providing support to veterans. All services are confidential.
-            </Text>
-          </View>
-
-          {/* Hugo AI Buddy Card */}
+          {/* Hugo AI Buddy Card - At the very top */}
           <TouchableOpacity 
             style={{ 
               flexDirection: 'row', 
@@ -106,15 +99,22 @@ export default function Organizations() {
             />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Chat with Hugo</Text>
-              <Text style={{ fontSize: 13, color: '#10b981', fontWeight: '600', marginTop: 2 }}>Self-Help & Wellness Guide</Text>
+              <Text style={{ fontSize: 13, color: '#10b981', fontWeight: '600', marginTop: 2 }}>Veteran Services Navigator</Text>
               <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>
-                Daily habits, grounding techniques, finding your routine
+                Find the right support, charities & services
               </Text>
             </View>
             <View style={{ backgroundColor: '#10b981', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
               <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
             </View>
           </TouchableOpacity>
+
+          {/* Description */}
+          <View style={{ backgroundColor: colors.card, borderRadius: 8, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.border }}>
+            <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+              UK organisations providing support to veterans. All services are confidential.
+            </Text>
+          </View>
 
           {/* Loading State */}
           {isLoading ? (

@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 
+const TOMMY_AVATAR = '/images/tommy.png';
+
 export default function CrisisSupport() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
@@ -37,6 +39,28 @@ export default function CrisisSupport() {
           <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text }}>Crisis Support</Text>
         </View>
 
+        {/* Tommy AI Chat - TOP OF PAGE */}
+        <TouchableOpacity 
+          style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 2, borderColor: colors.primary }}
+          onPress={() => router.push('/chat/tommy')}
+          activeOpacity={0.9}
+          data-testid="tommy-chat-btn"
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image 
+              source={{ uri: TOMMY_AVATAR }}
+              style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: colors.primary, marginRight: 16 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Talk to Tommy</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>Your battle buddy - straightforward support from someone who understands military life</Text>
+            </View>
+            <View style={{ backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
         {/* Crisis Information Header */}
         <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
@@ -55,9 +79,9 @@ export default function CrisisSupport() {
           </Text>
         </View>
 
-        {/* On-Duty Counsellors Card - FIRST */}
+        {/* On-Duty Counsellors Card */}
         <TouchableOpacity 
-          style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 20, marginBottom: 16 }}
+          style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 20, marginBottom: 20 }}
           onPress={() => router.push('/counsellors')}
           activeOpacity={0.8}
         >
@@ -72,42 +96,6 @@ export default function CrisisSupport() {
             <Ionicons name="chevron-forward" size={24} color="#ffffff" />
           </View>
         </TouchableOpacity>
-
-        {/* AI Battle Buddies - Right under On-Duty Counsellors */}
-        <TouchableOpacity 
-          style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 2, borderColor: colors.primary }}
-          onPress={() => router.push('/ai-buddies')}
-          activeOpacity={0.9}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', marginRight: 12 }}>
-              <Image 
-                source={{ uri: '/images/tommy.png' }}
-                style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colors.border }}
-              />
-              <Image 
-                source={{ uri: '/images/rachel.png' }}
-                style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colors.border, marginLeft: -16 }}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>AI Battle Buddies</Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Chat with Tommy or Rachel - available 24/7</Text>
-            </View>
-            <View style={{ backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Emergency Banner */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#cc0000', borderRadius: 12, padding: 20, marginBottom: 24 }}>
-          <Ionicons name="warning" size={28} color="#ffffff" />
-          <View style={{ marginLeft: 16, flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#ffffff', marginBottom: 4 }}>Emergency: Call 999</Text>
-            <Text style={{ fontSize: 14, color: '#ffcccc' }}>For immediate danger to yourself or others</Text>
-          </View>
-        </View>
 
         {/* Section Title - Crisis Helplines */}
         <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginBottom: 16 }}>

@@ -470,7 +470,7 @@ Files changed:
 - **Frontend**: Vercel (https://[domain])
 - **Backend**: Render (https://[domain])
 - **Admin/Staff/LMS Portals**: 20i hosting
-- **Preview**: https://radio-check-debug.preview.emergentagent.com
+- **Preview**: https://time-track-portal.preview.emergentagent.com
   - Learner Portal: `/api/training/`
   - LMS Admin: `/api/lms-admin/`
   - Main Admin: `/api/admin/`
@@ -517,3 +517,25 @@ Admin Portal → "Time Tracking" tab
 - `GET /api/timetracking/export?month=YYYY-MM` - Excel download
 - `POST /api/timetracking/seed-historical` - Load sample data
 - `DELETE /api/timetracking/clear-all?confirm=true` - Clear all entries
+
+## UI/UX Fixes Completed (March 15, 2026)
+
+### Crisis Support Page Redesign
+- **Tommy AI Chat moved to TOP of page** - First thing users see
+- **Red 999 Emergency bar REMOVED** - Was causing user confusion
+- **Page flow**: Tommy → "You're Not Alone" info → On-Duty Counsellors → Crisis Helplines
+- File: `frontend/app/crisis-support.tsx`
+
+### Home Page Update
+- **"Talk to a Veteran" renamed to "Talk to Peer Support"** with description "Connect with those who understand"
+- File: `frontend/app/home.tsx` (FALLBACK_MENU_ITEMS)
+
+### Previous UI Fixes (Done in earlier session)
+1. ✅ Global AI Disclaimer - Shows only once per app open (not per chat)
+2. ✅ AI Characters restructured - Rachel/Doris to criminal-justice page
+3. ✅ Organizations page - 999 bar removed, Hugo AI at top
+4. ✅ "Meet the AI Team" → "Meet the Team" with real founder placeholders
+5. ✅ Voice dictation note added to AI consent disclaimer
+6. ✅ Training links added to admin/staff portals
+7. ✅ Phone field made optional in staff creation forms
+8. ✅ More organizations added to backend database

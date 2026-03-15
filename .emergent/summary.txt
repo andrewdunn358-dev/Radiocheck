@@ -1,226 +1,190 @@
 <analysis>**original_problem_statement:**
-The user wants to build Radio Check, a mental health and peer support application. The initial focus was on fixing live support connection issues, which then expanded to a major overhaul of the safeguarding system, UI redesigns, and adding several new features like AI-enhanced safety classification and local conversation history.
+The user initially requested fixes for Jitsi video chat and then requested a new time-tracking feature for the admin portal to log their work hours. After the agent implemented the time-tracking feature, the user encountered several bugs related to deployment and data synchronization.
+
+Subsequently, the user provided a large list of 10 UI/UX fixes and content changes across the application, including redesigning several pages, moving AI chat components, updating text, and adding/removing elements. The agent was in the middle of implementing this batch of fixes when the session ended.
 
 **PRODUCT REQUIREMENTS:**
-1.  **(P0) Fix Live Support Connection:** User reports that mobile app users requesting calls/chats do not reliably notify the staff portal. This is a critical, recurring issue.
-2.  **(P0) Fix In-Chat Voice Call:** Staff initiating a voice call from within a live chat session does not work. The user on the mobile app does not receive the call.
-3.  **(P0) Overhaul Safeguarding System:** Implement a new, comprehensive safeguarding system that evaluates the entire conversation trajectory. This was completed and then enhanced with an additional AI classification layer.
-    *   Full conversation history monitoring (50 messages).
-    *   A pattern detection engine for crisis escalation (10 patterns implemented).
-    *   A semantic similarity model ().
-    *   A large, structured dataset of over 500 suicide-related phrases (527 implemented).
-    *   An **AI Safety Classifier** using an LLM (OpenAI GPT-4o-mini) as a secondary check.
-4.  **(P0) Fix Jitsi Video Chat in Events:** The embedded Jitsi video chat for events is not working, showing errors like  and .
-5.  **(P1) Staff Status Management:** When a staff member finishes a call or chat, their status should automatically reset to available. (Fix implemented, needs verification).
-6.  **(P1) Peer Supporter Case Management:** Peer supporters should be able to view and manage their own assigned cases and escalate them. (Fix implemented, needs verification).
-7.  **(P1) Implement Local Conversation History:** Store the last 50 messages for each AI chat locally on the user's device to provide conversational memory. This history should be encrypted, auto-delete after 7 days, and have privacy controls (view/delete).
-8.  **(P2) Redesign Home Screen:** Change the home screen character cards from a list to a 2-column grid of squares. (Completed).
-9.  **(P2) Tidy Live Chat UI:** Clean up the cluttered header in the mobile app's live chat view. (Completed).
-10. **(P2) Fix AI Character Sort Order:** The AI characters on the homepage are not displayed in the correct order. (Not Started).
-11. **(P2) Fix Desktop Layout:** Remove the blue bar appearing on the left side of the desktop view. (Completed).
+1.  **(P0) New Time Tracking Feature:** Add a new tab to the  portal for the user (as admin) to track their work hours.
+    *   Allow manual entry of date, hours, category, and description.
+    *   Provide a dashboard with monthly totals and charts.
+    *   Allow exporting data to Excel.
+    *   Pre-populate with historical work data based on development session history.
+    *   This feature was built but required extensive debugging due to deployment and data issues.
+2.  **(P0) Batch of 10 UI/UX Fixes:**
+    *   **Fix 1:** Show AI disclaimers only once on the first app open, not for every chat.
+    *   **Fix 2:** Restructure AI characters: move Doris/Rachel to the  page and keep Tommy on the  page.
+    *   **Fix 3:** On the front page, rename the Talk to a Veteran button to Talk to Peer Support.
+    *   **Fix 4:** Remove the red 999 emergency bar from the organizations page.
+    *   **Fix 5:** Ensure all subpages follow the layout of the Warfare on Lawfare page (AI chat at the very top).
+    *   **Fix 6:** Add more relevant organizations to the organizations page.
+    *   **Fix 7:** Rename Meet the AI Team to Meet the Team and add placeholders for the real founders.
+    *   **Fix 8:** Add a note to the AI chat disclaimer about using voice-to-text dictation.
+    *   **Fix 9:** Add links to the training pages on the staff and admin portals.
+    *   **Fix 10:** Make the phone number field optional when creating new staff members.
+3.  **(P0) Follow-up Fixes:**
+    *   The Hugo AI chat on the organizations page should be at the very top.
+    *   The  page should be redesigned: move Tommy AI chat to the top, remove the 999 bar, and delete the  page concept.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack application with a React/Expo frontend, a FastAPI backend, and several vanilla JS portals. The app features AI chat characters, an LMS, and a multi-layered safeguarding system. A major overhaul of the safeguarding system has been completed, now including keyword matching, semantic similarity (), conversation trajectory analysis (10 patterns), and a secondary AI safety classifier using OpenAI . A local conversation storage system has been implemented on the frontend with encryption and 7-day auto-deletion. Several UI bugs and layout issues on the home screen, live chat screen, and desktop view have been fixed.
+The application is a full-stack mental health platform. The agent has just implemented a new time-tracking feature in the vanilla JS  portal, including a new backend API and database collection (). This feature required significant debugging related to deployment mismatches between the backend (Render), frontend (Vercel), and the static admin portal. The agent manually corrected the data in the user's production database.
+
+The agent has also started implementing a large batch of 10 UI/UX fixes requested by the user, modifying numerous frontend and backend files. This work is partially complete.
 
 **Last working item**:
--   **Last item agent was working**: Investigating why the Jitsi video chat for events is not working. The agent analyzed user-provided logs and identified the root causes as a deprecated  feature in the public Jitsi API and a timing issue with component initialization. The agent was about to modify the  to fix this.
+-   **Last item agent was working**: The agent was addressing two follow-up requests from the user regarding the batch of 10 UI/UX fixes. It had just moved the Hugo AI chat component to the top of the  page and was about to restructure the  page to place the Tommy AI chat at the top and remove other elements.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Screenshot tool to verify that the Jitsi video component loads and displays correctly within the event page.
+-   **Which testing method agent to use?**: frontend testing agent (After completing the current batch of UI fixes, a full frontend test is required due to the large number of pages and components affected).
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: In-chat call still not working (P0, Recurring)
--   Issue 2: Live support requests (call/chat) are not reliably appearing in the staff portal (P0, Recurring)
--   Issue 3: Jitsi video chat in events is not working (P0)
--   Issue 4: Staff status does not reset to available after a call/chat (P1)
--   Issue 5: AI Character Sort Order is incorrect (P2, Recurring)
+-   Issue 1: Jitsi video chat in events is not working (P0)
+-   Issue 2: Time Tracking feature is not fully verified by the user (P0)
+-   Issue 3: In-chat call still not working (P0, Recurring)
+-   Issue 4: Live support requests (call/chat) are not reliably appearing in the staff portal (P0, Recurring)
+-   Issue 5: Staff status does not reset to available after a call/chat (P1)
+-   Issue 6: AI Character Sort Order is incorrect (P2, Recurring)
 
 **Issues Detail**:
--   **Issue 1: In-chat call still not working**
-    -   **Attempted fixes**: The agent identified that the mobile app frontend was not listening for the  socket event. A full implementation was added to , including state management, UI modal for the incoming call, and handlers to accept/reject. However, the user reported it is still not working.
-    -   **Next debug checklist**:
-        1.  Verify the backend () correctly emits the  event to the correct user socket when a staff member calls from the chat.
-        2.  Use frontend console logs to confirm the mobile app client is receiving the  event.
-        3.  Check if the  hook instance is being shared correctly and is connected when the event is supposed to be received.
-    -   **Why fix this issue and what will be achieved with the fix?**: Allows a seamless transition from text chat to voice call, which is a critical support feature.
-    -   **Status**: IN PROGRESS
+-   **Issue 1: Jitsi video chat in events is not working**
+    -   **Attempted fixes**: The agent fixed the backend () and frontend () to disable the Jitsi pre-join page, which was the suspected cause. The user reported it was still not working. The agent diagnosed this as a stale deployment on the user's Vercel frontend, as the production backend was confirmed to be sending the correct configuration.
+    -   **Next debug checklist**: 1. Confirm with the user that they have triggered a Clear cache and redeploy on Vercel for the frontend app. 2. If it still fails, get new browser console logs to verify that the frontend code is applying .
+    -   **Why fix this issue and what will be achieved with the fix?**: Enables group video sessions for events, a core feature.
+    -   **Status**: BLOCKED (on user deployment)
     -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on other issue**: None.
--   **Issue 2: Live support requests (call/chat) are not reliably appearing in the staff portal**
-    -   **Attempted fixes**: Agent implemented a robust stuck status reset mechanism in . The  and  handlers now check if an available staff member is actually in a call/chat and resets their status if they are not, making them available again.
-    -   **Next debug checklist**: This is a persistent, hard-to-reproduce issue. The user needs to test this in their production environment to see if the auto-reset logic has resolved the problem. The  endpoint can be used to monitor staff statuses in real-time.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is the most critical function of the application. Fixing it will enable real-time peer support.
-    -   **Status**: IN PROGRESS (Fix implemented, user verification pending)
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on other issue**: None.
--   **Issue 3: Jitsi video chat in events is not working**
-    -   **Attempted fixes**: The agent analyzed logs and identified the cause as Jitsi API configuration issues ( feature) and component initialization timing.
-    -   **Next debug checklist**:
-        1.  Edit .
-        2.  Remove  from the  options.
-        3.  Wrap the  component initialization in a  or use a state flag to delay rendering slightly, ensuring the container  is ready.
-    -   **Why fix this issue and what will be achieved with the fix?**: Enables group video sessions for events, a core feature of the app.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on other issue**: None.
--   **Issue 4: Staff status does not reset to available after a call/chat**
-    -   **Attempted fixes**: A  socket event was added to the backend. The  and  were updated to call this event when a chat modal is closed, a call ends, or a call fails.
-    -   **Next debug checklist**: This needs to be tested by the user on their production environment. The fix is likely working, but its success is tied to the overall stability of the call/chat lifecycle.
-    -   **Why fix this issue and what will be achieved with the fix?**: Prevents staff from being locked out of taking new support requests.
-    -   **Status**: IN PROGRESS (Fix implemented, user verification pending)
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on other issue**: None.
--   **Issue 5: AI Character Sort Order**
-    -   **Attempted fixes**: None. This issue from the previous handoff was not addressed.
-    -   **Next debug checklist**: Check the backend API endpoint in  to ensure the MongoDB query includes a .
-    -   **Why fix this issue and what will be achieved with the fix?**: Fulfills an original product requirement for character display order.
-    -   **Status**: NOT STARTED
+-   **Issue 2: Time Tracking feature is not fully verified by the user**
+    -   **Attempted fixes**: Agent built the feature, but had to debug multiple issues: 404s due to missing files on the static host, JS errors from incorrect variable names, API errors from missing  prefixes, and incorrect historical data dates (2024 instead of 2026). The agent manually corrected the production database.
+    -   **Next debug checklist**: User needs to test the feature on their production admin portal () after all required files (, ) have been deployed there. The backend on Render also needs the latest  router.
+    -   **Why fix this issue and what will be achieved with the fix?**: Allows the user to accurately track and be compensated for their work.
+    -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Backend
-    -   **Blocked on other issue**: None.
+    -   **Should Test frontend/backend/both after fix?**: Both (Frontend is vanilla JS, Backend is FastAPI)
+-   **Issue 3, 4, 5, 6**: These are older issues from the previous session that have not been worked on. Refer to the previous handoff summary for details. Their status remains  for this session.
 
 **In progress Task List**:
--   **Task 1: Complete Local Conversation Storage UI**
-    -   **Where to resume**: The backend storage logic in  is complete (encryption, 50-message limit, 7-day auto-delete). The next step is to build the UI.
-    -   **Next Steps**: Create a new Privacy Settings or Data Management screen in the frontend app where users can view and delete their stored conversation history, as requested.
-    -   **What will be achieved with this?**: Provides users with control over their data, fulfilling a key privacy requirement.
+-   **Task 1: Complete the batch of 10 UI/UX fixes (P0)**
+    -   **Where to resume**: The agent needs to modify . The goal is to redesign it to match the other subpages: move the Tommy AI chat component to the top, remove the red 999 bar, and remove the now-obsolete Meet the AI Battle Buddies section.
+    -   **What will be achieved with this?**: Finalizes the large set of UI/UX improvements requested by the user, creating a more consistent and user-friendly experience.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on something**: No.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
+    -   **(P1)** Build moderator features for events (lobby, admit/remove, mute, etc.).
     -   **(P1)** Expand course content for all 13 remaining LMS modules.
+    -   **(P2)** Implement full auto-tracking for the time-tracking feature (currently relies on manual entry).
 -   **Future Tasks**:
-    -   **(P0) CRITICAL**: Rewrite all vanilla JS portals (, , , ) into a single, modern React application. This will eliminate significant tech debt and deployment friction.
+    -   **(P0) CRITICAL**: Rewrite all vanilla JS portals (, , , ) into a single, modern React application.
     -   **(P2)** Implement Discussion Forums for the LMS.
     -   **(P2)** Implement Mood Tracker Journal and Appointment Booking.
     -   **(P2)** Add Welsh Language Support.
 
 **Completed work in this session**
--   **Safeguarding System Overhaul (Complete)**:
-    -   Integrated  combining keyword, semantic, and trajectory analysis into the main AI chat endpoint.
-    -   Expanded phrase dataset to 527 phrases.
-    -   Created  and achieved 100% pass rate on all requirements, including performance targets.
--   **AI Safety Classifier (New Feature)**:
-    -   Added a secondary safety net using OpenAI's  to classify conversation context and upgrade risk scores.
-    -   Integrated with the  and confirmed it works end-to-end.
--   **Local Conversation Storage (New Feature)**:
-    -   Created  to store the last 50 messages per AI character on the user's device.
-    -   Implemented AES encryption for stored data and an automatic 7-day deletion policy.
--   **Crisis Pattern Detection (Enhancement)**:
-    -   Added 4 new crisis detection patterns to the backend (, , etc.), bringing the total to 10 patterns.
--   **WebRTC/Socket.IO Bug Fixes**:
-    -   Implemented robust status-reset logic in the backend to prevent staff from getting stuck in a busy state.
-    -   Added a  socket event for manual client-side resets.
--   **Deployment Fix**:
-    -   Removed  from  to fix Render deployment failures. Added a note to  to prevent recurrence.
--   **UI/UX Fixes**:
-    -   **Home Screen Redesign**: Converted the home screen from a list to a 2-column grid of square cards and fixed the layout centering.
-    -   **Live Chat UI Cleanup**: Redesigned the cluttered header in the mobile app's live chat window.
-    -   **Desktop View Fix**: Removed the blue side bar on the desktop view by correcting a global CSS override in .
-
-**Earlier issues found/mentioned but not fixed**
--   **AI Character sort order**: This remains pending from a previous session. The characters on the homepage do not respect the  field from the database.
-
-**Known issue recurrence from previous fork**
--   **Live Support Connection**: The core issue of staff not receiving call/chat notifications persists, though diagnostics and recovery mechanisms have been improved.
--   **In-chat Call Failure**: The in-chat call button was fixed, but the user reports it's still not working, making this a recurring issue.
--   **Deployment Mismatches**: User tests on production URLs that can be out-of-sync. The  package was a specific instance of this, which has now been documented in the PRD.
+-   **Time Tracking Feature**: A full-featured time tracking system was added to the  vanilla JS portal.
+    -   Created backend API () for CRUD, summary, and export.
+    -   Created frontend UI and logic (, ).
+    -   Debugged and resolved multiple deployment-related issues, including manually correcting the production database to show data for the correct year (2026).
+-   **AI Chat History**: The AI chat pages () were updated to load, display, and save conversation history locally on the user's device.
+-   **Jitsi Video Chat Debugging**: Diagnosed that backend configuration overrides were the cause of the stuck on connecting issue and deployed a fix. The remaining issue is likely a stale frontend deployment on the user's side.
+-   **Began Batch of 10 UI/UX Fixes**:
+    -   **Global AI Disclaimer**: Implemented a global consent flag () in  and .
+    -   **Restructured Pages**: Redesigned  and  pages to have the AI chat at the top and removed the 999 bar.
+    -   **Content Updates**: Renamed Meet AI Team to Meet the Team and added founder placeholders on . Added voice dictation info to .
+    -   **Portal Links**: Added training links to  and .
+    -   **Backend Data**: Added new organizations and updated an AI character's prompt in the backend.
+    -   **Form Fixes**: Made phone numbers optional in  forms.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Conversation Trajectory Analysis**: The core of the new safeguarding system.
--   **Semantic Similarity**: Using  for meaning-based detection.
--   **LLM as a Safety Layer**: Using OpenAI  via API call as a secondary, context-aware safety check.
--   **Encrypted Local Storage**: Using  on the frontend to secure conversation history stored on the user's device ().
--   **Socket.IO**: The backbone for all real-time communication (chat, call signaling, status updates).
--   **Vanilla JS vs. React/Expo**: The ongoing challenge of maintaining legacy vanilla JS portals alongside a modern React/Expo frontend.
+-   **Deployment Synchronization Hell**: The core challenge in this session was debugging issues caused by desynchronized deployments across three different hosting platforms (Render, Vercel, and a static host for the admin portal). A fix is not complete until all relevant services are redeployed.
+-   **Vanilla JS Manipulation**: The agent extensively modified a legacy vanilla JS portal, highlighting the technical debt and difficulty of maintaining code without a modern framework.
+-   **Direct Production Database Intervention**: Due to deployment lag and user frustration, the agent took the exceptional step of connecting to the user's production backend URL to clear and re-seed the  collection.
 
 **key DB schema**
--   No changes to the DB schema in this session.
+-   **New Collection**: 
+    -   : ObjectId
+    -   Sun Mar 15 20:26:17 UTC 2026: string (ISO format)
+    -   : number
+    -   : number
+    -   : string
+    -   : string
+    -   : datetime
+    -   : datetime
 
 **All files of reference**
--   **New Files**:
-    -   : Implements the OpenAI-based safety analysis.
-    -   : Manages encrypted local storage for chat history.
-    -   : Comprehensive test script for all safeguarding features.
--   **Heavily Modified Files**:
-    -   : Integrated the new AI classifier.
-    -   : Added 4 new crisis detection patterns.
-    -   : Overhauled status management to fix stuck staff members.
-    -   : UI cleanup and added full implementation for handling incoming in-chat calls.
-    -    & : Redesigned the home screen cards into a grid.
-    -   : Fixed a global CSS issue causing layout problems on desktop.
-    -    & : Integrated the new  event to improve status reliability.
+-   **New**:
+    -   : API for the time tracking feature.
+    -   : Frontend logic for the time tracking feature.
+-   **Updated**:
+    -   : Registered the new timetracking router.
+    -   : Forced Jitsi .
+    -   : Updated AI character prompt.
+    -   : Added more organizations.
+    -   : Implemented chat history & global consent.
+    -   : Implemented global consent.
+    -   : UI text and layout changes.
+    -   : UI layout changes.
+    -   : Page redesign.
+    -   : Added new text.
+    -   : Added Time Tracking tab, modal, and buttons.
+    -   : Made form fields optional.
+    -   : Added training link.
+    -   : Added notes about the time tracking workflow.
 
 **Areas that need refactoring**:
--   **Vanilla JS Portals**: This remains the biggest source of tech debt. The  and  should be rewritten in React to unify the codebase, streamline deployments, and simplify development.
+-   The  portal is built with vanilla JS and is becoming increasingly difficult to maintain and debug. It is the top candidate for a rewrite into React, as noted in the future tasks.
 
 **key api endpoints**
--   : (Enhanced) Now uses the  with keyword, semantic, pattern, and AI analysis.
--   : (New) Endpoint to check the status and configuration of all safeguarding modules.
--   : (New) Endpoint to generate an AI summary of a chat session.
--   Socket Event : (New) Allows a client to force-reset its status on the server.
--   Socket Event : (Now Handled) The frontend mobile app now listens for this to handle in-chat calls.
+-   **New Time Tracking API**:  (includes endpoints for , , , , ).
 
 **Critical Info for New Agent**
--   **User Environment**: The user tests on their production environment (Render backend, 20i frontend), NOT the preview environment. Always confirm with the user that they have deployed the latest code before debugging.
--   **Render Deployment**: The  package **must not** be in  for Render deployments. This is documented in .
--   **AI Safety System**: The new AI Safety Classifier uses the Emergent Universal Key for OpenAI. It is designed as a *secondary check* and only upgrades risk levels; it cannot downgrade a risk determined by the primary rule-based system.
--   **Recurring Bugs**: The in-chat call and live support notification bugs are the highest priority. They are complex, likely involving interactions between the backend, the staff portal (vanilla JS), and the mobile app (React/Expo). Debugging requires checking all three parts.
+-   **MULTIPLE DEPLOYMENT TARGETS**: The user has at least THREE separate deployment environments: the React App on Vercel, the FastAPI backend on Render, and the vanilla JS Admin Portal on another static host. When the user reports a fix isn't working, the first step is **always** to confirm which specific services have been redeployed. Do not assume a fix is live until the user confirms deployment of all affected parts.
+-   **USER DATABASE ACCESS**: The agent successfully used the user's production backend URL () to make API calls and modify the production database. This can be used as a powerful but dangerous tool for debugging and fixing data-related issues directly.
+-   **VANILLA JS PORTALS**: Be extra cautious when working on  or . There is no hot-reloading, and debugging often involves checking the browser console for 404s on JS files or runtime errors.
 
 **documents and test reports created in this job**
--   
--    (Updated with deployment instructions)
+-    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Reports Jitsi video chat for events is not working and provides logs. (Status: **IN PROGRESS**, agent is about to fix it).
-2.  **User**: Reports in-chat call is still not working and provides staff portal logs. (Status: **IN PROGRESS**, agent implemented a fix on the mobile app, but it seems there's still an issue).
-3.  **User**: Reports a blue bar on the desktop version of the app. (Status: **RESOLVED**, agent fixed the CSS override).
-4.  **User**: Asks to implement a new AI-enhanced safety system based on a document. (Status: **RESOLVED**, agent implemented the system).
-5.  **User**: Asks to add local conversation history storage (50 messages) with privacy controls. (Status: **IN PROGRESS**, storage logic is done, UI is pending).
-6.  **User**: Asks to implement additional patterns and privacy features for the safety/history systems based on a second document. (Status: **RESOLVED**, agent implemented the new patterns and privacy logic).
-7.  **User**: Asks to redesign the home screen cards. (Status: **RESOLVED**, agent redesigned the cards to a 2-column grid).
-8.  **User**: Reports the live chat UI is cluttered. (Status: **RESOLVED**, agent cleaned up the UI).
-9.  **User**: Points out the agent added  to production requirements. (Status: **RESOLVED**, agent fixed  and documented the issue).
-10. **User**: Reports that requesting a call from the mobile app is not working. (Status: **IN PROGRESS**, agent implemented fixes to the backend status management).
+10. **User:** why the hell is the historical data november -december 2024 i only started usinthis 1 month ago - Frustration that the seeded time tracking data had incorrect dates. (Status: **RESOLVED**)
+9.  **Agent:** Apologized and fixed the seed data to use Feb/March 2026 dates.
+8.  **User:** jesus comon how hard is this just fix it still not showing - Frustration that the time tracking data wasn't appearing, provided a screenshot. (Status: **RESOLVED**)
+7.  **Agent:** Diagnosed the issue as stale data in the production DB and code not being deployed. Added a Clear All button to help the user reset data post-deployment.
+6.  **User:** ive already deployed do a cur and have a look at the rander databse - Asks agent to check the production database directly. (Status: **RESOLVED**)
+5.  **Agent:** Used  to confirm the production DB had old data, then used API endpoints to clear it and re-seed with correct 2026 data.
+4.  **User:** can we add this to the production notes that eveytime we do fix and deploy it adds to the time or will that not be accurate - Asks about auto-tracking time from deployments. (Status: **RESOLVED**)
+3.  **Agent:** Explained why that's inaccurate and updated PRD.md with a manual entry workflow instead.
+2.  **User:** Provides a list of 10 new fixes and UI changes. (Status: **IN PROGRESS**)
+1.  **User:** hugo is not at the top of the page... remove the red 999 bar and chnage the meet the ai battle buddies to just Tommy - Provides follow-up corrections to the agent's initial implementation of the 10 fixes. (Status: **IN PROGRESS**)
 
 **Project Health Check:**
 -   **Broken**:
-    -   In-chat calling (staff to user).
-    -   Jitsi video chat for events.
-    -   Live support request notifications (unreliable).
+    -   In-chat voice calling (staff to user).
+    -   Live support request notifications are unreliable.
+    -   Jitsi video chat is still not working for the user, likely due to deployment issues.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   **Jitsi Meet**: Embedded group video conferencing (currently broken).
+-   **Jitsi Meet**: Embedded group video conferencing.
 -   **Twilio**: WebRTC calling.
 -   **Resend**: Email notifications.
 -   **OpenAI gpt-4o-mini**: Used for AI chat personas and the new AI Safety Classifier. Uses **Emergent LLM Key**.
 -   **sentence-transformers**: For semantic analysis in the safeguarding system.
 -   **crypto-js**: For frontend encryption of local conversation history.
+-   **openpyxl**: (New) For generating Excel exports in the backend.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES (for the safeguarding system overhaul, all tests passed).
+-   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: []
--   **Known regressions**: In-chat calling was thought to be fixed but is still failing.
-
-**Credentials to test flow:**
--   **Admin User**:  (password in DB).
--   **Test Learner**: , Password: 
--   **Peer/Staff users**: Can be created via the  portal. Login is .
+-   **Test files created**: None.
+-   **Known regressions**: None.
 
 **What agent forgot to execute**
--   The UI for the Privacy/Data management screen (view/delete local conversation history) has not been created, even though the underlying service logic is complete.
--   The AI Character sort order issue remains unresolved.</analysis>
+-   The agent did not address the pre-existing P0 issues like In-chat call still not working and Live support requests not appearing as it prioritized the user's new requests for the time tracker and the batch of 10 UI fixes.
+-   The agent has not yet implemented the fix for Rename Talk to a Veteran to Talk to Peer Support (Fix #3 from the user's list).</analysis>
