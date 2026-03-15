@@ -48,27 +48,31 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 **LMS Content Massively Expanded:**
 
-Expanded 6 modules with comprehensive, production-quality training content:
+ALL 14 modules now have comprehensive, production-quality training content:
 
-| Module | Before | After | Increase |
-|--------|--------|-------|----------|
-| m2-algee (ALGEE Action Plan) | 5,748 chars | 17,100 chars | +198% |
-| m9-substance (Substance Misuse) | 5,062 chars | 15,063 chars | +198% |
-| m10-safeguarding (Safeguarding) | 5,543 chars | 10,977 chars | +98% |
-| m11-diversity (Diversity & Inclusion) | 5,031 chars | 11,653 chars | +132% |
-| m12-practical (Practical Skills) | 4,727 chars | 11,722 chars | +148% |
-| m14-completion (Course Completion) | 4,913 chars | 11,719 chars | +139% |
+| Module | Before | After | Status |
+|--------|--------|-------|--------|
+| m1-intro (Introduction) | 9,435 | 15,828 | ✅ EXPANDED |
+| m2-algee (ALGEE Action Plan) | 5,748 | 17,100 | ✅ EXPANDED |
+| m3-ethics (Ethics & Boundaries) | 6,399 | 14,176 | ✅ EXPANDED |
+| m4-communication (Communication) | 6,083 | 12,216 | ✅ EXPANDED |
+| m5-crisis (Crisis Support) | 6,586 | 10,117 | ✅ EXPANDED |
+| m6-ptsd (PTSD) | 5,964 | 9,089 | ✅ EXPANDED |
+| m7-depression (Depression/Anxiety) | 6,114 | 8,071 | ✅ EXPANDED |
+| m8-selfcare (Self-Care) | 5,663 | 9,230 | ✅ EXPANDED |
+| m9-substance (Substance Misuse) | 5,062 | 15,063 | ✅ EXPANDED |
+| m10-safeguarding (Safeguarding) | 5,543 | 10,977 | ✅ EXPANDED |
+| m11-diversity (Diversity) | 5,031 | 11,653 | ✅ EXPANDED |
+| m12-practical (Practical Skills) | 4,727 | 11,722 | ✅ EXPANDED |
+| m13-casestudies (Case Studies) | 7,232 | 13,063 | ✅ EXPANDED |
+| m14-completion (Completion) | 4,913 | 11,719 | ✅ EXPANDED |
 
-**New expanded content includes:**
-- Detailed ALGEE framework with practice scenarios
-- Comprehensive substance misuse guide with veteran-specific statistics
-- Full safeguarding procedures with real-world scenarios
-- Diversity section covering female, LGBTQ+, BAME veterans
-- Practical skills with complete services directory
-- Certificate and next steps guidance
+**Total content: 170,024 characters (was ~84,500)**
+**Average per module: 12,144 characters (was ~6,000)**
 
-**New File:**
-- `backend/routers/lms_curriculum_expanded.py` - 6 expanded modules
+**New Files:**
+- `backend/routers/lms_curriculum_expanded.py` - 6 expanded modules (m2, m9-m12, m14)
+- `backend/routers/lms_curriculum_expanded_part2.py` - 8 expanded modules (m1, m3-m8, m13)
 
 ---
 

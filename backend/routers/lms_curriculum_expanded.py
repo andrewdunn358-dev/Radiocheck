@@ -2842,7 +2842,10 @@ By taking this training, you're helping to:
 # Function to get expanded content for integration
 def get_expanded_content():
     """Returns dictionary of expanded module content"""
-    return {
+    from .lms_curriculum_expanded_part2 import get_expanded_content_part2
+    
+    # Part 1: m2, m9, m10, m11, m12, m14
+    part1 = {
         "m2-algee": EXPANDED_M2_ALGEE,
         "m9-substance": EXPANDED_M9_SUBSTANCE,
         "m10-safeguarding": EXPANDED_M10_SAFEGUARDING,
@@ -2850,3 +2853,9 @@ def get_expanded_content():
         "m12-practical": EXPANDED_M12_PRACTICAL,
         "m14-completion": EXPANDED_M14_COMPLETION
     }
+    
+    # Part 2: m1, m3, m4, m5, m6, m7, m8, m13
+    part2 = get_expanded_content_part2()
+    
+    # Merge both parts
+    return {**part1, **part2}
