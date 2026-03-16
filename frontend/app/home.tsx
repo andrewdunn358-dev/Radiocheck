@@ -47,7 +47,7 @@ const FOUNDERS: Founder[] = [
     name: "Rachel Webster",
     role: "Founder",
     avatar: "https://customer-assets.emergentagent.com/job_e4b45c7f-469e-4d50-8310-96df1bd9d53a/artifacts/kec981d4_Rachel.avif",
-    bio: "Rachel Webster brings compassion and clinical expertise to Radio Check. With a background in mental health support, Rachel has dedicated her career to helping those who have served.\n\nRachel's approach combines professional knowledge with genuine warmth. She understands that sometimes people just need someone to listen without judgement, and she has helped shape Radio Check's peer support model to reflect this understanding.\n\nHer work on the platform focuses on ensuring that every interaction - whether with AI companions or human supporters - feels safe, welcoming, and truly helpful. Rachel believes that asking for help is a sign of strength, not weakness."
+    bio: "Rachel Webster is a veteran of the British Army, having served for 24 years across a range of operational and leadership roles. Throughout her military career she deployed on operations overseas and developed extensive experience in high-pressure environments where teamwork, resilience and clear communication are critical.\n\nSince leaving the Army, Rachel has remained deeply committed to supporting the veteran community, working across security, mentoring and veteran advocacy initiatives. She has seen first-hand how many serving personnel and veterans quietly carry challenges they do not always speak about, and believes better, more accessible support is essential."
   },
   {
     name: "Anthony Donnelly",
