@@ -314,6 +314,48 @@ export default function Index() {
           </View>
         </View>
 
+        {/* Meet the AI Team Section - Right after founders */}
+        <View style={styles.aiTeamSection}>
+          <TouchableOpacity 
+            style={styles.aiTeamHeader}
+            onPress={toggleAITeam}
+            activeOpacity={0.8}
+          >
+            <View>
+              <Text style={styles.aiTeamTitle}>Meet the AI Team</Text>
+              <Text style={styles.aiTeamSubtitle}>AI companions available 24/7</Text>
+            </View>
+            <View style={styles.aiTeamToggle}>
+              <Text style={styles.aiTeamToggleText}>{showAITeam ? 'Hide' : 'Show'}</Text>
+              <Ionicons 
+                name={showAITeam ? 'chevron-up' : 'chevron-down'} 
+                size={20} 
+                color={colors.primary} 
+              />
+            </View>
+          </TouchableOpacity>
+          
+          {showAITeam && (
+            <View>
+              <View style={styles.aiTeamGrid}>
+                {aiTeam.map((member) => (
+                  <TouchableOpacity 
+                    key={member.name}
+                    style={styles.aiTeamMember}
+                    onPress={() => handleMemberPress(member)}
+                    activeOpacity={0.8}
+                    data-testid={`ai-team-${member.name.toLowerCase()}`}
+                  >
+                    <Image source={{ uri: member.avatar }} style={styles.aiTeamAvatar} />
+                    <Text style={styles.aiTeamName}>{member.name}</Text>
+                    <Text style={styles.aiTeamDesc}>{member.description}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* What is Radio Check - Collapsible Card */}
         <TouchableOpacity 
           style={styles.aboutCard}
@@ -389,49 +431,6 @@ export default function Index() {
 
         {/* Community Events Section */}
         <EventsSection />
-
-        {/* Meet the AI Team Section */}
-        <View style={styles.aiTeamSection}>
-          <TouchableOpacity 
-            style={styles.aiTeamHeader}
-            onPress={toggleAITeam}
-            activeOpacity={0.8}
-          >
-            <View>
-              <Text style={styles.aiTeamTitle}>Meet the AI Team</Text>
-              <Text style={styles.aiTeamSubtitle}>AI companions available 24/7</Text>
-            </View>
-            <View style={styles.aiTeamToggle}>
-              <Text style={styles.aiTeamToggleText}>{showAITeam ? 'Hide' : 'Show'}</Text>
-              <Ionicons 
-                name={showAITeam ? 'chevron-up' : 'chevron-down'} 
-                size={20} 
-                color={colors.primary} 
-              />
-            </View>
-          </TouchableOpacity>
-          
-          {showAITeam && (
-            <View>
-              {/* AI Team Section */}
-              <View style={styles.aiTeamGrid}>
-                {aiTeam.map((member) => (
-                  <TouchableOpacity 
-                    key={member.name}
-                    style={styles.aiTeamMember}
-                    onPress={() => handleMemberPress(member)}
-                    activeOpacity={0.8}
-                    data-testid={`ai-team-${member.name.toLowerCase()}`}
-                  >
-                    <Image source={{ uri: member.avatar }} style={styles.aiTeamAvatar} />
-                    <Text style={styles.aiTeamName}>{member.name}</Text>
-                    <Text style={styles.aiTeamDesc}>{member.description}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-        </View>
 
         {/* AI Team Member Bio Modal */}
         <Modal
