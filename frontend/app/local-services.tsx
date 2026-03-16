@@ -308,6 +308,24 @@ export default function LocalServicesPage() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Chat with Baz - AI Support Navigator */}
+        <TouchableOpacity 
+          style={[styles.bazCard, { backgroundColor: colors.card, borderColor: '#78716c' }]}
+          onPress={() => router.push('/chat/baz')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.bazAvatar}>
+            <Text style={{ fontSize: 32 }}>🎖️</Text>
+          </View>
+          <View style={styles.bazTextContainer}>
+            <Text style={[styles.bazTitle, { color: colors.text }]}>Chat with Baz</Text>
+            <Text style={[styles.bazSubtitle, { color: colors.textSecondary }]}>Support services & transition expert, 24/7</Text>
+          </View>
+          <View style={{ backgroundColor: '#78716c', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Introduction */}
         <View style={styles.introCard}>
           <Ionicons name="location" size={40} color="#10b981" />
@@ -565,6 +583,36 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
+  },
+
+  // Baz Card
+  bazCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    marginBottom: 16,
+  },
+  bazAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f5f5f4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  bazTextContainer: {
+    flex: 1,
+  },
+  bazTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  bazSubtitle: {
+    fontSize: 13,
   },
 
   // Search Card

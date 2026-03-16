@@ -318,9 +318,9 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
         "Back for more are we? Good attitude. Let's go!",
       ],
       baz: [
-        "Alright mucker, you're back! Been looking after yourself?",
-        "Ey up fella, good to see you. What's occurring?",
-        "Back again! Fancy a brew and a chat?",
+        "Alright mucker, you're back! Need help finding something?",
+        "Ey up fella, good to see you. Housing, support, transition stuff - what do you need?",
+        "Back again! What can I help you navigate today?",
       ],
     };
     
