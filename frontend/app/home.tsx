@@ -291,6 +291,29 @@ export default function Index() {
           <Text style={styles.taglineEnglish}>24/7 Mental Health & Peer Support</Text>
         </View>
 
+        {/* Our Founders Section - Above What is Radio Check */}
+        <View style={styles.foundersTopSection}>
+          <Text style={styles.foundersTopTitle}>Meet the Team</Text>
+          <Text style={styles.foundersTopSubtitle}>The people behind Radio Check</Text>
+          <View style={styles.foundersTopGrid}>
+            {FOUNDERS.map((founder) => (
+              <TouchableOpacity 
+                key={founder.name}
+                style={styles.founderTopCard}
+                onPress={() => setSelectedFounder(founder)}
+                activeOpacity={0.8}
+                data-testid={`founder-top-${founder.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
+              >
+                <Image source={{ uri: founder.avatar }} style={styles.founderTopAvatar} />
+                <View style={styles.founderTopInfo}>
+                  <Text style={styles.founderTopName}>{founder.name}</Text>
+                  <Text style={styles.founderTopRole}>{founder.role}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* What is Radio Check - Collapsible Card */}
         <TouchableOpacity 
           style={styles.aboutCard}
@@ -367,7 +390,7 @@ export default function Index() {
         {/* Community Events Section */}
         <EventsSection />
 
-        {/* Meet the Team Section */}
+        {/* Meet the AI Team Section */}
         <View style={styles.aiTeamSection}>
           <TouchableOpacity 
             style={styles.aiTeamHeader}
@@ -375,8 +398,8 @@ export default function Index() {
             activeOpacity={0.8}
           >
             <View>
-              <Text style={styles.aiTeamTitle}>Meet the Team</Text>
-              <Text style={styles.aiTeamSubtitle}>Our founders & AI companions</Text>
+              <Text style={styles.aiTeamTitle}>Meet the AI Team</Text>
+              <Text style={styles.aiTeamSubtitle}>AI companions available 24/7</Text>
             </View>
             <View style={styles.aiTeamToggle}>
               <Text style={styles.aiTeamToggleText}>{showAITeam ? 'Hide' : 'Show'}</Text>
@@ -390,29 +413,7 @@ export default function Index() {
           
           {showAITeam && (
             <View>
-              {/* Founders Section */}
-              <View style={styles.foundersSection}>
-                <Text style={styles.foundersSectionTitle}>Our Founders</Text>
-                <Text style={styles.foundersSubtitle}>Tap to learn more</Text>
-                <View style={styles.foundersGrid}>
-                  {FOUNDERS.map((founder) => (
-                    <TouchableOpacity 
-                      key={founder.name}
-                      style={styles.founderCard}
-                      onPress={() => setSelectedFounder(founder)}
-                      activeOpacity={0.8}
-                      data-testid={`founder-${founder.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
-                    >
-                      <Image source={{ uri: founder.avatar }} style={styles.founderAvatar} />
-                      <Text style={styles.founderName}>{founder.name}</Text>
-                      <Text style={styles.founderRole}>{founder.role}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              
               {/* AI Team Section */}
-              <Text style={styles.aiTeamSectionTitle}>AI Companions (Available 24/7)</Text>
               <View style={styles.aiTeamGrid}>
                 {aiTeam.map((member) => (
                   <TouchableOpacity 
@@ -788,7 +789,62 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: 12,
     marginTop: 16,
   },
-  // Founders Section Styles
+  // Founders Top Section Styles (above What is Radio Check)
+  foundersTopSection: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  foundersTopTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  foundersTopSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  foundersTopGrid: {
+    gap: 12,
+  },
+  founderTopCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  founderTopAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  founderTopInfo: {
+    flex: 1,
+  },
+  founderTopName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  founderTopRole: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  // Founders Section Styles (old, kept for reference)
   foundersSection: {
     marginBottom: 24,
   },

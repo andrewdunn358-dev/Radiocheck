@@ -6,8 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 
-// Hugo's avatar URL
-const HUGO_AVATAR = '/images/hugo.png';
+// Baz's avatar URL
+const BAZ_AVATAR = '/images/baz.png';
 
 interface Organization {
   id: string;
@@ -88,23 +88,23 @@ export default function Organizations() {
               padding: 16, 
               marginBottom: 20, 
               borderWidth: 2, 
-              borderColor: '#10b981' 
+              borderColor: '#78716c' 
             }}
-            onPress={() => router.push('/chat/hugo')}
+            onPress={() => router.push('/chat/baz')}
             activeOpacity={0.8}
           >
             <Image 
-              source={{ uri: HUGO_AVATAR }} 
+              source={{ uri: BAZ_AVATAR }} 
               style={{ width: 56, height: 56, borderRadius: 28, marginRight: 14 }}
             />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Chat with Hugo</Text>
-              <Text style={{ fontSize: 13, color: '#10b981', fontWeight: '600', marginTop: 2 }}>Veteran Services Navigator</Text>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Chat with Baz</Text>
+              <Text style={{ fontSize: 13, color: '#78716c', fontWeight: '600', marginTop: 2 }}>Support Services & Transition</Text>
               <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>
-                Find the right support, charities & services
+                Housing, charities, leaving the military
               </Text>
             </View>
-            <View style={{ backgroundColor: '#10b981', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+            <View style={{ backgroundColor: '#78716c', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
               <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
             </View>
           </TouchableOpacity>

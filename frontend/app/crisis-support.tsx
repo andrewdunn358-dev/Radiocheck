@@ -79,7 +79,7 @@ export default function CrisisSupport() {
           </Text>
         </View>
 
-        {/* On-Duty Counsellors Card */}
+        {/* On-Duty Support Card */}
         <TouchableOpacity 
           style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 20, marginBottom: 20 }}
           onPress={() => router.push('/counsellors')}
@@ -90,7 +90,7 @@ export default function CrisisSupport() {
               <Ionicons name="people-circle" size={32} color="#ffffff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', marginBottom: 4 }}>On-Duty Counsellors</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', marginBottom: 4 }}>On-Duty Support</Text>
               <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>Professional support available now</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#ffffff" />

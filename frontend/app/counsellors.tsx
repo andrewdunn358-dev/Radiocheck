@@ -140,7 +140,7 @@ export default function Counsellors() {
           <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text }}>On-Duty Counsellors</Text>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text }}>On-Duty Support</Text>
         </View>
 
         {/* Info Box */}
