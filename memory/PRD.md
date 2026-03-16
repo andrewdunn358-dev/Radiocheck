@@ -31,6 +31,35 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 16, 2026 - Compensation Schemes Page Enhanced
+
+**Compensation Schemes Page - Full On-Page Summaries Added:**
+
+Previously the compensation schemes page only had brief descriptions and links. Now each scheme has:
+- Detailed description explaining what the scheme covers, eligibility, and process
+- Key Facts section with bullet points for quick reference
+- Clear call-to-action buttons
+
+**7 Schemes Updated with Full Content:**
+
+| Scheme | Type | Key Info Added |
+|--------|------|----------------|
+| Armed Forces Compensation Scheme (AFCS) | GOV.UK | Lump sums £1,236-£650,000, GIP, AFIP £172.75/week, 7-year limit, PTSD ranges |
+| War Pension Scheme | GOV.UK | Weekly payments by disablement %, no time limit, gratuity for <20%, widows eligible |
+| Tribunal Guide | GOV.UK | Appeals process, free representation available |
+| Hearing Loss Claims (RBL) | Charity | Free expert guidance and tribunal representation |
+| Matrix Agreement | Charity | DEADLINE 31 JULY 2026, 70,000+ eligible, £182k-£700k+ settlements |
+| Royal British Legion | Charity | Free claims help, forms assistance, tribunal representation |
+| Blesma | Charity | Specialist support for limbless veterans |
+
+**Files Updated:**
+- `frontend/app/compensation-schemes.tsx` - Added fullDescription and keyFacts to all schemes, updated card rendering with expanded layout
+
+**Also Fixed:**
+- Changed "Hugo" to "Jack" in the intro text (Hugo was replaced with Jack in previous session)
+
+---
+
 ### Session: March 15, 2026 (Evening) - AI Character Consolidation
 
 **Doris/Rachel Character Unification Complete:**
@@ -546,7 +575,7 @@ Files changed:
 - **Frontend**: Vercel (https://[domain])
 - **Backend**: Render (https://[domain])
 - **Admin/Staff/LMS Portals**: 20i hosting
-- **Preview**: https://expand-lms-funding.preview.emergentagent.com
+- **Preview**: https://vet-compensation.preview.emergentagent.com
   - Learner Portal: `/api/training/`
   - LMS Admin: `/api/lms-admin/`
   - Main Admin: `/api/admin/`

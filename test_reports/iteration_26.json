@@ -27,7 +27,7 @@
       "email": "test@example.com",
       "password": "testpass123"
     },
-    "preview_url": "https://expand-lms-funding.preview.emergentagent.com"
+    "preview_url": "https://vet-compensation.preview.emergentagent.com"
   },
   "seed_data_creation": "Test user test@example.com with password testpass123 already exists",
   "retest_needed": false,

@@ -8,57 +8,89 @@ import { useTheme } from '../src/context/ThemeContext';
 interface CompensationScheme {
   title: string;
   description: string;
+  fullDescription?: string;
   url: string;
   icon: string;
   isGov?: boolean;
+  keyFacts?: string[];
 }
 
 const COMPENSATION_SCHEMES: CompensationScheme[] = [
   {
     title: "Armed Forces Compensation Scheme (AFCS)",
-    description: "For injuries or illness caused by service on or after 6 April 2005. Lump sum payments and guaranteed income.",
+    description: "For injuries or illness caused by service on or after 6 April 2005.",
+    fullDescription: "The AFCS is a no-fault scheme — you don't need to prove anyone was at fault. It provides tax-free compensation for injuries, illnesses, or deaths caused by service. You can claim if you're a current or former member of UK Armed Forces, a reservist, or a surviving family member.",
+    keyFacts: [
+      "Lump sum payments from £1,236 to £650,000 depending on severity",
+      "Guaranteed Income Payment (GIP) — tax-free monthly payments for serious injuries",
+      "Armed Forces Independence Payment of £172.75/week for those with 50%+ GIP",
+      "Must claim within 7 years of the incident or discharge",
+      "PTSD claims typically range from £1,200 to £570,000"
+    ],
     url: "https://www.gov.uk/guidance/armed-forces-compensation-scheme-afcs",
     icon: "shield-checkmark",
     isGov: true
   },
   {
     title: "War Pension Scheme",
-    description: "For injuries or illness caused by service before 6 April 2005. Regular payments based on level of disability.",
+    description: "For injuries or illness caused by service before 6 April 2005.",
+    fullDescription: "The War Pension Scheme provides tax-free compensation to veterans for injuries or illnesses caused by service before 6 April 2005. You must have left service to claim. Unlike AFCS, there is no time limit on claims, though claims made over 7 years after discharge require you to prove the service link.",
+    keyFacts: [
+      "Weekly pension payments based on your degree of disablement (20%+)",
+      "Lump sum gratuity for disablement under 20%",
+      "20% disablement = approx £47/week (£2,452/year)",
+      "Additional allowances for age, mobility, and care needs",
+      "No time limit on claims — you can apply many years after leaving",
+      "War widows/widowers may also be eligible"
+    ],
     url: "https://www.gov.uk/guidance/war-pension-scheme-wps",
     icon: "medal",
     isGov: true
   },
   {
     title: "Hearing Loss Claims (RBL)",
-    description: "Royal British Legion guidance on military hearing loss claims and tribunal representation.",
+    description: "Royal British Legion guidance on military hearing loss claims.",
+    fullDescription: "The Royal British Legion provides free expert guidance and tribunal representation for veterans claiming compensation for hearing loss caused by military service. They can help with both AFCS and War Pension claims, as well as appeals if your claim is rejected.",
     url: "https://www.britishlegion.org.uk/get-support/expert-guidance/tribunal-representation/military-hearing-loss-claims",
     icon: "ear",
     isGov: false
   },
   {
-    title: "Matrix Agreement - Hearing Loss Deadline",
-    description: "Important information about the extended deadline for hearing loss claims under the Matrix Agreement.",
+    title: "Matrix Agreement - Hearing Loss",
+    description: "Extended deadline for hearing loss compensation claims.",
+    fullDescription: "The Matrix Agreement is a High Court-approved settlement scheme for military hearing loss claims. The MoD has accepted duty of care, dropped time limits, and offers streamlined payouts that are often significantly higher than AFCS or War Pension awards. Recent settlements have ranged from £182,000 to £700,000+.",
+    keyFacts: [
+      "DEADLINE EXTENDED TO 31 JULY 2026",
+      "Over 70,000 veterans may be eligible",
+      "No time limits for claims registered before the deadline",
+      "Awards often much higher than AFCS (which can be as low as £6,000)",
+      "Prior AFCS/War Pension claims don't prevent you claiming",
+      "Can include loss of earnings — unlike government schemes"
+    ],
     url: "https://veteranswelfaregroup.co.uk/news/the-matrix-agreement-extending-the-hearing-loss-claims-deadline/",
     icon: "time",
     isGov: false
   },
   {
     title: "Tribunal Guide (PDF)",
-    description: "Official guide to War Pensions and Armed Forces Compensation appeals and tribunals.",
+    description: "Official guide to War Pensions and Armed Forces Compensation appeals.",
+    fullDescription: "If your claim is rejected or you disagree with the award, you can appeal to an independent tribunal. This official guide explains the process, what to expect, and how to prepare your case. You don't need a lawyer — charities like RBL can represent you for free.",
     url: "https://www.judiciary.uk/wp-content/uploads/2024/10/War-Pensions-and-Armed-Forces-Compensation-Guide-for-Users.pdf",
     icon: "document-text",
     isGov: true
   },
   {
     title: "Royal British Legion",
-    description: "Free claims advice and support. They can help you navigate the War Pensions scheme and appeals.",
+    description: "Free claims advice and support for all veterans.",
+    fullDescription: "The Royal British Legion offers free, expert help with compensation claims. Their advisers can help you understand which scheme applies to you, assist with filling out forms, gather medical evidence, and represent you at tribunal if needed. Completely free of charge.",
     url: "https://www.britishlegion.org.uk/get-support/expert-guidance/money-debt/war-pensions-scheme",
     icon: "flower",
     isGov: false
   },
   {
     title: "Blesma - The Limbless Veterans",
-    description: "Support for veterans who have lost limbs or use of limbs. Help with War Pension claims.",
+    description: "Support for veterans who have lost limbs or use of limbs.",
+    fullDescription: "Blesma provides specialist support for veterans who have lost limbs or lost the use of limbs. They offer expert help with War Pension and AFCS claims specifically related to limb loss, plus ongoing welfare support, prosthetics advice, and a community of fellow veterans.",
     url: "https://blesma.org/war-pension-scheme/",
     icon: "accessibility",
     isGov: false
@@ -115,7 +147,7 @@ export default function CompensationSchemes() {
           <Ionicons name="information-circle" size={24} color="#059669" />
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
             If you've been injured or become ill due to military service, you may be entitled to compensation. 
-            Hugo can help you understand your options, or browse the resources below.
+            Jack can help you understand your options, or browse the resources below.
           </Text>
         </View>
 
@@ -126,26 +158,48 @@ export default function CompensationSchemes() {
         </Text>
         
         {COMPENSATION_SCHEMES.filter(s => s.isGov).map((scheme, index) => (
-          <TouchableOpacity 
-            key={index}
-            style={[styles.schemeCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => openLink(scheme.url)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: '#d1fae5' }]}>
-              <Ionicons name={scheme.icon as any} size={24} color="#059669" />
-            </View>
-            <View style={styles.schemeContent}>
-              <View style={styles.schemeHeader}>
-                <Text style={[styles.schemeTitle, { color: colors.text }]}>{scheme.title}</Text>
-                <View style={styles.govBadge}>
-                  <Text style={styles.govBadgeText}>GOV.UK</Text>
+          <View key={index} style={[styles.schemeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.schemeCardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: '#d1fae5' }]}>
+                <Ionicons name={scheme.icon as any} size={24} color="#059669" />
+              </View>
+              <View style={styles.schemeContent}>
+                <View style={styles.schemeHeader}>
+                  <Text style={[styles.schemeTitle, { color: colors.text }]}>{scheme.title}</Text>
+                  <View style={styles.govBadge}>
+                    <Text style={styles.govBadgeText}>GOV.UK</Text>
+                  </View>
                 </View>
               </View>
-              <Text style={[styles.schemeDescription, { color: colors.textSecondary }]}>{scheme.description}</Text>
             </View>
-            <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+            
+            {scheme.fullDescription && (
+              <Text style={[styles.fullDescription, { color: colors.textSecondary }]}>
+                {scheme.fullDescription}
+              </Text>
+            )}
+            
+            {scheme.keyFacts && scheme.keyFacts.length > 0 && (
+              <View style={styles.keyFactsContainer}>
+                <Text style={[styles.keyFactsTitle, { color: colors.text }]}>Key Facts:</Text>
+                {scheme.keyFacts.map((fact, factIndex) => (
+                  <View key={factIndex} style={styles.keyFactRow}>
+                    <Text style={[styles.bulletPoint, { color: '#059669' }]}>•</Text>
+                    <Text style={[styles.keyFactText, { color: colors.textSecondary }]}>{fact}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            <TouchableOpacity 
+              style={styles.linkButton}
+              onPress={() => openLink(scheme.url)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.linkButtonText}>Visit Official Website</Text>
+              <Ionicons name="open-outline" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
         ))}
 
         {/* Charities & Support */}
@@ -155,21 +209,43 @@ export default function CompensationSchemes() {
         </Text>
         
         {COMPENSATION_SCHEMES.filter(s => !s.isGov).map((scheme, index) => (
-          <TouchableOpacity 
-            key={index}
-            style={[styles.schemeCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => openLink(scheme.url)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: '#e0e7ff' }]}>
-              <Ionicons name={scheme.icon as any} size={24} color="#4f46e5" />
+          <View key={index} style={[styles.schemeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.schemeCardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: '#e0e7ff' }]}>
+                <Ionicons name={scheme.icon as any} size={24} color="#4f46e5" />
+              </View>
+              <View style={styles.schemeContent}>
+                <Text style={[styles.schemeTitle, { color: colors.text }]}>{scheme.title}</Text>
+              </View>
             </View>
-            <View style={styles.schemeContent}>
-              <Text style={[styles.schemeTitle, { color: colors.text }]}>{scheme.title}</Text>
-              <Text style={[styles.schemeDescription, { color: colors.textSecondary }]}>{scheme.description}</Text>
-            </View>
-            <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+            
+            {scheme.fullDescription && (
+              <Text style={[styles.fullDescription, { color: colors.textSecondary }]}>
+                {scheme.fullDescription}
+              </Text>
+            )}
+            
+            {scheme.keyFacts && scheme.keyFacts.length > 0 && (
+              <View style={styles.keyFactsContainer}>
+                <Text style={[styles.keyFactsTitle, { color: colors.text }]}>Key Facts:</Text>
+                {scheme.keyFacts.map((fact, factIndex) => (
+                  <View key={factIndex} style={styles.keyFactRow}>
+                    <Text style={[styles.bulletPoint, { color: '#4f46e5' }]}>•</Text>
+                    <Text style={[styles.keyFactText, { color: colors.textSecondary }]}>{fact}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            <TouchableOpacity 
+              style={[styles.linkButton, { backgroundColor: '#4f46e5' }]}
+              onPress={() => openLink(scheme.url)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.linkButtonText}>Learn More</Text>
+              <Ionicons name="open-outline" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
         ))}
 
         {/* Warning */}
@@ -263,13 +339,16 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginBottom: 16,
   },
   schemeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  schemeCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
+    marginBottom: 12,
   },
   iconContainer: {
     width: 48,
@@ -285,11 +364,10 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
   },
   schemeTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     flex: 1,
   },
   govBadge: {
@@ -302,6 +380,53 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '700',
+  },
+  fullDescription: {
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  keyFactsContainer: {
+    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  keyFactsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  keyFactRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  bulletPoint: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginRight: 8,
+    marginTop: 1,
+  },
+  keyFactText: {
+    fontSize: 13,
+    lineHeight: 20,
+    flex: 1,
+  },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  linkButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   schemeDescription: {
     fontSize: 13,
