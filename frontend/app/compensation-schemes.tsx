@@ -29,18 +29,18 @@ const COMPENSATION_SCHEMES: CompensationScheme[] = [
     isGov: true
   },
   {
-    title: "Hearing Loss Claims",
-    description: "Guidance on claiming for hearing loss or tinnitus caused by military service, including noise-induced hearing loss.",
-    url: "https://www.gov.uk/guidance/afcs-claim-hearing-loss",
+    title: "Hearing Loss Claims (RBL)",
+    description: "Royal British Legion guidance on military hearing loss claims and tribunal representation.",
+    url: "https://www.britishlegion.org.uk/get-support/expert-guidance/tribunal-representation/military-hearing-loss-claims",
     icon: "ear",
-    isGov: true
+    isGov: false
   },
   {
-    title: "Veterans UK",
-    description: "Official government service for all Armed Forces compensation enquiries. Call 0808 1914 218 (free).",
-    url: "https://www.gov.uk/government/organisations/veterans-uk",
-    icon: "call",
-    isGov: true
+    title: "Matrix Agreement - Hearing Loss Deadline",
+    description: "Important information about the extended deadline for hearing loss claims under the Matrix Agreement.",
+    url: "https://veteranswelfaregroup.co.uk/news/the-matrix-agreement-extending-the-hearing-loss-claims-deadline/",
+    icon: "time",
+    isGov: false
   },
   {
     title: "Tribunal Guide (PDF)",
