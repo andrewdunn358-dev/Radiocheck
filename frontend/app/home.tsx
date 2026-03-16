@@ -108,6 +108,7 @@ export default function Index() {
   const { colors, theme } = useTheme();
   const styles = createStyles(colors);
   const [showAITeam, setShowAITeam] = useState(false);
+  const [showFounders, setShowFounders] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [selectedMember, setSelectedMember] = useState<AITeamMember | null>(null);
   const [selectedFounder, setSelectedFounder] = useState<Founder | null>(null);
@@ -295,27 +296,46 @@ export default function Index() {
           <Text style={styles.taglineEnglish}>24/7 Mental Health & Peer Support</Text>
         </View>
 
-        {/* Our Founders Section - Above What is Radio Check */}
-        <View style={styles.foundersTopSection}>
-          <Text style={styles.foundersTopTitle}>Meet the Team</Text>
-          <Text style={styles.foundersTopSubtitle}>The people behind Radio Check</Text>
-          <View style={styles.foundersTopGrid}>
-            {FOUNDERS.map((founder) => (
-              <TouchableOpacity 
-                key={founder.name}
-                style={styles.founderTopCard}
-                onPress={() => setSelectedFounder(founder)}
-                activeOpacity={0.8}
-                data-testid={`founder-top-${founder.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
-              >
-                <Image source={{ uri: founder.avatar }} style={styles.founderTopAvatar} />
-                <View style={styles.founderTopInfo}>
-                  <Text style={styles.founderTopName}>{founder.name}</Text>
-                  <Text style={styles.founderTopRole}>{founder.role}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+        {/* Our Founders Section - Collapsible like AI Team */}
+        <View style={styles.aiTeamSection}>
+          <TouchableOpacity 
+            style={styles.aiTeamHeader}
+            onPress={() => setShowFounders(!showFounders)}
+            activeOpacity={0.8}
+          >
+            <View>
+              <Text style={styles.aiTeamTitle}>Meet the Team</Text>
+              <Text style={styles.aiTeamSubtitle}>The people behind Radio Check</Text>
+            </View>
+            <View style={styles.aiTeamToggle}>
+              <Text style={styles.aiTeamToggleText}>{showFounders ? 'Hide' : 'Show'}</Text>
+              <Ionicons 
+                name={showFounders ? 'chevron-up' : 'chevron-down'} 
+                size={20} 
+                color={colors.primary} 
+              />
+            </View>
+          </TouchableOpacity>
+          
+          {showFounders && (
+            <View style={styles.foundersTopGrid}>
+              {FOUNDERS.map((founder) => (
+                <TouchableOpacity 
+                  key={founder.name}
+                  style={styles.founderTopCard}
+                  onPress={() => setSelectedFounder(founder)}
+                  activeOpacity={0.8}
+                  data-testid={`founder-top-${founder.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
+                >
+                  <Image source={{ uri: founder.avatar }} style={styles.founderTopAvatar} />
+                  <View style={styles.founderTopInfo}>
+                    <Text style={styles.founderTopName}>{founder.name}</Text>
+                    <Text style={styles.founderTopRole}>{founder.role}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Meet the AI Team Section - Right after founders */}
