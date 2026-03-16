@@ -105,21 +105,21 @@ export default function CompensationSchemes() {
           <Text style={[styles.headerTitle, { color: colors.text }]}>Compensation Schemes</Text>
         </View>
 
-        {/* Hugo AI Chat Card - TOP OF PAGE */}
+        {/* Jack AI Chat Card - TOP OF PAGE */}
         <TouchableOpacity 
-          style={[styles.hugoCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => router.push('/chat/hugo')}
+          style={[styles.jackCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => router.push('/chat/jack')}
           activeOpacity={0.9}
         >
           <Image 
-            source={{ uri: '/images/hugo.png' }}
-            style={styles.hugoAvatar}
+            source={{ uri: '/images/jack.png' }}
+            style={styles.jackAvatar}
           />
-          <View style={styles.hugoTextContainer}>
-            <Text style={[styles.hugoTitle, { color: colors.text }]}>Chat with Hugo</Text>
-            <Text style={[styles.hugoSubtitle, { color: colors.textSecondary }]}>Compensation schemes expert, 24/7</Text>
+          <View style={styles.jackTextContainer}>
+            <Text style={[styles.jackTitle, { color: colors.text }]}>Chat with Jack</Text>
+            <Text style={[styles.jackSubtitle, { color: colors.textSecondary }]}>Ex-Navy compensation expert, 24/7</Text>
           </View>
-          <View style={{ backgroundColor: '#059669', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+          <View style={{ backgroundColor: '#1e40af', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
             <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
           </View>
         </TouchableOpacity>
@@ -226,31 +226,31 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
   },
-  hugoCard: {
+  jackCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#059669',
+    borderColor: '#1e40af',
     marginBottom: 16,
-    backgroundColor: isDark ? '#064e3b' : '#ecfdf5',
+    backgroundColor: isDark ? '#1e3a5f' : '#eff6ff',
   },
-  hugoAvatar: {
+  jackAvatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
     marginRight: 12,
   },
-  hugoTextContainer: {
+  jackTextContainer: {
     flex: 1,
   },
-  hugoTitle: {
+  jackTitle: {
     fontSize: 17,
     fontWeight: '700',
     marginBottom: 2,
   },
-  hugoSubtitle: {
+  jackSubtitle: {
     fontSize: 13,
   },
   infoCard: {

@@ -287,10 +287,10 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
         "Ey up mucker, good to see you. How's it going?",
         "Back again are we? Good lad. What's happening?",
       ],
-      hugo: [
-        "Hey, good to see you again. Need help with a compensation claim?",
-        "Hello again. Still here to help with AFCS, War Pensions, or any claims questions.",
-        "Hey, you're back. What compensation stuff can I help with?",
+      jack: [
+        "Ahoy shipmate, you're back! Need help with compensation claims?",
+        "Yo ho ho! Good to see you again. What can I help navigate today?",
+        "Ahoy there! Jack at your service. Compensation questions?",
       ],
       margie: [
         "Hello love, nice to see you again. How have you been getting on?",
