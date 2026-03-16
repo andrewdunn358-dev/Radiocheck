@@ -288,9 +288,9 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
         "Back again are we? Good lad. What's happening?",
       ],
       hugo: [
-        "Hey, good to see you again. What can I help with today?",
-        "Hello again. Still here if you need help finding the right support.",
-        "Hey, you're back. What are we working on today?",
+        "Hey, good to see you again. Need help with a compensation claim?",
+        "Hello again. Still here to help with AFCS, War Pensions, or any claims questions.",
+        "Hey, you're back. What compensation stuff can I help with?",
       ],
       margie: [
         "Hello love, nice to see you again. How have you been getting on?",
@@ -316,6 +316,11 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
         "Alright soldier, you're back! Ready to put in some work?",
         "Ey up, good to see you again. Time to crack on?",
         "Back for more are we? Good attitude. Let's go!",
+      ],
+      baz: [
+        "Alright mucker, you're back! Been looking after yourself?",
+        "Ey up fella, good to see you. What's occurring?",
+        "Back again! Fancy a brew and a chat?",
       ],
     };
     
