@@ -31,6 +31,60 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 16, 2026 - New Pages & AI Characters Added
+
+**NEW: Women Veterans Page (`/women-veterans`)**
+- Dedicated page for women veterans with comprehensive resources
+- "Chat with Megan" AI character featured at top (Ex-RAF MERT Chinook medic)
+- Statistics about women veterans (13% of UK veterans, 5.7% of OpCourage users)
+- "We Understand" section covering unique challenges (invisible veterans, MST, equipment issues)
+- MST (Military Sexual Trauma) support section with Rape Crisis hotline
+- Women-specific support organisations: Forward Assist, Sisters in Service, Salute Her UK
+- Mental health resources including Combat Stress, WithYou Rebuild Project
+- NHS priority treatment information
+
+**NEW: Money & Benefits Page (`/money-benefits`)**
+- Dedicated page for financial support and benefits
+- "Chat with Penny" AI character featured at top (Ex-Navy Writer, benefits specialist)
+- Comprehensive benefit information:
+  - Universal Credit (with current rates)
+  - PIP (Personal Independence Payment)
+  - Council Tax discounts
+  - War Pension/AFCS (links to Jack for claims help)
+  - Pension Credit
+- Veteran discounts section (Veterans Railcard, Defence Discount Service)
+- Debt help resources (StepChange, Citizens Advice)
+- Emergency help (SSAFA, RBL)
+
+**NEW: Two AI Characters Added**
+
+| Character | Role | Background |
+|-----------|------|------------|
+| Megan | Women veterans specialist | Ex-RAF MERT Chinook medic, 200+ missions in Afghanistan |
+| Penny | Benefits & money specialist | Ex-Royal Navy Writer, 15 years, Chief Petty Officer |
+
+**Gender-Neutral Language Update:**
+- All AI character prompts updated to use gender-neutral language
+- Removed "fella", "lad", "lass", "bloke", "mare" from greetings
+- Added explicit instruction to all characters: "Never assume the user's gender"
+- Updated Baz's bio in database
+
+**Compensation Schemes Page - Full On-Page Summaries:**
+- Added detailed descriptions and key facts for all 7 schemes
+- AFCS: Lump sums £1,236-£650,000, GIP, AFIP, 7-year limit
+- War Pension: Weekly payments, no time limit
+- Matrix Agreement: DEADLINE 31 JULY 2026, £182k-£700k+ settlements
+
+**Files Created/Modified:**
+- `/app/frontend/app/women-veterans.tsx` (NEW)
+- `/app/frontend/app/money-benefits.tsx` (NEW)
+- `/app/frontend/public/images/megan.png` (NEW)
+- `/app/frontend/public/images/penny.png` (NEW)
+- `/app/backend/server.py` - Added MEGAN_SYSTEM_PROMPT, PENNY_SYSTEM_PROMPT
+- `/app/frontend/app/home.tsx` - Added menu items and AI team members
+
+---
+
 ### Session: March 16, 2026 - Compensation Schemes Page Enhanced
 
 **Compensation Schemes Page - Full On-Page Summaries Added:**

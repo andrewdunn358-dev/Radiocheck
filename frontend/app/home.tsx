@@ -73,6 +73,8 @@ interface MenuItem {
 const FALLBACK_MENU_ITEMS: MenuItem[] = [
   { title: "Need to Talk?", description: "Connect with support now", icon: "heart", color: "#3b82f6", bgColor: "#dbeafe", route: "/crisis-support", isPrimary: true },
   { title: "Talk to Peer Support", description: "Connect with those who understand", icon: "people", color: "#22c55e", bgColor: "#dcfce7", route: "/peer-support" },
+  { title: "Women Veterans", description: "Support for female veterans", icon: "person", color: "#a855f7", bgColor: "#f3e8ff", route: "/women-veterans" },
+  { title: "Money & Benefits", description: "UC, PIP, discounts & debt help", icon: "cash", color: "#059669", bgColor: "#d1fae5", route: "/money-benefits" },
   { title: "Warfare on Lawfare", description: "Support for historical investigations", icon: "shield", color: "#6366f1", bgColor: "#e0e7ff", route: "/historical-investigations" },
   { title: "Support Organisations", description: "Directory of veteran services", icon: "list", color: "#f59e0b", bgColor: "#fef3c7", route: "/organizations" },
   { title: "Self-Care Tools", description: "Journal, grounding, breathing & more", icon: "fitness", color: "#ec4899", bgColor: "#fce7f3", route: "/self-care" },
@@ -80,7 +82,7 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   { title: "Addictions", description: "Alcohol, drugs, gambling & more", icon: "heart-dislike", color: "#d97706", bgColor: "#fef3c7", route: "/substance-support" },
   { title: "The Gym", description: "Frankie's 12-week fitness programme", icon: "barbell", color: "#22c55e", bgColor: "#dcfce7", route: "/gym" },
   { title: "Criminal Justice Support", description: "Help for veterans in or leaving prison", icon: "shield-checkmark", color: "#4f46e5", bgColor: "#e0e7ff", route: "/criminal-justice" },
-  { title: "Compensation Schemes", description: "War pensions, AFCS & hearing loss claims", icon: "cash", color: "#059669", bgColor: "#d1fae5", route: "/compensation-schemes" },
+  { title: "Compensation Schemes", description: "War pensions, AFCS & hearing loss claims", icon: "ribbon", color: "#0891b2", bgColor: "#cffafe", route: "/compensation-schemes" },
   { title: "Recommended Podcasts", description: "Veteran stories & mental health support", icon: "headset", color: "#db2777", bgColor: "#fce7f3", route: "/podcasts" },
   { title: "Request a Callback", description: "We'll call you back", icon: "call", color: "#22c55e", bgColor: "#dcfce7", route: "/callback", isCallback: true },
 ];
@@ -91,6 +93,8 @@ const FALLBACK_AI_TEAM: AITeamMember[] = [
   { name: 'Tommy', avatar: '/images/tommy.png', description: 'Your battle buddy', bio: 'Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back. He understands military life inside out and provides honest, direct support.', route: '/chat/tommy' },
   { name: 'Rachel', avatar: '/images/rachel.png', description: 'Warm support', bio: 'Rachel is a nurturing, compassionate presence who creates a safe space to talk. She offers warmth and understanding, like a caring friend who listens without judgement.', route: '/chat/doris' },
   { name: 'Bob', avatar: '/images/bob.png', description: 'Ex-Para peer support', bio: 'Bob is a down-to-earth ex-Para who keeps things real. He\'s been there, done that, and offers honest peer support from someone who truly understands the military experience.', route: '/chat/bob' },
+  { name: 'Megan', avatar: '/images/megan.png', description: 'Women veterans specialist', bio: 'Megan is ex-RAF MERT (Medical Emergency Response Team) — a Chinook medic who flew nearly 200 missions in Afghanistan. She specialises in supporting women veterans with the unique challenges they face.', route: '/chat/megan' },
+  { name: 'Penny', avatar: '/images/penny.png', description: 'Benefits & money specialist', bio: 'Penny is ex-Royal Navy, 15 years as a Writer. She knows the benefits system inside out — UC, PIP, Council Tax, debt advice. She helps veterans get what they\'re entitled to.', route: '/chat/penny' },
   { name: 'Finch', avatar: '/images/finch.png', description: 'Military law & legal support', bio: 'Finch is a knowledgeable companion with expertise in UK military law, including the Armed Forces Act, Manual of Military Law, and service discipline. He helps veterans understand their legal rights and navigate military justice matters.', route: '/chat/sentry' },
   { name: 'Margie', avatar: '/images/margie.png', description: 'Addiction support', bio: 'Margie is a wise, understanding presence with warmth and years of experience. She specialises in supporting those dealing with all types of addiction - alcohol, drugs, gambling and more - offering non-judgemental guidance.', route: '/chat/margie' },
   { name: 'Jack', avatar: '/images/jack.png', description: 'Compensation schemes expert', bio: 'Jack is ex-Royal Navy — 20 years at sea. He helps with compensation claims, AFCS, War Pensions, and hearing loss. Funny, caring, and knows all the sea shanties. Yo ho ho!', route: '/chat/jack' },
