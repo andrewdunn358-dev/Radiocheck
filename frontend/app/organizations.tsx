@@ -116,6 +116,36 @@ export default function Organizations() {
             </Text>
           </View>
 
+          {/* Veterans Breakfast Clubs - Featured */}
+          <TouchableOpacity 
+            style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              backgroundColor: colors.card, 
+              borderRadius: 16, 
+              padding: 16, 
+              marginBottom: 20, 
+              borderWidth: 2, 
+              borderColor: '#b91c1c' 
+            }}
+            onPress={() => Linking.openURL('https://afvbc.com/armed-forces-veterans-breakfast-clubs-directory')}
+            activeOpacity={0.8}
+          >
+            <Image 
+              source={{ uri: '/images/afvbc-logo.png' }} 
+              style={{ width: 60, height: 60, borderRadius: 8, marginRight: 14, backgroundColor: '#fff' }}
+              resizeMode="contain"
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Veterans Breakfast Clubs</Text>
+              <Text style={{ fontSize: 13, color: '#b91c1c', fontWeight: '600', marginTop: 2 }}>Find Your Local Club</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>
+                Meet fellow veterans over a brew - nationwide directory
+              </Text>
+            </View>
+            <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
           {/* Loading State */}
           {isLoading ? (
             <View style={{ alignItems: 'center', padding: 40 }}>
