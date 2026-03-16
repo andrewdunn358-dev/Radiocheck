@@ -153,9 +153,11 @@ async function loadTimeSummary() {
         
         const data = await response.json();
         
-        // Update summary cards
-        document.getElementById('total-hours-month').textContent = 
-            `${data.total.hours}h ${data.total.minutes}m`;
+        // Update summary cards - check each element exists
+        const totalHoursMonthEl = document.getElementById('total-hours-month');
+        if (totalHoursMonthEl) {
+            totalHoursMonthEl.textContent = `${data.total.hours}h ${data.total.minutes}m`;
+        }
         
         // Update total cost
         const totalCostEl = document.getElementById('total-cost-month');
@@ -165,13 +167,17 @@ async function loadTimeSummary() {
         
         // Calculate week total (last 7 days from daily breakdown)
         const weekTotal = calculateWeekTotal(data.daily_breakdown);
-        document.getElementById('total-hours-week').textContent = 
-            `${Math.floor(weekTotal / 60)}h ${weekTotal % 60}m`;
+        const totalHoursWeekEl = document.getElementById('total-hours-week');
+        if (totalHoursWeekEl) {
+            totalHoursWeekEl.textContent = `${Math.floor(weekTotal / 60)}h ${weekTotal % 60}m`;
+        }
         
         // Development hours
         const devHours = data.by_category['Development'] || { hours: 0, minutes: 0 };
-        document.getElementById('dev-hours').textContent = 
-            `${devHours.hours}h ${devHours.minutes}m`;
+        const devHoursEl = document.getElementById('dev-hours');
+        if (devHoursEl) {
+            devHoursEl.textContent = `${devHours.hours}h ${devHours.minutes}m`;
+        }
         
         // Update charts
         updateCategoryChart(data.by_category);
