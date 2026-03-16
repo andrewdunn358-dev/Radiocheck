@@ -79,7 +79,10 @@ async function loadTimeEntries() {
         
         const data = await response.json();
         renderTimeEntries(data.entries);
-        document.getElementById('total-entries').textContent = data.total;
+        
+        // Update totals if elements exist
+        const totalEntriesEl = document.getElementById('total-entries');
+        if (totalEntriesEl) totalEntriesEl.textContent = data.total;
         
     } catch (error) {
         console.error('Error loading time entries:', error);
