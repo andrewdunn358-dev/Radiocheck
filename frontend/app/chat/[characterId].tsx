@@ -241,16 +241,26 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
 
   const checkAIConsent = async () => {
     try {
-      // Check global AI consent, not per-character
-      const consent = await AsyncStorage.getItem(GLOBAL_AI_CONSENT_KEY);
-      if (consent === 'true') {
+      // App-wide consent is already handled at app startup (cookie_consent)
+      // So we auto-accept here to avoid duplicate consent modals
+      const cookieConsent = await AsyncStorage.getItem('cookie_consent');
+      const aiConsent = await AsyncStorage.getItem(GLOBAL_AI_CONSENT_KEY);
+      
+      if (cookieConsent === 'accepted' || aiConsent === 'true') {
+        // User has already consented at app level or previously in chat
         setHasAcceptedConsent(true);
         setHasLoadedSession(true);
+        // Also save the AI consent if only cookie consent exists
+        if (!aiConsent) {
+          await AsyncStorage.setItem(GLOBAL_AI_CONSENT_KEY, 'true');
+        }
       } else {
         setShowAIConsent(true);
       }
     } catch (error) {
-      setShowAIConsent(true);
+      // On error, still allow access since app-level consent was likely given
+      setHasAcceptedConsent(true);
+      setHasLoadedSession(true);
     }
   };
 
