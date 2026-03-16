@@ -615,3 +615,12 @@ Admin Portal → "Time Tracking" tab
 6. ✅ Training links added to admin/staff portals
 7. ✅ Phone field made optional in staff creation forms
 8. ✅ More organizations added to backend database
+
+
+## DEPLOYMENT REMINDER - MOBILE APP
+**When deploying mobile app (iOS/Android):**
+- Ensure mobile app connects to the SAME database as the web app
+- Both web and mobile should share: MongoDB (users, AI characters, events, time tracking, etc.)
+- Use the same backend API endpoints
+- Authentication tokens should work across both platforms
+
