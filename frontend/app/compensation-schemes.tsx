@@ -24,7 +24,7 @@ const COMPENSATION_SCHEMES: CompensationScheme[] = [
   {
     title: "War Pension Scheme",
     description: "For injuries or illness caused by service before 6 April 2005. Regular payments based on level of disability.",
-    url: "https://www.gov.uk/war-pension",
+    url: "https://www.gov.uk/guidance/war-pension-scheme-wps",
     icon: "medal",
     isGov: true
   },
@@ -37,44 +37,30 @@ const COMPENSATION_SCHEMES: CompensationScheme[] = [
   },
   {
     title: "Veterans UK",
-    description: "Official government service for all Armed Forces compensation enquiries. Call 0808 1914 2 18 (free).",
+    description: "Official government service for all Armed Forces compensation enquiries. Call 0808 1914 218 (free).",
     url: "https://www.gov.uk/government/organisations/veterans-uk",
     icon: "call",
     isGov: true
   },
   {
+    title: "Tribunal Guide (PDF)",
+    description: "Official guide to War Pensions and Armed Forces Compensation appeals and tribunals.",
+    url: "https://www.judiciary.uk/wp-content/uploads/2024/10/War-Pensions-and-Armed-Forces-Compensation-Guide-for-Users.pdf",
+    icon: "document-text",
+    isGov: true
+  },
+  {
     title: "Royal British Legion",
-    description: "Free claims advice and support. They can help you navigate the compensation process and appeals.",
-    url: "https://www.britishlegion.org.uk/get-support/financial-and-employment-support/compensation-claims",
+    description: "Free claims advice and support. They can help you navigate the War Pensions scheme and appeals.",
+    url: "https://www.britishlegion.org.uk/get-support/expert-guidance/money-debt/war-pensions-scheme",
     icon: "flower",
     isGov: false
   },
   {
     title: "Blesma - The Limbless Veterans",
-    description: "Support for veterans who have lost limbs or use of limbs. Help with prosthetics, grants, and compensation claims.",
-    url: "https://blesma.org/",
+    description: "Support for veterans who have lost limbs or use of limbs. Help with War Pension claims.",
+    url: "https://blesma.org/war-pension-scheme/",
     icon: "accessibility",
-    isGov: false
-  },
-  {
-    title: "SSAFA",
-    description: "Lifelong support for serving personnel and veterans. Can help with compensation claims and financial assistance.",
-    url: "https://www.ssafa.org.uk/get-help/for-veterans",
-    icon: "heart",
-    isGov: false
-  },
-  {
-    title: "Combat Stress",
-    description: "Support for mental health conditions including PTSD. Can help document conditions for compensation claims.",
-    url: "https://combatstress.org.uk/",
-    icon: "fitness",
-    isGov: false
-  },
-  {
-    title: "Help for Heroes",
-    description: "Recovery and compensation support for wounded veterans. Grants and financial guidance available.",
-    url: "https://www.helpforheroes.org.uk/get-support/",
-    icon: "ribbon",
     isGov: false
   }
 ];
