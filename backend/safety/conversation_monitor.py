@@ -397,6 +397,33 @@ def _analyze_single_message(message: str, message_index: int) -> MessageSafetyRe
     """Analyze a single message for risk indicators."""
     normalized = message.lower().strip()
     
+    # CRITICAL: Check for explicit negation first
+    # If user explicitly negates self-harm intent, skip safety flagging
+    explicit_negations = [
+        "not in a", "not like that", "not that way",
+        "not suicidal", "not going to hurt", "not going to harm",
+        "just tired", "just frustrated", "just angry", "just venting",
+        "i'm not", "im not", "i am not", "not actually", "not literally",
+        "don't want to die", "dont want to die", "not trying to die",
+        "i'm safe", "im safe", "i am safe", "i'm okay", "im okay",
+        "i'm fine", "im fine", "don't worry", "not what i mean",
+        "not in that", "i want to hurt myself' way", "hurt myself way",
+    ]
+    
+    has_explicit_negation = any(neg in normalized for neg in explicit_negations)
+    
+    # Also check for regex patterns
+    import re
+    negation_patterns = [
+        r"not in a[n]?\s+['\"]?[\w\s]+['\"]?\s*way",  # "not in a 'X' way"
+        r"just\s+(tired|frustrated|angry|venting|exhausted|fed up)",
+    ]
+    
+    for pattern in negation_patterns:
+        if re.search(pattern, normalized):
+            has_explicit_negation = True
+            break
+    
     matched_phrases = []
     categories_triggered = []
     detected_indicators = []
@@ -405,6 +432,12 @@ def _analyze_single_message(message: str, message_index: int) -> MessageSafetyRe
     # Check against phrase dataset
     for phrase, entry in _phrase_lookup.items():
         if phrase in normalized:
+            # If there's explicit negation, skip scoring for this phrase
+            # but still track it for transparency
+            if has_explicit_negation:
+                detected_indicators.append(f"{entry.category}:{phrase}:NEGATED")
+                continue  # Don't add to score
+            
             matched_phrases.append(phrase)
             categories_triggered.append(entry.category)
             detected_indicators.append(f"{entry.category}:{phrase}")

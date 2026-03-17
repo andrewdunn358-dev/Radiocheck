@@ -1291,28 +1291,72 @@ def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any
     NEGATION_WINDOW = 16  # Increased from 8 to catch in-sentence negations
     
     def is_negated(text: str, match_position: int) -> bool:
-        """Check if a match is preceded by a negation phrase within word window.
-        Also performs a full-sentence scan for explicit negation constructions."""
-        preceding = text[:match_position]
-        preceding_words = preceding.split()
-        window = " ".join(preceding_words[-NEGATION_WINDOW:]).lower()
+        """Check if a match is negated - checks BOTH before AND after the indicator.
+        Also performs a full-sentence scan for explicit negation constructions.
         
-        for negation in NEGATION_PREFIXES:
-            if negation in window:
-                return True
-        
-        # ADDITIONAL: Full-sentence scan for explicit denial patterns
+        CRITICAL FIX: User may say "I'm sick of it all. Not in a hurt myself way"
+        The negation comes AFTER the indicator, so we must check both directions.
+        """
         full_text_lower = text.lower()
+        
+        # FIRST: Full-sentence scan for explicit denial patterns
+        # This catches the most common negation pattern where user clarifies intent
         explicit_denials = [
             "not suicidal", "not going to kill", "not going to hurt myself",
             "not going to harm myself", "not planning to", "no intention of",
             "i'm safe", "im safe", "i am safe", "i'll be fine", "ill be fine",
             "don't want to die", "dont want to die", "not trying to die",
             "just venting", "just frustrated", "just need to vent",
+            "not in a", "not like that", "not that way", "not in that way",
+            "not what i mean", "not what i meant", "didn't mean it like",
+            "i want to hurt myself' way", "hurt myself way",  # Catches the quoted negation
+            "not actually", "not literally", "not seriously",
         ]
         
         for denial in explicit_denials:
             if denial in full_text_lower:
+                return True
+        
+        # Check for common negation patterns ANYWHERE in the message
+        # Pattern: "not in a [X] way" where X contains concerning words
+        import re
+        negation_patterns = [
+            r"not in a[n]?\s+['\"]?[\w\s]+['\"]?\s*way",  # "not in a 'X' way"
+            r"not like\s+that",  # "not like that"
+            r"not that\s+kind",  # "not that kind"
+            r"don't mean\s+it",  # "don't mean it"
+            r"just\s+(tired|frustrated|angry|venting|exhausted|fed up)",  # "just tired"
+        ]
+        
+        for pattern in negation_patterns:
+            if re.search(pattern, full_text_lower):
+                return True
+        
+        # SECOND: Check window BEFORE the match
+        preceding = text[:match_position]
+        preceding_words = preceding.split()
+        window_before = " ".join(preceding_words[-NEGATION_WINDOW:]).lower()
+        
+        for negation in NEGATION_PREFIXES:
+            if negation in window_before:
+                return True
+        
+        # THIRD: Check window AFTER the match (CRITICAL for post-indicator negations)
+        following = text[match_position:]
+        following_words = following.split()
+        window_after = " ".join(following_words[:NEGATION_WINDOW]).lower()
+        
+        # Post-indicator negation phrases
+        post_negations = [
+            "not in a", "not like that", "not that way", "not what i mean",
+            "just tired", "just frustrated", "just venting", "just angry",
+            "not suicidal", "not going to hurt", "not seriously",
+            "but i'm okay", "but i'm fine", "but i'm alright",
+            "i'm safe", "im safe", "don't worry",
+        ]
+        
+        for negation in post_negations:
+            if negation in window_after:
                 return True
         
         return False
