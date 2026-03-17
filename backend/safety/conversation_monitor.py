@@ -411,8 +411,20 @@ def _analyze_single_message(message: str, message_index: int, character: str = N
         "conviction", "criminal", "jail", "remand", "bail", "magistrate"
     }
     
-    # Check if we should apply Rachel's criminal justice exemptions
+    # Baz is our Housing & Transition Support specialist.
+    # Discussions about homelessness, eviction, etc. are NORMAL for his role.
+    HOUSING_EXEMPTIONS = {
+        "homeless", "homelessness", "rough sleeping", "sofa surfing",
+        "evicted", "eviction", "about to lose my home", "lost my home",
+        "no money", "in debt", "lost my job", "no housing",
+        "sleeping rough", "on the street", "nowhere to stay",
+        "council", "housing association", "temporary accommodation",
+        "hostel", "shelter", "kicked out", "thrown out"
+    }
+    
+    # Check if we should apply character-specific exemptions
     apply_cj_exemptions = character and character.lower() in ["doris", "rachel"]
+    apply_housing_exemptions = character and character.lower() == "baz"
     
     # CRITICAL: Check for explicit negation first
     # If user explicitly negates self-harm intent, skip safety flagging
@@ -453,6 +465,11 @@ def _analyze_single_message(message: str, message_index: int, character: str = N
             if apply_cj_exemptions and phrase in CRIMINAL_JUSTICE_EXEMPTIONS:
                 detected_indicators.append(f"{entry.category}:{phrase}:RACHEL_CJ_EXEMPTION")
                 continue  # Skip - this is normal for Rachel's criminal justice support role
+            
+            # CHARACTER-CONTEXT EXEMPTION: Skip housing keywords for Baz
+            if apply_housing_exemptions and phrase in HOUSING_EXEMPTIONS:
+                detected_indicators.append(f"{entry.category}:{phrase}:BAZ_HOUSING_EXEMPTION")
+                continue  # Skip - this is normal for Baz's housing support role
             
             # If there's explicit negation, skip scoring for this phrase
             # but still track it for transparency

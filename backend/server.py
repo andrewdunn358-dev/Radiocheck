@@ -1257,7 +1257,6 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
     # ===== CHARACTER-CONTEXT EXEMPTIONS =====
     # Rachel (doris) is our Criminal Justice Support specialist.
     # Discussions about prison, police, arrest, etc. are NORMAL for her role.
-    # We exempt these criminal justice keywords from triggering safeguarding for Rachel.
     CRIMINAL_JUSTICE_EXEMPTIONS = {
         "prison", "arrested", "police", "probation", "been inside",
         "court case", "legal trouble", "going to prison", "assault charge",
@@ -1266,8 +1265,20 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
         "conviction", "criminal", "jail", "remand", "bail", "magistrate"
     }
     
-    # Check if we should apply Rachel's criminal justice exemptions
+    # Baz is our Housing & Transition Support specialist.
+    # Discussions about homelessness, eviction, etc. are NORMAL for his role.
+    HOUSING_EXEMPTIONS = {
+        "homeless", "homelessness", "rough sleeping", "sofa surfing",
+        "evicted", "eviction", "about to lose my home", "lost my home",
+        "no money", "in debt", "lost my job", "no housing",
+        "sleeping rough", "on the street", "nowhere to stay",
+        "council", "housing association", "temporary accommodation",
+        "hostel", "shelter", "kicked out", "thrown out"
+    }
+    
+    # Check if we should apply character-specific exemptions
     apply_cj_exemptions = character_id and character_id.lower() in ["doris", "rachel"]
+    apply_housing_exemptions = character_id and character_id.lower() == "baz"
     
     # ===== NEGATION DETECTION (from Anthony's Zentrafuge system) =====
     # EXPANDED: Now includes in-sentence negation constructions to prevent false positives
@@ -1438,6 +1449,12 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
             if apply_cj_exemptions and indicator in CRIMINAL_JUSTICE_EXEMPTIONS:
                 negated_indicators.append({"indicator": indicator, "reason": "rachel_cj_exemption"})
                 continue  # Skip - this is normal for Rachel's criminal justice support role
+            
+            # CHARACTER-CONTEXT EXEMPTION: Skip housing keywords for Baz
+            # Baz's entire role is discussing homelessness, eviction, housing crisis etc.
+            if apply_housing_exemptions and indicator in HOUSING_EXEMPTIONS:
+                negated_indicators.append({"indicator": indicator, "reason": "baz_housing_exemption"})
+                continue  # Skip - this is normal for Baz's housing support role
             
             # Check for negation before flagging
             match_pos = message_lower.find(indicator)
