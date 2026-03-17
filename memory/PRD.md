@@ -31,6 +31,43 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 17, 2026 - Soul Document & Safety System Overhaul
+
+**Based on Zentrafuge Stress Test Report & Addendum:**
+
+**1. Safety System False Positive Fix (CRITICAL)**
+- Fixed `is_negated()` function in both `server.py` and `safety/safety_monitor.py`
+- Expanded `NEGATION_PREFIXES` to include in-sentence denial constructions
+- Added explicit denial phrases: "not suicidal", "just tired", "just venting", etc.
+- Increased `NEGATION_WINDOW` from 8 to 16 words
+- Added full-sentence scan for explicit denials
+- **Result**: "I'm not suicidal" no longer triggers crisis overlay
+
+**2. Soul Document Created (`/app/backend/personas/soul.md`)**
+Comprehensive behavioral specification covering:
+- Safety Protocol - crisis detection without over-reaction
+- Spine Protocol - hold ground once, then respect the wall
+- Dark Humour Protocol - match banter, don't analyze
+- Grief Protocol - ask about the person first, sit with loss
+- Affection Protocol - accept warmth genuinely
+- Romantic Attachment Protocol - acknowledge, be honest, preserve dignity
+- Identity Protocol - honest about AI nature
+- Response Discipline - banned phrases, no "pivot tic"
+- Human Signposting - know about counsellors and peer support
+
+**3. Soul Document Injection System**
+- Created `/app/backend/personas/soul_loader.py`
+- Soul document rules automatically injected into ALL AI character prompts
+- Order: Soul Document → Character Prompt → Safeguarding Addendum
+
+**Files Created/Modified:**
+- `/app/backend/personas/soul.md` (NEW - behavioral specification)
+- `/app/backend/personas/soul_loader.py` (NEW - injection system)
+- `/app/backend/server.py` - Import soul loader, inject into chat prompts
+- `/app/backend/safety/safety_monitor.py` - Fixed negation handling
+
+---
+
 ### Session: March 16, 2026 - New Pages & AI Characters Added
 
 **NEW: Women Veterans Page (`/women-veterans`)**

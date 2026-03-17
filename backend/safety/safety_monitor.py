@@ -85,7 +85,9 @@ def build_pattern(phrase: str) -> re.Pattern:
 
 
 # Negation words that typically precede a concerning phrase
+# EXPANDED: Now includes in-sentence negation constructions to prevent false positives
 NEGATION_PREFIXES = [
+    # Standard negations
     "don't want to", "do not want to",
     "never", "not going to", "won't",
     "wouldn't", "didn't", "doesn't",
@@ -93,25 +95,64 @@ NEGATION_PREFIXES = [
     "thought about", "used to think about",
     "afraid of", "scared of", "fear",
     "wouldn't want to", "would never",
-    "joking", "just joking", "only joking",
+    "joking", "just joking", "only joking", "jk", "kidding", "only kidding",
     "not", "no longer", "not anymore",
+    "i'm not", "im not", "i am not", "i dont", "i don't",
+    
+    # In-sentence negation constructions (CRITICAL - these were missing)
+    "not suicidal", "not going to hurt", "not going to harm",
+    "not in a", "not in that", "not like that", "not that way",
+    "just tired", "just frustrated", "just angry", "just venting",
+    "don't mean", "didn't mean", "doesn't mean",
+    "not actually", "not really", "not literally",
+    "wouldn't actually", "would never actually",
+    "not planning", "not thinking about", "not considering",
+    "no intention", "no plans to", "not intending",
+    "wasn't being", "not being", "wasn't", "weren't",
+    "contrary to", "opposite of", "far from",
+    
+    # Explicit denial phrases
+    "i'm okay", "im okay", "i am okay", "i'm fine", "im fine", "i am fine",
+    "i'm alright", "im alright", "i am alright",
+    "don't worry", "no need to worry", "nothing to worry",
+    "not that bad", "not as bad", "not so bad",
+    "not what you think", "not what it sounds",
 ]
 
-NEGATION_WINDOW = 8  # Words to look back for negation context
+# Expanded window to catch more context
+NEGATION_WINDOW = 16  # Increased from 8 to catch in-sentence negations
 
 
 def is_negated(text: str, match_start: int) -> bool:
     """
     Check if a match is preceded by a negation phrase within a word window.
+    Also performs a full-sentence scan for explicit negation constructions.
     """
     # Get the text before the match, up to NEGATION_WINDOW words back
     preceding = text[:match_start]
     preceding_words = preceding.split()
-    window = " ".join(preceding_words[-NEGATION_WINDOW:])
+    window = " ".join(preceding_words[-NEGATION_WINDOW:]).lower()
     
+    # Check for negation phrases in the window
     for negation in NEGATION_PREFIXES:
         if negation in window:
             return True
+    
+    # ADDITIONAL: Full-sentence scan for explicit denial patterns
+    # This catches cases like "I'm not suicidal, just tired"
+    full_text_lower = text.lower()
+    explicit_denials = [
+        "not suicidal", "not going to kill", "not going to hurt myself",
+        "not going to harm myself", "not planning to", "no intention of",
+        "i'm safe", "im safe", "i am safe", "i'll be fine", "ill be fine",
+        "don't want to die", "dont want to die", "not trying to die",
+        "just venting", "just frustrated", "just need to vent",
+    ]
+    
+    for denial in explicit_denials:
+        if denial in full_text_lower:
+            return True
+    
     return False
 
 
