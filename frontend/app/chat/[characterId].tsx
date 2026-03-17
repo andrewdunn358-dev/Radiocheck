@@ -5,7 +5,7 @@
  * Will automatically load the correct character from the config.
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -65,10 +65,26 @@ export default function DynamicAIChat() {
   const styles = useMemo(() => createStyles(colors, isDark, character.accentColor), [colors, isDark, character.accentColor]);
   
   const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => `${character.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  
+  // Track loading state for Enter key check
+  const isLoadingRef = useRef(isLoading);
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+  
+  // Track inputText for Enter key check
+  const inputTextRef = useRef(inputText);
+  useEffect(() => {
+    inputTextRef.current = inputText;
+  }, [inputText]);
+  
+  // Track if Enter was just pressed (for text change detection)
+  const enterPressedRef = useRef(false);
   
   // Auth state
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -434,6 +450,62 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
     }
   };
 
+  // Web-specific: Attach native DOM keydown listener for Enter key to send
+  // Uses capture phase to intercept before React Native Web handles it
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if Enter is pressed without Shift (Shift+Enter = new line)
+      if (e.key === 'Enter' && !e.shiftKey) {
+        // Check if the active element is our text input
+        const activeElement = document.activeElement;
+        const isOurInput = activeElement?.getAttribute('data-testid') === 'message-input' ||
+                          activeElement?.tagName.toLowerCase() === 'textarea';
+        
+        if (isOurInput && inputTextRef.current.trim() && !isLoadingRef.current) {
+          // Mark that Enter was pressed - handleTextChange will pick this up
+          enterPressedRef.current = true;
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          // Use setTimeout to ensure the event is fully cancelled before we send
+          setTimeout(() => {
+            handleSendMessage();
+            enterPressedRef.current = false;
+          }, 0);
+          return false;
+        }
+      }
+    };
+    
+    // Attach to document with capture: true to intercept before bubbling
+    document.addEventListener('keydown', handleKeyDown, { capture: true });
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, { capture: true });
+    };
+  }, [handleSendMessage]);
+
+  // Custom text change handler that strips trailing newlines added by Enter key
+  const handleTextChange = useCallback((text: string) => {
+    // If Enter was pressed and text has a trailing newline, it slipped through
+    // Don't update state with the newline - the keydown handler will send the message
+    if (Platform.OS === 'web' && enterPressedRef.current && text.endsWith('\n')) {
+      return; // Ignore this change - message is being sent
+    }
+    
+    // Also detect Enter key by comparing with ref (backup detection)
+    if (Platform.OS === 'web' && text.endsWith('\n') && !inputTextRef.current.endsWith('\n')) {
+      const textWithoutNewline = text.slice(0, -1);
+      if (textWithoutNewline.trim() && !isLoadingRef.current) {
+        handleSendMessage();
+        return;
+      }
+    }
+    setInputText(text);
+  }, [handleSendMessage]);
+
   const clearConversation = async () => {
     // Clear both current messages and device-stored history
     const welcomeMessage: Message = {
@@ -644,12 +716,20 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
           <TextInput
             style={styles.textInput}
             value={inputText}
-            onChangeText={setInputText}
+            onChangeText={handleTextChange}
             placeholder="Type a message..."
             placeholderTextColor={colors.textMuted}
-            multiline
+            multiline={Platform.OS !== 'web'}
             maxLength={1000}
             data-testid="message-input"
+            blurOnSubmit={Platform.OS === 'web'}
+            returnKeyType="send"
+            onSubmitEditing={() => {
+              // Send on keyboard submit (Enter on web, Return on mobile)
+              if (inputText.trim() && !isLoading) {
+                handleSendMessage();
+              }
+            }}
           />
           <TouchableOpacity 
             style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}

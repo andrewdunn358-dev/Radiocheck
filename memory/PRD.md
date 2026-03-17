@@ -31,7 +31,7 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
-### Session: March 17, 2026 (Evening) - Server.py Modular Refactoring
+### Session: March 17, 2026 (Evening) - Server.py Modular Refactoring + Enter Key Fix
 
 **Major Refactoring: AI Character Prompts Extracted to Modular Files**
 
@@ -60,21 +60,23 @@ The monolithic `server.py` file was refactored by extracting all AI character pr
 └── penny.py             # Penny persona (Benefits & money)
 ```
 
-**Key Features of the New System:**
-1. Each persona file exports a `PERSONA` dict with id, name, role, accent_color, avatar, and prompt
-2. `personas/__init__.py` dynamically builds `AI_CHARACTERS` from all persona modules
-3. `get_full_prompt(character_id)` returns Soul Document + Character Prompt combined
-4. Legacy ID mappings preserved: `doris` → Rachel, `sentry` → Finch
+**Bug Fix: Enter Key to Send Messages (Desktop/Laptop)**
 
-**Testing Results:**
-- All 14 tests passed (see `/app/test_reports/iteration_28.json`)
-- GET /api/ai-buddies/characters returns all 12 characters correctly
-- Chat endpoints work for all characters (Tommy, Megan, Penny, Rachel, etc.)
-- Soul Document injection verified
+Fixed the Enter key functionality so pressing Enter sends messages on desktop/laptop browsers without requiring a mouse click. This was identified as a "small friction point with meaningful implications for users in distress" in the Addendum document.
+
+**Implementation Details:**
+- Added document-level keydown listener with capture phase to intercept Enter key
+- Custom `handleTextChange` function to detect and handle trailing newlines
+- Uses `enterPressedRef` to coordinate between keydown handler and text change
+- Shift+Enter still allows newlines for multi-line messages
+- Works alongside existing send button click functionality
 
 **Files Modified:**
-- `/app/backend/server.py` - Removed hardcoded prompts, now imports from personas package
-- `/app/backend/personas/__init__.py` (NEW) - Master loader module
+- `/app/frontend/app/chat/[characterId].tsx` - Added useCallback import, Enter key handlers
+
+**Testing Results:**
+- All 14 backend tests passed for the modular refactor
+- Enter key manually verified working in screenshot tests
 
 ---
 
