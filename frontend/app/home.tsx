@@ -380,60 +380,6 @@ export default function Index() {
           )}
         </View>
 
-        {/* Top Action Cards - Full Width (Need to Talk, Peer Support, Request Callback) */}
-        <View style={styles.topActionCards}>
-          {/* Need to Talk */}
-          <TouchableOpacity 
-            style={[styles.topActionCard, { borderColor: '#3b82f6' }]}
-            onPress={() => router.push('/crisis-support' as any)}
-            activeOpacity={0.85}
-            data-testid="top-action-need-to-talk"
-          >
-            <View style={[styles.topActionIconContainer, { backgroundColor: '#dbeafe' }]}>
-              <Ionicons name="heart" size={28} color="#3b82f6" />
-            </View>
-            <View style={styles.topActionContent}>
-              <Text style={styles.topActionTitle}>Need to Talk?</Text>
-              <Text style={styles.topActionDescription}>Connect with support now — we're here for you</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#3b82f6" />
-          </TouchableOpacity>
-
-          {/* Peer to Peer Support */}
-          <TouchableOpacity 
-            style={[styles.topActionCard, { borderColor: '#22c55e' }]}
-            onPress={() => router.push('/peer-support' as any)}
-            activeOpacity={0.85}
-            data-testid="top-action-peer-support"
-          >
-            <View style={[styles.topActionIconContainer, { backgroundColor: '#dcfce7' }]}>
-              <Ionicons name="people" size={28} color="#22c55e" />
-            </View>
-            <View style={styles.topActionContent}>
-              <Text style={styles.topActionTitle}>Talk to Peer Support</Text>
-              <Text style={styles.topActionDescription}>Connect with those who understand</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#22c55e" />
-          </TouchableOpacity>
-
-          {/* Request a Callback */}
-          <TouchableOpacity 
-            style={[styles.topActionCard, { borderColor: '#22c55e', borderWidth: 2 }]}
-            onPress={() => router.push('/callback' as any)}
-            activeOpacity={0.85}
-            data-testid="top-action-callback"
-          >
-            <View style={[styles.topActionIconContainer, { backgroundColor: '#dcfce7' }]}>
-              <Ionicons name="call" size={28} color="#22c55e" />
-            </View>
-            <View style={styles.topActionContent}>
-              <Text style={styles.topActionTitle}>Request a Callback</Text>
-              <Text style={styles.topActionDescription}>We'll call you back — no waiting on hold</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#22c55e" />
-          </TouchableOpacity>
-        </View>
-
         {/* What is Radio Check - Collapsible Card */}
         <TouchableOpacity 
           style={styles.aboutCard}
@@ -484,17 +430,25 @@ export default function Index() {
           )}
         </TouchableOpacity>
 
-        {/* Main Menu Cards - 2-Column Grid Layout (excluding top action items) */}
+        {/* Main Menu Cards - 2-Column Grid Layout */}
         <View style={styles.menuContainer}>
           {menuItems
-            .filter(item => {
-              // Filter out items that are shown as top action cards
+            .map((item, originalIndex) => {
+              // Determine priority - these items should appear first
               const lowerTitle = item.title.toLowerCase();
               const isNeedToTalk = lowerTitle.includes('need to talk');
               const isPeerSupport = lowerTitle.includes('peer support') || lowerTitle.includes('peer-to-peer');
               const isCallback = item.isCallback || lowerTitle.includes('callback');
-              return !item.isPrimary && !isNeedToTalk && !isPeerSupport && !isCallback;
+              
+              // Priority: 0 = Need to Talk, 1 = Peer Support, 2 = Callback, 3 = everything else
+              let priority = 3;
+              if (isNeedToTalk) priority = 0;
+              else if (isPeerSupport) priority = 1;
+              else if (isCallback) priority = 2;
+              
+              return { ...item, priority, originalIndex };
             })
+            .sort((a, b) => a.priority - b.priority)
             .map((item, index) => (
             <TouchableOpacity 
               key={index}
