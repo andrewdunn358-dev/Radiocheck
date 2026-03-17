@@ -1090,6 +1090,50 @@ RED_INDICATORS = {
     # ===== ACCESS TO WEAPONS WHILE DISTRESSED (+90) =====
     "got my gun": 90, "still have my weapon": 90, "got weapons": 90,
     "loaded gun": 90, "weapon ready": 90,
+    
+    # ===== COMMON MISSPELLINGS (+100) =====
+    # Added based on typographic safety test findings - March 2026
+    # Suicide misspellings
+    "suiside": 100, "suacide": 100, "sueside": 100, "suiccide": 100,
+    "suicidle": 100, "sucide": 100, "suicid": 100, "suicidie": 100,
+    "commiting suicide": 100, "comitting suicide": 100, "comiting suicide": 100,
+    
+    # Kill myself misspellings  
+    "kil myself": 100, "kll myself": 100, "kill meself": 100,
+    "killl myself": 100, "kil meself": 100,
+    
+    # End myself variations
+    "end myself": 100, "ending myself": 100, "gonna end myself": 100,
+    
+    # ===== UK SLANG & COLLOQUIALISMS (+100) =====
+    # British/veteran-specific crisis language
+    "top myself": 100, "gonna top myself": 100, "going to top myself": 100,
+    "do myself in": 100, "gonna do myself in": 100, "going to do myself in": 100,
+    "off myself": 100, "gonna off myself": 100, "going to off myself": 100,
+    "neck myself": 100, "gonna neck myself": 100, "going to neck myself": 100,
+    "slit my wrists": 100, "slit me wrists": 100, "cut my wrists": 100,
+    "chuck myself off": 100, "throw myself off": 100, "jump off": 90,
+    "top meself": 100, "do meself in": 100, "off meself": 100,
+    
+    # ===== TEXT SPEAK & INTERNET ABBREVIATIONS (+100) =====
+    # Common digital crisis language
+    "wanna die": 100, "want 2 die": 100, "wnt to die": 100,
+    "gonna kms": 100, "kms": 90, "going to kms": 100,  # kill myself
+    "wanna end it": 100, "gonna end it": 100,
+    "dont wanna live": 100, "don't wanna live": 100,
+    "dont wanna be here": 100, "don't wanna be here": 100,
+    "im done w life": 90, "done w life": 90,
+    "cant do this": 80, "can't do this": 80,
+    
+    # ===== MODERN EUPHEMISMS (+90-100) =====
+    # TikTok/social media euphemisms for suicide
+    "unalive myself": 100, "gonna unalive": 100, "want to unalive": 100,
+    "unalive": 90, "un-alive": 90,
+    "game end myself": 100, "gonna game end": 100,
+    "delete myself": 100, "gonna delete myself": 100,
+    "yeet myself": 90, "yeet myself off": 100,
+    "kermit": 80,  # "kermit sewer slide" = commit suicide
+    "sewer slide": 100, "sewerslide": 100, "sewercide": 100,
 }
 
 # LEVEL 2 & 3 - AMBER INDICATORS (Hopelessness & Early Self-Harm)

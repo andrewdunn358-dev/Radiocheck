@@ -31,6 +31,46 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 18, 2026 (Continued) - Misspelling Detection + Privacy Boundaries
+
+**Typographic/Phonetic Safety Improvements**
+
+Significantly improved the safety system's ability to detect misspelled and slang crisis language.
+
+**Indicators Added:**
+- Suicide misspellings: suiside, suacide, sucide, suicidle, etc.
+- Kill myself variations: kil myself, kill meself, kll myself
+- UK slang: top myself, do myself in, neck myself, slit me wrists
+- Text speak: wanna die, want 2 die, gonna kms
+- Modern euphemisms: unalive myself, game end myself, delete myself, sewer slide
+
+**Detection Rate Improvements:**
+| Category | Before | After |
+|----------|--------|-------|
+| Suicide misspellings | 30% | **100%** |
+| Kill myself variations | 20% | **80%** |
+| UK slang | 17% | **100%** |
+| Text speak | 40% | **100%** |
+| Modern euphemisms | 0% | **56%** |
+
+**Privacy Boundaries Protocol (Scenario 010 Fix)**
+- Added Section 13 to Soul Document
+- Added privacy rules to all 12 AI characters in database
+- Tommy now deflects: "I keep every conversation completely private..."
+
+**Baz Housing Exemptions**
+- Added `HOUSING_EXEMPTIONS` for Baz character
+- Keywords like homeless, evicted, sofa surfing no longer trigger for Baz
+- Same keywords still trigger for other characters
+
+**Files Modified:**
+- `/app/backend/server.py` - Added 50+ misspelling/slang indicators
+- `/app/backend/personas/soul.md` - Added Privacy Boundaries Protocol
+- `/app/backend/personas/soul_loader.py` - Updated SOUL_INJECTION
+- `/app/backend/tests/test_typographic_safety.py` - NEW test suite
+
+---
+
 ### Session: March 18, 2026 - Character-Context Safety Exemptions + False Positive Fixes
 
 **NEW: Character-Context Aware Safeguarding**
