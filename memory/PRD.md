@@ -31,6 +31,53 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 17, 2026 (Evening) - Server.py Modular Refactoring
+
+**Major Refactoring: AI Character Prompts Extracted to Modular Files**
+
+The monolithic `server.py` file was refactored by extracting all AI character prompts into individual files. This improves code maintainability, makes the codebase more scalable, and improves version control for character modifications.
+
+**Before:** ~8,000 lines in server.py with all prompts hardcoded
+**After:** ~6,600 lines in server.py (reduced by ~1,400 lines)
+
+**New `/backend/personas/` Directory Structure:**
+```
+/app/backend/personas/
+├── __init__.py          # Master loader - builds AI_CHARACTERS dict
+├── soul.md              # Shared behavioral rules (Soul Document)
+├── soul_loader.py       # Injects soul.md into all prompts
+├── tommy.py             # Tommy persona (Battle Buddy)
+├── rachel.py            # Rachel persona (ID: doris - warm support)
+├── finch.py             # Finch persona (ID: sentry - legal info)
+├── bob.py               # Bob persona (Ex-Para peer support)
+├── margie.py            # Margie persona (Addiction support)
+├── jack.py              # Jack persona (Compensation expert)
+├── rita.py              # Rita persona (Family support)
+├── catherine.py         # Catherine persona (Calm, intelligent)
+├── frankie.py           # Frankie persona (PTI fitness)
+├── baz.py               # Baz persona (Transition support)
+├── megan.py             # Megan persona (Women veterans)
+└── penny.py             # Penny persona (Benefits & money)
+```
+
+**Key Features of the New System:**
+1. Each persona file exports a `PERSONA` dict with id, name, role, accent_color, avatar, and prompt
+2. `personas/__init__.py` dynamically builds `AI_CHARACTERS` from all persona modules
+3. `get_full_prompt(character_id)` returns Soul Document + Character Prompt combined
+4. Legacy ID mappings preserved: `doris` → Rachel, `sentry` → Finch
+
+**Testing Results:**
+- All 14 tests passed (see `/app/test_reports/iteration_28.json`)
+- GET /api/ai-buddies/characters returns all 12 characters correctly
+- Chat endpoints work for all characters (Tommy, Megan, Penny, Rachel, etc.)
+- Soul Document injection verified
+
+**Files Modified:**
+- `/app/backend/server.py` - Removed hardcoded prompts, now imports from personas package
+- `/app/backend/personas/__init__.py` (NEW) - Master loader module
+
+---
+
 ### Session: March 17, 2026 - Soul Document & Safety System Overhaul
 
 **Based on Zentrafuge Stress Test Report & Addendum:**
