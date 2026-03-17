@@ -954,7 +954,7 @@ RED_INDICATORS = {
     "had enough": 80, "ive had enough": 80, "i've had enough": 80,
     "want out": 80, "just want out": 80, "need out": 80,
     "ready to go": 80, "time to go": 80,
-    "last night": 80, "my last": 80, "final day": 100, "last day": 80,
+    "last night": 80, "my last message": 80, "my last words": 90, "my last goodbye": 100, "final day": 100, "last day on earth": 90,
     
     # ===== "I WISH I WAS DEAD" PATTERNS (+100) =====
     "wish i was dead": 100, "wish i were dead": 100,
