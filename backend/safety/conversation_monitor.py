@@ -290,8 +290,8 @@ def analyze_message_with_context(
     state = get_or_create_conversation_state(session_id, user_id, character)
     state.total_message_count += 1
     
-    # Step 1: Analyze individual message
-    message_analysis = _analyze_single_message(message, state.total_message_count)
+    # Step 1: Analyze individual message (with character context for exemptions)
+    message_analysis = _analyze_single_message(message, state.total_message_count, character)
     
     # Step 2: Add semantic score if provided
     message_analysis.semantic_similarity_score = semantic_score
@@ -393,9 +393,26 @@ def analyze_message_with_context(
     return result
 
 
-def _analyze_single_message(message: str, message_index: int) -> MessageSafetyRecord:
-    """Analyze a single message for risk indicators."""
+def _analyze_single_message(message: str, message_index: int, character: str = None) -> MessageSafetyRecord:
+    """Analyze a single message for risk indicators.
+    
+    Now includes character-context awareness for appropriate exemptions.
+    """
     normalized = message.lower().strip()
+    
+    # ===== CHARACTER-CONTEXT EXEMPTIONS =====
+    # Rachel (doris) is our Criminal Justice Support specialist.
+    # Discussions about prison, police, arrest, etc. are NORMAL for her role.
+    CRIMINAL_JUSTICE_EXEMPTIONS = {
+        "prison", "arrested", "police", "probation", "been inside",
+        "court case", "legal trouble", "going to prison", "assault charge",
+        "fight", "got in trouble", "custody", "sentence", "release",
+        "parole", "solicitor", "barrister", "trial", "charge", "offence",
+        "conviction", "criminal", "jail", "remand", "bail", "magistrate"
+    }
+    
+    # Check if we should apply Rachel's criminal justice exemptions
+    apply_cj_exemptions = character and character.lower() in ["doris", "rachel"]
     
     # CRITICAL: Check for explicit negation first
     # If user explicitly negates self-harm intent, skip safety flagging
@@ -432,6 +449,11 @@ def _analyze_single_message(message: str, message_index: int) -> MessageSafetyRe
     # Check against phrase dataset
     for phrase, entry in _phrase_lookup.items():
         if phrase in normalized:
+            # CHARACTER-CONTEXT EXEMPTION: Skip criminal justice keywords for Rachel
+            if apply_cj_exemptions and phrase in CRIMINAL_JUSTICE_EXEMPTIONS:
+                detected_indicators.append(f"{entry.category}:{phrase}:RACHEL_CJ_EXEMPTION")
+                continue  # Skip - this is normal for Rachel's criminal justice support role
+            
             # If there's explicit negation, skip scoring for this phrase
             # but still track it for transparency
             if has_explicit_negation:

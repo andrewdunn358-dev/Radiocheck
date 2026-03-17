@@ -31,6 +31,40 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 18, 2026 - Character-Context Safety Exemptions + False Positive Fixes
+
+**NEW: Character-Context Aware Safeguarding**
+
+Fixed a critical false positive issue where Rachel's (Criminal Justice Support) conversations were incorrectly triggering safeguarding alerts. When users discuss legitimate criminal justice topics like prison, police, arrested, probation etc., these should NOT trigger safeguarding for Rachel's specialist role.
+
+**Implementation:**
+- Added `CRIMINAL_JUSTICE_EXEMPTIONS` set to `calculate_safeguarding_score()` in `server.py`
+- Added character-context awareness to `_analyze_single_message()` in `conversation_monitor.py`
+- Rachel (character ID: doris) now exempts criminal justice keywords from triggering
+- Real crisis indicators (e.g., "want to end it all") still correctly trigger
+
+**Additional Fix: "last night" False Positive**
+- Removed "last night" from RED_INDICATORS (was weight 80)
+- This phrase caused false positives in contexts like "arrested me last night"
+- More specific finality indicators like "my last message", "my last goodbye" retained
+
+**Files Modified:**
+- `/app/backend/server.py` - Added character_id parameter and CJ exemptions
+- `/app/backend/safety/conversation_monitor.py` - Added character parameter and CJ exemptions
+
+**Testing Results:**
+- All 4 Rachel test messages now pass: prison, VICSO, resettlement, police arrest
+- Real crisis messages still correctly trigger safeguarding (confirmed with "want to end it all" test)
+
+**Report Generated:**
+- Created `/app/memory/SESSION_REPORT_MARCH_2026.md` - Comprehensive technical report on:
+  - AI persona system refactoring
+  - Multi-layered safety system architecture
+  - 11-scenario test suite results
+  - All fixes delivered this session
+
+---
+
 ### Session: March 17, 2026 (Evening) - Server.py Modular Refactoring + Enter Key Fix
 
 **Major Refactoring: AI Character Prompts Extracted to Modular Files**
@@ -715,7 +749,7 @@ Files changed:
 - **Frontend**: Vercel (https://[domain])
 - **Backend**: Render (https://[domain])
 - **Admin/Staff/LMS Portals**: 20i hosting
-- **Preview**: https://soul-refactor.preview.emergentagent.com
+- **Preview**: https://chat-system-staging.preview.emergentagent.com
   - Learner Portal: `/api/training/`
   - LMS Admin: `/api/lms-admin/`
   - Main Admin: `/api/admin/`

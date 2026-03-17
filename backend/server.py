@@ -954,7 +954,9 @@ RED_INDICATORS = {
     "had enough": 80, "ive had enough": 80, "i've had enough": 80,
     "want out": 80, "just want out": 80, "need out": 80,
     "ready to go": 80, "time to go": 80,
-    "last night": 80, "my last message": 80, "my last words": 90, "my last goodbye": 100, "final day": 100, "last day on earth": 90,
+    # NOTE: "last night" removed - too many false positives (e.g., "arrested me last night")
+    # Kept more specific finality indicators below
+    "my last message": 80, "my last words": 90, "my last goodbye": 100, "final day": 100, "last day on earth": 90,
     
     # ===== "I WISH I WAS DEAD" PATTERNS (+100) =====
     "wish i was dead": 100, "wish i were dead": 100,
@@ -1243,13 +1245,29 @@ MODIFIER_PATTERNS = {
 # Session risk tracking
 session_risk_history: Dict[str, List[Dict]] = {}
 
-def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any]:
+def calculate_safeguarding_score(message: str, session_id: str, character_id: str = None) -> Dict[str, Any]:
     """
     Calculate safeguarding risk score using weighted indicators.
     Now includes Anthony's negation detection to reduce false positives.
+    Now includes character-context awareness for appropriate exemptions.
     Returns: {score, risk_level, triggered_indicators, is_red_flag}
     """
     message_lower = message.lower()
+    
+    # ===== CHARACTER-CONTEXT EXEMPTIONS =====
+    # Rachel (doris) is our Criminal Justice Support specialist.
+    # Discussions about prison, police, arrest, etc. are NORMAL for her role.
+    # We exempt these criminal justice keywords from triggering safeguarding for Rachel.
+    CRIMINAL_JUSTICE_EXEMPTIONS = {
+        "prison", "arrested", "police", "probation", "been inside",
+        "court case", "legal trouble", "going to prison", "assault charge",
+        "fight", "got in trouble", "custody", "sentence", "release",
+        "parole", "solicitor", "barrister", "trial", "charge", "offence",
+        "conviction", "criminal", "jail", "remand", "bail", "magistrate"
+    }
+    
+    # Check if we should apply Rachel's criminal justice exemptions
+    apply_cj_exemptions = character_id and character_id.lower() in ["doris", "rachel"]
     
     # ===== NEGATION DETECTION (from Anthony's Zentrafuge system) =====
     # EXPANDED: Now includes in-sentence negation constructions to prevent false positives
@@ -1415,6 +1433,12 @@ def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any
     amber_count = 0
     for indicator, weight in AMBER_INDICATORS.items():
         if indicator in message_lower:
+            # CHARACTER-CONTEXT EXEMPTION: Skip criminal justice keywords for Rachel
+            # Rachel's entire role is discussing prison, police, courts etc.
+            if apply_cj_exemptions and indicator in CRIMINAL_JUSTICE_EXEMPTIONS:
+                negated_indicators.append({"indicator": indicator, "reason": "rachel_cj_exemption"})
+                continue  # Skip - this is normal for Rachel's criminal justice support role
+            
             # Check for negation before flagging
             match_pos = message_lower.find(indicator)
             if is_negated(message_lower, match_pos):
@@ -1486,16 +1510,18 @@ def calculate_safeguarding_score(message: str, session_id: str) -> Dict[str, Any
         "session_history_count": len(session_risk_history.get(session_id, []))
     }
 
-def check_safeguarding(message: str, session_id: str = "default", user_id: str = "anonymous") -> tuple:
+def check_safeguarding(message: str, session_id: str = "default", user_id: str = "anonymous", character_id: str = None) -> tuple:
     """
     Check if message contains safeguarding concerns using BOTH:
     1. Original weighted indicator system (BACP-aligned)
     2. Enhanced Zentrafuge safety monitor (negation-aware, context multipliers)
     
+    Now includes character-context awareness (e.g., Rachel's criminal justice exemptions)
+    
     Returns: (should_escalate: bool, risk_data: dict)
     """
-    # Original safeguarding check
-    risk_data = calculate_safeguarding_score(message, session_id)
+    # Original safeguarding check - now with character context
+    risk_data = calculate_safeguarding_score(message, session_id, character_id)
     
     # Enhanced safety check from Zentrafuge Veteran AI Safety Layer
     enhanced_safety = assess_message_safety(message, user_id=user_id)
@@ -4889,7 +4915,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             )
         
         # Check for safeguarding concerns using weighted scoring system
-        should_escalate, risk_data = check_safeguarding(request.message, request.sessionId)
+        # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
+        should_escalate, risk_data = check_safeguarding(request.message, request.sessionId, character_id=character)
         alert_id = None
         risk_level = risk_data["risk_level"]
         
@@ -5956,7 +5983,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://soul-refactor.preview.emergentagent.com",
+        "https://chat-system-staging.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],

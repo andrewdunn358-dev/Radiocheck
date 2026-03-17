@@ -8,7 +8,7 @@ import requests
 import os
 
 # Use environment variable or default to the preview URL
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://soul-refactor.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://chat-system-staging.preview.emergentagent.com').rstrip('/')
 
 # Test credentials from previous iterations
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"
