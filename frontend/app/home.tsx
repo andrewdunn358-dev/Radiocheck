@@ -380,6 +380,60 @@ export default function Index() {
           )}
         </View>
 
+        {/* Top Action Cards - Full Width (Need to Talk, Peer Support, Request Callback) */}
+        <View style={styles.topActionCards}>
+          {/* Need to Talk */}
+          <TouchableOpacity 
+            style={[styles.topActionCard, { borderColor: '#3b82f6' }]}
+            onPress={() => router.push('/crisis-support' as any)}
+            activeOpacity={0.85}
+            data-testid="top-action-need-to-talk"
+          >
+            <View style={[styles.topActionIconContainer, { backgroundColor: '#dbeafe' }]}>
+              <Ionicons name="heart" size={28} color="#3b82f6" />
+            </View>
+            <View style={styles.topActionContent}>
+              <Text style={styles.topActionTitle}>Need to Talk?</Text>
+              <Text style={styles.topActionDescription}>Connect with support now — we're here for you</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#3b82f6" />
+          </TouchableOpacity>
+
+          {/* Peer to Peer Support */}
+          <TouchableOpacity 
+            style={[styles.topActionCard, { borderColor: '#22c55e' }]}
+            onPress={() => router.push('/peer-support' as any)}
+            activeOpacity={0.85}
+            data-testid="top-action-peer-support"
+          >
+            <View style={[styles.topActionIconContainer, { backgroundColor: '#dcfce7' }]}>
+              <Ionicons name="people" size={28} color="#22c55e" />
+            </View>
+            <View style={styles.topActionContent}>
+              <Text style={styles.topActionTitle}>Talk to Peer Support</Text>
+              <Text style={styles.topActionDescription}>Connect with those who understand</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#22c55e" />
+          </TouchableOpacity>
+
+          {/* Request a Callback */}
+          <TouchableOpacity 
+            style={[styles.topActionCard, { borderColor: '#22c55e', borderWidth: 2 }]}
+            onPress={() => router.push('/callback' as any)}
+            activeOpacity={0.85}
+            data-testid="top-action-callback"
+          >
+            <View style={[styles.topActionIconContainer, { backgroundColor: '#dcfce7' }]}>
+              <Ionicons name="call" size={28} color="#22c55e" />
+            </View>
+            <View style={styles.topActionContent}>
+              <Text style={styles.topActionTitle}>Request a Callback</Text>
+              <Text style={styles.topActionDescription}>We'll call you back — no waiting on hold</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#22c55e" />
+          </TouchableOpacity>
+        </View>
+
         {/* What is Radio Check - Collapsible Card */}
         <TouchableOpacity 
           style={styles.aboutCard}
@@ -430,15 +484,22 @@ export default function Index() {
           )}
         </TouchableOpacity>
 
-        {/* Main Menu Cards - 2-Column Grid Layout */}
+        {/* Main Menu Cards - 2-Column Grid Layout (excluding top action items) */}
         <View style={styles.menuContainer}>
-          {menuItems.map((item, index) => (
+          {menuItems
+            .filter(item => {
+              // Filter out items that are shown as top action cards
+              const lowerTitle = item.title.toLowerCase();
+              const isNeedToTalk = lowerTitle.includes('need to talk');
+              const isPeerSupport = lowerTitle.includes('peer support') || lowerTitle.includes('peer-to-peer');
+              const isCallback = item.isCallback || lowerTitle.includes('callback');
+              return !item.isPrimary && !isNeedToTalk && !isPeerSupport && !isCallback;
+            })
+            .map((item, index) => (
             <TouchableOpacity 
               key={index}
               style={[
                 styles.gridCard,
-                item.isPrimary && styles.gridCardPrimary,
-                item.isCallback && styles.gridCardCallback
               ]}
               onPress={() => router.push(item.route as any)}
               activeOpacity={0.85}
@@ -673,6 +734,42 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  // Top Action Cards (full width) - Need to Talk, Peer Support, Callback
+  topActionCards: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  topActionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  topActionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  topActionContent: {
+    flex: 1,
+  },
+  topActionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  topActionDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   menuContainer: {
     flexDirection: 'row',
