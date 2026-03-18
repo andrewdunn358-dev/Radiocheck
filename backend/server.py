@@ -23,6 +23,9 @@ import httpx  # For IP geolocation lookup
 from collections import defaultdict
 import time
 
+# Gemini fallback via Emergent integrations
+from emergentintegrations.llm.chat import LlmChat, UserMessage
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -5096,15 +5099,42 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # Add current user message
         messages.append({"role": "user", "content": request.message})
         
-        # Call OpenAI
-        completion = buddy_openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            max_tokens=250,
-            temperature=0.5
-        )
+        reply = None
+        ai_provider_used = "openai"
         
-        reply = completion.choices[0].message.content or ""
+        # Try OpenAI first (primary)
+        try:
+            completion = buddy_openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=250,
+                temperature=0.5
+            )
+            reply = completion.choices[0].message.content or ""
+            logging.info(f"AI response from OpenAI for session {request.sessionId}")
+        except Exception as openai_error:
+            logging.warning(f"OpenAI failed, attempting Gemini fallback: {str(openai_error)}")
+            
+            # Try Gemini as fallback
+            try:
+                gemini_chat = LlmChat(
+                    api_key=EMERGENT_LLM_KEY,
+                    session_id=f"gemini-fallback-{request.sessionId}",
+                    system_message=system_prompt
+                ).with_model("gemini", "gemini-2.0-flash")
+                
+                gemini_response = await gemini_chat.send_message(UserMessage(text=request.message))
+                reply = gemini_response
+                ai_provider_used = "gemini"
+                logging.info(f"AI response from Gemini (fallback) for session {request.sessionId}")
+            except Exception as gemini_error:
+                logging.error(f"Gemini fallback also failed: {str(gemini_error)}")
+                # Both failed - will be handled by outer exception
+                raise Exception(f"Both OpenAI and Gemini failed. OpenAI: {openai_error}, Gemini: {gemini_error}")
+        
+        # If we still don't have a reply, something went wrong
+        if not reply:
+            raise Exception("No response from AI providers")
         
         # Store in history
         session["history"].append({"role": "user", "content": request.message})
