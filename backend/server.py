@@ -86,6 +86,18 @@ from ai_usage_tracker import (
     get_usage_by_character
 )
 
+# Import audit logging system
+from audit_logger import (
+    log_audit_event,
+    get_audit_logs,
+    get_audit_summary,
+    audit_login,
+    audit_safeguarding_alert,
+    audit_data_export,
+    audit_admin_action,
+    AuditEventType
+)
+
 # ============ RATE LIMITING & BOT PROTECTION ============
 
 # Rate limit configuration
@@ -2662,10 +2674,11 @@ async def seed_organizations(current_user: User = Depends(require_role("admin"))
     """Seed default UK veteran support organizations (admin only)"""
     return await _seed_organizations_internal()
 
-@api_router.post("/organizations/seed-public")
-async def seed_organizations_public():
-    """Public endpoint to seed organizations - for initial setup only"""
-    return await _seed_organizations_internal()
+# SECURITY: This public seed endpoint is now disabled
+# @api_router.post("/organizations/seed-public")
+# async def seed_organizations_public():
+#     """Public endpoint to seed organizations - for initial setup only"""
+#     return await _seed_organizations_internal()
 
 async def _seed_organizations_internal():
     """Internal function to seed organizations"""
@@ -2957,10 +2970,11 @@ async def seed_resources(current_user: User = Depends(require_role("admin"))):
     """Seed default resources for veterans (admin only)"""
     return await _seed_resources_internal()
 
-@api_router.post("/resources/seed-public")
-async def seed_resources_public():
-    """Public endpoint to seed resources - for initial setup only"""
-    return await _seed_resources_internal()
+# SECURITY: This public seed endpoint is now disabled
+# @api_router.post("/resources/seed-public")
+# async def seed_resources_public():
+#     """Public endpoint to seed resources - for initial setup only"""
+#     return await _seed_resources_internal()
 
 async def _seed_resources_internal():
     """Internal function to seed resources"""
@@ -6819,6 +6833,42 @@ async def cleanup_test_data(
         "deleted_counsellors": deleted_counsellors,
         "deleted_peer_supporters": deleted_peers
     }
+
+
+# ============ AUDIT LOG ENDPOINTS ============
+
+@api_router.get("/admin/audit-logs")
+async def get_audit_logs_endpoint(
+    event_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    risk_level: Optional[str] = None,
+    limit: int = 100,
+    current_user: User = Depends(require_role("admin"))
+):
+    """
+    Retrieve audit logs with optional filtering.
+    Required for compliance and security monitoring.
+    """
+    logs = await get_audit_logs(
+        db,
+        event_type=event_type,
+        user_id=user_id,
+        risk_level=risk_level,
+        limit=min(limit, 500)  # Cap at 500
+    )
+    return {"logs": logs, "count": len(logs)}
+
+
+@api_router.get("/admin/audit-logs/summary")
+async def get_audit_summary_endpoint(
+    days: int = 30,
+    current_user: User = Depends(require_role("admin"))
+):
+    """
+    Get summary statistics for audit logs.
+    """
+    summary = await get_audit_summary(db, days)
+    return summary
 
 
 # Include the router in the main app (MUST be after all routes are defined)

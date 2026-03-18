@@ -3,7 +3,7 @@ Knowledge Base Router - RAG (Retrieval Augmented Generation) system for AI chara
 Enables AI characters to answer questions accurately using a curated knowledge base
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 import uuid
 from datetime import datetime
@@ -15,6 +15,21 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/knowledge-base", tags=["knowledge-base"])
 logger = logging.getLogger(__name__)
+
+
+# Import auth dependency - will be set by main server
+_require_admin = None
+
+def set_auth_dependency(require_admin_func):
+    """Set the admin authentication dependency from main server"""
+    global _require_admin
+    _require_admin = require_admin_func
+
+def require_admin_auth():
+    """Get the admin dependency - must be called inside route handler"""
+    if _require_admin is None:
+        raise HTTPException(status_code=500, detail="Auth not configured")
+    return _require_admin
 
 
 class KnowledgeEntry(BaseModel):
@@ -296,13 +311,28 @@ async def get_knowledge_stats():
 
 
 # ==================================
-# Seed Default Knowledge
+# Seed Default Knowledge (ADMIN ONLY)
 # ==================================
 
 @router.post("/seed")
 async def seed_knowledge_base():
-    """Seed the knowledge base with default veteran support information"""
+    """
+    Seed the knowledge base with default veteran support information.
+    
+    SECURITY: This endpoint is DISABLED for public access.
+    To seed the knowledge base, use the admin portal or direct database access.
+    """
+    # This endpoint is intentionally disabled for security
+    # Knowledge base modifications should only happen via authenticated admin actions
+    raise HTTPException(
+        status_code=403, 
+        detail="This endpoint is disabled for security. Use the admin portal to manage knowledge base."
+    )
+    
     db = get_database()
+    
+    # Log the action for audit
+    logger.warning(f"AUDIT: Knowledge base seed initiated")
     
     # Check if already seeded
     existing = await db.knowledge_base.count_documents({})
