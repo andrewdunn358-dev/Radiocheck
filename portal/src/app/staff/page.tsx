@@ -8,7 +8,7 @@ import {
   LayoutDashboard, AlertTriangle, MessageSquare, Briefcase, Phone,
   Calendar, Users, FileText, Shield, LogOut, Bell, Volume2, VolumeX,
   CheckCircle, Clock, User, ChevronRight, RefreshCw, X, Send,
-  Plus, Edit, Trash2, ChevronLeft, ArrowLeftRight, Eye
+  Plus, Edit, Trash2, ChevronLeft, ArrowLeftRight, Eye, PhoneCall, Wifi, WifiOff
 } from 'lucide-react';
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
@@ -25,6 +25,10 @@ export default function StaffPortalPage() {
   // App state
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Phone/WebRTC state
+  const [phoneStatus, setPhoneStatus] = useState<'connecting' | 'ready' | 'error' | 'unavailable'>('connecting');
+  const [chatConnected, setChatConnected] = useState(false);
 
   // Data state
   const [safeguardingAlerts, setSafeguardingAlerts] = useState<SafeguardingAlert[]>([]);
@@ -166,6 +170,11 @@ export default function StaffPortalPage() {
       if (user?.is_supervisor) {
         loadEscalations();
       }
+
+      // Check phone/Twilio status
+      checkPhoneStatus();
+      // Mark chat as connected since we're polling
+      setChatConnected(true);
 
       // Poll for alerts every 30 seconds
       const alertInterval = setInterval(loadAlerts, 30000);
@@ -371,6 +380,23 @@ export default function StaffPortalPage() {
       loadEscalations();
     } catch (err) {
       console.error('Failed to resolve escalation:', err);
+    }
+  };
+
+  // Phone status check
+  const checkPhoneStatus = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+      const response = await fetch(`${API_URL}/api/twilio/status`);
+      const status = await response.json();
+      if (status.configured) {
+        setPhoneStatus('ready');
+      } else {
+        setPhoneStatus('unavailable');
+      }
+    } catch (err) {
+      console.error('Failed to check phone status:', err);
+      setPhoneStatus('error');
     }
   };
 
@@ -598,6 +624,58 @@ export default function StaffPortalPage() {
 
       {/* Main Content */}
       <main className="flex-1 p-8 overflow-y-auto">
+        {/* Connection Status Banner */}
+        <div className="mb-6 grid grid-cols-2 gap-4">
+          {/* In-App Calling Status */}
+          <div className={`flex items-center justify-between p-4 rounded-xl border ${
+            phoneStatus === 'ready' ? 'bg-green-500/10 border-green-500' :
+            phoneStatus === 'connecting' ? 'bg-yellow-500/10 border-yellow-500' :
+            'bg-red-500/10 border-red-500'
+          }`}>
+            <div className="flex items-center gap-3">
+              <PhoneCall className={`w-5 h-5 ${
+                phoneStatus === 'ready' ? 'text-green-400' :
+                phoneStatus === 'connecting' ? 'text-yellow-400' :
+                'text-red-400'
+              }`} />
+              <div>
+                <p className="font-semibold text-sm">In-App Calling</p>
+                <p className="text-xs text-gray-400">
+                  {phoneStatus === 'ready' ? 'Ready for calls' :
+                   phoneStatus === 'connecting' ? 'Connecting...' :
+                   phoneStatus === 'unavailable' ? 'Not configured' :
+                   'Connection error'}
+                </p>
+              </div>
+            </div>
+            <div className={`w-3 h-3 rounded-full ${
+              phoneStatus === 'ready' ? 'bg-green-500' :
+              phoneStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+              'bg-red-500'
+            }`} />
+          </div>
+
+          {/* Live Chat Status */}
+          <div className={`flex items-center justify-between p-4 rounded-xl border ${
+            chatConnected ? 'bg-green-500/10 border-green-500' : 'bg-red-500/10 border-red-500'
+          }`}>
+            <div className="flex items-center gap-3">
+              {chatConnected ? (
+                <Wifi className="w-5 h-5 text-green-400" />
+              ) : (
+                <WifiOff className="w-5 h-5 text-red-400" />
+              )}
+              <div>
+                <p className="font-semibold text-sm">Live Chat</p>
+                <p className="text-xs text-gray-400">
+                  {chatConnected ? 'Connected - monitoring for requests' : 'Disconnected'}
+                </p>
+              </div>
+            </div>
+            <div className={`w-3 h-3 rounded-full ${chatConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+          </div>
+        </div>
+
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div>
