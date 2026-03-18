@@ -212,52 +212,41 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     if (!socketRef.current || state.isInCall) return false;
 
     try {
+      console.log('[WebRTCPhone] Initiating call to:', targetUserId);
       updateStatus('ringing', 'Calling...');
-      const pc = await createPeerConnection();
+      
+      currentCallIdRef.current = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Create offer
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      currentCallIdRef.current = `${userId}-${targetUserId}-${Date.now()}`;
-
-      socketRef.current.emit('webrtc_call', {
-        call_id: currentCallIdRef.current,
-        from_user_id: userId,
-        to_user_id: targetUserId,
-        offer: offer
+      // Send call initiate event (backend will notify the target)
+      socketRef.current.emit('call_initiate', {
+        target_user_id: targetUserId,
+        call_type: 'audio',
+        call_id: currentCallIdRef.current
       });
 
       return true;
     } catch (error) {
-      console.error('Failed to make call:', error);
+      console.error('[WebRTCPhone] Failed to make call:', error);
       updateStatus('error', 'Call failed');
       return false;
     }
-  }, [userId, state.isInCall, createPeerConnection, updateStatus]);
+  }, [state.isInCall, updateStatus]);
 
   // Answer call
   const answerCall = useCallback(async () => {
     if (!socketRef.current || !currentCallIdRef.current) return;
 
     try {
+      console.log('[WebRTCPhone] Accepting call:', currentCallIdRef.current);
       stopRingtone();
       updateStatus('connecting', 'Connecting...');
 
-      const pc = await createPeerConnection();
-      peerConnectionRef.current = pc;
-
-      // The offer should have been set when receiving the incoming call
-      // Now create and send the answer
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-
-      socketRef.current.emit('webrtc_answer', {
-        call_id: currentCallIdRef.current,
-        answer: answer
+      // Send call accept event
+      socketRef.current.emit('call_accept', {
+        call_id: currentCallIdRef.current
       });
 
-      setState(prev => ({ ...prev, hasIncomingCall: false }));
+      setState(prev => ({ ...prev, hasIncomingCall: false, isInCall: true }));
     } catch (error) {
       console.error('Failed to answer call:', error);
       endCall();
@@ -266,9 +255,10 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
 
   // Reject call
   const rejectCall = useCallback(() => {
+    console.log('[WebRTCPhone] Rejecting call:', currentCallIdRef.current);
     stopRingtone();
     if (socketRef.current && currentCallIdRef.current) {
-      socketRef.current.emit('webrtc_reject_call', { call_id: currentCallIdRef.current });
+      socketRef.current.emit('call_reject', { call_id: currentCallIdRef.current });
     }
     currentCallIdRef.current = null;
     updateStatus('online', 'Online');
@@ -352,27 +342,44 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       setOnlineUsers(prev => prev.filter(u => u.user_id !== data.user_id));
     });
 
-    // Incoming call
-    socket.on('webrtc_incoming_call', async (data: { call_id: string; from_user_id: string; from_name: string; from_type: string; offer: RTCSessionDescriptionInit }) => {
-      console.log('Incoming call from:', data.from_name);
+    // Online staff list
+    socket.on('online_staff_list', (data: { staff: any[] }) => {
+      console.log('[WebRTCPhone] Online staff list:', data.staff);
+    });
+
+    // Incoming call (from backend)
+    socket.on('incoming_call', async (data: { call_id: string; caller_id: string; caller_name: string; call_type: string }) => {
+      console.log('[WebRTCPhone] *** INCOMING CALL ***', data);
       currentCallIdRef.current = data.call_id;
       playRingtone();
-      updateStatus('incoming', `Call from ${data.from_name}`);
+      updateStatus('incoming', `Call from ${data.caller_name}`);
       setState(prev => ({
         ...prev,
         hasIncomingCall: true,
         callerInfo: {
-          id: data.from_user_id,
-          name: data.from_name,
-          type: data.from_type,
+          id: data.caller_id,
+          name: data.caller_name,
+          type: data.call_type,
         }
       }));
+    });
 
-      // Create peer connection and set remote description
+    // WebRTC offer received (when call is established)
+    socket.on('webrtc_offer', async (data: { call_id: string; offer: RTCSessionDescriptionInit }) => {
+      console.log('[WebRTCPhone] WebRTC offer received');
       try {
         const pc = await createPeerConnection();
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         hasRemoteDescriptionRef.current = true;
+
+        // Create and send answer
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        socket.emit('webrtc_answer', {
+          call_id: data.call_id,
+          answer: answer
+        });
 
         // Process any pending ICE candidates
         for (const candidate of pendingIceCandidatesRef.current) {
@@ -380,13 +387,41 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
         }
         pendingIceCandidatesRef.current = [];
       } catch (error) {
-        console.error('Failed to handle incoming call:', error);
+        console.error('[WebRTCPhone] Failed to handle WebRTC offer:', error);
       }
     });
 
-    // Call answered
-    socket.on('webrtc_call_answered', async (data: { call_id: string; answer: RTCSessionDescriptionInit }) => {
-      console.log('Call answered');
+    // Call accepted (caller receives this)
+    socket.on('call_accepted', async (data: { call_id: string; callee_name?: string }) => {
+      console.log('[WebRTCPhone] Call accepted by:', data.callee_name);
+      stopRingtone();
+      updateStatus('connected', 'Connected');
+      setState(prev => ({ ...prev, hasIncomingCall: false, isInCall: true }));
+      
+      // Caller creates the WebRTC offer
+      try {
+        const pc = await createPeerConnection();
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        socket.emit('webrtc_offer', {
+          call_id: data.call_id,
+          offer: offer
+        });
+      } catch (error) {
+        console.error('[WebRTCPhone] Failed to create offer:', error);
+      }
+    });
+
+    // Call ringing (caller receives this)
+    socket.on('call_ringing', (data: { call_id: string; target_name?: string }) => {
+      console.log('[WebRTCPhone] Call ringing to:', data.target_name);
+      updateStatus('ringing', `Ringing ${data.target_name || ''}...`);
+    });
+
+    // WebRTC answer received
+    socket.on('webrtc_answer', async (data: { call_id: string; answer: RTCSessionDescriptionInit }) => {
+      console.log('[WebRTCPhone] WebRTC answer received');
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
         hasRemoteDescriptionRef.current = true;
@@ -401,6 +436,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
 
     // ICE candidate received
     socket.on('webrtc_ice_candidate', async (data: { call_id: string; candidate: RTCIceCandidateInit }) => {
+      console.log('[WebRTCPhone] ICE candidate received');
       if (hasRemoteDescriptionRef.current && peerConnectionRef.current) {
         await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
       } else {
@@ -409,25 +445,21 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     });
 
     // Call rejected
-    socket.on('webrtc_call_rejected', () => {
-      console.log('Call rejected');
+    socket.on('call_rejected', (data: { call_id: string; reason?: string }) => {
+      console.log('[WebRTCPhone] Call rejected:', data.reason);
+      stopRingtone();
       endCall();
       updateStatus('online', 'Call declined');
     });
 
     // Call ended
-    socket.on('webrtc_call_ended', () => {
-      console.log('Call ended by remote');
+    socket.on('call_ended', (data: { call_id: string; reason?: string }) => {
+      console.log('[WebRTCPhone] Call ended:', data.reason);
       endCall();
     });
 
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      updateStatus('error', 'Connection Failed');
-    });
-
     socket.on('disconnect', () => {
-      console.log('Socket disconnected');
+      console.log('[WebRTCPhone] Socket disconnected');
       updateStatus('offline', 'Disconnected');
       setState(prev => ({ ...prev, isRegistered: false }));
     });
@@ -437,7 +469,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       socketRef.current = null;
       endCall();
     };
-  }, [serverUrl, userId, userType, userName, enabled, updateStatus, createPeerConnection, playRingtone, endCall]);
+  }, [serverUrl, userId, userType, userName, enabled, updateStatus, createPeerConnection, playRingtone, stopRingtone, endCall]);
 
   // Format call duration
   const formatDuration = (seconds: number): string => {
