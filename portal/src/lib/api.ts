@@ -571,16 +571,21 @@ export interface StaffProfile {
 }
 
 export interface SafeguardingAlert {
-  _id: string;
-  id?: string;
+  id: string;  // Primary ID field from backend
+  _id?: string;
   user_id?: string;
   user_name?: string;
   session_id?: string;
   character_id?: string;
+  character?: string;
   character_name?: string;
+  triggering_message?: string;
   trigger_message: string;
+  ai_response?: string;
   trigger_phrases?: string[];
+  triggered_indicators?: string[];
   risk_level: 'low' | 'medium' | 'high' | 'critical';
+  risk_score?: number;
   status: 'active' | 'acknowledged' | 'resolved';
   acknowledged_by?: string;
   acknowledged_at?: string;

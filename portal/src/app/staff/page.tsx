@@ -746,7 +746,7 @@ export default function StaffPortalPage() {
               </div>
               <div className="space-y-3">
                 {safeguardingAlerts.slice(0, 3).map((alert) => (
-                  <div key={alert._id} className={`p-4 rounded-lg border ${alert.status === 'active' ? 'border-red-500 bg-red-500/10' : 'border-border'}`}>
+                  <div key={alert.id || alert._id} className={`p-4 rounded-lg border ${alert.status === 'active' ? 'border-red-500 bg-red-500/10' : 'border-border'}`}>
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -755,7 +755,7 @@ export default function StaffPortalPage() {
                           </span>
                           <span className="text-gray-400 text-sm">{formatTimeAgo(alert.created_at)}</span>
                         </div>
-                        <p className="text-sm truncate max-w-md">{alert.trigger_message}</p>
+                        <p className="text-sm truncate max-w-md">{alert.triggering_message || alert.trigger_message}</p>
                       </div>
                       <span className={`px-2 py-0.5 rounded text-xs ${
                         alert.status === 'active' ? 'bg-red-500/20 text-red-400' :
@@ -791,7 +791,7 @@ export default function StaffPortalPage() {
 
             <div className="space-y-4">
               {safeguardingAlerts.map((alert) => (
-                <div key={alert._id} className={`bg-card border rounded-xl p-6 ${alert.status === 'active' ? 'border-red-500' : 'border-border'}`}>
+                <div key={alert.id || alert._id} className={`bg-card border rounded-xl p-6 ${alert.status === 'active' ? 'border-red-500' : 'border-border'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
@@ -814,12 +814,12 @@ export default function StaffPortalPage() {
 
                   <div className="bg-primary-dark/50 rounded-lg p-4 mb-4">
                     <p className="text-sm font-medium text-gray-400 mb-1">Trigger Message:</p>
-                    <p>{alert.trigger_message}</p>
+                    <p>{alert.triggering_message || alert.trigger_message}</p>
                   </div>
 
-                  {alert.trigger_phrases && alert.trigger_phrases.length > 0 && (
+                  {(alert.triggered_indicators?.length || alert.trigger_phrases?.length) && (
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {alert.trigger_phrases.map((phrase, i) => (
+                      {(alert.triggered_indicators || alert.trigger_phrases || []).map((phrase, i) => (
                         <span key={i} className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">
                           {phrase}
                         </span>
@@ -831,14 +831,14 @@ export default function StaffPortalPage() {
                     <div className="flex gap-3">
                       {alert.status === 'active' && (
                         <button
-                          onClick={() => handleAcknowledgeSafeguarding(alert._id)}
+                          onClick={() => handleAcknowledgeSafeguarding(alert.id)}
                           className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
                         >
                           Acknowledge
                         </button>
                       )}
                       <button
-                        onClick={() => handleResolveSafeguarding(alert._id)}
+                        onClick={() => handleResolveSafeguarding(alert.id)}
                         className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                       >
                         Resolve

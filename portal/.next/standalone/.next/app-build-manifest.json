@@ -38,6 +38,21 @@
       "static/chunks/main-app-cd4d9205f08e9035.js",
       "static/chunks/app/learning/layout-884459d036a77312.js"
     ],
+    "/lms-admin/page": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-89122e88592fa8df.js",
+      "static/chunks/23-fea937dcfe5ff476.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/231-f07accad38e64e11.js",
+      "static/chunks/app/lms-admin/page-15eb6807dfb624a1.js"
+    ],
+    "/lms-admin/layout": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-89122e88592fa8df.js",
+      "static/chunks/23-fea937dcfe5ff476.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/app/lms-admin/layout-69f9677afdd7cf61.js"
+    ],
     "/learning/module/[id]/page": [
       "static/chunks/webpack-1796d5ecd61cbd74.js",
       "static/chunks/fd9d1056-89122e88592fa8df.js",
@@ -56,21 +71,6 @@
       "static/chunks/768-c4b665c7c8384ff3.js",
       "static/chunks/app/learning/page-9a4b451214cc49ae.js"
     ],
-    "/lms-admin/page": [
-      "static/chunks/webpack-1796d5ecd61cbd74.js",
-      "static/chunks/fd9d1056-89122e88592fa8df.js",
-      "static/chunks/23-fea937dcfe5ff476.js",
-      "static/chunks/main-app-cd4d9205f08e9035.js",
-      "static/chunks/231-f07accad38e64e11.js",
-      "static/chunks/app/lms-admin/page-15eb6807dfb624a1.js"
-    ],
-    "/lms-admin/layout": [
-      "static/chunks/webpack-1796d5ecd61cbd74.js",
-      "static/chunks/fd9d1056-89122e88592fa8df.js",
-      "static/chunks/23-fea937dcfe5ff476.js",
-      "static/chunks/main-app-cd4d9205f08e9035.js",
-      "static/chunks/app/lms-admin/layout-69f9677afdd7cf61.js"
-    ],
     "/staff/page": [
       "static/chunks/webpack-1796d5ecd61cbd74.js",
       "static/chunks/fd9d1056-89122e88592fa8df.js",
@@ -79,7 +79,7 @@
       "static/chunks/231-f07accad38e64e11.js",
       "static/chunks/935-02ee2b8d00c1bd19.js",
       "static/chunks/765-2d8fff3fc5b45908.js",
-      "static/chunks/app/staff/page-fa4280c2d483bdcb.js"
+      "static/chunks/app/staff/page-ec6d55666e6affc7.js"
     ],
     "/staff/layout": [
       "static/chunks/webpack-1796d5ecd61cbd74.js",
