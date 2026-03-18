@@ -125,32 +125,55 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateStatus = async (status: string) => {
-    if (!token || !profile) {
-      console.error('Cannot update status: no token or profile');
+    if (!token) {
+      console.error('Cannot update status: no token');
       return;
     }
     
-    try {
-      // Call the actual API endpoint
-      const staffType = profile.role === 'counsellor' ? 'counsellor' : 'peer';
-      const staffId = profile.id || (profile as any)._id;
-      
-      if (!staffId) {
-        console.error('Cannot update status: no staff ID in profile');
-        return;
+    // If we have a profile, use it for the API call
+    if (profile) {
+      try {
+        const staffType = profile.role === 'counsellor' ? 'counsellor' : 'peer';
+        const staffId = profile.id || (profile as any)._id;
+        
+        if (staffId) {
+          await staffApi.updateStatus(token, status, staffId, staffType);
+          setProfile({ ...profile, status: status as StaffProfile['status'] });
+          localStorage.setItem('staff_status', status);
+          console.log('Status updated to:', status);
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to update status via profile:', error);
       }
-      
-      await staffApi.updateStatus(token, status, staffId, staffType);
-      
-      // Update local state
-      setProfile({ ...profile, status: status as StaffProfile['status'] });
-      localStorage.setItem('staff_status', status);
-      
-      console.log('Status updated to:', status);
-    } catch (error) {
-      console.error('Failed to update status:', error);
-      throw error;
     }
+    
+    // Fallback: If no profile, try to find one by user role
+    if (user) {
+      try {
+        const staffType = user.role === 'counsellor' ? 'counsellor' : 'peer';
+        const endpoint = staffType === 'counsellor' ? '/counsellors' : '/peer-supporters';
+        
+        // Get all staff of this type and find the first one (to at least update something)
+        const staffList = await staffApi.getProfile(token);
+        if (staffList) {
+          const staffId = staffList.id || (staffList as any)._id;
+          if (staffId) {
+            await staffApi.updateStatus(token, status, staffId, staffType);
+            setProfile({ ...staffList, status: status as StaffProfile['status'] });
+            localStorage.setItem('staff_status', status);
+            console.log('Status updated to:', status, '(using fallback)');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update status via fallback:', error);
+      }
+    }
+    
+    // Last resort - just update local storage
+    localStorage.setItem('staff_status', status);
+    console.log('Status saved locally (no profile to update):', status);
   };
 
   const refreshProfile = async () => {

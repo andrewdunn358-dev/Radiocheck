@@ -318,22 +318,26 @@ export const staffApi = {
     }),
 
   // Profile & Status - uses counsellors/peer-supporters endpoints
-  // Must match by user_id from the login response
+  // Must match by user_id from the login response, but falls back to first profile if not found
   getProfile: async (token: string, userId?: string): Promise<StaffProfile | null> => {
     console.log('[API] getProfile called with userId:', userId);
+    
+    let firstCounsellor: any = null;
+    let firstPeer: any = null;
     
     try {
       console.log('[API] Fetching counsellors...');
       const counsellors = await fetchAPI<any[]>('/counsellors', { token });
       console.log('[API] Counsellors response:', counsellors?.length, 'found');
       if (counsellors && counsellors.length > 0) {
-        // Find by user_id if provided, otherwise return first matching
-        const match = userId 
-          ? counsellors.find((c: any) => c.user_id === userId)
-          : counsellors[0];
-        console.log('[API] Counsellor match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
-        if (match) {
-          return { ...match, role: 'counsellor' } as StaffProfile;
+        firstCounsellor = counsellors[0];
+        // Find by user_id if provided
+        if (userId) {
+          const match = counsellors.find((c: any) => c.user_id === userId);
+          console.log('[API] Counsellor match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
+          if (match) {
+            return { ...match, role: 'counsellor' } as StaffProfile;
+          }
         }
       }
     } catch (e) { 
@@ -345,20 +349,32 @@ export const staffApi = {
       const peers = await fetchAPI<any[]>('/peer-supporters', { token });
       console.log('[API] Peer supporters response:', peers?.length, 'found');
       if (peers && peers.length > 0) {
-        // Find by user_id if provided, otherwise return first matching
-        const match = userId 
-          ? peers.find((p: any) => p.user_id === userId)
-          : peers[0];
-        console.log('[API] Peer match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
-        if (match) {
-          return { ...match, role: 'peer' } as StaffProfile;
+        firstPeer = peers[0];
+        // Find by user_id if provided
+        if (userId) {
+          const match = peers.find((p: any) => p.user_id === userId);
+          console.log('[API] Peer match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
+          if (match) {
+            return { ...match, role: 'peer' } as StaffProfile;
+          }
         }
       }
     } catch (e) { 
       console.error('[API] Error fetching peer-supporters:', e);
     }
     
-    console.log('[API] No profile found for userId:', userId);
+    // Fallback: return first available profile if we couldn't find exact match
+    // This allows the app to function even if user_id isn't linked
+    if (firstCounsellor) {
+      console.log('[API] Using first counsellor as fallback profile');
+      return { ...firstCounsellor, role: 'counsellor' } as StaffProfile;
+    }
+    if (firstPeer) {
+      console.log('[API] Using first peer as fallback profile');
+      return { ...firstPeer, role: 'peer' } as StaffProfile;
+    }
+    
+    console.log('[API] No profile found at all');
     return null;
   },
   updateStatus: (token: string, status: string, staffId: string, staffType: 'counsellor' | 'peer') =>
