@@ -31,6 +31,28 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 18, 2026 - Admin Portal Bug Fixes & Audit Logs UI
+
+**Bug Fix: AI Usage Dashboard `authToken` Error**
+- Fixed JavaScript `ReferenceError: authToken is not defined` in `/app/admin-site/app.js`
+- The legacy admin portal uses `token` as the global auth variable, not `authToken`
+- Updated all 3 fetch calls in `loadAIUsageData()` function (lines 8384, 8394, 8404)
+
+**New Feature: Audit Logs UI in Admin Portal**
+- Added "Audit Logs" sub-tab to the Logs section in `/app/admin-site/index.html`
+- Created `renderAuditLogs()` function with a professional table display showing:
+  - Date/Time, Event Type, User, Outcome, Risk Level, Details
+  - Color-coded badges for event types (auth, safeguarding, data, admin, support)
+  - Risk level highlighting (critical/high events highlighted as urgent rows)
+- Added `filterAuditLogs()` function for filtering by event type
+- Integrated audit log fetching into `loadLogsData()` function
+
+**Files Modified:**
+- `/app/admin-site/app.js` - Fixed token variable, added audit log rendering
+- `/app/admin-site/index.html` - Added Audit Logs tab button
+
+---
+
 ### Session: March 18, 2026 (Continued) - Misspelling Detection + Privacy Boundaries
 
 **Typographic/Phonetic Safety Improvements**
@@ -789,7 +811,7 @@ Files changed:
 - **Frontend**: Vercel (https://[domain])
 - **Backend**: Render (https://[domain])
 - **Admin/Staff/LMS Portals**: 20i hosting
-- **Preview**: https://chat-system-staging.preview.emergentagent.com
+- **Preview**: https://safeguard-wellness.preview.emergentagent.com
   - Learner Portal: `/api/training/`
   - LMS Admin: `/api/lms-admin/`
   - Main Admin: `/api/admin/`

@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timedelta
 
 # Get base URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://chat-system-staging.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://safeguard-wellness.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_CREDENTIALS = {

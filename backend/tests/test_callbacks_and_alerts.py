@@ -11,7 +11,7 @@ import os
 import uuid
 
 # Use environment variable or default to the preview URL
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://chat-system-staging.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://safeguard-wellness.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"

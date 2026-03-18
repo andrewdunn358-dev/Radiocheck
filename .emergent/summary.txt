@@ -1,190 +1,211 @@
 <analysis>**original_problem_statement:**
-The user initially requested fixes for Jitsi video chat and then requested a new time-tracking feature for the admin portal to log their work hours. After the agent implemented the time-tracking feature, the user encountered several bugs related to deployment and data synchronization.
+The user initiated the session by reporting a new safeguarding false positive with the Rachel AI persona, whose role is to discuss sensitive criminal justice topics. This led to a series of tasks to improve the AI's contextual understanding and robustness. The user also requested persona refinements for multiple AIs, security enhancements, and new admin features.
 
-Subsequently, the user provided a large list of 10 UI/UX fixes and content changes across the application, including redesigning several pages, moving AI chat components, updating text, and adding/removing elements. The agent was in the middle of implementing this batch of fixes when the session ended.
+Key requests included:
+1.  **Fix Safeguarding False Positives:** Address incorrect safeguarding triggers for the Rachel persona when discussing legitimate criminal justice terms (e.g., prison, arrested) and a separate false positive from the phrase last night.
+2.  **AI Persona Updates:** Provide and implement refined persona documents for Rachel (Criminal Justice), Megan (Women's Support/MST), and Baz (Housing & Transition), including specific tone guidance and knowledge bases.
+3.  **Strengthen Privacy Boundaries:** Fix a known issue (Scenario 010) where the Tommy AI would discuss other users' conversations in general terms.
+4.  **Improve Crisis Word Detection:** Create a test suite for and improve the detection of misspelled or obfuscated crisis-related keywords (e.g., suiside, k!ll).
+5.  **Language & Content Update:** Change all instances of female to women across the application. Overhaul the Women Veterans page with a new title (She Served) and expanded content covering nine new topics beyond MST.
+6.  **Improve API Resilience:** Implement a fallback mechanism for when the primary OpenAI API is unavailable, initially using a secondary provider via the Emergent LLM Key and later switching to the user's own Gemini API key.
+7.  **AI Usage Tracking:** Create a system to track token usage and cost for both OpenAI and Gemini, and build a dashboard in the admin portal to display these metrics.
+8.  **Security Hardening:** Secure publicly accessible database seeding endpoints and create a new audit logging system.
+9.  **Bug Fix & UI Request:** Fix a JavaScript error () on the new admin dashboard and add a UI for viewing audit logs in the admin portal.
 
 **PRODUCT REQUIREMENTS:**
-1.  **(P0) New Time Tracking Feature:** Add a new tab to the  portal for the user (as admin) to track their work hours.
-    *   Allow manual entry of date, hours, category, and description.
-    *   Provide a dashboard with monthly totals and charts.
-    *   Allow exporting data to Excel.
-    *   Pre-populate with historical work data based on development session history.
-    *   This feature was built but required extensive debugging due to deployment and data issues.
-2.  **(P0) Batch of 10 UI/UX Fixes:**
-    *   **Fix 1:** Show AI disclaimers only once on the first app open, not for every chat.
-    *   **Fix 2:** Restructure AI characters: move Doris/Rachel to the  page and keep Tommy on the  page.
-    *   **Fix 3:** On the front page, rename the Talk to a Veteran button to Talk to Peer Support.
-    *   **Fix 4:** Remove the red 999 emergency bar from the organizations page.
-    *   **Fix 5:** Ensure all subpages follow the layout of the Warfare on Lawfare page (AI chat at the very top).
-    *   **Fix 6:** Add more relevant organizations to the organizations page.
-    *   **Fix 7:** Rename Meet the AI Team to Meet the Team and add placeholders for the real founders.
-    *   **Fix 8:** Add a note to the AI chat disclaimer about using voice-to-text dictation.
-    *   **Fix 9:** Add links to the training pages on the staff and admin portals.
-    *   **Fix 10:** Make the phone number field optional when creating new staff members.
-3.  **(P0) Follow-up Fixes:**
-    *   The Hugo AI chat on the organizations page should be at the very top.
-    *   The  page should be redesigned: move Tommy AI chat to the top, remove the 999 bar, and delete the  page concept.
+1.  **(P0) Context-Aware Safeguarding:** The safeguarding system must be intelligent enough to not trigger on specialist keywords when a user is talking to an AI persona designed for that topic (e.g., prison with the criminal justice AI).
+2.  **(P0) Secure Endpoints:** All endpoints that can modify database content, especially seeding endpoints, must require admin authentication.
+3.  **(P0) AI Resilience:** The application must gracefully handle primary AI provider failures by switching to a fallback provider or presenting a helpful message with crisis support numbers.
+4.  **(P1) Admin Oversight:** Administrators must be able to monitor AI API usage and costs through a dedicated dashboard.
+5.  **(P1) Audit Trail:** A system must be in place to log critical actions (e.g., admin logins, data exports) for compliance and security.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack mental health platform. The agent has just implemented a new time-tracking feature in the vanilla JS  portal, including a new backend API and database collection (). This feature required significant debugging related to deployment mismatches between the backend (Render), frontend (Vercel), and the static admin portal. The agent manually corrected the data in the user's production database.
+The application is a full-stack veteran mental health platform. In this session, the safeguarding system was significantly enhanced with character-specific context awareness, preventing false positives for the Rachel (criminal justice) and Baz (housing) personas. The system's robustness was also improved by adding over 50 variations of misspelled and slang crisis terms. A major security overhaul was completed, locking down multiple public-facing data-seeding endpoints.
 
-The agent has also started implementing a large batch of 10 UI/UX fixes requested by the user, modifying numerous frontend and backend files. This work is partially complete.
+A complete AI provider fallback system was implemented, automatically switching from OpenAI to the user's personal Gemini key in case of failure. To support this, a comprehensive AI usage and cost-tracking system was built, complete with a new dashboard in the legacy vanilla JS admin portal. The personas for Rachel, Megan, and Baz were updated with user-provided prompts, and the Women Veterans page was rebranded to She Served with significantly expanded content.
 
 **Last working item**:
--   **Last item agent was working**: The agent was addressing two follow-up requests from the user regarding the batch of 10 UI/UX fixes. It had just moved the Hugo AI chat component to the top of the  page and was about to restructure the  page to place the Tommy AI chat at the top and remove other elements.
+-   **Last item agent was working**: The agent was in the process of fixing a JavaScript  () in the newly created AI Usage dashboard within the legacy admin portal (). The user also requested that the newly created audit log backend be surfaced in the admin portal's Logs tab.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: frontend testing agent (After completing the current batch of UI fixes, a full frontend test is required due to the large number of pages and components affected).
+-   **Which testing method agent to use?**: manual testing by curl. The agent needs to fix the JavaScript error by using the correct variable ( and ) for API calls in . After the fix, the agent should confirm the admin portal's AI Usage tab loads data correctly without console errors.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Jitsi video chat in events is not working (P0)
--   Issue 2: Time Tracking feature is not fully verified by the user (P0)
+-   Issue 1:  in  (P0, HIGHEST)
+-   Issue 2: Jitsi video chat in events is not working (P0, BLOCKED on user)
 -   Issue 3: In-chat call still not working (P0, Recurring)
--   Issue 4: Live support requests (call/chat) are not reliably appearing in the staff portal (P0, Recurring)
--   Issue 5: Staff status does not reset to available after a call/chat (P1)
+-   Issue 4: Live support requests are not reliably appearing in the staff portal (P0, Recurring)
+-   Issue 5: Staff status does not reset to available after a call/chat (P1, Recurring)
 -   Issue 6: AI Character Sort Order is incorrect (P2, Recurring)
 
 **Issues Detail**:
--   **Issue 1: Jitsi video chat in events is not working**
-    -   **Attempted fixes**: The agent fixed the backend () and frontend () to disable the Jitsi pre-join page, which was the suspected cause. The user reported it was still not working. The agent diagnosed this as a stale deployment on the user's Vercel frontend, as the production backend was confirmed to be sending the correct configuration.
-    -   **Next debug checklist**: 1. Confirm with the user that they have triggered a Clear cache and redeploy on Vercel for the frontend app. 2. If it still fails, get new browser console logs to verify that the frontend code is applying .
-    -   **Why fix this issue and what will be achieved with the fix?**: Enables group video sessions for events, a core feature.
-    -   **Status**: BLOCKED (on user deployment)
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Frontend
--   **Issue 2: Time Tracking feature is not fully verified by the user**
-    -   **Attempted fixes**: Agent built the feature, but had to debug multiple issues: 404s due to missing files on the static host, JS errors from incorrect variable names, API errors from missing  prefixes, and incorrect historical data dates (2024 instead of 2026). The agent manually corrected the production database.
-    -   **Next debug checklist**: User needs to test the feature on their production admin portal () after all required files (, ) have been deployed there. The backend on Render also needs the latest  router.
-    -   **Why fix this issue and what will be achieved with the fix?**: Allows the user to accurately track and be compensated for their work.
-    -   **Status**: USER VERIFICATION PENDING
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Both (Frontend is vanilla JS, Backend is FastAPI)
--   **Issue 3, 4, 5, 6**: These are older issues from the previous session that have not been worked on. Refer to the previous handoff summary for details. Their status remains  for this session.
+-   **Issue 1:  in **
+    -   **Attempted fixes**: The agent identified that  was used instead of  and fixed it. However, a similar error for  was reported by the user immediately after.
+    -   **Next debug checklist**:
+        1.  View .
+        2.  Find the  function (around line 8275).
+        3.  The variable for the token is , not . The agent should search and replace  with  within the  call headers in that function. The correct header should be .
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical bug preventing the newly built AI Usage dashboard from functioning. Fixing it will make the feature usable.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend (manual verification of admin portal).
+    -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   **Task 1: Complete the batch of 10 UI/UX fixes (P0)**
-    -   **Where to resume**: The agent needs to modify . The goal is to redesign it to match the other subpages: move the Tommy AI chat component to the top, remove the red 999 bar, and remove the now-obsolete Meet the AI Battle Buddies section.
-    -   **What will be achieved with this?**: Finalizes the large set of UI/UX improvements requested by the user, creating a more consistent and user-friendly experience.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on something**: No.
+-   **Task 1: Add Audit Log UI to Admin Portal (P1)**
+    -   **Where to resume**:
+        1.  Locate the Logs tab in .
+        2.  Add a new section/table within this tab to display audit logs.
+        3.  In , create a new function  that calls the  endpoint.
+        4.  Populate the new table with the fetched log data.
+        5.  Call this new function when the Logs tab is clicked.
+    -   **What will be achieved with this?**: It will provide admins with a view of critical security and data access events directly in the UI.
+    -   **Status**: NOT STARTED
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on something**:  bug in Issue 1 should be fixed first to ensure API calls from the admin portal work correctly.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
+    -   **(P1)** Improve misspelling/obfuscation detection with fuzzy matching or a more advanced library, based on the test suite's partial failures.
     -   **(P1)** Build moderator features for events (lobby, admit/remove, mute, etc.).
-    -   **(P1)** Expand course content for all 13 remaining LMS modules.
-    -   **(P2)** Implement full auto-tracking for the time-tracking feature (currently relies on manual entry).
+    -   **(P1)** Integrate the  into more key endpoints (e.g., data exports, user management).
+    -   **(P2)** Perform a full audit and update all subpages to ensure AI chat components are consistently placed at the top.
+    -   **(P2)** Implement full auto-tracking for the time-tracking feature.
 -   **Future Tasks**:
     -   **(P0) CRITICAL**: Rewrite all vanilla JS portals (, , , ) into a single, modern React application.
+    -   **(P1)** Create a native mobile app (iOS/Android).
     -   **(P2)** Implement Discussion Forums for the LMS.
-    -   **(P2)** Implement Mood Tracker Journal and Appointment Booking.
+    -   **(P2)** Implement a Mood Tracker Journal and Appointment Booking.
     -   **(P2)** Add Welsh Language Support.
 
 **Completed work in this session**
--   **Time Tracking Feature**: A full-featured time tracking system was added to the  vanilla JS portal.
-    -   Created backend API () for CRUD, summary, and export.
-    -   Created frontend UI and logic (, ).
-    -   Debugged and resolved multiple deployment-related issues, including manually correcting the production database to show data for the correct year (2026).
--   **AI Chat History**: The AI chat pages () were updated to load, display, and save conversation history locally on the user's device.
--   **Jitsi Video Chat Debugging**: Diagnosed that backend configuration overrides were the cause of the stuck on connecting issue and deployed a fix. The remaining issue is likely a stale frontend deployment on the user's side.
--   **Began Batch of 10 UI/UX Fixes**:
-    -   **Global AI Disclaimer**: Implemented a global consent flag () in  and .
-    -   **Restructured Pages**: Redesigned  and  pages to have the AI chat at the top and removed the 999 bar.
-    -   **Content Updates**: Renamed Meet AI Team to Meet the Team and added founder placeholders on . Added voice dictation info to .
-    -   **Portal Links**: Added training links to  and .
-    -   **Backend Data**: Added new organizations and updated an AI character's prompt in the backend.
-    -   **Form Fixes**: Made phone numbers optional in  forms.
+-   **Safeguarding & AI Behavior**:
+    -   Fixed false positives for Rachel by creating contextual keyword exemptions () for her persona () in  and .
+    -   Fixed a high-priority false positive by removing  from  in .
+    -   Fixed Scenario 010 (Privacy Boundary) by adding a strict privacy protocol to  and injecting it into all 12 character prompts in the database.
+    -   Added contextual housing keyword exemptions () for Baz in  and .
+    -   Greatly improved crisis misspelling detection by adding ~50 variations for suicide, self-harm, and slang to  in .
+-   **AI Persona Management**:
+    -   Updated the personas for **Rachel, Megan, and Baz** in both the persona files () and the  MongoDB collection to fix the issue of DB prompts overriding file changes.
+-   **Frontend Content & UI**:
+    -   Replaced all instances of female with women in frontend (, ) and backend (personas, LMS curriculum) files.
+    -   Rebranded the Women Veterans page to **She Served**, updated the tagline on , and added 9 new sections of content to .
+-   **Backend & Infrastructure**:
+    -   Implemented a robust **OpenAI to Gemini fallback** system in , configured to use the user's provided Gemini API key.
+    -   Created a full **AI usage tracking system** (), integrated it into the chat endpoint, and added admin API endpoints () to .
+    -   Built a new **AI Usage dashboard** in the legacy admin portal (, ).
+-   **Security & Compliance**:
+    -   Created a new **audit logging system** () and added API endpoints () to .
+    -   **Secured multiple public seed endpoints** (, , ) by adding admin authentication dependencies.
+-   **Documentation**:
+    -   Created a detailed technical report at .
+    -   Created a new test suite for typographic errors at .
+    -   Updated  with completed work.
+
+**Earlier issues found/mentioned but not fixed**
+-   **Issue 1: Jitsi video chat not working**: This remains blocked, suspected to be a stale Vercel deployment on the user's side.
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork**: In-chat call functionality and live support request reliability remain unaddressed P0 issues.
+-   **Recurrence count**: 3+
+-   **Status**: NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Deployment Synchronization Hell**: The core challenge in this session was debugging issues caused by desynchronized deployments across three different hosting platforms (Render, Vercel, and a static host for the admin portal). A fix is not complete until all relevant services are redeployed.
--   **Vanilla JS Manipulation**: The agent extensively modified a legacy vanilla JS portal, highlighting the technical debt and difficulty of maintaining code without a modern framework.
--   **Direct Production Database Intervention**: Due to deployment lag and user frustration, the agent took the exceptional step of connecting to the user's production backend URL to clear and re-seed the  collection.
+-   **Context-Aware Safeguarding**: Logic was added to  and  to check  and apply lists of keyword exemptions (, ) to prevent false positives for specialist AIs.
+-   **Database-first Persona Loading**: Discovered and worked with the existing pattern where character prompts are loaded from the MongoDB  collection, which overrides the python files in . Updates require modifying both.
+-   **AI Provider Fallback**: Implemented a  chain in  to call OpenAI first, then  (with the user's key) on failure, and finally a static crisis message as a last resort.
+-   **Token Counting & Cost Estimation**: Used  for OpenAI and  for Gemini to count tokens. Implemented a cost calculation and budget tracking system in .
+-   **Legacy JS DOM Manipulation**: Added a significant new feature (AI Usage dashboard) to a legacy vanilla JavaScript portal () by directly manipulating the DOM and adding new functions to a large, monolithic  file.
+-   **FastAPI Dependencies for Auth**: Secured endpoints by adding  to the function signatures of FastAPI routes.
 
 **key DB schema**
--   **New Collection**: 
-    -   : ObjectId
-    -   Sun Mar 15 20:26:17 UTC 2026: string (ISO format)
-    -   : number
-    -   : number
-    -   : string
-    -   : string
-    -   : datetime
-    -   : datetime
+-   **ai_usage_logs** (New): 
+-   **audit_logs** (New): 
+-   **ai_characters**: Prompts in this collection were updated for multiple characters.
+
+**changes in tech stack**
+-   Added  python package to support user-provided Gemini API key.
+-   Used  for OpenAI token counting.
 
 **All files of reference**
--   **New**:
-    -   : API for the time tracking feature.
-    -   : Frontend logic for the time tracking feature.
--   **Updated**:
-    -   : Registered the new timetracking router.
-    -   : Forced Jitsi .
-    -   : Updated AI character prompt.
-    -   : Added more organizations.
-    -   : Implemented chat history & global consent.
-    -   : Implemented global consent.
-    -   : UI text and layout changes.
-    -   : UI layout changes.
-    -   : Page redesign.
-    -   : Added new text.
-    -   : Added Time Tracking tab, modal, and buttons.
-    -   : Made form fields optional.
-    -   : Added training link.
-    -   : Added notes about the time tracking workflow.
+-   : Major changes for fallback logic, usage tracking, audit logging, and security fixes.
+-   : Added HTML structure for the new AI Usage dashboard.
+-   : Added JavaScript to power the AI Usage dashboard; contains a bug.
+-   : New file containing all logic for token counting and cost calculation.
+-   : New file for handling audit log creation.
+-   : Modified to incorporate contextual keyword exemptions.
+-   : Updated with a strict privacy protocol to fix Scenario 010.
+-   : Overhauled with new title and content.
+-   : Updated to link to the new She Served page.
+-   : Modified to secure the  endpoint.
 
 **Areas that need refactoring**:
--   The  portal is built with vanilla JS and is becoming increasingly difficult to maintain and debug. It is the top candidate for a rewrite into React, as noted in the future tasks.
+-   The  and  are built with legacy vanilla JavaScript and are explicitly on the roadmap for a complete rewrite in React. The recent addition of the complex AI Usage dashboard to  reinforces the need for this refactor.
 
 **key api endpoints**
--   **New Time Tracking API**:  (includes endpoints for , , , , ).
+-    (New): GET endpoint to retrieve overall AI cost and token stats.
+-    (New): GET endpoint for usage stats grouped by AI character.
+-    (New): GET endpoint for time-series data for the usage chart.
+-    (New): GET endpoint to retrieve audit logs.
+-    (Secured): Now requires admin authentication.
+-    (Secured): Now returns 405 Method Not Allowed.
+-    (Secured): Now returns 405 Method Not Allowed.
 
 **Critical Info for New Agent**
--   **MULTIPLE DEPLOYMENT TARGETS**: The user has at least THREE separate deployment environments: the React App on Vercel, the FastAPI backend on Render, and the vanilla JS Admin Portal on another static host. When the user reports a fix isn't working, the first step is **always** to confirm which specific services have been redeployed. Do not assume a fix is live until the user confirms deployment of all affected parts.
--   **USER DATABASE ACCESS**: The agent successfully used the user's production backend URL () to make API calls and modify the production database. This can be used as a powerful but dangerous tool for debugging and fixing data-related issues directly.
--   **VANILLA JS PORTALS**: Be extra cautious when working on  or . There is no hot-reloading, and debugging often involves checking the browser console for 404s on JS files or runtime errors.
+-   **Admin Portal is Legacy JS**: The  is vanilla JS. All API URLs must be prefixed with . The auth token is stored in a global  variable.
+-   **Database Overrides Files for Prompts**: When updating AI personas, you **must** update both the  file in  AND the corresponding document in the  collection in MongoDB. The database version takes precedence at runtime.
+-   **Safeguarding is Context-Aware**: The system now has specific keyword exemptions for 'rachel' (doris) and 'baz'. Any new specialist AIs will need similar exemptions added to  and .
 
 **documents and test reports created in this job**
--    (Updated)
+-   : A detailed report on the session's refactoring, safety fixes, and testing.
+-   : A new Pytest file to test the system's ability to detect misspelled crisis keywords.
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **User:** why the hell is the historical data november -december 2024 i only started usinthis 1 month ago - Frustration that the seeded time tracking data had incorrect dates. (Status: **RESOLVED**)
-9.  **Agent:** Apologized and fixed the seed data to use Feb/March 2026 dates.
-8.  **User:** jesus comon how hard is this just fix it still not showing - Frustration that the time tracking data wasn't appearing, provided a screenshot. (Status: **RESOLVED**)
-7.  **Agent:** Diagnosed the issue as stale data in the production DB and code not being deployed. Added a Clear All button to help the user reset data post-deployment.
-6.  **User:** ive already deployed do a cur and have a look at the rander databse - Asks agent to check the production database directly. (Status: **RESOLVED**)
-5.  **Agent:** Used  to confirm the production DB had old data, then used API endpoints to clear it and re-seed with correct 2026 data.
-4.  **User:** can we add this to the production notes that eveytime we do fix and deploy it adds to the time or will that not be accurate - Asks about auto-tracking time from deployments. (Status: **RESOLVED**)
-3.  **Agent:** Explained why that's inaccurate and updated PRD.md with a manual entry workflow instead.
-2.  **User:** Provides a list of 10 new fixes and UI changes. (Status: **IN PROGRESS**)
-1.  **User:** hugo is not at the top of the page... remove the red 999 bar and chnage the meet the ai battle buddies to just Tommy - Provides follow-up corrections to the agent's initial implementation of the 10 fixes. (Status: **IN PROGRESS**)
+-   10. User asks to add AI usage tracking to the admin page. (Status: **COMPLETED**, but has a bug)
+-   9. User points out that the staff portal needs updates. Agent investigates, user clarifies they meant the admin portal for the usage tracking feature. (Status: **COMPLETED**)
+-   8. User reports a JS error  from the admin portal console. Agent fixes it. (Status: **COMPLETED**)
+-   7. User reports another JS error . (Status: **PENDING FIX**)
+-   6. User asks for the fix instructions to apply manually and says they will redeploy to GitHub after. (Status: **ADDRESSED**)
+-   5. User asks for the audit logs to be displayed on the Logs tab of the admin page. (Status: **PENDING IMPLEMENTATION**)
+-   4. User points out security vulnerabilities: a public knowledge base seeding endpoint and lack of logging. (Status: **COMPLETED**, backend is done, UI is pending)
+-   3. User asks for a fix for the  error and for the audit log UI to be added. (Status: **PENDING FIX**)
+-   2. The Agent acknowledges the request and starts working. (Status: **IN PROGRESS**)
+-   1. The agent is in the middle of debugging the  issue. (Status: **IN PROGRESS**)
 
 **Project Health Check:**
 -   **Broken**:
-    -   In-chat voice calling (staff to user).
-    -   Live support request notifications are unreliable.
-    -   Jitsi video chat is still not working for the user, likely due to deployment issues.
+    -   AI Usage dashboard in admin portal (due to  JS error).
+    -   In-chat voice calling (recurring P0 issue).
+    -   Live support request notifications (recurring P0 issue).
+-   **Blocked**:
+    -   Jitsi video chat (awaiting user deployment on Vercel).
 -   **Mocked**: None.
 
 **3rd Party Integrations**
+-   **OpenAI gpt-4o-mini**: Primary AI for chat personas.
+-   **Google Gemini (google-genai)**: New fallback AI, configured with user's own API key.
 -   **Jitsi Meet**: Embedded group video conferencing.
 -   **Twilio**: WebRTC calling.
 -   **Resend**: Email notifications.
--   **OpenAI gpt-4o-mini**: Used for AI chat personas and the new AI Safety Classifier. Uses **Emergent LLM Key**.
 -   **sentence-transformers**: For semantic analysis in the safeguarding system.
--   **crypto-js**: For frontend encryption of local conversation history.
--   **openpyxl**: (New) For generating Excel exports in the backend.
+-   **tiktoken**: For OpenAI token counting.
 
 **Testing status**
 -   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None.
--   **Known regressions**: None.
+-   **Test files created**:
+    -   
+-   **Known regressions**: None introduced in this session.
+
+**Credentials to test flow:**
+-   The app has a Radio Check login page which can be bypassed using the password found in . It also has a Date of Birth modal that may appear.
+-   The admin portal () requires credentials which can be found in  or previous logs if needed.
 
 **What agent forgot to execute**
--   The agent did not address the pre-existing P0 issues like In-chat call still not working and Live support requests not appearing as it prioritized the user's new requests for the time tracker and the batch of 10 UI fixes.
--   The agent has not yet implemented the fix for Rename Talk to a Veteran to Talk to Peer Support (Fix #3 from the user's list).</analysis>
+The agent correctly identified the cause of the  error but missed that the token variable was also named differently ( vs ) in the legacy admin portal's JavaScript, leading to the subsequent user-reported bug.</analysis>

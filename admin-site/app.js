@@ -824,13 +824,14 @@ async function loadLogsData() {
     
     try {
         // Load all data in parallel
-        const [callsRes, chatsRes, safeguardingRes, screeningRes, callbacksRes, panicRes] = await Promise.all([
+        const [callsRes, chatsRes, safeguardingRes, screeningRes, callbacksRes, panicRes, auditRes] = await Promise.all([
             apiCall(`/call-logs?days=${period}`).catch(() => ({ total_calls: 0, recent_logs: [] })),
             apiCall('/live-chat/rooms').catch(() => []),
             apiCall('/safeguarding-alerts').catch(() => []),
             apiCall('/safeguarding/screening-submissions').catch(() => []),
             apiCall('/callbacks').catch(() => []),
-            apiCall('/panic-alerts').catch(() => [])
+            apiCall('/panic-alerts').catch(() => []),
+            apiCall('/admin/audit-logs?limit=200').catch(() => ({ logs: [] }))
         ]);
         
         // Store data
@@ -840,6 +841,7 @@ async function loadLogsData() {
         logsData.screening = screeningRes || [];
         logsData.callbacks = callbacksRes || [];
         logsData.panic = panicRes || [];
+        logsData.audit = auditRes.logs || [];
         
         // Update stats
         document.getElementById('stat-calls').textContent = callsRes.total_calls || 0;
@@ -1422,6 +1424,9 @@ function renderLogTab(tab) {
         case 'panic':
             container.innerHTML = renderPanicLogs(data);
             break;
+        case 'audit':
+            container.innerHTML = renderAuditLogs(data);
+            break;
     }
 }
 
@@ -1589,6 +1594,107 @@ function renderPanicLogs(alerts) {
             </tbody>
         </table>
     `;
+}
+
+function renderAuditLogs(logs) {
+    // Get badge color based on event type
+    const getEventBadge = (eventType) => {
+        if (eventType.startsWith('auth.')) return 'badge-info';
+        if (eventType.startsWith('safeguarding.')) return 'badge-danger';
+        if (eventType.startsWith('data.')) return 'badge-warning';
+        if (eventType.startsWith('admin.')) return 'badge-primary';
+        if (eventType.startsWith('support.')) return 'badge-success';
+        return 'badge-secondary';
+    };
+    
+    // Get badge color for risk level
+    const getRiskBadge = (riskLevel) => {
+        switch (riskLevel) {
+            case 'critical': return 'badge-danger';
+            case 'high': return 'badge-warning';
+            case 'medium': return 'badge-info';
+            case 'low': return 'badge-success';
+            default: return 'badge-secondary';
+        }
+    };
+    
+    // Format event type for display
+    const formatEventType = (type) => {
+        return type.replace(/\./g, ' › ').replace(/_/g, ' ');
+    };
+    
+    return `
+        <div style="margin-bottom: 16px; padding: 12px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <span style="color: var(--text-secondary);">Filter by type:</span>
+                <select id="audit-filter-type" onchange="filterAuditLogs()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-primary);">
+                    <option value="">All Events</option>
+                    <option value="auth.">Authentication</option>
+                    <option value="safeguarding.">Safeguarding</option>
+                    <option value="data.">Data Access</option>
+                    <option value="admin.">Admin Actions</option>
+                    <option value="support.">Live Support</option>
+                </select>
+                <span style="margin-left: auto; color: var(--text-muted); font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> Showing ${logs.length} events
+                </span>
+            </div>
+        </div>
+        <table class="logs-table" id="audit-logs-table">
+            <thead>
+                <tr>
+                    <th>Date/Time</th>
+                    <th>Event Type</th>
+                    <th>User</th>
+                    <th>Outcome</th>
+                    <th>Risk Level</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${logs.map(log => {
+                    const userEmail = log.user?.email || log.user?.id || 'System';
+                    const eventType = log.event_type || 'unknown';
+                    const riskLevel = log.risk_level;
+                    const outcome = log.outcome || 'success';
+                    const details = log.action_details || {};
+                    
+                    // Build details string
+                    let detailsStr = '';
+                    if (details.action) detailsStr += details.action + '. ';
+                    if (details.record_count) detailsStr += `Records: ${details.record_count}. `;
+                    if (details.score) detailsStr += `Score: ${details.score}. `;
+                    if (log.resource?.type) detailsStr += `Resource: ${log.resource.type}. `;
+                    if (log.context?.ip_address) detailsStr += `IP: ${log.context.ip_address}`;
+                    
+                    return `
+                        <tr class="${riskLevel === 'critical' || riskLevel === 'high' ? 'row-urgent' : ''}" data-event-type="${eventType}">
+                            <td>${formatDateTime(log.timestamp)}</td>
+                            <td><span class="badge ${getEventBadge(eventType)}" style="font-size: 11px; text-transform: capitalize;">${formatEventType(eventType)}</span></td>
+                            <td><strong>${userEmail}</strong></td>
+                            <td><span class="badge ${outcome === 'success' ? 'badge-success' : 'badge-danger'}">${outcome}</span></td>
+                            <td>${riskLevel ? `<span class="badge ${getRiskBadge(riskLevel)}">${riskLevel.toUpperCase()}</span>` : '-'}</td>
+                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${detailsStr || 'No additional details'}">${detailsStr || '-'}</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function filterAuditLogs() {
+    const filterValue = document.getElementById('audit-filter-type')?.value || '';
+    const rows = document.querySelectorAll('#audit-logs-table tbody tr');
+    
+    rows.forEach(row => {
+        const eventType = row.dataset.eventType || '';
+        if (!filterValue || eventType.startsWith(filterValue)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
 }
 
 function renderScreeningLogs(submissions) {
@@ -8275,7 +8381,7 @@ async function loadAIUsageData() {
     try {
         // Fetch usage summary
         const summaryRes = await fetch(`${CONFIG.API_URL}/api/admin/ai-usage/summary?days=${days}`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (summaryRes.ok) {
@@ -8285,7 +8391,7 @@ async function loadAIUsageData() {
         
         // Fetch usage by character
         const charRes = await fetch(`${CONFIG.API_URL}/api/admin/ai-usage/by-character?days=${days}`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (charRes.ok) {
@@ -8295,7 +8401,7 @@ async function loadAIUsageData() {
         
         // Fetch daily usage for chart
         const dailyRes = await fetch(`${CONFIG.API_URL}/api/admin/ai-usage/daily?days=${Math.min(days, 30)}`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (dailyRes.ok) {
