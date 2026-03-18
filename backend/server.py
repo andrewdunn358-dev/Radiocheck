@@ -75,6 +75,17 @@ from routers.lms import router as lms_router
 from personas import AI_CHARACTERS as MODULAR_AI_CHARACTERS, get_full_prompt
 from personas.soul_loader import get_soul_injection
 
+# Import AI usage tracker for cost monitoring
+from ai_usage_tracker import (
+    count_openai_tokens, 
+    estimate_gemini_tokens, 
+    calculate_cost, 
+    log_ai_usage,
+    get_usage_summary,
+    get_daily_usage,
+    get_usage_by_character
+)
+
 # ============ RATE LIMITING & BOT PROTECTION ============
 
 # Rate limit configuration
@@ -5150,6 +5161,39 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         if not reply:
             raise Exception("No response from AI providers")
         
+        # ===== TRACK AI USAGE FOR COST MONITORING =====
+        try:
+            # Count tokens for the request
+            full_prompt = system_prompt + "\n" + request.message
+            
+            if ai_provider_used == "openai":
+                input_tokens = count_openai_tokens(full_prompt, "gpt-4o-mini")
+                output_tokens = count_openai_tokens(reply, "gpt-4o-mini")
+                model_name = "gpt-4o-mini"
+            else:  # gemini
+                input_tokens = estimate_gemini_tokens(full_prompt)
+                output_tokens = estimate_gemini_tokens(reply)
+                model_name = "gemini-2.0-flash"
+            
+            # Calculate cost
+            cost_gbp = calculate_cost(ai_provider_used, model_name, input_tokens, output_tokens)
+            
+            # Log to database
+            await log_ai_usage(
+                db=db,
+                provider=ai_provider_used,
+                model=model_name,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                session_id=request.sessionId,
+                character_id=character,
+                cost_gbp=cost_gbp
+            )
+            logging.debug(f"AI Usage logged: {ai_provider_used}/{model_name} - {input_tokens}+{output_tokens} tokens = £{cost_gbp:.6f}")
+        except Exception as usage_error:
+            # Don't fail the request if usage tracking fails
+            logging.warning(f"Failed to track AI usage: {usage_error}")
+        
         # Store in history
         session["history"].append({"role": "user", "content": request.message})
         session["history"].append({"role": "assistant", "content": reply})
@@ -6645,6 +6689,69 @@ async def save_prompt_version(
         "success": True,
         "version": version,
         "message": f"Prompt version {version} saved for {character}"
+    }
+
+
+# ============ AI USAGE TRACKING ENDPOINTS ============
+
+@api_router.get("/admin/ai-usage/summary")
+async def get_ai_usage_summary_endpoint(
+    days: int = 30,
+    current_user: User = Depends(require_role("admin"))
+):
+    """
+    Get AI usage summary showing total tokens, costs, and budget status.
+    
+    Returns:
+    - Total cost by provider (OpenAI, Gemini)
+    - Budget limits and remaining
+    - Request counts
+    """
+    summary = await get_usage_summary(db, days)
+    return summary
+
+
+@api_router.get("/admin/ai-usage/daily")
+async def get_ai_daily_usage_endpoint(
+    days: int = 7,
+    current_user: User = Depends(require_role("admin"))
+):
+    """
+    Get daily usage breakdown for charts.
+    
+    Returns daily tokens and costs for each provider.
+    """
+    daily_data = await get_daily_usage(db, days)
+    return {"daily_usage": daily_data}
+
+
+@api_router.get("/admin/ai-usage/by-character")
+async def get_ai_usage_by_character_endpoint(
+    days: int = 30,
+    current_user: User = Depends(require_role("admin"))
+):
+    """
+    Get AI usage breakdown by character.
+    
+    Shows which AI characters are using the most tokens.
+    """
+    character_data = await get_usage_by_character(db, days)
+    return {"by_character": character_data}
+
+
+@api_router.get("/admin/ai-usage/budgets")
+async def get_ai_budgets_endpoint(
+    current_user: User = Depends(require_role("admin"))
+):
+    """
+    Get current budget limits and can be used to configure them.
+    """
+    from ai_usage_tracker import BUDGET_LIMITS, PRICING
+    
+    return {
+        "budgets": BUDGET_LIMITS,
+        "pricing": PRICING,
+        "note": "Prices are in GBP per 1M tokens"
     }
 
 
