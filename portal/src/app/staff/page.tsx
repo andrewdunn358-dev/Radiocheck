@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
-import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback } from '@/lib/api';
+import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation } from '@/lib/api';
 import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, MessageSquare, Briefcase, Phone,
   Calendar, Users, FileText, Shield, LogOut, Bell, Volume2, VolumeX,
-  CheckCircle, Clock, User, ChevronRight, RefreshCw, X, Send
+  CheckCircle, Clock, User, ChevronRight, RefreshCw, X, Send,
+  Plus, Edit, Trash2, ChevronLeft, ArrowLeftRight, Eye
 } from 'lucide-react';
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
@@ -36,6 +37,34 @@ export default function StaffPortalPage() {
   const [activeChatRoom, setActiveChatRoom] = useState<LiveChatRoom | null>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
+
+  // Additional data state
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [swapRequests, setSwapRequests] = useState<ShiftSwap[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [notes, setNotes] = useState<StaffNote[]>([]);
+  const [escalations, setEscalations] = useState<Escalation[]>([]);
+
+  // Calendar state
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // Notes state
+  const [notesTab, setNotesTab] = useState<'my' | 'shared'>('my');
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [newNoteShared, setNewNoteShared] = useState(false);
+
+  // Shift modal state
+  const [showAddShift, setShowAddShift] = useState(false);
+  const [newShiftDate, setNewShiftDate] = useState('');
+  const [newShiftStart, setNewShiftStart] = useState('');
+  const [newShiftEnd, setNewShiftEnd] = useState('');
+  const [newShiftType, setNewShiftType] = useState('morning');
+
+  // Escalations state
+  const [escalationsTab, setEscalationsTab] = useState<'pending' | 'all'>('pending');
 
   // Load data
   const loadAlerts = useCallback(async () => {
@@ -82,6 +111,48 @@ export default function StaffPortalPage() {
     }
   }, [token]);
 
+  const loadShifts = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await staffApi.getShifts(token);
+      setShifts(data);
+      const swaps = await staffApi.getSwapRequests(token);
+      setSwapRequests(swaps);
+    } catch (err) {
+      console.error('Failed to load shifts:', err);
+    }
+  }, [token]);
+
+  const loadTeam = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await staffApi.getTeamOnDuty(token);
+      setTeamMembers(data);
+    } catch (err) {
+      console.error('Failed to load team:', err);
+    }
+  }, [token]);
+
+  const loadNotes = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await staffApi.getNotes(token);
+      setNotes(data);
+    } catch (err) {
+      console.error('Failed to load notes:', err);
+    }
+  }, [token]);
+
+  const loadEscalations = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await staffApi.getEscalations(token);
+      setEscalations(data);
+    } catch (err) {
+      console.error('Failed to load escalations:', err);
+    }
+  }, [token]);
+
   // Initial data load and polling
   useEffect(() => {
     if (token) {
@@ -89,6 +160,12 @@ export default function StaffPortalPage() {
       loadLiveChats();
       loadCases();
       loadCallbacks();
+      loadShifts();
+      loadTeam();
+      loadNotes();
+      if (user?.is_supervisor) {
+        loadEscalations();
+      }
 
       // Poll for alerts every 30 seconds
       const alertInterval = setInterval(loadAlerts, 30000);
@@ -99,7 +176,7 @@ export default function StaffPortalPage() {
         clearInterval(chatInterval);
       };
     }
-  }, [token, loadAlerts, loadLiveChats, loadCases, loadCallbacks]);
+  }, [token, loadAlerts, loadLiveChats, loadCases, loadCallbacks, loadShifts, loadTeam, loadNotes, loadEscalations, user?.is_supervisor]);
 
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {
@@ -202,6 +279,123 @@ export default function StaffPortalPage() {
     } catch (err) {
       console.error('Failed to complete callback:', err);
     }
+  };
+
+  // Shift actions
+  const handleAddShift = async () => {
+    if (!token || !newShiftDate || !newShiftStart || !newShiftEnd) return;
+    try {
+      await staffApi.createShift(token, {
+        date: newShiftDate,
+        start_time: newShiftStart,
+        end_time: newShiftEnd,
+        shift_type: newShiftType,
+      });
+      setShowAddShift(false);
+      setNewShiftDate('');
+      setNewShiftStart('');
+      setNewShiftEnd('');
+      loadShifts();
+    } catch (err) {
+      console.error('Failed to add shift:', err);
+    }
+  };
+
+  const handleDeleteShift = async (id: string) => {
+    if (!token || !confirm('Delete this shift?')) return;
+    try {
+      await staffApi.deleteShift(token, id);
+      loadShifts();
+    } catch (err) {
+      console.error('Failed to delete shift:', err);
+    }
+  };
+
+  const handleRequestSwap = async (shiftId: string) => {
+    if (!token) return;
+    const reason = prompt('Why do you need to swap this shift?');
+    if (!reason) return;
+    try {
+      await staffApi.createSwapRequest(token, shiftId, reason);
+      loadShifts();
+      alert('Swap request submitted');
+    } catch (err) {
+      console.error('Failed to request swap:', err);
+    }
+  };
+
+  // Notes actions
+  const handleAddNote = async () => {
+    if (!token || !newNoteTitle.trim() || !newNoteContent.trim()) return;
+    try {
+      await staffApi.createNote(token, {
+        title: newNoteTitle,
+        content: newNoteContent,
+        is_shared: newNoteShared,
+      });
+      setShowAddNote(false);
+      setNewNoteTitle('');
+      setNewNoteContent('');
+      setNewNoteShared(false);
+      loadNotes();
+    } catch (err) {
+      console.error('Failed to add note:', err);
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    if (!token || !confirm('Delete this note?')) return;
+    try {
+      await staffApi.deleteNote(token, id);
+      loadNotes();
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+    }
+  };
+
+  // Escalation actions (supervisors)
+  const handleAcknowledgeEscalation = async (id: string) => {
+    if (!token) return;
+    try {
+      await staffApi.acknowledgeEscalation(token, id);
+      loadEscalations();
+    } catch (err) {
+      console.error('Failed to acknowledge escalation:', err);
+    }
+  };
+
+  const handleResolveEscalation = async (id: string) => {
+    if (!token) return;
+    try {
+      await staffApi.resolveEscalation(token, id);
+      loadEscalations();
+    } catch (err) {
+      console.error('Failed to resolve escalation:', err);
+    }
+  };
+
+  // Calendar helpers
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay();
+    return { daysInMonth, startingDay };
+  };
+
+  const getShiftsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return shifts.filter(s => s.date === dateStr || s.date?.startsWith(dateStr));
+  };
+
+  const prevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
   // Helper functions
@@ -759,25 +953,216 @@ export default function StaffPortalPage() {
         {/* Rota Tab */}
         {activeTab === 'rota' && (
           <div>
-            <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Calendar className="w-6 h-6 text-secondary" />
-              My Shifts
-            </h1>
-            <div className="bg-card border border-border rounded-xl p-6">
-              <p className="text-gray-400 text-center py-8">Rota calendar coming soon...</p>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Calendar className="w-6 h-6 text-secondary" />
+                My Shifts
+              </h1>
+              <button
+                onClick={() => setShowAddShift(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-secondary text-primary-dark rounded-lg hover:bg-secondary-light"
+              >
+                <Plus className="w-4 h-4" />
+                Add Shift
+              </button>
             </div>
+
+            {/* Calendar */}
+            <div className="bg-card border border-border rounded-xl p-6 mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <button onClick={prevMonth} className="p-2 hover:bg-white/5 rounded">
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <h3 className="text-lg font-semibold">
+                  {currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                </h3>
+                <button onClick={nextMonth} className="p-2 hover:bg-white/5 rounded">
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-center text-sm text-gray-400 py-2">{day}</div>
+                ))}
+                {(() => {
+                  const { daysInMonth, startingDay } = getDaysInMonth(currentMonth);
+                  const days = [];
+                  for (let i = 0; i < startingDay; i++) {
+                    days.push(<div key={`empty-${i}`} className="p-2" />);
+                  }
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                    const dayShifts = getShiftsForDate(date);
+                    const isToday = new Date().toDateString() === date.toDateString();
+                    days.push(
+                      <div
+                        key={day}
+                        onClick={() => setSelectedDate(date)}
+                        className={`p-2 text-center rounded cursor-pointer transition-colors ${
+                          isToday ? 'bg-secondary/20 border border-secondary' :
+                          selectedDate?.toDateString() === date.toDateString() ? 'bg-primary-light' :
+                          'hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="text-sm">{day}</span>
+                        {dayShifts.length > 0 && (
+                          <div className="mt-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mx-auto" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return days;
+                })()}
+              </div>
+            </div>
+
+            {/* Shifts List */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h3 className="font-semibold mb-4">
+                {selectedDate ? `Shifts for ${selectedDate.toLocaleDateString('en-GB')}` : 'Upcoming Shifts'}
+              </h3>
+              <div className="space-y-3">
+                {(selectedDate ? getShiftsForDate(selectedDate) : shifts.slice(0, 10)).map(shift => (
+                  <div key={shift._id} className="flex justify-between items-center p-4 bg-primary-dark/50 rounded-lg">
+                    <div>
+                      <p className="font-semibold">{new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+                      <p className="text-sm text-gray-400">
+                        {shift.start_time} - {shift.end_time}
+                        <span className="ml-2 px-2 py-0.5 bg-primary-light rounded text-xs">{shift.shift_type}</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleRequestSwap(shift._id)} className="p-2 hover:bg-white/5 rounded" title="Request Swap">
+                        <ArrowLeftRight className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDeleteShift(shift._id)} className="p-2 hover:bg-red-500/20 rounded text-red-400" title="Delete">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {shifts.length === 0 && (
+                  <p className="text-gray-500 text-center py-4">No shifts scheduled</p>
+                )}
+              </div>
+            </div>
+
+            {/* Swap Requests */}
+            {swapRequests.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-6 mt-6">
+                <h3 className="font-semibold mb-4">Swap Requests</h3>
+                <div className="space-y-3">
+                  {swapRequests.map(swap => (
+                    <div key={swap._id} className="flex justify-between items-center p-4 bg-primary-dark/50 rounded-lg">
+                      <div>
+                        <p className="text-sm">{swap.reason}</p>
+                        <p className="text-xs text-gray-400">Requested by: {swap.requested_by_name}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        swap.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                        swap.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}>
+                        {swap.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Team Tab */}
         {activeTab === 'team' && (
           <div>
-            <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Users className="w-6 h-6 text-secondary" />
-              Team On Duty
-            </h1>
-            <div className="bg-card border border-border rounded-xl p-6">
-              <p className="text-gray-400 text-center py-8">Team view coming soon...</p>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Users className="w-6 h-6 text-secondary" />
+                Team On Duty
+              </h1>
+              <button onClick={loadTeam} className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-white/5">
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Today's Team */}
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-secondary" />
+                  Today&apos;s Team
+                </h3>
+                <div className="space-y-3">
+                  {teamMembers.map(member => (
+                    <div key={member._id || member.id} className="flex items-center gap-3 p-3 bg-primary-dark/50 rounded-lg">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
+                        member.status === 'available' ? 'bg-green-500' :
+                        member.status === 'busy' ? 'bg-yellow-500' :
+                        'bg-gray-500'
+                      }`}>
+                        {member.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold">{member.name}</p>
+                        <p className="text-xs text-gray-400 capitalize">{member.role}</p>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${
+                        member.status === 'available' ? 'bg-green-500' :
+                        member.status === 'busy' ? 'bg-yellow-500' :
+                        'bg-gray-500'
+                      }`} />
+                    </div>
+                  ))}
+                  {teamMembers.length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No team members on duty</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="space-y-4">
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="font-semibold mb-4">Team Stats</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-400">
+                        {teamMembers.filter(m => m.status === 'available').length}
+                      </div>
+                      <div className="text-xs text-gray-400">Available</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-yellow-400">
+                        {teamMembers.filter(m => m.status === 'busy').length}
+                      </div>
+                      <div className="text-xs text-gray-400">Busy</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-400">
+                        {teamMembers.filter(m => m.status === 'offline').length}
+                      </div>
+                      <div className="text-xs text-gray-400">Offline</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="font-semibold mb-4">Role Breakdown</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Counsellors</span>
+                      <span>{teamMembers.filter(m => m.role === 'counsellor').length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Peer Supporters</span>
+                      <span>{teamMembers.filter(m => m.role === 'peer').length}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -785,12 +1170,65 @@ export default function StaffPortalPage() {
         {/* Notes Tab */}
         {activeTab === 'notes' && (
           <div>
-            <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <FileText className="w-6 h-6 text-secondary" />
-              Notes
-            </h1>
-            <div className="bg-card border border-border rounded-xl p-6">
-              <p className="text-gray-400 text-center py-8">Notes feature coming soon...</p>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <FileText className="w-6 h-6 text-secondary" />
+                Notes
+              </h1>
+              <button
+                onClick={() => setShowAddNote(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-secondary text-primary-dark rounded-lg hover:bg-secondary-light"
+              >
+                <Plus className="w-4 h-4" />
+                New Note
+              </button>
+            </div>
+
+            {/* Notes Tabs */}
+            <div className="flex gap-4 mb-6 border-b border-border">
+              <button
+                onClick={() => setNotesTab('my')}
+                className={`px-4 py-3 border-b-2 transition-colors ${
+                  notesTab === 'my' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                My Notes
+              </button>
+              <button
+                onClick={() => setNotesTab('shared')}
+                className={`px-4 py-3 border-b-2 transition-colors ${
+                  notesTab === 'shared' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                Shared Notes
+              </button>
+            </div>
+
+            {/* Notes Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {notes
+                .filter(note => notesTab === 'my' ? !note.is_shared : note.is_shared)
+                .map(note => (
+                  <div key={note._id} className="bg-card border border-border rounded-xl p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-semibold">{note.title}</h3>
+                      <button onClick={() => handleDeleteNote(note._id)} className="p-1 hover:bg-red-500/20 rounded text-red-400">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-400 line-clamp-3 mb-3">{note.content}</p>
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                      <span>{formatTimeAgo(note.created_at)}</span>
+                      {note.is_shared && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Shared</span>}
+                    </div>
+                  </div>
+                ))}
+              {notes.filter(note => notesTab === 'my' ? !note.is_shared : note.is_shared).length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No notes yet</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -802,8 +1240,83 @@ export default function StaffPortalPage() {
               <Shield className="w-6 h-6 text-secondary" />
               Supervision
             </h1>
-            <div className="bg-card border border-border rounded-xl p-6">
-              <p className="text-gray-400 text-center py-8">Supervision features coming soon...</p>
+
+            {/* Escalations Tabs */}
+            <div className="flex gap-4 mb-6 border-b border-border">
+              <button
+                onClick={() => setEscalationsTab('pending')}
+                className={`px-4 py-3 border-b-2 transition-colors ${
+                  escalationsTab === 'pending' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                Pending Escalations
+                {escalations.filter(e => e.status === 'pending').length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {escalations.filter(e => e.status === 'pending').length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setEscalationsTab('all')}
+                className={`px-4 py-3 border-b-2 transition-colors ${
+                  escalationsTab === 'all' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                All Escalations
+              </button>
+            </div>
+
+            {/* Escalations List */}
+            <div className="space-y-4">
+              {escalations
+                .filter(e => escalationsTab === 'pending' ? e.status === 'pending' : true)
+                .map(escalation => (
+                  <div key={escalation._id} className={`bg-card border rounded-xl p-6 ${
+                    escalation.status === 'pending' ? 'border-red-500' : 'border-border'
+                  }`}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            escalation.status === 'pending' ? 'bg-red-500/20 text-red-400' :
+                            escalation.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-green-500/20 text-green-400'
+                          }`}>
+                            {escalation.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="font-semibold">Escalated by: {escalation.escalated_by_name}</p>
+                        <p className="text-gray-400 text-sm mt-1">{escalation.reason}</p>
+                      </div>
+                      <span className="text-sm text-gray-400">{formatTimeAgo(escalation.created_at)}</span>
+                    </div>
+
+                    {escalation.status !== 'resolved' && (
+                      <div className="flex gap-3">
+                        {escalation.status === 'pending' && (
+                          <button
+                            onClick={() => handleAcknowledgeEscalation(escalation._id)}
+                            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                          >
+                            Acknowledge
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleResolveEscalation(escalation._id)}
+                          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                        >
+                          Resolve
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              {escalations.filter(e => escalationsTab === 'pending' ? e.status === 'pending' : true).length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>{escalationsTab === 'pending' ? 'No pending escalations' : 'No escalations'}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -871,6 +1384,125 @@ export default function StaffPortalPage() {
                   <Send className="w-5 h-5" />
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Shift Modal */}
+      {showAddShift && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowAddShift(false)}>
+          <div className="bg-card border border-border rounded-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Plus className="w-5 h-5 text-secondary" />
+                Add Shift
+              </h2>
+              <button onClick={() => setShowAddShift(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={newShiftDate}
+                  onChange={(e) => setNewShiftDate(e.target.value)}
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Start Time</label>
+                  <input
+                    type="time"
+                    value={newShiftStart}
+                    onChange={(e) => setNewShiftStart(e.target.value)}
+                    className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">End Time</label>
+                  <input
+                    type="time"
+                    value={newShiftEnd}
+                    onChange={(e) => setNewShiftEnd(e.target.value)}
+                    className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Shift Type</label>
+                <select
+                  value={newShiftType}
+                  onChange={(e) => setNewShiftType(e.target.value)}
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                >
+                  <option value="morning">Morning</option>
+                  <option value="afternoon">Afternoon</option>
+                  <option value="evening">Evening</option>
+                  <option value="night">Night</option>
+                </select>
+              </div>
+              <button
+                onClick={handleAddShift}
+                disabled={!newShiftDate || !newShiftStart || !newShiftEnd}
+                className="w-full py-3 bg-secondary text-primary-dark font-semibold rounded-lg disabled:opacity-50"
+              >
+                Add Shift
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Note Modal */}
+      {showAddNote && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowAddNote(false)}>
+          <div className="bg-card border border-border rounded-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-secondary" />
+                New Note
+              </h2>
+              <button onClick={() => setShowAddNote(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Title</label>
+                <input
+                  type="text"
+                  value={newNoteTitle}
+                  onChange={(e) => setNewNoteTitle(e.target.value)}
+                  placeholder="Note title..."
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Content</label>
+                <textarea
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  placeholder="Write your note..."
+                  rows={5}
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none resize-none"
+                />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newNoteShared}
+                  onChange={(e) => setNewNoteShared(e.target.checked)}
+                  className="w-4 h-4 accent-secondary"
+                />
+                <span className="text-sm">Share with team</span>
+              </label>
+              <button
+                onClick={handleAddNote}
+                disabled={!newNoteTitle.trim() || !newNoteContent.trim()}
+                className="w-full py-3 bg-secondary text-primary-dark font-semibold rounded-lg disabled:opacity-50"
+              >
+                Save Note
+              </button>
             </div>
           </div>
         </div>
