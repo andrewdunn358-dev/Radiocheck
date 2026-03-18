@@ -1,4 +1,7 @@
 {
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://veterans-support-api.onrender.com"
+  },
   "rewrites": [
     {
       "source": "/",

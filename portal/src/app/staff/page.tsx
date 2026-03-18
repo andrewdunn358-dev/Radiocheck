@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import useWebRTCPhone from '@/hooks/useWebRTCPhone';
+import useTwilioPhone from '@/hooks/useTwilioPhone';
 import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation, LiveChatMessage } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -15,8 +16,10 @@ import {
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
 
-// Get API URL
+// Get API URL - MUST be the backend, not the frontend
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+
+console.log('[StaffPortal] Using API_URL:', API_URL);
 
 export default function StaffPortalPage() {
   const { user, profile, token, isLoading, login, logout, updateStatus } = useStaffAuth();
@@ -35,7 +38,7 @@ export default function StaffPortalPage() {
   const [phoneStatus, setPhoneStatus] = useState<'connecting' | 'ready' | 'error' | 'unavailable'>('connecting');
   const [chatConnected, setChatConnected] = useState(false);
 
-  // Initialize WebRTC Phone
+  // Initialize WebRTC Phone (for peer-to-peer calls between staff)
   const webrtcPhone = useWebRTCPhone({
     serverUrl: API_URL,
     userId: user?.id,
@@ -43,6 +46,29 @@ export default function StaffPortalPage() {
     userName: user?.name,
     enabled: !!token && !!user,
   });
+
+  // Initialize Twilio Phone (for browser-to-phone calls)
+  const twilioPhone = useTwilioPhone({
+    staffId: profile?.id || user?.id,
+    staffName: user?.name,
+    enabled: !!token && !!user && !!profile,
+  });
+
+  // Debug logging for WebRTC and Twilio
+  useEffect(() => {
+    console.log('[StaffPage] Auth state:', { 
+      hasToken: !!token, 
+      hasUser: !!user, 
+      hasProfile: !!profile,
+      userId: user?.id,
+      profileId: profile?.id,
+      userRole: user?.role,
+      userName: user?.name,
+      API_URL 
+    });
+    console.log('[StaffPage] WebRTC status:', webrtcPhone.status, 'registered:', webrtcPhone.isRegistered);
+    console.log('[StaffPage] Twilio status:', twilioPhone.status, 'ready:', twilioPhone.isReady);
+  }, [token, user, profile, webrtcPhone.status, webrtcPhone.isRegistered, twilioPhone.status, twilioPhone.isReady]);
 
   // Sync phone status from WebRTC hook
   useEffect(() => {
