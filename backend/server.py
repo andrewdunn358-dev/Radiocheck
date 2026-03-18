@@ -5172,9 +5172,30 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         
     except Exception as e:
         logging.error(f"AI Buddy chat error: {str(e)}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"{char_config['name']} is having trouble right now. If you need support, please use the 'Talk to a real person' button."
+        
+        # Provide a helpful fallback message instead of a hard error
+        # This ensures users always get SOME response, especially in crisis
+        fallback_message = (
+            f"I'm sorry, I'm having technical difficulties right now and can't respond properly. "
+            f"But please don't go — if you need support:\n\n"
+            f"• **Samaritans**: 116 123 (free, 24/7)\n"
+            f"• **Veterans Gateway**: 0808 802 1212\n"
+            f"• **Combat Stress**: 0800 138 1619\n\n"
+            f"Or use the 'Talk to a real person' button below to connect with our human support team."
+        )
+        
+        # Return a valid response with the fallback message
+        # This is better than throwing a 500 error which breaks the chat
+        return BuddyChatResponse(
+            reply=fallback_message,
+            sessionId=request.sessionId,
+            character=character,
+            characterName=char_config["name"],
+            characterAvatar=char_config["avatar"],
+            safeguardingTriggered=False,
+            safeguardingAlertId=None,
+            riskLevel="GREEN",
+            riskScore=0
         )
 
 @api_router.post("/ai-buddies/reset")
