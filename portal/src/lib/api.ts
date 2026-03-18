@@ -735,13 +735,16 @@ export interface ShiftSwap {
 }
 
 export interface TeamMember {
-  _id: string;
+  _id?: string;
   id?: string;
+  user_id?: string;
   name: string;
   email?: string;
   role: string;
   status?: string;
   is_supervisor?: boolean;
+  specialization?: string;
+  phone?: string;
 }
 
 export interface StaffNote {

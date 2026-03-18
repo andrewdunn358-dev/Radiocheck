@@ -1,17 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
-import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation } from '@/lib/api';
+import useWebRTCPhone from '@/hooks/useWebRTCPhone';
+import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation, LiveChatMessage } from '@/lib/api';
 import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, MessageSquare, Briefcase, Phone,
   Calendar, Users, FileText, Shield, LogOut, Bell, Volume2, VolumeX,
   CheckCircle, Clock, User, ChevronRight, RefreshCw, X, Send,
-  Plus, Edit, Trash2, ChevronLeft, ArrowLeftRight, Eye, PhoneCall, Wifi, WifiOff
+  Plus, Edit, Trash2, ChevronLeft, ArrowLeftRight, Eye, PhoneCall, Wifi, WifiOff,
+  PhoneIncoming, PhoneOff, Mic, MicOff
 } from 'lucide-react';
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
+
+// Get API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
 
 export default function StaffPortalPage() {
   const { user, profile, token, isLoading, login, logout, updateStatus } = useStaffAuth();
@@ -26,9 +31,34 @@ export default function StaffPortalPage() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Phone/WebRTC state
+  // Phone/WebRTC state - now using the hook
   const [phoneStatus, setPhoneStatus] = useState<'connecting' | 'ready' | 'error' | 'unavailable'>('connecting');
   const [chatConnected, setChatConnected] = useState(false);
+
+  // Initialize WebRTC Phone
+  const webrtcPhone = useWebRTCPhone({
+    serverUrl: API_URL,
+    userId: user?.id,
+    userType: user?.role === 'counsellor' ? 'counsellor' : 'peer',
+    userName: user?.name,
+    enabled: !!token && !!user,
+  });
+
+  // Sync phone status from WebRTC hook
+  useEffect(() => {
+    if (webrtcPhone.isRegistered) {
+      setPhoneStatus('ready');
+      setChatConnected(true);
+    } else if (webrtcPhone.status === 'error') {
+      setPhoneStatus('error');
+      setChatConnected(false);
+    } else if (webrtcPhone.status === 'connecting') {
+      setPhoneStatus('connecting');
+    } else {
+      setPhoneStatus('unavailable');
+      setChatConnected(false);
+    }
+  }, [webrtcPhone.isRegistered, webrtcPhone.status]);
 
   // Data state
   const [safeguardingAlerts, setSafeguardingAlerts] = useState<SafeguardingAlert[]>([]);
@@ -170,11 +200,6 @@ export default function StaffPortalPage() {
       if (user?.is_supervisor) {
         loadEscalations();
       }
-
-      // Check phone/Twilio status
-      checkPhoneStatus();
-      // Mark chat as connected since we're polling
-      setChatConnected(true);
 
       // Poll for alerts every 30 seconds
       const alertInterval = setInterval(loadAlerts, 30000);
@@ -403,23 +428,6 @@ export default function StaffPortalPage() {
     }
   };
 
-  // Phone status check
-  const checkPhoneStatus = async () => {
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
-      const response = await fetch(`${API_URL}/api/twilio/status`);
-      const status = await response.json();
-      if (status.configured) {
-        setPhoneStatus('ready');
-      } else {
-        setPhoneStatus('unavailable');
-      }
-    } catch (err) {
-      console.error('Failed to check phone status:', err);
-      setPhoneStatus('error');
-    }
-  };
-
   // Calendar helpers
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -563,6 +571,67 @@ export default function StaffPortalPage() {
 
   return (
     <div className="min-h-screen flex bg-primary-dark">
+      {/* Hidden audio element for WebRTC calls */}
+      <audio id="remote-audio" autoPlay playsInline />
+      
+      {/* Incoming Call Modal */}
+      {webrtcPhone.hasIncomingCall && webrtcPhone.callerInfo && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+            <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6 animate-pulse">
+              <PhoneIncoming className="w-10 h-10 text-green-400" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Incoming Call</h2>
+            <p className="text-gray-400 mb-6">{webrtcPhone.callerInfo.name}</p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={webrtcPhone.rejectCall}
+                className="px-6 py-3 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center gap-2"
+              >
+                <PhoneOff className="w-5 h-5" />
+                Decline
+              </button>
+              <button
+                onClick={webrtcPhone.answerCall}
+                className="px-6 py-3 bg-green-500 text-white rounded-full hover:bg-green-600 flex items-center gap-2"
+              >
+                <Phone className="w-5 h-5" />
+                Answer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Call UI */}
+      {webrtcPhone.isInCall && (
+        <div className="fixed bottom-4 right-4 bg-card rounded-xl p-4 shadow-lg z-40 border border-border">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+              <Phone className="w-6 h-6 text-green-400" />
+            </div>
+            <div>
+              <p className="font-semibold">In Call</p>
+              <p className="text-sm text-gray-400">{webrtcPhone.formattedDuration}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={webrtcPhone.toggleMute}
+                className={`p-2 rounded-full ${webrtcPhone.isMuted ? 'bg-red-500' : 'bg-gray-600'}`}
+              >
+                {webrtcPhone.isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={webrtcPhone.endCall}
+                className="p-2 rounded-full bg-red-500 hover:bg-red-600"
+              >
+                <PhoneOff className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border flex flex-col">
         <div className="p-6 border-b border-border">
@@ -1209,6 +1278,16 @@ export default function StaffPortalPage() {
                         <p className="font-semibold">{member.name}</p>
                         <p className="text-xs text-gray-400 capitalize">{member.role}</p>
                       </div>
+                      {/* Call button for available members */}
+                      {member.status === 'available' && member.user_id !== user?.id && webrtcPhone.isRegistered && (
+                        <button
+                          onClick={() => member.user_id && webrtcPhone.makeCall(member.user_id)}
+                          className="p-2 bg-green-500 hover:bg-green-600 rounded-lg text-white"
+                          title="Call this team member"
+                        >
+                          <Phone className="w-4 h-4" />
+                        </button>
+                      )}
                       <div className={`w-3 h-3 rounded-full ${
                         member.status === 'available' ? 'bg-green-500' :
                         member.status === 'busy' ? 'bg-yellow-500' :
