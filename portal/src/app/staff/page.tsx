@@ -273,6 +273,8 @@ export default function StaffPortalPage() {
               <label className="block text-sm text-gray-400 mb-2">Email Address</label>
               <input
                 type="email"
+                name="email"
+                autoComplete="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 required
@@ -284,6 +286,8 @@ export default function StaffPortalPage() {
               <label className="block text-sm text-gray-400 mb-2">Password</label>
               <input
                 type="password"
+                name="password"
+                autoComplete="current-password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 required

@@ -310,9 +310,9 @@ export interface ModuleAdminResponse extends ModuleDetail {}
 // ============================================
 
 export const staffApi = {
-  // Auth
+  // Auth - uses the main auth endpoint
   login: (email: string, password: string) =>
-    fetchAPI<StaffLoginResponse>('/staff/login', {
+    fetchAPI<StaffLoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
