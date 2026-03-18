@@ -292,10 +292,14 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
 
   // Initialize socket connection
   useEffect(() => {
+    console.log('[WebRTCPhone] Init check:', { serverUrl, userId, userType, userName, enabled });
+    
     if (!serverUrl || !userId || !userType || !userName || !enabled) {
+      console.log('[WebRTCPhone] Skipping init - missing params');
       return;
     }
 
+    console.log('[WebRTCPhone] Starting Socket.IO connection to:', serverUrl);
     updateStatus('connecting', 'Connecting...');
 
     const socket = io(serverUrl, {
@@ -310,7 +314,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('WebRTC Socket connected');
+      console.log('[WebRTCPhone] Socket connected! Registering...');
       socket.emit('register', {
         user_id: userId,
         user_type: userType,
@@ -320,13 +324,18 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     });
 
     socket.on('registered', (data) => {
-      console.log('Registered with WebRTC server:', data);
+      console.log('[WebRTCPhone] Registered with server:', data);
       updateStatus('online', 'Online');
       setState(prev => ({ ...prev, isRegistered: true }));
     });
 
+    socket.on('connect_error', (error) => {
+      console.error('[WebRTCPhone] Connection error:', error.message);
+      updateStatus('error', 'Connection Failed');
+    });
+
     socket.on('online_users', (users: OnlineUser[]) => {
-      console.log('Online users:', users);
+      console.log('[WebRTCPhone] Online users:', users);
       setOnlineUsers(users.filter(u => u.user_id !== userId));
     });
 
