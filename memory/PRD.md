@@ -31,6 +31,65 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 18, 2026 - New React Portal for LMS (Learner + Admin)
+
+**New Unified React Portal (`/app/portal/`)**
+Created a modern Next.js 14 application to replace the legacy vanilla JS LMS portals:
+
+**Structure:**
+```
+/app/portal/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx           # Landing page with portal selector
+│   │   ├── layout.tsx         # Root layout
+│   │   ├── globals.css        # Tailwind + custom styles
+│   │   ├── learning/          # LMS Learner Portal
+│   │   │   ├── layout.tsx     # Auth provider wrapper
+│   │   │   └── page.tsx       # Main learner dashboard
+│   │   └── lms-admin/         # LMS Admin Portal  
+│   │       ├── layout.tsx     # Admin auth provider wrapper
+│   │       └── page.tsx       # Admin dashboard
+│   ├── hooks/
+│   │   ├── useLearnerAuth.tsx # Learner auth context
+│   │   └── useAdminAuth.tsx   # Admin auth context
+│   └── lib/
+│       └── api.ts             # Typed API client for all endpoints
+├── package.json               # Next.js 14, React 18, TypeScript, Tailwind
+└── tailwind.config.ts         # Custom colors matching Radio Check branding
+```
+
+**Features Implemented:**
+
+**LMS Learner Portal (`/learning`):**
+- Landing page with course overview and stats
+- Login modal with password recovery flow
+- Set password flow for newly approved learners
+- Registration interest form
+- Dashboard with progress circle and module grid
+- Module cards with completion status, locks, and critical badges
+- Certificate card when course complete
+
+**LMS Admin Portal (`/lms-admin`):**
+- Admin login with role validation
+- Sidebar navigation
+- Dashboard with stats (pending registrations, learners, completed, certificates)
+- Registrations tab with approve/reject workflow
+- Learners tab with progress bars, password reset, delete
+- Add learner manually modal
+- Course modules view
+- Certificates view
+
+**Benefits over vanilla JS:**
+- TypeScript for type safety
+- React components for reusability
+- Shared auth hooks and API client
+- Modern Tailwind CSS styling
+- Easy to extend with Staff Portal later
+- Ready for Vercel deployment
+
+---
+
 ### Session: March 18, 2026 - Admin Portal Bug Fixes & Audit Logs UI
 
 **Bug Fix: AI Usage Dashboard `authToken` Error**

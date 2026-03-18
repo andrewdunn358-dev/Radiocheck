@@ -1,0 +1,57 @@
+{
+  "pages": {
+    "/_not-found/page": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-24a270b5b0bed3f7.js",
+      "static/chunks/23-5093ff7c951ff2bb.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/app/_not-found/page-59b9d7f46a1f7190.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-24a270b5b0bed3f7.js",
+      "static/chunks/23-5093ff7c951ff2bb.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/css/8ce57d024c3bcb61.css",
+      "static/chunks/app/layout-e8c52a2c0ef41799.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-24a270b5b0bed3f7.js",
+      "static/chunks/23-5093ff7c951ff2bb.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/231-1a805effe9db92f0.js",
+      "static/chunks/app/page-8a3147ce4b9fd63c.js"
+    ],
+    "/learning/page": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-24a270b5b0bed3f7.js",
+      "static/chunks/23-5093ff7c951ff2bb.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/231-1a805effe9db92f0.js",
+      "static/chunks/app/learning/page-4e0431a1772693e8.js"
+    ],
+    "/learning/layout": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-24a270b5b0bed3f7.js",
+      "static/chunks/23-5093ff7c951ff2bb.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/app/learning/layout-be3d3b87e0882de0.js"
+    ],
+    "/lms-admin/page": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-24a270b5b0bed3f7.js",
+      "static/chunks/23-5093ff7c951ff2bb.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/231-1a805effe9db92f0.js",
+      "static/chunks/app/lms-admin/page-be4fde5535b37f9a.js"
+    ],
+    "/lms-admin/layout": [
+      "static/chunks/webpack-1796d5ecd61cbd74.js",
+      "static/chunks/fd9d1056-24a270b5b0bed3f7.js",
+      "static/chunks/23-5093ff7c951ff2bb.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/app/lms-admin/layout-7909939c1b6368de.js"
+    ]
+  }
+}
