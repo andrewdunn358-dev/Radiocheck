@@ -26,8 +26,8 @@ const RESOURCES: Resource[] = [
   },
   {
     title: "Sisters in Service",
-    description: "Network for female veterans in healthcare",
-    fullDescription: "Sisters in Service provides a network specifically for female veterans working in healthcare. They offer emotional support, career development, and peer mentorship programmes that pair service leavers with mentors who've made similar transitions.",
+    description: "Network for women veterans in healthcare",
+    fullDescription: "Sisters in Service provides a network specifically for women veterans working in healthcare. They offer emotional support, career development, and peer mentorship programmes that pair service leavers with mentors who've made similar transitions.",
     url: "https://sistersinservice.org.uk",
     icon: "medkit",
     category: "support"
@@ -43,7 +43,7 @@ const RESOURCES: Resource[] = [
   {
     title: "Female Veterans Transformation Programme",
     description: "Government initiative for better support",
-    fullDescription: "A government-backed programme working to transform services for female veterans. They consult directly with women veterans to understand their needs and improve support across housing, employment, and health.",
+    fullDescription: "A government-backed programme working to transform services for women veterans. They consult directly with women veterans to understand their needs and improve support across housing, employment, and health.",
     url: "https://www.fvtp.org.uk",
     icon: "trending-up",
     category: "support"

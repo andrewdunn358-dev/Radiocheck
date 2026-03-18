@@ -1545,7 +1545,7 @@ Suicide is a permanent solution to temporary problems, but in the moment of cris
 **UK Statistics:**
 - Approximately 5,000 suicides per year in England
 - ~2 veteran suicides per week
-- Male suicide rate is 3x female rate
+- Male suicide rate is 3x women's rate
 - Veterans under 25 are at highest risk
 - 75% of suicides are male
 
@@ -3405,7 +3405,7 @@ Mark: "I know she's right. I know I need to stop. But I don't know how. I've tri
 
 ### The Scenario
 
-Emma, 40, is a female veteran you've been supporting. She's been opening up about PTSD from her service and difficulties with her current partner.
+Emma, 40, is a woman veteran you've been supporting. She's been opening up about PTSD from her service and difficulties with her current partner.
 
 Today she says: "Things have been worse with Steve. He's been drinking more and getting angry. Last night he pushed me against the wall. He said he was sorry, but... this isn't the first time. I don't know what to do. Please don't tell anyone - I just needed to talk."
 

@@ -1337,7 +1337,7 @@ If someone tells you they're being abused:
 ## Safeguarding Scenarios
 
 ### Scenario 1: Domestic Abuse
-A female veteran you support tells you her partner controls all their money, monitors her phone, and has recently started pushing her during arguments.
+A woman veteran you support tells you her partner controls all their money, monitors her phone, and has recently started pushing her during arguments.
 
 **Response:**
 - Listen without judgment
@@ -1536,7 +1536,7 @@ As peer supporters, we must provide equal, respectful support regardless of thes
 
 People don't belong to just one group. Intersectionality recognises how different aspects of identity combine:
 
-**Example:** A Black female veteran may experience:
+**Example:** A Black woman veteran may experience:
 - Racism
 - Sexism
 - Military-specific challenges
@@ -1560,7 +1560,7 @@ These overlap and interact, creating a unique experience that can't be understoo
 - Higher rates of Military Sexual Trauma (MST)
 - PTSD may present differently
 - Childcare responsibilities during/after service
-- Less access to female-specific support
+- Less access to women-specific support
 - Feeling unwelcome in veteran spaces
 - Reproductive health issues from service
 
@@ -1576,8 +1576,8 @@ These overlap and interact, creating a unique experience that can't be understoo
 - **Use inclusive language** - "Veterans" not "servicemen"
 - **Take experience seriously** - Don't minimise women's service
 - **Be aware of MST** - High prevalence, sensitive topic
-- **Signpost to female-specific services:**
-  - Forward Assist (female veterans)
+- **Signpost to women-specific services:**
+  - Forward Assist (woman veterans)
   - Women's Royal Army Corps Association
   - Salute Her
 
@@ -1651,7 +1651,7 @@ These overlap and interact, creating a unique experience that can't be understoo
 - Racism in civilian life after service
 - May not feel welcome in veteran spaces
 - Stereotyping and assumptions
-- Intersecting identities (e.g., Black female veteran)
+- Intersecting identities (e.g., Black woman veteran)
 - Immigration issues for Commonwealth veterans
 
 ### Inclusive Practice
@@ -1763,7 +1763,7 @@ We all have unconscious biases - automatic assumptions based on stereotypes. Bei
 ### Examples in Peer Support
 
 - Assuming a young veteran had an "easy" time
-- Assuming a female veteran wasn't in combat
+- Assuming a woman veteran wasn't in combat
 - Assuming an older veteran won't engage with technology
 - Assuming a BAME veteran is from a specific country
 - Assuming a married man is straight
@@ -1872,7 +1872,7 @@ We all make mistakes. What matters is how you respond:
 In this module, you learned:
 
 - Why diversity matters in peer support
-- Challenges faced by female, LGBTQ+, BAME veterans
+- Challenges faced by women, LGBTQ+, BAME veterans
 - Impact of disabilities (visible and invisible)
 - Differences across generations
 - How to recognise and manage unconscious bias

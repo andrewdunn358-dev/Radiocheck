@@ -623,7 +623,7 @@ Veterans come from all backgrounds:
 Every veteran deserves quality peer support, regardless of who they are.
 
 ### Different Experiences, Different Needs
-- A female veteran's experience differs from a male veteran's
+- A woman veteran's experience differs from a male veteran's
 - An LGBTQ+ veteran may have faced specific challenges
 - Veterans of colour may experience racism in civilian life
 - Disabled veterans face additional barriers
@@ -719,7 +719,7 @@ We all have unconscious biases. Be aware of yours:
 
 People can belong to multiple groups, facing combined challenges.
 
-**Example:** A Black female veteran may face:
+**Example:** A Black woman veteran may face:
 - Racism AND sexism
 - Military Sexual Trauma
 - Not being seen as a "real" veteran
@@ -779,7 +779,7 @@ This module covered:
 - Why inclusive practice matters
 - Barriers faced by different groups
 - Inclusive language and avoiding assumptions
-- Supporting specific groups (female, LGBTQ+, veterans of colour, disabled veterans)
+- Supporting specific groups (women, LGBTQ+, veterans of colour, disabled veterans)
 - Understanding intersectionality
 - Creating welcoming environments
 - Responding to discrimination
@@ -813,7 +813,7 @@ This module covered:
                         "Military cross-training"
                     ],
                     "correct": "How different aspects of identity combine to create unique experiences",
-                    "explanation": "Intersectionality recognises that people can belong to multiple groups (e.g., Black female veteran) and face combined challenges from overlapping identities."
+                    "explanation": "Intersectionality recognises that people can belong to multiple groups (e.g., Black woman veteran) and face combined challenges from overlapping identities."
                 },
                 {
                     "id": "q11-3",
