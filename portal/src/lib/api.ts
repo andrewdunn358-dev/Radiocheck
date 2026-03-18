@@ -593,14 +593,20 @@ export interface PanicAlert {
 }
 
 export interface LiveChatRoom {
-  _id: string;
-  room_id: string;
-  user_id: string;
+  id?: string;  // Backend uses 'id'
+  _id?: string;
+  room_id?: string;
+  user_id?: string;
   user_name?: string;
   status: 'waiting' | 'active' | 'ended';
   staff_id?: string;
   staff_name?: string;
+  staff_type?: string;
+  safeguarding_alert_id?: string;
+  ai_session_id?: string;
+  messages?: any[];
   created_at: string;
+  ended_at?: string;
   last_message_at?: string;
   message_count?: number;
 }

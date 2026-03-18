@@ -125,18 +125,32 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateStatus = async (status: string) => {
-    if (!token || !user) return;
-    
-    // Store status locally for now - the actual endpoint requires staff ID and type
-    // which we'd need to determine from the login response
-    localStorage.setItem('staff_status', status);
-    
-    if (profile) {
-      setProfile({ ...profile, status: status as StaffProfile['status'] });
+    if (!token || !profile) {
+      console.error('Cannot update status: no token or profile');
+      return;
     }
     
-    // TODO: Once we have staffId and staffType from login, we can call:
-    // await staffApi.updateStatus(token, status, user.id, user.role === 'counsellor' ? 'counsellor' : 'peer');
+    try {
+      // Call the actual API endpoint
+      const staffType = profile.role === 'counsellor' ? 'counsellor' : 'peer';
+      const staffId = profile.id || (profile as any)._id;
+      
+      if (!staffId) {
+        console.error('Cannot update status: no staff ID in profile');
+        return;
+      }
+      
+      await staffApi.updateStatus(token, status, staffId, staffType);
+      
+      // Update local state
+      setProfile({ ...profile, status: status as StaffProfile['status'] });
+      localStorage.setItem('staff_status', status);
+      
+      console.log('Status updated to:', status);
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      throw error;
+    }
   };
 
   const refreshProfile = async () => {

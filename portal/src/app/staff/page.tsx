@@ -235,8 +235,13 @@ export default function StaffPortalPage() {
   const handleJoinChat = async (room: LiveChatRoom) => {
     if (!token || !user?.id || !user?.name) return;
     try {
-      await staffApi.joinLiveChat(token, room.room_id || room._id, user.id, user.name);
-      const messages = await staffApi.getLiveChatMessages(token, room.room_id || room._id);
+      const roomId = room.id || room.room_id || room._id;
+      if (!roomId) {
+        console.error('No room ID found');
+        return;
+      }
+      await staffApi.joinLiveChat(token, roomId, user.id, user.name);
+      const messages = await staffApi.getLiveChatMessages(token, roomId);
       setActiveChatRoom(room);
       setChatMessages(messages);
       loadLiveChats();
@@ -248,9 +253,14 @@ export default function StaffPortalPage() {
   const handleSendMessage = async () => {
     if (!token || !activeChatRoom || !newMessage.trim()) return;
     try {
-      await staffApi.sendLiveChatMessage(token, activeChatRoom.room_id || activeChatRoom._id, newMessage);
+      const roomId = activeChatRoom.id || activeChatRoom.room_id || activeChatRoom._id;
+      if (!roomId) {
+        console.error('No room ID found');
+        return;
+      }
+      await staffApi.sendLiveChatMessage(token, roomId, newMessage);
       setNewMessage('');
-      const messages = await staffApi.getLiveChatMessages(token, activeChatRoom.room_id || activeChatRoom._id);
+      const messages = await staffApi.getLiveChatMessages(token, roomId);
       setChatMessages(messages);
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -260,7 +270,12 @@ export default function StaffPortalPage() {
   const handleEndChat = async () => {
     if (!token || !activeChatRoom) return;
     try {
-      await staffApi.endLiveChat(token, activeChatRoom.room_id || activeChatRoom._id);
+      const roomId = activeChatRoom.id || activeChatRoom.room_id || activeChatRoom._id;
+      if (!roomId) {
+        console.error('No room ID found');
+        return;
+      }
+      await staffApi.endLiveChat(token, roomId);
       setActiveChatRoom(null);
       setChatMessages([]);
       loadLiveChats();
