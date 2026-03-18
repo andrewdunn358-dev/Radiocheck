@@ -256,7 +256,7 @@ export default function WomenVeterans() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Sisters in Arms</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>She Served</Text>
         </View>
 
         {/* Megan AI Chat Card - TOP OF PAGE */}

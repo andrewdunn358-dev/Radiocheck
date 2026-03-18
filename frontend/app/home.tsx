@@ -73,7 +73,7 @@ interface MenuItem {
 const FALLBACK_MENU_ITEMS: MenuItem[] = [
   { title: "Need to Talk?", description: "Connect with support now", icon: "heart", color: "#3b82f6", bgColor: "#dbeafe", route: "/crisis-support", isPrimary: true },
   { title: "Talk to Peer Support", description: "Connect with those who understand", icon: "people", color: "#22c55e", bgColor: "#dcfce7", route: "/peer-support" },
-  { title: "Sisters in Arms", description: "Support for women who served", icon: "person", color: "#a855f7", bgColor: "#f3e8ff", route: "/women-veterans" },
+  { title: "She Served", description: "Your service matters. So do you.", icon: "person", color: "#a855f7", bgColor: "#f3e8ff", route: "/women-veterans" },
   { title: "Money & Benefits", description: "UC, PIP, discounts & debt help", icon: "cash", color: "#059669", bgColor: "#d1fae5", route: "/money-benefits" },
   { title: "Warfare on Lawfare", description: "Support for historical investigations", icon: "shield", color: "#6366f1", bgColor: "#e0e7ff", route: "/historical-investigations" },
   { title: "Support Organisations", description: "Directory of veteran services", icon: "list", color: "#f59e0b", bgColor: "#fef3c7", route: "/organizations" },
