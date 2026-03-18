@@ -8274,7 +8274,7 @@ async function loadAIUsageData() {
     
     try {
         // Fetch usage summary
-        const summaryRes = await fetch(`${API_URL}/admin/ai-usage/summary?days=${days}`, {
+        const summaryRes = await fetch(`${CONFIG.API_URL}/api/admin/ai-usage/summary?days=${days}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         
@@ -8284,7 +8284,7 @@ async function loadAIUsageData() {
         }
         
         // Fetch usage by character
-        const charRes = await fetch(`${API_URL}/admin/ai-usage/by-character?days=${days}`, {
+        const charRes = await fetch(`${CONFIG.API_URL}/api/admin/ai-usage/by-character?days=${days}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         
@@ -8294,7 +8294,7 @@ async function loadAIUsageData() {
         }
         
         // Fetch daily usage for chart
-        const dailyRes = await fetch(`${API_URL}/admin/ai-usage/daily?days=${Math.min(days, 30)}`, {
+        const dailyRes = await fetch(`${CONFIG.API_URL}/api/admin/ai-usage/daily?days=${Math.min(days, 30)}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         
