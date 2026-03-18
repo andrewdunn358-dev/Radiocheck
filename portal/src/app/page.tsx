@@ -15,7 +15,7 @@ export default function HomePage() {
           <p className="text-gray-400">Training & Administration Platform</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
           <Link 
             href="/learning"
             className="bg-card border border-border rounded-xl p-8 hover:border-secondary/50 transition-all group"
@@ -26,6 +26,19 @@ export default function HomePage() {
             <h2 className="text-xl font-semibold mb-2">Peer to Peer Training</h2>
             <p className="text-gray-400 text-sm">
               Access your training modules, quizzes, and certificates
+            </p>
+          </Link>
+
+          <Link 
+            href="/staff"
+            className="bg-card border border-border rounded-xl p-8 hover:border-secondary/50 transition-all group"
+          >
+            <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+              <Users className="w-8 h-8 text-blue-400" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Staff Portal</h2>
+            <p className="text-gray-400 text-sm">
+              Counsellors & peer supporters dashboard
             </p>
           </Link>
 

@@ -19,6 +19,16 @@
       "source": "/:path*", 
       "has": [{ "type": "host", "value": "lms-admin.radiocheck.me" }],
       "destination": "/lms-admin/:path*"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "staff.radiocheck.me" }],
+      "destination": "/staff"
+    },
+    {
+      "source": "/:path*", 
+      "has": [{ "type": "host", "value": "staff.radiocheck.me" }],
+      "destination": "/staff/:path*"
     }
   ]
 }

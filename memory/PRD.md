@@ -31,6 +31,59 @@ Build "Radio Check," a mental health and peer support application for veterans a
 
 ## What's Been Implemented (March 2026)
 
+### Session: March 18, 2026 - New Unified React Portal (LMS + Staff)
+
+**NEW: Staff Portal in React (`/app/portal/src/app/staff/`)**
+
+Built a complete Staff Portal with the following features:
+
+**Implemented Tabs:**
+1. **Dashboard** - Stats overview (alerts, chats, cases, callbacks), recent safeguarding alerts
+2. **Alerts** - Full safeguarding alert management with acknowledge/resolve actions
+3. **Live Support** - Live chat room list with join/continue functionality, real-time chat modal
+4. **Cases** - Cases table with risk levels, status, assignment
+5. **Callbacks** - Callback request management with take/complete actions
+6. **Rota** - Placeholder for shift calendar
+7. **Team** - Placeholder for team on duty
+8. **Notes** - Placeholder for notes
+9. **Supervision** - Placeholder for supervisors only
+
+**Features:**
+- Staff login with session management (2hr timeout)
+- Status selector (available/busy/offline)
+- Real-time polling for alerts (30 sec interval)
+- Badge counts on navigation for active items
+- Sound toggle for alert notifications
+- Live chat modal with message send/receive
+- Risk level color coding throughout
+
+**API Client Extended:**
+- Added 45+ staff portal API endpoint methods
+- Full TypeScript types for all staff portal data models
+- Shared auth hook with activity tracking
+
+**Files Created:**
+- `/app/portal/src/app/staff/layout.tsx`
+- `/app/portal/src/app/staff/page.tsx` (~650 lines)
+- `/app/portal/src/hooks/useStaffAuth.tsx`
+- Extended `/app/portal/src/lib/api.ts` with staff types and methods
+
+**Vercel Routing Updated:**
+- `staff.radiocheck.me` → `/staff`
+
+---
+
+### Session: March 18, 2026 - Portal Audit Document
+
+Created comprehensive audit of legacy vanilla JS portals:
+- `/app/memory/PORTAL_MIGRATION_AUDIT.md`
+- Documents all 270 admin functions and 120 staff functions
+- Lists all 140 API endpoints to implement
+- Identifies high-risk areas (WebRTC, real-time alerts, live chat)
+- Provides migration priority order
+
+---
+
 ### Session: March 18, 2026 - New React Portal for LMS (Learner + Admin)
 
 **New Unified React Portal (`/app/portal/`)**

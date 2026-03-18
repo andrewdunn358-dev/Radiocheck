@@ -304,3 +304,377 @@ export interface ActionResponse {
 }
 
 export interface ModuleAdminResponse extends ModuleDetail {}
+
+// ============================================
+// STAFF PORTAL API
+// ============================================
+
+export const staffApi = {
+  // Auth
+  login: (email: string, password: string) =>
+    fetchAPI<StaffLoginResponse>('/staff/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+
+  // Profile & Status
+  getProfile: (token: string) =>
+    fetchAPI<StaffProfile>('/staff/profile', { token }),
+  updateStatus: (token: string, status: string) =>
+    fetchAPI<ActionResponse>('/staff/status', {
+      token,
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+  // Safeguarding Alerts
+  getSafeguardingAlerts: (token: string) =>
+    fetchAPI<SafeguardingAlert[]>('/safeguarding-alerts', { token }),
+  acknowledgeSafeguardingAlert: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/safeguarding-alerts/${id}/acknowledge`, { token, method: 'PUT' }),
+  resolveSafeguardingAlert: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/safeguarding-alerts/${id}/resolve`, { token, method: 'PUT' }),
+
+  // Panic Alerts
+  getPanicAlerts: (token: string) =>
+    fetchAPI<PanicAlert[]>('/panic-alerts', { token }),
+  acknowledgePanicAlert: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/panic-alerts/${id}/acknowledge`, { token, method: 'PUT' }),
+  resolvePanicAlert: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/panic-alerts/${id}/resolve`, { token, method: 'PUT' }),
+  triggerPanic: (token: string) =>
+    fetchAPI<ActionResponse>('/panic/trigger', { token, method: 'POST' }),
+
+  // Live Chat
+  getLiveChatRooms: (token: string) =>
+    fetchAPI<LiveChatRoom[]>('/live-chat/rooms', { token }),
+  getLiveChatMessages: (token: string, roomId: string) =>
+    fetchAPI<LiveChatMessage[]>(`/live-chat/rooms/${roomId}/messages`, { token }),
+  sendLiveChatMessage: (token: string, roomId: string, message: string) =>
+    fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/messages`, {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+  joinLiveChat: (token: string, roomId: string) =>
+    fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/join`, { token, method: 'POST' }),
+  endLiveChat: (token: string, roomId: string) =>
+    fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/end`, { token, method: 'PUT' }),
+
+  // Cases
+  getCases: (token: string) =>
+    fetchAPI<CasesResponse>('/cases', { token }),
+  getCase: (token: string, id: string) =>
+    fetchAPI<CaseDetail>(`/cases/${id}`, { token }),
+  createCase: (token: string, data: CreateCaseData) =>
+    fetchAPI<ActionResponse>('/cases', { token, method: 'POST', body: JSON.stringify(data) }),
+  addCaseNote: (token: string, caseId: string, note: string) =>
+    fetchAPI<ActionResponse>(`/cases/${caseId}/notes`, {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    }),
+  updateSafetyPlan: (token: string, caseId: string, plan: string) =>
+    fetchAPI<ActionResponse>(`/cases/${caseId}/safety-plan`, {
+      token,
+      method: 'PUT',
+      body: JSON.stringify({ safety_plan: plan }),
+    }),
+  escalateCase: (token: string, caseId: string, reason: string) =>
+    fetchAPI<ActionResponse>(`/cases/${caseId}/escalate`, {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  getMorningReview: (token: string) =>
+    fetchAPI<CasesResponse>('/cases/morning-review', { token }),
+
+  // Callbacks
+  getCallbacks: (token: string) =>
+    fetchAPI<Callback[]>('/callbacks', { token }),
+  takeCallback: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/callbacks/${id}/take`, { token, method: 'PUT' }),
+  completeCallback: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/callbacks/${id}/complete`, { token, method: 'PUT' }),
+  releaseCallback: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/callbacks/${id}/release`, { token, method: 'PUT' }),
+
+  // Shifts/Rota
+  getShifts: (token: string) =>
+    fetchAPI<Shift[]>('/shifts', { token }),
+  createShift: (token: string, data: CreateShiftData) =>
+    fetchAPI<ActionResponse>('/shifts', { token, method: 'POST', body: JSON.stringify(data) }),
+  updateShift: (token: string, id: string, data: Partial<CreateShiftData>) =>
+    fetchAPI<ActionResponse>(`/shifts/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
+  deleteShift: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/shifts/${id}`, { token, method: 'DELETE' }),
+  getSwapRequests: (token: string) =>
+    fetchAPI<ShiftSwap[]>('/shift-swaps', { token }),
+  createSwapRequest: (token: string, shiftId: string, reason: string) =>
+    fetchAPI<ActionResponse>('/shift-swaps', {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ shift_id: shiftId, reason }),
+    }),
+
+  // Team
+  getTeamOnDuty: (token: string) =>
+    fetchAPI<TeamMember[]>('/staff/on-duty', { token }),
+  getStaffList: (token: string) =>
+    fetchAPI<TeamMember[]>('/staff/team', { token }),
+
+  // Notes
+  getNotes: (token: string) =>
+    fetchAPI<StaffNote[]>('/notes', { token }),
+  createNote: (token: string, data: CreateNoteData) =>
+    fetchAPI<ActionResponse>('/notes', { token, method: 'POST', body: JSON.stringify(data) }),
+  updateNote: (token: string, id: string, data: Partial<CreateNoteData>) =>
+    fetchAPI<ActionResponse>(`/notes/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
+  deleteNote: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/notes/${id}`, { token, method: 'DELETE' }),
+
+  // Supervision (supervisors only)
+  getEscalations: (token: string) =>
+    fetchAPI<Escalation[]>('/escalations', { token }),
+  acknowledgeEscalation: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/escalations/${id}/acknowledge`, { token, method: 'PUT' }),
+  resolveEscalation: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/escalations/${id}/resolve`, { token, method: 'PUT' }),
+  getSupervisionNotes: (token: string, staffId?: string) =>
+    fetchAPI<SupervisionNote[]>(`/supervision/notes${staffId ? `?staff_id=${staffId}` : ''}`, { token }),
+  createSupervisionNote: (token: string, data: CreateSupervisionNoteData) =>
+    fetchAPI<ActionResponse>('/supervision/notes', { token, method: 'POST', body: JSON.stringify(data) }),
+};
+
+// Staff Portal Types
+export interface StaffLoginResponse {
+  token: string;
+  user: StaffUser;
+}
+
+export interface StaffUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'counsellor' | 'peer' | 'admin';
+  is_supervisor?: boolean;
+}
+
+export interface StaffProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: 'available' | 'busy' | 'offline';
+  phone?: string;
+  is_supervisor?: boolean;
+  specializations?: string[];
+}
+
+export interface SafeguardingAlert {
+  _id: string;
+  id?: string;
+  user_id?: string;
+  user_name?: string;
+  session_id?: string;
+  character_id?: string;
+  character_name?: string;
+  trigger_message: string;
+  trigger_phrases?: string[];
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  status: 'active' | 'acknowledged' | 'resolved';
+  acknowledged_by?: string;
+  acknowledged_at?: string;
+  resolved_by?: string;
+  resolved_at?: string;
+  created_at: string;
+  notes?: string;
+  conversation_history?: Array<{ role: string; content: string }>;
+}
+
+export interface PanicAlert {
+  _id: string;
+  user_id?: string;
+  user_name?: string;
+  location?: string;
+  status: 'active' | 'acknowledged' | 'resolved';
+  responded_by_name?: string;
+  created_at: string;
+}
+
+export interface LiveChatRoom {
+  _id: string;
+  room_id: string;
+  user_id: string;
+  user_name?: string;
+  status: 'waiting' | 'active' | 'ended';
+  staff_id?: string;
+  staff_name?: string;
+  created_at: string;
+  last_message_at?: string;
+  message_count?: number;
+}
+
+export interface LiveChatMessage {
+  _id: string;
+  room_id: string;
+  sender_type: 'user' | 'staff';
+  sender_name: string;
+  message: string;
+  created_at: string;
+}
+
+export interface CasesResponse {
+  cases: Case[];
+}
+
+export interface Case {
+  _id: string;
+  case_number: string;
+  user_id?: string;
+  user_name?: string;
+  status: 'open' | 'in_progress' | 'escalated' | 'closed';
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  assigned_to?: string;
+  assigned_to_name?: string;
+  created_at: string;
+  updated_at: string;
+  summary?: string;
+}
+
+export interface CaseDetail extends Case {
+  notes: CaseNote[];
+  safety_plan?: string;
+  referrals?: Referral[];
+  timeline?: TimelineEvent[];
+}
+
+export interface CaseNote {
+  _id: string;
+  note: string;
+  created_by: string;
+  created_by_name?: string;
+  created_at: string;
+}
+
+export interface Referral {
+  _id: string;
+  type: string;
+  organization?: string;
+  status: string;
+  created_at: string;
+}
+
+export interface TimelineEvent {
+  type: string;
+  description: string;
+  created_at: string;
+  created_by?: string;
+}
+
+export interface CreateCaseData {
+  user_id?: string;
+  user_name?: string;
+  summary: string;
+  risk_level: string;
+  source?: string;
+  alert_id?: string;
+}
+
+export interface Callback {
+  _id: string;
+  user_id?: string;
+  user_name: string;
+  phone: string;
+  reason?: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'pending' | 'taken' | 'completed';
+  taken_by?: string;
+  taken_by_name?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface Shift {
+  _id: string;
+  staff_id: string;
+  staff_name?: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: 'morning' | 'afternoon' | 'evening' | 'night';
+  notes?: string;
+}
+
+export interface CreateShiftData {
+  date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: string;
+  notes?: string;
+}
+
+export interface ShiftSwap {
+  _id: string;
+  shift_id: string;
+  requested_by: string;
+  requested_by_name?: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
+export interface TeamMember {
+  _id: string;
+  id?: string;
+  name: string;
+  email?: string;
+  role: string;
+  status?: string;
+  is_supervisor?: boolean;
+}
+
+export interface StaffNote {
+  _id: string;
+  title: string;
+  content: string;
+  is_shared: boolean;
+  shared_with?: string[];
+  created_by: string;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateNoteData {
+  title: string;
+  content: string;
+  is_shared?: boolean;
+  shared_with?: string[];
+}
+
+export interface Escalation {
+  _id: string;
+  case_id?: string;
+  reason: string;
+  escalated_by: string;
+  escalated_by_name?: string;
+  status: 'pending' | 'acknowledged' | 'resolved';
+  created_at: string;
+}
+
+export interface SupervisionNote {
+  _id: string;
+  staff_id: string;
+  staff_name?: string;
+  note: string;
+  created_by: string;
+  created_by_name?: string;
+  created_at: string;
+}
+
+export interface CreateSupervisionNoteData {
+  staff_id: string;
+  note: string;
+}
+
