@@ -307,14 +307,19 @@ export default function StaffPortalPage() {
 
   // Shift actions
   const handleAddShift = async () => {
-    if (!token || !newShiftDate || !newShiftStart || !newShiftEnd) return;
+    if (!token || !user || !newShiftDate || !newShiftStart || !newShiftEnd) return;
     try {
-      await staffApi.createShift(token, {
-        date: newShiftDate,
-        start_time: newShiftStart,
-        end_time: newShiftEnd,
-        shift_type: newShiftType,
-      });
+      await staffApi.createShift(
+        token, 
+        {
+          date: newShiftDate,
+          start_time: newShiftStart,
+          end_time: newShiftEnd,
+        },
+        user.id,
+        user.name || '',
+        user.email || ''
+      );
       setShowAddShift(false);
       setNewShiftDate('');
       setNewShiftStart('');

@@ -444,8 +444,17 @@ export const staffApi = {
     if (dateTo) params.append('date_to', dateTo);
     return fetchAPI<Shift[]>(`/shifts${params.toString() ? '?' + params.toString() : ''}`, { token });
   },
-  createShift: (token: string, data: CreateShiftData) =>
-    fetchAPI<ActionResponse>('/shifts/', { token, method: 'POST', body: JSON.stringify(data) }),
+  createShift: (token: string, data: CreateShiftData, userId: string, userName: string, userEmail: string) => {
+    const params = new URLSearchParams();
+    params.append('user_id', userId);
+    params.append('user_name', userName);
+    params.append('user_email', userEmail);
+    return fetchAPI<ActionResponse>(`/shifts/?${params.toString()}`, { 
+      token, 
+      method: 'POST', 
+      body: JSON.stringify(data) 
+    });
+  },
   updateShift: (token: string, id: string, data: Partial<CreateShiftData>) =>
     fetchAPI<ActionResponse>(`/shifts/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
   deleteShift: (token: string, id: string) =>
@@ -707,7 +716,6 @@ export interface CreateShiftData {
   date: string;
   start_time: string;
   end_time: string;
-  shift_type: string;
   notes?: string;
 }
 
