@@ -23,8 +23,9 @@ import httpx  # For IP geolocation lookup
 from collections import defaultdict
 import time
 
-# Gemini fallback via Emergent integrations
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+# Google Gemini for fallback AI
+from google import genai
+from google.genai import types
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -177,6 +178,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 # Emergent LLM Key (for local development) or OpenAI key (for production)
 EMERGENT_LLM_KEY = os.getenv("EMERGENT_LLM_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# Configure Gemini client for fallback
+gemini_client = None
+if GEMINI_API_KEY:
+    gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # AI Battle Buddies Kill Switch - set AI_BUDDIES_DISABLED=true in env to disable
 AI_BUDDIES_DISABLED = os.getenv("AI_BUDDIES_DISABLED", "false").lower() == "true"
@@ -5115,22 +5122,29 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         except Exception as openai_error:
             logging.warning(f"OpenAI failed, attempting Gemini fallback: {str(openai_error)}")
             
-            # Try Gemini as fallback
-            try:
-                gemini_chat = LlmChat(
-                    api_key=EMERGENT_LLM_KEY,
-                    session_id=f"gemini-fallback-{request.sessionId}",
-                    system_message=system_prompt
-                ).with_model("gemini", "gemini-2.0-flash")
-                
-                gemini_response = await gemini_chat.send_message(UserMessage(text=request.message))
-                reply = gemini_response
-                ai_provider_used = "gemini"
-                logging.info(f"AI response from Gemini (fallback) for session {request.sessionId}")
-            except Exception as gemini_error:
-                logging.error(f"Gemini fallback also failed: {str(gemini_error)}")
-                # Both failed - will be handled by outer exception
-                raise Exception(f"Both OpenAI and Gemini failed. OpenAI: {openai_error}, Gemini: {gemini_error}")
+            # Try Gemini as fallback (using user's own API key)
+            if gemini_client:
+                try:
+                    # Build conversation for Gemini
+                    gemini_contents = [system_prompt + "\n\nUser: " + request.message]
+                    
+                    gemini_response = gemini_client.models.generate_content(
+                        model="gemini-2.0-flash",
+                        contents=gemini_contents,
+                        config=types.GenerateContentConfig(
+                            max_output_tokens=250,
+                            temperature=0.5
+                        )
+                    )
+                    reply = gemini_response.text
+                    ai_provider_used = "gemini"
+                    logging.info(f"AI response from Gemini (fallback) for session {request.sessionId}")
+                except Exception as gemini_error:
+                    logging.error(f"Gemini fallback also failed: {str(gemini_error)}")
+                    raise Exception(f"Both OpenAI and Gemini failed. OpenAI: {openai_error}, Gemini: {gemini_error}")
+            else:
+                logging.error("Gemini fallback not available - no API key configured")
+                raise openai_error
         
         # If we still don't have a reply, something went wrong
         if not reply:
