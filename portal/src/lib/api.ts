@@ -317,13 +317,41 @@ export const staffApi = {
       body: JSON.stringify({ email, password }),
     }),
 
-  // Profile & Status
-  getProfile: (token: string) =>
-    fetchAPI<StaffProfile>('/staff/profile', { token }),
-  updateStatus: (token: string, status: string) =>
-    fetchAPI<ActionResponse>('/staff/status', {
+  // Profile & Status - uses counsellors/peer-supporters endpoints
+  // Must match by user_id from the login response
+  getProfile: async (token: string, userId?: string): Promise<StaffProfile | null> => {
+    try {
+      const counsellors = await fetchAPI<any[]>('/counsellors', { token });
+      if (counsellors && counsellors.length > 0) {
+        // Find by user_id if provided, otherwise return first matching
+        const match = userId 
+          ? counsellors.find((c: any) => c.user_id === userId)
+          : counsellors[0];
+        if (match) {
+          return { ...match, role: 'counsellor' } as StaffProfile;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    
+    try {
+      const peers = await fetchAPI<any[]>('/peer-supporters', { token });
+      if (peers && peers.length > 0) {
+        // Find by user_id if provided, otherwise return first matching
+        const match = userId 
+          ? peers.find((p: any) => p.user_id === userId)
+          : peers[0];
+        if (match) {
+          return { ...match, role: 'peer' } as StaffProfile;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    
+    return null;
+  },
+  updateStatus: (token: string, status: string, staffId: string, staffType: 'counsellor' | 'peer') =>
+    fetchAPI<ActionResponse>(`/${staffType === 'counsellor' ? 'counsellors' : 'peer-supporters'}/${staffId}/status`, {
       token,
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
 
@@ -331,48 +359,58 @@ export const staffApi = {
   getSafeguardingAlerts: (token: string) =>
     fetchAPI<SafeguardingAlert[]>('/safeguarding-alerts', { token }),
   acknowledgeSafeguardingAlert: (token: string, id: string) =>
-    fetchAPI<ActionResponse>(`/safeguarding-alerts/${id}/acknowledge`, { token, method: 'PUT' }),
-  resolveSafeguardingAlert: (token: string, id: string) =>
-    fetchAPI<ActionResponse>(`/safeguarding-alerts/${id}/resolve`, { token, method: 'PUT' }),
+    fetchAPI<ActionResponse>(`/safeguarding-alerts/${id}/acknowledge`, { token, method: 'PATCH' }),
+  resolveSafeguardingAlert: (token: string, id: string, notes?: string) =>
+    fetchAPI<ActionResponse>(`/safeguarding-alerts/${id}/resolve`, { 
+      token, 
+      method: 'PATCH',
+      body: notes ? JSON.stringify({ notes }) : undefined,
+    }),
 
   // Panic Alerts
   getPanicAlerts: (token: string) =>
     fetchAPI<PanicAlert[]>('/panic-alerts', { token }),
   acknowledgePanicAlert: (token: string, id: string) =>
-    fetchAPI<ActionResponse>(`/panic-alerts/${id}/acknowledge`, { token, method: 'PUT' }),
+    fetchAPI<ActionResponse>(`/panic-alerts/${id}/acknowledge`, { token, method: 'PATCH' }),
   resolvePanicAlert: (token: string, id: string) =>
-    fetchAPI<ActionResponse>(`/panic-alerts/${id}/resolve`, { token, method: 'PUT' }),
+    fetchAPI<ActionResponse>(`/panic-alerts/${id}/resolve`, { token, method: 'PATCH' }),
   triggerPanic: (token: string) =>
-    fetchAPI<ActionResponse>('/panic/trigger', { token, method: 'POST' }),
+    fetchAPI<ActionResponse>('/panic-alert', { token, method: 'POST' }),
 
   // Live Chat
   getLiveChatRooms: (token: string) =>
     fetchAPI<LiveChatRoom[]>('/live-chat/rooms', { token }),
-  getLiveChatMessages: (token: string, roomId: string) =>
-    fetchAPI<LiveChatMessage[]>(`/live-chat/rooms/${roomId}/messages`, { token }),
+  getLiveChatMessages: async (token: string, roomId: string): Promise<LiveChatMessage[]> => {
+    const response = await fetchAPI<{ messages: LiveChatMessage[] }>(`/live-chat/rooms/${roomId}/messages`, { token });
+    return response?.messages || [];
+  },
   sendLiveChatMessage: (token: string, roomId: string, message: string) =>
     fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/messages`, {
       token,
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ text: message, sender: 'staff' }),
     }),
-  joinLiveChat: (token: string, roomId: string) =>
-    fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/join`, { token, method: 'POST' }),
+  joinLiveChat: (token: string, roomId: string, staffId: string, staffName: string) =>
+    fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/join`, { 
+      token, 
+      method: 'POST',
+      body: JSON.stringify({ staff_id: staffId, staff_name: staffName }),
+    }),
   endLiveChat: (token: string, roomId: string) =>
-    fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/end`, { token, method: 'PUT' }),
+    fetchAPI<ActionResponse>(`/live-chat/rooms/${roomId}/end`, { token, method: 'POST' }),
 
   // Cases
-  getCases: (token: string) =>
-    fetchAPI<CasesResponse>('/cases', { token }),
+  getCases: (token: string, filter?: string) =>
+    fetchAPI<Case[]>(`/cases${filter ? `?status=${filter}` : ''}`, { token }),
   getCase: (token: string, id: string) =>
     fetchAPI<CaseDetail>(`/cases/${id}`, { token }),
   createCase: (token: string, data: CreateCaseData) =>
     fetchAPI<ActionResponse>('/cases', { token, method: 'POST', body: JSON.stringify(data) }),
-  addCaseNote: (token: string, caseId: string, note: string) =>
-    fetchAPI<ActionResponse>(`/cases/${caseId}/notes`, {
+  addCaseSession: (token: string, caseId: string, sessionData: any) =>
+    fetchAPI<ActionResponse>(`/cases/${caseId}/sessions`, {
       token,
       method: 'POST',
-      body: JSON.stringify({ note }),
+      body: JSON.stringify(sessionData),
     }),
   updateSafetyPlan: (token: string, caseId: string, plan: string) =>
     fetchAPI<ActionResponse>(`/cases/${caseId}/safety-plan`, {
@@ -380,30 +418,34 @@ export const staffApi = {
       method: 'PUT',
       body: JSON.stringify({ safety_plan: plan }),
     }),
-  escalateCase: (token: string, caseId: string, reason: string) =>
-    fetchAPI<ActionResponse>(`/cases/${caseId}/escalate`, {
+  addReferral: (token: string, caseId: string, referralData: any) =>
+    fetchAPI<ActionResponse>(`/cases/${caseId}/referrals`, {
       token,
       method: 'POST',
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify(referralData),
     }),
   getMorningReview: (token: string) =>
-    fetchAPI<CasesResponse>('/cases/morning-review', { token }),
+    fetchAPI<Case[]>('/cases/morning-queue', { token }),
 
   // Callbacks
   getCallbacks: (token: string) =>
     fetchAPI<Callback[]>('/callbacks', { token }),
   takeCallback: (token: string, id: string) =>
-    fetchAPI<ActionResponse>(`/callbacks/${id}/take`, { token, method: 'PUT' }),
+    fetchAPI<ActionResponse>(`/callbacks/${id}/take`, { token, method: 'PATCH' }),
   completeCallback: (token: string, id: string) =>
-    fetchAPI<ActionResponse>(`/callbacks/${id}/complete`, { token, method: 'PUT' }),
+    fetchAPI<ActionResponse>(`/callbacks/${id}/complete`, { token, method: 'PATCH' }),
   releaseCallback: (token: string, id: string) =>
-    fetchAPI<ActionResponse>(`/callbacks/${id}/release`, { token, method: 'PUT' }),
+    fetchAPI<ActionResponse>(`/callbacks/${id}/release`, { token, method: 'PATCH' }),
 
   // Shifts/Rota
-  getShifts: (token: string) =>
-    fetchAPI<Shift[]>('/shifts', { token }),
+  getShifts: (token: string, dateFrom?: string, dateTo?: string) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    return fetchAPI<Shift[]>(`/shifts${params.toString() ? '?' + params.toString() : ''}`, { token });
+  },
   createShift: (token: string, data: CreateShiftData) =>
-    fetchAPI<ActionResponse>('/shifts', { token, method: 'POST', body: JSON.stringify(data) }),
+    fetchAPI<ActionResponse>('/shifts/', { token, method: 'POST', body: JSON.stringify(data) }),
   updateShift: (token: string, id: string, data: Partial<CreateShiftData>) =>
     fetchAPI<ActionResponse>(`/shifts/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
   deleteShift: (token: string, id: string) =>
@@ -417,15 +459,25 @@ export const staffApi = {
       body: JSON.stringify({ shift_id: shiftId, reason }),
     }),
 
-  // Team
-  getTeamOnDuty: (token: string) =>
-    fetchAPI<TeamMember[]>('/staff/on-duty', { token }),
+  // Team - get counsellors and peer supporters
+  getTeamOnDuty: async (token: string): Promise<TeamMember[]> => {
+    const [counsellors, peers] = await Promise.all([
+      fetchAPI<any[]>('/counsellors', { token }).catch(() => []),
+      fetchAPI<any[]>('/peer-supporters', { token }).catch(() => []),
+    ]);
+    return [
+      ...counsellors.map((c: any) => ({ ...c, role: 'counsellor' })),
+      ...peers.map((p: any) => ({ ...p, role: 'peer' })),
+    ];
+  },
   getStaffList: (token: string) =>
-    fetchAPI<TeamMember[]>('/staff/team', { token }),
+    fetchAPI<TeamMember[]>('/staff-users', { token }),
 
   // Notes
   getNotes: (token: string) =>
-    fetchAPI<StaffNote[]>('/notes', { token }),
+    fetchAPI<StaffNote[]>('/notes?include_shared=true', { token }),
+  getNote: (token: string, id: string) =>
+    fetchAPI<StaffNote>(`/notes/${id}`, { token }),
   createNote: (token: string, data: CreateNoteData) =>
     fetchAPI<ActionResponse>('/notes', { token, method: 'POST', body: JSON.stringify(data) }),
   updateNote: (token: string, id: string, data: Partial<CreateNoteData>) =>
@@ -444,6 +496,44 @@ export const staffApi = {
     fetchAPI<SupervisionNote[]>(`/supervision/notes${staffId ? `?staff_id=${staffId}` : ''}`, { token }),
   createSupervisionNote: (token: string, data: CreateSupervisionNoteData) =>
     fetchAPI<ActionResponse>('/supervision/notes', { token, method: 'POST', body: JSON.stringify(data) }),
+
+  // Learning/Feedback
+  submitFeedback: (token: string, staffId: string, feedback: any) =>
+    fetchAPI<ActionResponse>(`/learning/feedback?staff_id=${staffId}`, {
+      token,
+      method: 'POST',
+      body: JSON.stringify(feedback),
+    }),
+
+  // WebRTC status
+  getOnlineStaff: (token: string) =>
+    fetchAPI<any>('/webrtc/online-staff', { token }),
+
+  // Twilio Phone API
+  getTwilioStatus: () =>
+    fetchAPI<{ configured: boolean; phone_number?: string; features?: { browser_calling: boolean; outbound_calls: boolean } }>('/twilio/status'),
+
+  getTwilioToken: async (staffId: string, staffName: string): Promise<{ token: string; identity: string; ttl: number } | null> => {
+    try {
+      const formData = new FormData();
+      formData.append('staff_id', staffId);
+      formData.append('staff_name', staffName);
+
+      const response = await fetch(`${API_URL}/api/twilio/token`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Token request failed');
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get Twilio token:', error);
+      return null;
+    }
+  },
+
+  getActiveCalls: (token: string) =>
+    fetchAPI<any[]>('/twilio/active-calls', { token }),
 };
 
 // Staff Portal Types
@@ -516,12 +606,13 @@ export interface LiveChatRoom {
 }
 
 export interface LiveChatMessage {
-  _id: string;
-  room_id: string;
-  sender_type: 'user' | 'staff';
-  sender_name: string;
-  message: string;
-  created_at: string;
+  id?: string;
+  _id?: string;
+  room_id?: string;
+  sender: 'user' | 'staff';  // Backend uses 'sender' not 'sender_type'
+  sender_name?: string;
+  text: string;  // Backend uses 'text' not 'message'
+  timestamp: string;  // Backend uses 'timestamp' not 'created_at'
 }
 
 export interface CasesResponse {

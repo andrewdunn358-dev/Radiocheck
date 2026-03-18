@@ -1912,9 +1912,22 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
         
         # Look up by user ID (not email - the token contains user_id)
+        # Try 'id' field first, then '_id' for older users
         user_data = await db.users.find_one({"id": user_id})
         if user_data is None:
+            # Try ObjectId lookup for older users that don't have 'id' field
+            from bson import ObjectId
+            try:
+                user_data = await db.users.find_one({"_id": ObjectId(user_id)})
+            except:
+                pass
+        
+        if user_data is None:
             raise HTTPException(status_code=401, detail="User not found")
+        
+        # Ensure we have an 'id' field for the User model
+        if 'id' not in user_data:
+            user_data['id'] = str(user_data.get('_id', user_id))
         
         return User(**user_data)
     except jwt.ExpiredSignatureError:
@@ -5973,6 +5986,37 @@ class LiveChatMessage(BaseModel):
     text: str
     sender: str  # 'user' or 'staff'
 
+@api_router.get("/live-chat/rooms")
+async def list_live_chat_rooms(current_user: User = Depends(get_current_user)):
+    """Get all active live chat rooms for staff to see and join.
+    Returns rooms from both memory and database.
+    """
+    if current_user.role not in ["admin", "supervisor", "counsellor", "peer"]:
+        raise HTTPException(status_code=403, detail="Only staff can view chat rooms")
+    
+    # Get rooms from memory (most recent)
+    memory_rooms = list(live_chat_rooms.values())
+    
+    # Also get from database (for persistence across restarts)
+    db_rooms = await db.live_chat_rooms.find(
+        {"status": {"$ne": "ended"}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Merge, preferring memory versions (have up-to-date messages)
+    room_map = {}
+    for room in db_rooms:
+        room_map[room["id"]] = room
+    for room in memory_rooms:
+        room_map[room["id"]] = room
+    
+    # Return sorted by created_at (newest first)
+    rooms = list(room_map.values())
+    rooms.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    
+    return rooms
+
+
 @api_router.post("/live-chat/rooms")
 async def create_live_chat_room(room_data: LiveChatRoomCreate):
     """Create a new live chat room for user-staff communication.
@@ -6167,7 +6211,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://safeguard-wellness.preview.emergentagent.com",
+        "https://portal-migration-1.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],

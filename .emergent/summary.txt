@@ -1,211 +1,167 @@
 <analysis>**original_problem_statement:**
-The user initiated the session by reporting a new safeguarding false positive with the Rachel AI persona, whose role is to discuss sensitive criminal justice topics. This led to a series of tasks to improve the AI's contextual understanding and robustness. The user also requested persona refinements for multiple AIs, security enhancements, and new admin features.
+The user initiated a major refactoring effort to migrate all legacy vanilla JavaScript portals (, , , ) into a single, modern, unified Next.js application. This was a direct response to the unmaintainable size of the legacy  file (over 8,400 lines).
 
-Key requests included:
-1.  **Fix Safeguarding False Positives:** Address incorrect safeguarding triggers for the Rachel persona when discussing legitimate criminal justice terms (e.g., prison, arrested) and a separate false positive from the phrase last night.
-2.  **AI Persona Updates:** Provide and implement refined persona documents for Rachel (Criminal Justice), Megan (Women's Support/MST), and Baz (Housing & Transition), including specific tone guidance and knowledge bases.
-3.  **Strengthen Privacy Boundaries:** Fix a known issue (Scenario 010) where the Tommy AI would discuss other users' conversations in general terms.
-4.  **Improve Crisis Word Detection:** Create a test suite for and improve the detection of misspelled or obfuscated crisis-related keywords (e.g., suiside, k!ll).
-5.  **Language & Content Update:** Change all instances of female to women across the application. Overhaul the Women Veterans page with a new title (She Served) and expanded content covering nine new topics beyond MST.
-6.  **Improve API Resilience:** Implement a fallback mechanism for when the primary OpenAI API is unavailable, initially using a secondary provider via the Emergent LLM Key and later switching to the user's own Gemini API key.
-7.  **AI Usage Tracking:** Create a system to track token usage and cost for both OpenAI and Gemini, and build a dashboard in the admin portal to display these metrics.
-8.  **Security Hardening:** Secure publicly accessible database seeding endpoints and create a new audit logging system.
-9.  **Bug Fix & UI Request:** Fix a JavaScript error () on the new admin dashboard and add a UI for viewing audit logs in the admin portal.
+The initial phase focused on scaffolding the new portal and migrating the LMS (Learner and Admin) sections. The current phase is migrating the mission-critical Staff Portal. The user is actively involved in deploying and testing the new portal on Vercel.
 
 **PRODUCT REQUIREMENTS:**
-1.  **(P0) Context-Aware Safeguarding:** The safeguarding system must be intelligent enough to not trigger on specialist keywords when a user is talking to an AI persona designed for that topic (e.g., prison with the criminal justice AI).
-2.  **(P0) Secure Endpoints:** All endpoints that can modify database content, especially seeding endpoints, must require admin authentication.
-3.  **(P0) AI Resilience:** The application must gracefully handle primary AI provider failures by switching to a fallback provider or presenting a helpful message with crisis support numbers.
-4.  **(P1) Admin Oversight:** Administrators must be able to monitor AI API usage and costs through a dedicated dashboard.
-5.  **(P1) Audit Trail:** A system must be in place to log critical actions (e.g., admin logins, data exports) for compliance and security.
+1.  **(P0) Feature Parity:** The new React portals must have 100% of the functionality of the old vanilla JS portals before the old ones are decommissioned.
+2.  **(P0) Unified Codebase:** All admin, staff, and LMS portals should exist within a single Next.js project located at .
+3.  **(P0) Seamless Deployment:** The new portal should be deployable to Vercel and correctly routed using subdomains (, , etc.).
+4.  **(P1) Improved Maintainability:** The new codebase should be modular, leveraging shared components, hooks, and a centralized API client to be more maintainable than the legacy monolithic JS files.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack veteran mental health platform. In this session, the safeguarding system was significantly enhanced with character-specific context awareness, preventing false positives for the Rachel (criminal justice) and Baz (housing) personas. The system's robustness was also improved by adding over 50 variations of misspelled and slang crisis terms. A major security overhaul was completed, locking down multiple public-facing data-seeding endpoints.
-
-A complete AI provider fallback system was implemented, automatically switching from OpenAI to the user's personal Gemini key in case of failure. To support this, a comprehensive AI usage and cost-tracking system was built, complete with a new dashboard in the legacy vanilla JS admin portal. The personas for Rachel, Megan, and Baz were updated with user-provided prompts, and the Women Veterans page was rebranded to She Served with significantly expanded content.
+A new, unified Next.js 14 portal has been created at . This portal contains the newly migrated React versions of the LMS Learner, LMS Admin, and Staff portals. A comprehensive audit of the legacy portals was performed and documented to guide the migration. The new portal is being deployed to a separate Vercel project that points to the  subdirectory of the main GitHub repository. The user is actively testing this Vercel deployment and providing real-time feedback. The legacy portals (, ) still exist and are serving as the production environment.
 
 **Last working item**:
--   **Last item agent was working**: The agent was in the process of fixing a JavaScript  () in the newly created AI Usage dashboard within the legacy admin portal (). The user also requested that the newly created audit log backend be surfaced in the admin portal's Logs tab.
--   **Status**: IN PROGRESS
+-   **Last item agent was working**: Fixing a series of  errors in the new React Staff Portal. The user reported that critical data like the on-duty team list, staff profile, and status updates were failing. The root cause was that the API client () was using incorrect, assumed API endpoint paths (e.g., ) instead of the actual paths defined in the backend (e.g., ).
+-   **Status**: USER VERIFICATION PENDING
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: manual testing by curl. The agent needs to fix the JavaScript error by using the correct variable ( and ) for API calls in . After the fix, the agent should confirm the admin portal's AI Usage tab loads data correctly without console errors.
--   **User Testing Done**: N
+-   **Which testing method agent to use?**: Frontend testing agent. The agent should be instructed to log in to the staff portal and verify that all tabs (especially Dashboard, Team, and the user profile/status in the header) load data without any 404 errors in the console.
+-   **User Testing Done**: Y (User discovered and reported the 404 errors).
 
 **All Pending/In progress Issue list**:
--   Issue 1:  in  (P0, HIGHEST)
--   Issue 2: Jitsi video chat in events is not working (P0, BLOCKED on user)
--   Issue 3: In-chat call still not working (P0, Recurring)
--   Issue 4: Live support requests are not reliably appearing in the staff portal (P0, Recurring)
+-   Issue 1: Multiple  errors in the new React Staff Portal (P0, HIGHEST)
+-   Issue 2: In-chat call (WebRTC/Twilio) is not working in the new React portal (P0, Recurring)
+-   Issue 3: Live support requests are not reliably appearing in the staff portal (P0, Recurring)
+-   Issue 4: Jitsi video chat in events is not working (P0, BLOCKED on user)
 -   Issue 5: Staff status does not reset to available after a call/chat (P1, Recurring)
 -   Issue 6: AI Character Sort Order is incorrect (P2, Recurring)
 
 **Issues Detail**:
--   **Issue 1:  in **
-    -   **Attempted fixes**: The agent identified that  was used instead of  and fixed it. However, a similar error for  was reported by the user immediately after.
+-   **Issue 1: Multiple  errors in the new React Staff Portal**
+    -   **Attempted fixes**: The agent correctly identified that the frontend was calling non-existent API endpoints. It audited the backend code () and the old portal's JS to find the correct paths. The file  was then updated with the correct endpoints (e.g.,  was changed to ). The code now builds successfully.
     -   **Next debug checklist**:
-        1.  View .
-        2.  Find the  function (around line 8275).
-        3.  The variable for the token is , not . The agent should search and replace  with  within the  call headers in that function. The correct header should be .
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical bug preventing the newly built AI Usage dashboard from functioning. Fixing it will make the feature usable.
-    -   **Status**: IN PROGRESS
+        1.  Wait for user to redeploy and confirm if the 404 errors are resolved.
+        2.  If errors persist, use the browser's developer tools (Network tab) on the Vercel deployment to inspect the failing API calls and verify their full URL, method, and headers.
+        3.  Cross-reference the failing calls with the backend router definitions in  and the  directory.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker. The Staff Portal is unusable without a connection to the backend. Fixing this will allow the user to test the core functionality of the newly migrated portal.
+    -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend (manual verification of admin portal).
+    -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   **Task 1: Add Audit Log UI to Admin Portal (P1)**
-    -   **Where to resume**:
-        1.  Locate the Logs tab in .
-        2.  Add a new section/table within this tab to display audit logs.
-        3.  In , create a new function  that calls the  endpoint.
-        4.  Populate the new table with the fetched log data.
-        5.  Call this new function when the Logs tab is clicked.
-    -   **What will be achieved with this?**: It will provide admins with a view of critical security and data access events directly in the UI.
-    -   **Status**: NOT STARTED
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on something**:  bug in Issue 1 should be fixed first to ensure API calls from the admin portal work correctly.
+-   **Task 1: Complete Staff Portal Migration (P0)**
+    -   **Where to resume**: The API endpoint paths have been corrected in . The next step is user verification. Once verified, the agent needs to implement the WebRTC/Twilio phone integration.
+    -   **What will be achieved with this?**: This will bring the new React Staff Portal to near-full feature parity with the legacy version, making it ready for final testing and eventual production use.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Both (Frontend for UI, Backend for Twilio integration).
+    -   **Blocked on something**: User verification of the 404 error fixes.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P1)** Improve misspelling/obfuscation detection with fuzzy matching or a more advanced library, based on the test suite's partial failures.
-    -   **(P1)** Build moderator features for events (lobby, admit/remove, mute, etc.).
-    -   **(P1)** Integrate the  into more key endpoints (e.g., data exports, user management).
-    -   **(P2)** Perform a full audit and update all subpages to ensure AI chat components are consistently placed at the top.
-    -   **(P2)** Implement full auto-tracking for the time-tracking feature.
+    -   **(P0) CRITICAL**: Begin migration of the main **Admin Portal** () to the React app at , using  as a guide.
+    -   **(P0)** Implement the WebRTC/Twilio phone integration in the new React Staff Portal to make in-app calls functional.
+    -   **(P1)** After the new portals are fully tested and approved by the user, delete the legacy directories (, , , ).
 -   **Future Tasks**:
-    -   **(P0) CRITICAL**: Rewrite all vanilla JS portals (, , , ) into a single, modern React application.
     -   **(P1)** Create a native mobile app (iOS/Android).
-    -   **(P2)** Implement Discussion Forums for the LMS.
-    -   **(P2)** Implement a Mood Tracker Journal and Appointment Booking.
+    -   **(P2)** Implement Discussion Forums, a Mood Tracker Journal, and Appointment Booking.
     -   **(P2)** Add Welsh Language Support.
 
 **Completed work in this session**
--   **Safeguarding & AI Behavior**:
-    -   Fixed false positives for Rachel by creating contextual keyword exemptions () for her persona () in  and .
-    -   Fixed a high-priority false positive by removing  from  in .
-    -   Fixed Scenario 010 (Privacy Boundary) by adding a strict privacy protocol to  and injecting it into all 12 character prompts in the database.
-    -   Added contextual housing keyword exemptions () for Baz in  and .
-    -   Greatly improved crisis misspelling detection by adding ~50 variations for suicide, self-harm, and slang to  in .
--   **AI Persona Management**:
-    -   Updated the personas for **Rachel, Megan, and Baz** in both the persona files () and the  MongoDB collection to fix the issue of DB prompts overriding file changes.
--   **Frontend Content & UI**:
-    -   Replaced all instances of female with women in frontend (, ) and backend (personas, LMS curriculum) files.
-    -   Rebranded the Women Veterans page to **She Served**, updated the tagline on , and added 9 new sections of content to .
--   **Backend & Infrastructure**:
-    -   Implemented a robust **OpenAI to Gemini fallback** system in , configured to use the user's provided Gemini API key.
-    -   Created a full **AI usage tracking system** (), integrated it into the chat endpoint, and added admin API endpoints () to .
-    -   Built a new **AI Usage dashboard** in the legacy admin portal (, ).
--   **Security & Compliance**:
-    -   Created a new **audit logging system** () and added API endpoints () to .
-    -   **Secured multiple public seed endpoints** (, , ) by adding admin authentication dependencies.
--   **Documentation**:
-    -   Created a detailed technical report at .
-    -   Created a new test suite for typographic errors at .
-    -   Updated  with completed work.
+-   **Legacy Portal Fixes**:
+    -   Fixed  bug in .
+    -   Added a UI for viewing Audit Logs to the legacy admin portal.
+-   **New React Portal Creation ()**:
+    -   **Scaffolded a complete Next.js 14 project** with TypeScript and a modular structure.
+    -   **Migrated LMS Portal**: Built the Learner () and Admin () sections.
+    -   **Migrated Staff Portal**:
+        - Audited the legacy portal and created .
+        - Implemented the UI and logic for all 9 tabs (Dashboard, Alerts, Cases, Rota, etc.) in .
+        - Added connection status banners for calling and chat.
+    -   **Deployment & Configuration**:
+        - Created  for multi-domain routing.
+        - Guided the user on deploying the  directory as a separate Vercel project.
+-   **Bug Fixing (New Portal)**:
+    -   **Resolved multiple 404 errors** by correcting the API endpoint paths in  to match the actual backend implementation.
+    -   Fixed various build errors related to CSS, regex, and TypeScript types during development.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Jitsi video chat not working**: This remains blocked, suspected to be a stale Vercel deployment on the user's side.
+-   **Jitsi video chat not working**: This remains blocked on the user's side, possibly due to a stale deployment.
+-   **In-chat call functionality and live support request reliability**: These are high-priority recurring issues that now need to be addressed within the new React portal implementation.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork**: In-chat call functionality and live support request reliability remain unaddressed P0 issues.
+-   **Issue recurrence in previous fork**: In-chat call functionality and live support request reliability.
 -   **Recurrence count**: 3+
--   **Status**: NOT STARTED
+-   **Status**: NOT STARTED (in the new React portal).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Context-Aware Safeguarding**: Logic was added to  and  to check  and apply lists of keyword exemptions (, ) to prevent false positives for specialist AIs.
--   **Database-first Persona Loading**: Discovered and worked with the existing pattern where character prompts are loaded from the MongoDB  collection, which overrides the python files in . Updates require modifying both.
--   **AI Provider Fallback**: Implemented a  chain in  to call OpenAI first, then  (with the user's key) on failure, and finally a static crisis message as a last resort.
--   **Token Counting & Cost Estimation**: Used  for OpenAI and  for Gemini to count tokens. Implemented a cost calculation and budget tracking system in .
--   **Legacy JS DOM Manipulation**: Added a significant new feature (AI Usage dashboard) to a legacy vanilla JavaScript portal () by directly manipulating the DOM and adding new functions to a large, monolithic  file.
--   **FastAPI Dependencies for Auth**: Secured endpoints by adding  to the function signatures of FastAPI routes.
+-   **Incremental Refactoring**: Migrating a large legacy vanilla JS application into a modern Next.js monorepo-style application ().
+-   **Vercel Multi-Project Deployment**: Using a single GitHub repository to deploy two separate Vercel projects, with the new portal project configured to use  as its root directory.
+-   **Subdomain Routing**: Using  to route different subdomains (e.g., , ) to different pages/layouts within the single Next.js application.
+-   **Centralized API Client**: Consolidating all backend API calls into a typed file () for easier maintenance and debugging. This was the focus of the last bug-fixing session.
 
 **key DB schema**
--   **ai_usage_logs** (New): 
--   **audit_logs** (New): 
--   **ai_characters**: Prompts in this collection were updated for multiple characters.
+-   No changes to the database schema were made in this session.
 
 **changes in tech stack**
--   Added  python package to support user-provided Gemini API key.
--   Used  for OpenAI token counting.
+-   **Introduced Next.js 14, React, TypeScript, and TailwindCSS** for the new unified portal application at .
 
 **All files of reference**
--   : Major changes for fallback logic, usage tracking, audit logging, and security fixes.
--   : Added HTML structure for the new AI Usage dashboard.
--   : Added JavaScript to power the AI Usage dashboard; contains a bug.
--   : New file containing all logic for token counting and cost calculation.
--   : New file for handling audit log creation.
--   : Modified to incorporate contextual keyword exemptions.
--   : Updated with a strict privacy protocol to fix Scenario 010.
--   : Overhauled with new title and content.
--   : Updated to link to the new She Served page.
--   : Modified to secure the  endpoint.
+-   : The main component for the new React Staff Portal.
+-   : The centralized API client, which was heavily modified to fix multiple 404 errors.
+-   : The Vercel routing configuration file.
+-   : The feature checklist for the portal migration.
+-   : Inspected to determine the correct backend API endpoint paths.
 
 **Areas that need refactoring**:
--   The  and  are built with legacy vanilla JavaScript and are explicitly on the roadmap for a complete rewrite in React. The recent addition of the complex AI Usage dashboard to  reinforces the need for this refactor.
+-   The  function in  is a temporary local-only fix. It needs to be updated to call the correct backend endpoint ( or ) once the staff member's profile (containing their ID and type) is successfully loaded.
 
 **key api endpoints**
--    (New): GET endpoint to retrieve overall AI cost and token stats.
--    (New): GET endpoint for usage stats grouped by AI character.
--    (New): GET endpoint for time-series data for the usage chart.
--    (New): GET endpoint to retrieve audit logs.
--    (Secured): Now requires admin authentication.
--    (Secured): Now returns 405 Method Not Allowed.
--    (Secured): Now returns 405 Method Not Allowed.
+-   The key discovery was the mismatch between frontend calls and backend routes. The correct endpoints that were implemented are:
+    -   Login: 
+    -   Get On-Duty Staff: 
+    -   Get Staff Profile:  or 
+    -   Update Staff Status:  or 
 
 **Critical Info for New Agent**
--   **Admin Portal is Legacy JS**: The  is vanilla JS. All API URLs must be prefixed with . The auth token is stored in a global  variable.
--   **Database Overrides Files for Prompts**: When updating AI personas, you **must** update both the  file in  AND the corresponding document in the  collection in MongoDB. The database version takes precedence at runtime.
--   **Safeguarding is Context-Aware**: The system now has specific keyword exemptions for 'rachel' (doris) and 'baz'. Any new specialist AIs will need similar exemptions added to  and .
+-   The primary task is the portal migration. The user is highly focused on achieving feature parity between the old JS portals and the new React one in .
+-   **API paths are inconsistent.** Do not assume RESTful conventions. Always verify API endpoints against the backend code ( and ) or the legacy portal's network requests before implementing them.
+-   The user has a two-project setup on Vercel from a single repository. The new portal project's Root Directory is set to .
+-   **Test with the correct URLs.** Subdomain routing () is active. To test a specific portal section like staff, use the direct Vercel deployment URL (e.g., ), not a subdomain intended for another section (like ).
 
 **documents and test reports created in this job**
--   : A detailed report on the session's refactoring, safety fixes, and testing.
--   : A new Pytest file to test the system's ability to detect misspelled crisis keywords.
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
--   10. User asks to add AI usage tracking to the admin page. (Status: **COMPLETED**, but has a bug)
--   9. User points out that the staff portal needs updates. Agent investigates, user clarifies they meant the admin portal for the usage tracking feature. (Status: **COMPLETED**)
--   8. User reports a JS error  from the admin portal console. Agent fixes it. (Status: **COMPLETED**)
--   7. User reports another JS error . (Status: **PENDING FIX**)
--   6. User asks for the fix instructions to apply manually and says they will redeploy to GitHub after. (Status: **ADDRESSED**)
--   5. User asks for the audit logs to be displayed on the Logs tab of the admin page. (Status: **PENDING IMPLEMENTATION**)
--   4. User points out security vulnerabilities: a public knowledge base seeding endpoint and lack of logging. (Status: **COMPLETED**, backend is done, UI is pending)
--   3. User asks for a fix for the  error and for the audit log UI to be added. (Status: **PENDING FIX**)
--   2. The Agent acknowledges the request and starts working. (Status: **IN PROGRESS**)
--   1. The agent is in the middle of debugging the  issue. (Status: **IN PROGRESS**)
+-   10. User reports login is now working on the staff portal and asks the agent to finish the remaining pages.
+-   9. Agent completes the implementation for the Rota, Team, Notes, and Supervision tabs in the Staff Portal.
+-   8. User reports that the status banners for In-App Calling and Live Chat from the old portal are missing.
+-   7. Agent implements the status banners in the new React Staff Portal.
+-   6. User reports new  errors for , , and .
+-   5. Agent identifies that the API endpoint paths in  are incorrect.
+-   4. Agent inspects backend code to find the correct, non-standard API paths.
+-   3. Agent updates  with the correct endpoint paths.
+-   2. Agent fixes the resulting TypeScript and build errors.
+-   1. The build is now successful. The agent has informed the user that the API paths are corrected and is awaiting user verification after redeployment.
 
 **Project Health Check:**
 -   **Broken**:
-    -   AI Usage dashboard in admin portal (due to  JS error).
-    -   In-chat voice calling (recurring P0 issue).
-    -   Live support request notifications (recurring P0 issue).
+    -   The new React Staff Portal () is partially functional but has data-loading issues pending verification of the recent 404 fixes.
+    -   WebRTC phone functionality is not yet implemented in the new React portal.
 -   **Blocked**:
-    -   Jitsi video chat (awaiting user deployment on Vercel).
+    -   Jitsi video chat functionality remains blocked on the user.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   **OpenAI gpt-4o-mini**: Primary AI for chat personas.
--   **Google Gemini (google-genai)**: New fallback AI, configured with user's own API key.
--   **Jitsi Meet**: Embedded group video conferencing.
--   **Twilio**: WebRTC calling.
--   **Resend**: Email notifications.
--   **sentence-transformers**: For semantic analysis in the safeguarding system.
--   **tiktoken**: For OpenAI token counting.
+-   **Next.js 14**: New framework for the portal migration.
+-   **Vercel**: The deployment platform for the new portal.
+-   **Twilio**: Used for WebRTC in-app calling (functionality needs to be migrated to the new portal).
+-   **Jitsi Meet**: Used for group video conferencing in events.
 
 **Testing status**
 -   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**:
-    -   
--   **Known regressions**: None introduced in this session.
+-   **Test files created**: []
+-   **Known regressions**: Multiple API calls in the new Staff Portal were broken due to incorrect endpoint paths. Fixes have been implemented but are pending verification.
 
 **Credentials to test flow:**
--   The app has a Radio Check login page which can be bypassed using the password found in . It also has a Date of Birth modal that may appear.
--   The admin portal () requires credentials which can be found in  or previous logs if needed.
+-   Credentials for the admin/staff portals can be found in  or by reviewing previous logs. The user is actively testing with their own credentials.
 
 **What agent forgot to execute**
-The agent correctly identified the cause of the  error but missed that the token variable was also named differently ( vs ) in the legacy admin portal's JavaScript, leading to the subsequent user-reported bug.</analysis>
+-   The previous agent did not initially verify the backend API endpoint paths when building the new Staff Portal. It assumed a standard RESTful structure () which was incorrect, leading to multiple  errors and rework. This has since been corrected, but the oversight caused a significant delay.</analysis>

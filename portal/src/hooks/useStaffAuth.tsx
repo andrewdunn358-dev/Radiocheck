@@ -78,9 +78,10 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
 
     if (storedToken && storedUser && checkSession()) {
       try {
+        const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        loadProfile(storedToken);
+        setUser(parsedUser);
+        loadProfile(storedToken, parsedUser?.id);
       } catch {
         logout();
       }
@@ -89,9 +90,9 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [checkSession]);
 
-  const loadProfile = async (authToken: string) => {
+  const loadProfile = async (authToken: string, userId?: string) => {
     try {
-      const profileData = await staffApi.getProfile(authToken);
+      const profileData = await staffApi.getProfile(authToken, userId);
       setProfile(profileData);
     } catch (error) {
       console.error('Failed to load profile:', error);
@@ -110,7 +111,7 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('staff_token_time', Date.now().toString());
     resetActivity();
     
-    await loadProfile(response.token);
+    await loadProfile(response.token, response.user?.id);
   };
 
   const logout = () => {
@@ -124,11 +125,18 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateStatus = async (status: string) => {
-    if (!token) return;
-    await staffApi.updateStatus(token, status);
+    if (!token || !user) return;
+    
+    // Store status locally for now - the actual endpoint requires staff ID and type
+    // which we'd need to determine from the login response
+    localStorage.setItem('staff_status', status);
+    
     if (profile) {
       setProfile({ ...profile, status: status as StaffProfile['status'] });
     }
+    
+    // TODO: Once we have staffId and staffType from login, we can call:
+    // await staffApi.updateStatus(token, status, user.id, user.role === 'counsellor' ? 'counsellor' : 'peer');
   };
 
   const refreshProfile = async () => {

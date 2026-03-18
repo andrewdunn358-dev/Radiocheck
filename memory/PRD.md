@@ -923,7 +923,7 @@ Files changed:
 - **Frontend**: Vercel (https://[domain])
 - **Backend**: Render (https://[domain])
 - **Admin/Staff/LMS Portals**: 20i hosting
-- **Preview**: https://safeguard-wellness.preview.emergentagent.com
+- **Preview**: https://portal-migration-1.preview.emergentagent.com
   - Learner Portal: `/api/training/`
   - LMS Admin: `/api/lms-admin/`
   - Main Admin: `/api/admin/`

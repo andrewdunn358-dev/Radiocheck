@@ -98,8 +98,8 @@ export default function StaffPortalPage() {
   const loadCases = useCallback(async () => {
     if (!token) return;
     try {
-      const response = await staffApi.getCases(token);
-      setCases(response.cases || []);
+      const casesData = await staffApi.getCases(token);
+      setCases(Array.isArray(casesData) ? casesData : []);
     } catch (err) {
       console.error('Failed to load cases:', err);
     }
@@ -233,9 +233,9 @@ export default function StaffPortalPage() {
 
   // Live chat actions
   const handleJoinChat = async (room: LiveChatRoom) => {
-    if (!token) return;
+    if (!token || !user?.id || !user?.name) return;
     try {
-      await staffApi.joinLiveChat(token, room.room_id || room._id);
+      await staffApi.joinLiveChat(token, room.room_id || room._id, user.id, user.name);
       const messages = await staffApi.getLiveChatMessages(token, room.room_id || room._id);
       setActiveChatRoom(room);
       setChatMessages(messages);
@@ -1432,13 +1432,14 @@ export default function StaffPortalPage() {
                 <div
                   key={i}
                   className={`p-3 rounded-lg max-w-[80%] ${
-                    msg.sender_type === 'staff' 
+                    msg.sender === 'staff' 
                       ? 'bg-secondary/20 ml-auto' 
                       : 'bg-primary-light/30'
                   }`}
                 >
-                  <p className="text-xs text-gray-400 mb-1">{msg.sender_name}</p>
-                  <p>{msg.message}</p>
+                  <p className="text-xs text-gray-400 mb-1">{msg.sender === 'staff' ? 'You' : 'User'}</p>
+                  <p>{msg.text}</p>
+                  <p className="text-xs text-gray-500 mt-1">{new Date(msg.timestamp).toLocaleTimeString()}</p>
                 </div>
               ))}
             </div>
