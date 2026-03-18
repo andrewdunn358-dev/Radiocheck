@@ -1,9 +1,19 @@
 {
   "rewrites": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "training.radiocheck.me" }],
+      "destination": "/learning"
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "training.radiocheck.me" }],
       "destination": "/learning/:path*"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "lms-admin.radiocheck.me" }],
+      "destination": "/lms-admin"
     },
     {
       "source": "/:path*", 
