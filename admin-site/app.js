@@ -8264,3 +8264,218 @@ eventStyles.textContent = `
     }
 `;
 document.head.appendChild(eventStyles);
+
+// ============ AI USAGE TRACKING ============
+
+let dailyUsageChart = null;
+
+async function loadAIUsageData() {
+    const days = document.getElementById('usage-period')?.value || 30;
+    
+    try {
+        // Fetch usage summary
+        const summaryRes = await fetch(`${API_URL}/admin/ai-usage/summary?days=${days}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (summaryRes.ok) {
+            const summary = await summaryRes.json();
+            updateUsageSummary(summary);
+        }
+        
+        // Fetch usage by character
+        const charRes = await fetch(`${API_URL}/admin/ai-usage/by-character?days=${days}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (charRes.ok) {
+            const charData = await charRes.json();
+            updateCharacterUsage(charData.by_character);
+        }
+        
+        // Fetch daily usage for chart
+        const dailyRes = await fetch(`${API_URL}/admin/ai-usage/daily?days=${Math.min(days, 30)}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (dailyRes.ok) {
+            const dailyData = await dailyRes.json();
+            updateDailyChart(dailyData.daily_usage);
+        }
+        
+    } catch (error) {
+        console.error('Error loading AI usage data:', error);
+    }
+}
+
+function updateUsageSummary(summary) {
+    // Update total
+    document.getElementById('total-cost').textContent = `£${summary.total_cost_gbp?.toFixed(4) || '0.00'}`;
+    document.getElementById('total-requests').textContent = formatNumber(summary.total_requests || 0);
+    document.getElementById('total-tokens').textContent = formatNumber(summary.total_tokens || 0);
+    
+    // Update OpenAI
+    const openai = summary.providers?.openai || {};
+    document.getElementById('openai-cost').textContent = `£${(openai.cost_gbp || 0).toFixed(4)}`;
+    document.getElementById('openai-requests').textContent = formatNumber(openai.request_count || 0);
+    document.getElementById('openai-tokens').textContent = formatNumber(openai.total_tokens || 0);
+    document.getElementById('openai-budget').textContent = (openai.budget_limit_gbp || 20).toFixed(2);
+    document.getElementById('openai-remaining').textContent = `£${(openai.budget_remaining_gbp || 20).toFixed(4)} remaining`;
+    document.getElementById('openai-percentage').textContent = (openai.budget_percentage_used || 0).toFixed(1);
+    document.getElementById('openai-budget-bar').style.width = `${Math.min(openai.budget_percentage_used || 0, 100)}%`;
+    
+    // Change color if over 80%
+    if ((openai.budget_percentage_used || 0) > 80) {
+        document.getElementById('openai-budget-bar').style.background = '#ef4444';
+    } else if ((openai.budget_percentage_used || 0) > 50) {
+        document.getElementById('openai-budget-bar').style.background = '#f59e0b';
+    } else {
+        document.getElementById('openai-budget-bar').style.background = '#10a37f';
+    }
+    
+    // Update Gemini
+    const gemini = summary.providers?.gemini || {};
+    document.getElementById('gemini-cost').textContent = `£${(gemini.cost_gbp || 0).toFixed(4)}`;
+    document.getElementById('gemini-requests').textContent = formatNumber(gemini.request_count || 0);
+    document.getElementById('gemini-tokens').textContent = formatNumber(gemini.total_tokens || 0);
+    document.getElementById('gemini-budget').textContent = (gemini.budget_limit_gbp || 10).toFixed(2);
+    document.getElementById('gemini-remaining').textContent = `£${(gemini.budget_remaining_gbp || 10).toFixed(4)} remaining`;
+    document.getElementById('gemini-percentage').textContent = (gemini.budget_percentage_used || 0).toFixed(1);
+    document.getElementById('gemini-budget-bar').style.width = `${Math.min(gemini.budget_percentage_used || 0, 100)}%`;
+    
+    if ((gemini.budget_percentage_used || 0) > 80) {
+        document.getElementById('gemini-budget-bar').style.background = '#ef4444';
+    } else if ((gemini.budget_percentage_used || 0) > 50) {
+        document.getElementById('gemini-budget-bar').style.background = '#f59e0b';
+    } else {
+        document.getElementById('gemini-budget-bar').style.background = '#4285f4';
+    }
+}
+
+function updateCharacterUsage(characters) {
+    const container = document.getElementById('character-usage-list');
+    if (!characters || characters.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary);">No usage data yet</p>';
+        return;
+    }
+    
+    // Character display names
+    const charNames = {
+        'tommy': 'Tommy',
+        'catherine': 'Catherine',
+        'doris': 'Rachel',
+        'finch': 'Finch',
+        'jack': 'Jack',
+        'penny': 'Penny',
+        'megan': 'Megan',
+        'baz': 'Baz',
+        'margie': 'Margie'
+    };
+    
+    container.innerHTML = characters.map(c => `
+        <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+            <div style="font-weight: 600; color: var(--text-primary);">${charNames[c.character] || c.character}</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                ${formatNumber(c.requests)} requests · ${formatNumber(c.tokens)} tokens
+            </div>
+            <div style="font-size: 14px; color: #10a37f; font-weight: 600; margin-top: 4px;">
+                £${c.cost_gbp.toFixed(4)}
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateDailyChart(dailyData) {
+    const canvas = document.getElementById('daily-usage-chart');
+    if (!canvas) return;
+    
+    // Group data by date
+    const dateMap = {};
+    dailyData.forEach(d => {
+        if (!dateMap[d.date]) {
+            dateMap[d.date] = { openai: 0, gemini: 0 };
+        }
+        if (d.provider === 'openai') {
+            dateMap[d.date].openai = d.cost_gbp;
+        } else if (d.provider === 'gemini') {
+            dateMap[d.date].gemini = d.cost_gbp;
+        }
+    });
+    
+    const dates = Object.keys(dateMap).sort();
+    const openaiCosts = dates.map(d => dateMap[d].openai);
+    const geminiCosts = dates.map(d => dateMap[d].gemini);
+    
+    // Destroy existing chart
+    if (dailyUsageChart) {
+        dailyUsageChart.destroy();
+    }
+    
+    dailyUsageChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: dates.map(d => {
+                const date = new Date(d);
+                return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+            }),
+            datasets: [
+                {
+                    label: 'OpenAI',
+                    data: openaiCosts,
+                    backgroundColor: '#10a37f',
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Gemini',
+                    data: geminiCosts,
+                    backgroundColor: '#4285f4',
+                    borderRadius: 4,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#9ca3af'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: { color: '#9ca3af' }
+                },
+                y: {
+                    stacked: true,
+                    grid: { color: '#374151' },
+                    ticks: { 
+                        color: '#9ca3af',
+                        callback: (value) => '£' + value.toFixed(4)
+                    }
+                }
+            }
+        }
+    });
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+}
+
+// Load AI usage data when tab is opened
+document.addEventListener('DOMContentLoaded', () => {
+    const aiUsageTab = document.querySelector('[data-tab="ai-usage"]');
+    if (aiUsageTab) {
+        aiUsageTab.addEventListener('click', () => {
+            setTimeout(loadAIUsageData, 100);
+        });
+    }
+});
+
