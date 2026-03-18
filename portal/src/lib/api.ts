@@ -320,32 +320,45 @@ export const staffApi = {
   // Profile & Status - uses counsellors/peer-supporters endpoints
   // Must match by user_id from the login response
   getProfile: async (token: string, userId?: string): Promise<StaffProfile | null> => {
+    console.log('[API] getProfile called with userId:', userId);
+    
     try {
+      console.log('[API] Fetching counsellors...');
       const counsellors = await fetchAPI<any[]>('/counsellors', { token });
+      console.log('[API] Counsellors response:', counsellors?.length, 'found');
       if (counsellors && counsellors.length > 0) {
         // Find by user_id if provided, otherwise return first matching
         const match = userId 
           ? counsellors.find((c: any) => c.user_id === userId)
           : counsellors[0];
+        console.log('[API] Counsellor match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
         if (match) {
           return { ...match, role: 'counsellor' } as StaffProfile;
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { 
+      console.error('[API] Error fetching counsellors:', e);
+    }
     
     try {
+      console.log('[API] Fetching peer-supporters...');
       const peers = await fetchAPI<any[]>('/peer-supporters', { token });
+      console.log('[API] Peer supporters response:', peers?.length, 'found');
       if (peers && peers.length > 0) {
         // Find by user_id if provided, otherwise return first matching
         const match = userId 
           ? peers.find((p: any) => p.user_id === userId)
           : peers[0];
+        console.log('[API] Peer match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
         if (match) {
           return { ...match, role: 'peer' } as StaffProfile;
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { 
+      console.error('[API] Error fetching peer-supporters:', e);
+    }
     
+    console.log('[API] No profile found for userId:', userId);
     return null;
   },
   updateStatus: (token: string, status: string, staffId: string, staffType: 'counsellor' | 'peer') =>

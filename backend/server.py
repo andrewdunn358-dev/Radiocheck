@@ -422,10 +422,10 @@ class CounsellorCreate(BaseModel):
 class Counsellor(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    specialization: str
+    specialization: Optional[str] = None  # Made optional to handle legacy data
     status: str = "off"  # available, busy, off
     next_available: Optional[str] = None
-    phone: str
+    phone: Optional[str] = None  # Made optional to handle legacy data
     sms: Optional[str] = None
     whatsapp: Optional[str] = None
     user_id: Optional[str] = None
