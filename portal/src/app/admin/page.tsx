@@ -36,12 +36,12 @@ interface StaffMember {
 
 interface CallLog {
   id: string;
-  caller_name?: string;
-  caller_phone?: string;
-  staff_name?: string;
-  duration?: number;
-  outcome?: string;
-  created_at: string;
+  contact_name?: string;
+  contact_type?: string;
+  contact_phone?: string;
+  call_method?: string;
+  timestamp?: string;
+  created_at?: string;
 }
 
 interface ChatRoom {
@@ -74,9 +74,18 @@ interface AICharacter {
 }
 
 interface AIUsageSummary {
-  total_tokens: number;
-  total_cost: number;
-  by_provider: Record<string, { tokens: number; cost: number }>;
+  total_tokens?: number;
+  total_cost_gbp?: number;
+  total_cost?: number;
+  total_requests?: number;
+  providers?: Record<string, { 
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+    cost_gbp?: number;
+    request_count?: number;
+  }>;
+  by_provider?: Record<string, { tokens: number; cost: number }>;
 }
 
 // API Client with proper error handling
@@ -114,6 +123,20 @@ const api = {
   getStaff: (token: string, role?: string) => 
     api.fetch<StaffMember[]>(`/staff${role ? `?role=${role}` : ''}`, { token }),
   
+  // Legacy unified staff view - combines users, counsellors, peers
+  getUnifiedStaff: (token: string) =>
+    api.fetch<any[]>('/admin/unified-staff', { token }),
+  
+  // Legacy separate collections
+  getCounsellors: (token: string) =>
+    api.fetch<any[]>('/counsellors', { token }),
+  
+  getPeerSupporters: (token: string) =>
+    api.fetch<any[]>('/peer-supporters', { token }),
+  
+  getLegacyUsers: (token: string) =>
+    api.fetch<any[]>('/auth/users', { token }),
+  
   getStaffById: (token: string, id: string) =>
     api.fetch<StaffMember>(`/staff/${id}`, { token }),
   
@@ -143,6 +166,21 @@ const api = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+  
+  // Legacy status updates
+  updateCounsellorStatus: (token: string, id: string, status: string) =>
+    api.fetch<any>(`/counsellors/${id}/status`, {
+      token,
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  
+  updatePeerStatus: (token: string, id: string, status: string) =>
+    api.fetch<any>(`/peer-supporters/${id}/status`, {
+      token,
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
 
   // Migration
   getMigrationStatus: (token: string) =>
@@ -160,9 +198,9 @@ const api = {
       method: 'POST',
     }),
 
-  // Logs - Call Logs
-  getCallLogs: (token: string) =>
-    api.fetch<CallLog[]>('/call-logs', { token }),
+  // Logs - Call Logs (returns {total_calls, recent_logs})
+  getCallLogs: (token: string, days: number = 30) =>
+    api.fetch<{ total_calls: number; recent_logs: CallLog[] }>(`/call-logs?days=${days}`, { token }),
   
   // Logs - Chat Rooms
   getChatRooms: (token: string) =>
@@ -172,9 +210,9 @@ const api = {
   getSafeguardingAlerts: (token: string) =>
     api.fetch<SafeguardingAlert[]>('/safeguarding-alerts', { token }),
 
-  // AI Characters
+  // AI Characters - Correct endpoint is /ai-characters/admin/all
   getAICharacters: (token: string) =>
-    api.fetch<{ characters: AICharacter[]; source: string }>('/ai-characters/admin', { token }),
+    api.fetch<{ characters: AICharacter[]; source: string }>('/ai-characters/admin/all', { token }),
   
   updateAICharacter: (token: string, id: string, data: Partial<AICharacter>) =>
     api.fetch<AICharacter>(`/ai-characters/${id}`, {
@@ -183,16 +221,16 @@ const api = {
       body: JSON.stringify(data),
     }),
 
-  // AI Usage
-  getAIUsageSummary: (token: string, period?: string) =>
-    api.fetch<AIUsageSummary>(`/admin/ai-usage/summary${period ? `?period=${period}` : ''}`, { token }),
+  // AI Usage - Correct endpoint format
+  getAIUsageSummary: (token: string, days: number = 30) =>
+    api.fetch<AIUsageSummary>(`/admin/ai-usage/summary?days=${days}`, { token }),
   
-  getAIUsageByCharacter: (token: string) =>
-    api.fetch<any[]>('/admin/ai-usage/by-character', { token }),
+  getAIUsageByCharacter: (token: string, days: number = 30) =>
+    api.fetch<any[]>(`/admin/ai-usage/by-character?days=${days}`, { token }),
 
-  // Monitoring
+  // Monitoring - Correct endpoint is /admin/system-stats
   getMonitoringStats: (token: string) =>
-    api.fetch<any>('/monitoring/stats', { token }),
+    api.fetch<any>('/admin/system-stats', { token }),
 };
 
 // Tab definitions - matching the original admin portal
@@ -309,32 +347,83 @@ export default function AdminPortal() {
     };
     
     loadData();
-  }, [token, activeTab, activeLogSubTab]);
+  }, [token, activeTab, activeLogSubTab, staffRoleFilter]);
 
   // Load functions
   const loadStaff = async () => {
     if (!token) return;
     try {
+      // First try the new unified staff endpoint
       const data = await api.getStaff(token, staffRoleFilter !== 'all' ? staffRoleFilter : undefined);
-      // Ensure we always have an array
-      setStaff(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      // Fallback to legacy endpoints if new endpoint fails
-      console.log('Falling back to legacy endpoints...', err.message);
-      try {
-        const [counsellors, peers] = await Promise.all([
-          api.fetch<any[]>('/counsellors', { token }).catch(() => []),
-          api.fetch<any[]>('/peer-supporters', { token }).catch(() => []),
-        ]);
-        const combined = [
-          ...(Array.isArray(counsellors) ? counsellors : []).map((c: any) => ({ ...c, role: 'counsellor' })),
-          ...(Array.isArray(peers) ? peers : []).map((p: any) => ({ ...p, role: 'peer', name: p.firstName || p.name })),
-        ];
-        setStaff(combined);
-      } catch (legacyErr: any) {
-        console.error('Failed to load staff:', legacyErr);
-        setStaff([]);
+      // If we get data from the new endpoint, use it
+      if (Array.isArray(data) && data.length > 0) {
+        setStaff(data);
+        return;
       }
+      
+      // If new endpoint returns empty, try the admin unified-staff view (combines legacy collections)
+      const unifiedData = await api.getUnifiedStaff(token).catch(() => []);
+      if (Array.isArray(unifiedData) && unifiedData.length > 0) {
+        // Map the unified-staff response to our StaffMember format
+        const mappedData = unifiedData.map((u: any) => ({
+          id: u.user_id || u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          status: u.profile?.status || 'offline',
+          phone: u.profile?.phone || '',
+          specialization: u.profile?.specialization || '',
+          area: u.profile?.area || '',
+          background: u.profile?.background || '',
+          _source: 'unified',
+          has_profile: u.has_profile,
+          created_at: u.created_at,
+        }));
+        // Filter by role if needed
+        const filtered = staffRoleFilter === 'all' 
+          ? mappedData 
+          : mappedData.filter((s: any) => s.role === staffRoleFilter);
+        setStaff(filtered);
+        return;
+      }
+      
+      // Fallback to legacy endpoints if both fail
+      console.log('Falling back to legacy endpoints...');
+      const [counsellors, peers] = await Promise.all([
+        api.getCounsellors(token).catch(() => []),
+        api.getPeerSupporters(token).catch(() => []),
+      ]);
+      const combined = [
+        ...(Array.isArray(counsellors) ? counsellors : []).map((c: any) => ({ 
+          id: c.id,
+          email: c.email || '',
+          name: c.name,
+          role: 'counsellor',
+          status: c.status || 'offline',
+          phone: c.phone || '',
+          specialization: c.specialization || '',
+          _source: 'counsellors' 
+        })),
+        ...(Array.isArray(peers) ? peers : []).map((p: any) => ({ 
+          id: p.id,
+          email: p.email || '',
+          name: p.firstName || p.name,
+          role: 'peer',
+          status: p.status || 'offline',
+          phone: p.phone || '',
+          area: p.area || '',
+          background: p.background || '',
+          _source: 'peer_supporters' 
+        })),
+      ];
+      // Filter by role if needed
+      const filtered = staffRoleFilter === 'all' 
+        ? combined 
+        : combined.filter((s: any) => s.role === staffRoleFilter);
+      setStaff(filtered);
+    } catch (err: any) {
+      console.error('Failed to load staff:', err);
+      setStaff([]);
     }
   };
 
@@ -343,8 +432,10 @@ export default function AdminPortal() {
     try {
       switch (activeLogSubTab) {
         case 'calls':
-          const calls = await api.getCallLogs(token).catch(() => []);
-          setCallLogs(Array.isArray(calls) ? calls : []);
+          const callsResponse = await api.getCallLogs(token).catch(() => ({ total_calls: 0, recent_logs: [] }));
+          // Handle the response format: {total_calls, recent_logs}
+          const logs = callsResponse?.recent_logs || callsResponse;
+          setCallLogs(Array.isArray(logs) ? logs : []);
           break;
         case 'chats':
           const chats = await api.getChatRooms(token).catch(() => []);
@@ -800,11 +891,11 @@ export default function AdminPortal() {
                   <table className="w-full">
                     <thead className="bg-gray-700">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Caller</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Staff</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Duration</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Outcome</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date/Time</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Contact Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Type</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Method</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Phone</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
@@ -815,11 +906,27 @@ export default function AdminPortal() {
                       ) : (
                         callLogs.map((log) => (
                           <tr key={log.id} className="hover:bg-gray-700/50">
-                            <td className="px-4 py-3 text-gray-400">{new Date(log.created_at).toLocaleString()}</td>
-                            <td className="px-4 py-3">{log.caller_name || log.caller_phone || 'Unknown'}</td>
-                            <td className="px-4 py-3">{log.staff_name || 'N/A'}</td>
-                            <td className="px-4 py-3">{log.duration ? `${Math.floor(log.duration / 60)}:${(log.duration % 60).toString().padStart(2, '0')}` : '-'}</td>
-                            <td className="px-4 py-3">{log.outcome || '-'}</td>
+                            <td className="px-4 py-3 text-gray-400">{new Date(log.timestamp || log.created_at || '').toLocaleString()}</td>
+                            <td className="px-4 py-3 font-medium">{log.contact_name || 'Unknown'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                log.contact_type === 'peer' ? 'bg-green-500/20 text-green-400' : 
+                                log.contact_type === 'counsellor' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {log.contact_type || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                log.call_method === 'webrtc' ? 'bg-purple-500/20 text-purple-400' : 
+                                log.call_method === 'phone' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {log.call_method || 'phone'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-400">{log.contact_phone || '-'}</td>
                           </tr>
                         ))
                       )}
@@ -956,21 +1063,27 @@ export default function AdminPortal() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h3 className="text-gray-400 text-sm mb-2">Total Tokens</h3>
-                    <p className="text-3xl font-bold">{aiUsage.total_tokens?.toLocaleString() || 0}</p>
+                    <p className="text-3xl font-bold">{(aiUsage.total_tokens || 0).toLocaleString()}</p>
                   </div>
                   <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h3 className="text-gray-400 text-sm mb-2">Total Cost</h3>
-                    <p className="text-3xl font-bold">${(aiUsage.total_cost || 0).toFixed(2)}</p>
+                    <p className="text-3xl font-bold">£{(aiUsage.total_cost_gbp || aiUsage.total_cost || 0).toFixed(4)}</p>
                   </div>
                   <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h3 className="text-gray-400 text-sm mb-2">Providers</h3>
-                    <div className="space-y-1">
-                      {Object.entries(aiUsage.by_provider || {}).map(([provider, data]: [string, any]) => (
-                        <div key={provider} className="flex justify-between text-sm">
-                          <span>{provider}</span>
-                          <span className="text-gray-400">${data.cost?.toFixed(2)}</span>
+                    <div className="space-y-2">
+                      {aiUsage.providers && Object.entries(aiUsage.providers).map(([provider, data]: [string, any]) => (
+                        <div key={provider} className="flex justify-between text-sm bg-gray-700/50 p-2 rounded">
+                          <span className="capitalize">{provider}</span>
+                          <div className="text-right">
+                            <span className="text-gray-400">{(data.total_tokens || 0).toLocaleString()} tokens</span>
+                            <span className="ml-2 text-green-400">£{(data.cost_gbp || 0).toFixed(4)}</span>
+                          </div>
                         </div>
                       ))}
+                      {(!aiUsage.providers || Object.keys(aiUsage.providers).length === 0) && (
+                        <p className="text-gray-500 text-sm">No provider data</p>
+                      )}
                     </div>
                   </div>
                 </div>
