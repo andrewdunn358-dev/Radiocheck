@@ -101,8 +101,12 @@ interface AIUsageSummary {
     total_tokens?: number;
     cost_gbp?: number;
     request_count?: number;
+    budget_limit_gbp?: number;
+    budget_remaining_gbp?: number;
+    budget_percentage_used?: number;
   }>;
   by_provider?: Record<string, { tokens: number; cost: number }>;
+  by_character?: Array<{ character_name?: string; name?: string; request_count?: number; requests?: number; cost_gbp?: number; cost?: number }>;
 }
 
 // API Client with proper error handling
@@ -482,6 +486,19 @@ export default function AdminPortal() {
   // AI Character editing state
   const [editingCharacter, setEditingCharacter] = useState<AICharacter | null>(null);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
+
+  // Event editing state
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    event_date: new Date().toISOString().split('T')[0],
+    event_time: '14:00',
+    duration_minutes: 60,
+    host_name: '',
+    max_participants: 20,
+  });
   
   // Modal state
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
@@ -1850,34 +1867,137 @@ export default function AdminPortal() {
           {/* AI Usage Tab */}
           {activeTab === 'ai-usage' && (
             <div data-testid="ai-usage-tab">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">AI Usage & Costs</h2>
+                <button onClick={loadAIUsage} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
               {aiUsage ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <h3 className="text-gray-400 text-sm mb-2">Total Tokens</h3>
-                    <p className="text-3xl font-bold">{(aiUsage.total_tokens || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <h3 className="text-gray-400 text-sm mb-2">Total Cost</h3>
-                    <p className="text-3xl font-bold">£{Number(aiUsage.total_cost_gbp || aiUsage.total_cost || 0).toFixed(4)}</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <h3 className="text-gray-400 text-sm mb-2">Providers</h3>
-                    <div className="space-y-2">
-                      {aiUsage.providers && Object.entries(aiUsage.providers).map(([provider, data]: [string, any]) => (
-                        <div key={provider} className="flex justify-between text-sm bg-gray-700/50 p-2 rounded">
-                          <span className="capitalize">{provider}</span>
-                          <div className="text-right">
-                            <span className="text-gray-400">{(data.total_tokens || 0).toLocaleString()} tokens</span>
-                            <span className="ml-2 text-green-400">£{Number(data.cost_gbp || 0).toFixed(4)}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {(!aiUsage.providers || Object.keys(aiUsage.providers).length === 0) && (
-                        <p className="text-gray-500 text-sm">No provider data</p>
-                      )}
+                <>
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-6">
+                      <h3 className="text-blue-200 text-sm mb-2">Total Requests</h3>
+                      <p className="text-3xl font-bold">{(aiUsage.total_requests || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-6">
+                      <h3 className="text-purple-200 text-sm mb-2">Total Tokens</h3>
+                      <p className="text-3xl font-bold">{(aiUsage.total_tokens || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg p-6">
+                      <h3 className="text-green-200 text-sm mb-2">Total Cost</h3>
+                      <p className="text-3xl font-bold">£{Number(aiUsage.total_cost_gbp || aiUsage.total_cost || 0).toFixed(4)}</p>
                     </div>
                   </div>
-                </div>
+
+                  {/* Provider Cards with Budget Bars */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* OpenAI Card */}
+                    {aiUsage.providers?.openai && (
+                      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center text-white font-bold text-sm">AI</div>
+                          <h3 className="font-semibold">OpenAI</h3>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Cost</span>
+                            <span className="text-green-400">£{Number(aiUsage.providers.openai.cost_gbp || 0).toFixed(4)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Requests</span>
+                            <span>{(aiUsage.providers.openai.request_count || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Tokens</span>
+                            <span>{(aiUsage.providers.openai.total_tokens || 0).toLocaleString()}</span>
+                          </div>
+                          {/* Budget Bar */}
+                          {aiUsage.providers.openai.budget_limit_gbp && (
+                            <div className="mt-3">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-400">Budget Used</span>
+                                <span>{aiUsage.providers.openai.budget_percentage_used || 0}%</span>
+                              </div>
+                              <div className="w-full bg-gray-700 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all ${
+                                    (aiUsage.providers.openai.budget_percentage_used || 0) > 80 ? 'bg-red-500' :
+                                    (aiUsage.providers.openai.budget_percentage_used || 0) > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                                  }`}
+                                  style={{ width: `${Math.min(aiUsage.providers.openai.budget_percentage_used || 0, 100)}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">£{Number(aiUsage.providers.openai.budget_remaining_gbp || 0).toFixed(2)} remaining of £{Number(aiUsage.providers.openai.budget_limit_gbp || 0).toFixed(2)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Gemini Card */}
+                    {aiUsage.providers?.gemini && (
+                      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white font-bold text-sm">G</div>
+                          <h3 className="font-semibold">Gemini</h3>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Cost</span>
+                            <span className="text-green-400">£{Number(aiUsage.providers.gemini.cost_gbp || 0).toFixed(4)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Requests</span>
+                            <span>{(aiUsage.providers.gemini.request_count || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Tokens</span>
+                            <span>{(aiUsage.providers.gemini.total_tokens || 0).toLocaleString()}</span>
+                          </div>
+                          {/* Budget Bar */}
+                          {aiUsage.providers.gemini.budget_limit_gbp && (
+                            <div className="mt-3">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-400">Budget Used</span>
+                                <span>{aiUsage.providers.gemini.budget_percentage_used || 0}%</span>
+                              </div>
+                              <div className="w-full bg-gray-700 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all ${
+                                    (aiUsage.providers.gemini.budget_percentage_used || 0) > 80 ? 'bg-red-500' :
+                                    (aiUsage.providers.gemini.budget_percentage_used || 0) > 50 ? 'bg-yellow-500' : 'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${Math.min(aiUsage.providers.gemini.budget_percentage_used || 0, 100)}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">£{Number(aiUsage.providers.gemini.budget_remaining_gbp || 0).toFixed(2)} remaining of £{Number(aiUsage.providers.gemini.budget_limit_gbp || 0).toFixed(2)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Character Usage */}
+                  {aiUsage.by_character && aiUsage.by_character.length > 0 && (
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                      <h3 className="font-semibold mb-4">Usage by Character</h3>
+                      <div className="space-y-2">
+                        {aiUsage.by_character.map((char: any) => (
+                          <div key={char.character_name || char.name} className="flex justify-between items-center bg-gray-700 p-3 rounded">
+                            <span className="font-medium">{char.character_name || char.name}</span>
+                            <div className="text-right text-sm">
+                              <span className="text-gray-400 mr-4">{(char.request_count || char.requests || 0).toLocaleString()} requests</span>
+                              <span className="text-green-400">£{Number(char.cost_gbp || char.cost || 0).toFixed(4)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center text-gray-400 py-8">
                   AI Usage data not available
@@ -2771,39 +2891,118 @@ export default function AdminPortal() {
             <div data-testid="governance-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Governance & Clinical Safety</h2>
-                <button onClick={loadGovernance} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
-                  <RefreshCw className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      if (!token) return;
+                      try {
+                        const report = await api.getGovernanceSummary(token, '7d');
+                        setGovernanceSummary(report);
+                        setSuccess('Weekly report generated');
+                      } catch (err: any) {
+                        setError('Failed to generate report: ' + err.message);
+                      }
+                    }}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
+                  >
+                    Weekly Report
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      if (!token) return;
+                      try {
+                        const report = await api.getGovernanceSummary(token, '30d');
+                        setGovernanceSummary(report);
+                        setSuccess('Monthly report generated');
+                      } catch (err: any) {
+                        setError('Failed to generate report: ' + err.message);
+                      }
+                    }}
+                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm"
+                  >
+                    Monthly Report
+                  </button>
+                  <button onClick={loadGovernance} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
-              {/* Summary Stats */}
+              {/* Summary Report Display */}
               {governanceSummary && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                    <p className="text-gray-400 text-sm">Total Hazards</p>
-                    <p className="text-2xl font-bold">{governanceSummary.total_hazards || hazards.length}</p>
+                <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg border border-blue-700 p-4 mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold">Summary Report: {governanceSummary.period || 'N/A'}</h3>
+                    <span className="text-xs text-gray-400">Generated: {governanceSummary.generated_at ? new Date(governanceSummary.generated_at).toLocaleString() : 'N/A'}</span>
                   </div>
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                    <p className="text-gray-400 text-sm">Open Hazards</p>
-                    <p className="text-2xl font-bold text-red-400">{governanceSummary.open_hazards || 0}</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                    <p className="text-gray-400 text-sm">Mitigated</p>
-                    <p className="text-2xl font-bold text-green-400">{governanceSummary.mitigated_hazards || 0}</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                    <p className="text-gray-400 text-sm">KPIs Met</p>
-                    <p className="text-2xl font-bold text-blue-400">{governanceSummary.kpis_met || 0}%</p>
-                  </div>
+                  
+                  {/* Safeguarding KPIs */}
+                  {governanceSummary.safeguarding && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      <div className="bg-gray-800/50 rounded p-3">
+                        <p className="text-xs text-gray-400">Total Alerts</p>
+                        <p className="text-xl font-bold">{governanceSummary.safeguarding.total_alerts || 0}</p>
+                      </div>
+                      <div className="bg-gray-800/50 rounded p-3">
+                        <p className="text-xs text-gray-400">Imminent Risk</p>
+                        <p className="text-xl font-bold text-red-400">{governanceSummary.safeguarding.imminent_risk || 0}</p>
+                      </div>
+                      <div className="bg-gray-800/50 rounded p-3">
+                        <p className="text-xs text-gray-400">High Risk</p>
+                        <p className="text-xl font-bold text-orange-400">{governanceSummary.safeguarding.high_risk || 0}</p>
+                      </div>
+                      <div className="bg-gray-800/50 rounded p-3">
+                        <p className="text-xs text-gray-400">Panic Alerts</p>
+                        <p className="text-xl font-bold text-yellow-400">{governanceSummary.safeguarding.panic_alerts || 0}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* KPI Metrics */}
+                  {governanceSummary.kpis && (
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="bg-gray-800/50 rounded p-3">
+                        <p className="text-xs text-gray-400">Avg Response (High)</p>
+                        <p className="text-lg font-bold">{governanceSummary.kpis.avg_response_time_high || 'N/A'}</p>
+                      </div>
+                      <div className="bg-gray-800/50 rounded p-3">
+                        <p className="text-xs text-gray-400">Avg Response (Imminent)</p>
+                        <p className="text-lg font-bold">{governanceSummary.kpis.avg_response_time_imminent || 'N/A'}</p>
+                      </div>
+                      <div className="bg-gray-800/50 rounded p-3">
+                        <p className="text-xs text-gray-400">SLA Compliance</p>
+                        <p className={`text-lg font-bold ${(governanceSummary.kpis.high_risk_sla_compliance || 0) >= 95 ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {governanceSummary.kpis.high_risk_sla_compliance || 0}%
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recommendations */}
+                  {governanceSummary.recommendations && governanceSummary.recommendations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                      <p className="text-xs text-gray-400 mb-2">Recommendations:</p>
+                      <ul className="space-y-1">
+                        {governanceSummary.recommendations.map((rec: string, idx: number) => (
+                          <li key={idx} className="text-sm text-yellow-300 flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            {rec}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Hazard Log */}
               <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-yellow-400" />
-                  Clinical Safety Hazard Log
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-yellow-400" />
+                    Clinical Safety Hazard Log
+                  </h3>
+                </div>
                 {hazards.length === 0 ? (
                   <p className="text-gray-400 text-center py-8">No hazards recorded</p>
                 ) : (
@@ -2861,12 +3060,130 @@ export default function AdminPortal() {
                   <button onClick={loadEvents} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
                     <RefreshCw className="w-5 h-5" />
                   </button>
-                  <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowEventModal(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2"
+                  >
                     <Plus className="w-4 h-4" />
                     Create Event
                   </button>
                 </div>
               </div>
+
+              {/* Create/Edit Event Modal */}
+              {showEventModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg border border-gray-700">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold">{editingEvent ? 'Edit Event' : 'Create New Event'}</h3>
+                      <button onClick={() => { setShowEventModal(false); setEditingEvent(null); }} className="p-1 hover:bg-gray-700 rounded">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!token) return;
+                      try {
+                        const eventData = {
+                          title: newEvent.title,
+                          description: newEvent.description,
+                          event_date: `${newEvent.event_date}T${newEvent.event_time}:00`,
+                          duration_minutes: newEvent.duration_minutes,
+                          host_name: newEvent.host_name,
+                          max_participants: newEvent.max_participants,
+                        };
+                        await api.createEvent(token, eventData);
+                        setSuccess('Event created successfully');
+                        setShowEventModal(false);
+                        setNewEvent({ title: '', description: '', event_date: new Date().toISOString().split('T')[0], event_time: '14:00', duration_minutes: 60, host_name: '', max_participants: 20 });
+                        loadEvents();
+                      } catch (err: any) {
+                        setError('Failed to create event: ' + err.message);
+                      }
+                    }}>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Title</label>
+                          <input
+                            type="text"
+                            value={newEvent.title}
+                            onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Description</label>
+                          <textarea
+                            value={newEvent.description}
+                            onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Date</label>
+                            <input
+                              type="date"
+                              value={newEvent.event_date}
+                              onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Time</label>
+                            <input
+                              type="time"
+                              value={newEvent.event_time}
+                              onChange={(e) => setNewEvent({ ...newEvent, event_time: e.target.value })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Duration (mins)</label>
+                            <input
+                              type="number"
+                              value={newEvent.duration_minutes}
+                              onChange={(e) => setNewEvent({ ...newEvent, duration_minutes: parseInt(e.target.value) })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Max Participants</label>
+                            <input
+                              type="number"
+                              value={newEvent.max_participants}
+                              onChange={(e) => setNewEvent({ ...newEvent, max_participants: parseInt(e.target.value) })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Host Name</label>
+                          <input
+                            type="text"
+                            value={newEvent.host_name}
+                            onChange={(e) => setNewEvent({ ...newEvent, host_name: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-3 mt-6">
+                        <button type="button" onClick={() => { setShowEventModal(false); setEditingEvent(null); }} className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                          Cancel
+                        </button>
+                        <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg">
+                          {editingEvent ? 'Save Changes' : 'Create Event'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Upcoming Events */}
@@ -2875,32 +3192,49 @@ export default function AdminPortal() {
                     <Calendar className="w-5 h-5 text-blue-400" />
                     Upcoming Events
                   </h3>
-                  {events.filter(e => new Date(e.scheduled_for) > new Date()).length === 0 ? (
+                  {events.filter(e => new Date(e.scheduled_for || e.event_date) > new Date()).length === 0 ? (
                     <p className="text-gray-400 text-center py-8">No upcoming events scheduled</p>
                   ) : (
                     <div className="space-y-3">
                       {events
-                        .filter(e => new Date(e.scheduled_for) > new Date())
-                        .sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime())
+                        .filter(e => new Date(e.scheduled_for || e.event_date) > new Date())
+                        .sort((a, b) => new Date(a.scheduled_for || a.event_date).getTime() - new Date(b.scheduled_for || b.event_date).getTime())
                         .slice(0, 5)
                         .map((event) => (
                           <div key={event.id} className="bg-gray-700 rounded-lg p-4">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="font-medium">{event.title}</h4>
                               <span className={`px-2 py-1 rounded text-xs ${
-                                event.event_type === 'group_chat' ? 'bg-purple-500/20 text-purple-400' :
-                                event.event_type === 'webinar' ? 'bg-blue-500/20 text-blue-400' :
-                                'bg-green-500/20 text-green-400'
+                                event.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                                event.status === 'live' ? 'bg-green-500/20 text-green-400' :
+                                'bg-blue-500/20 text-blue-400'
                               }`}>
-                                {event.event_type?.replace('_', ' ')}
+                                {event.status || 'scheduled'}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-400 mb-2">{event.description?.substring(0, 80)}...</p>
-                            <div className="flex justify-between items-center text-sm">
+                            <p className="text-sm text-gray-400 mb-2">{event.description?.substring(0, 60)}...</p>
+                            <div className="flex justify-between items-center text-sm mb-2">
                               <span className="text-gray-400">
-                                {new Date(event.scheduled_for).toLocaleDateString()} at {new Date(event.scheduled_for).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(event.scheduled_for || event.event_date).toLocaleDateString()} at {new Date(event.scheduled_for || event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
-                              <span className="text-blue-400">{event.max_participants || '∞'} max</span>
+                              <span className="text-blue-400">{event.participant_count || 0}/{event.max_participants || '∞'}</span>
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                              <button 
+                                onClick={async () => {
+                                  if (!token || !confirm('Cancel this event?')) return;
+                                  try {
+                                    await api.deleteEvent(token, event.id);
+                                    setSuccess('Event cancelled');
+                                    loadEvents();
+                                  } catch (err: any) {
+                                    setError('Failed to cancel: ' + err.message);
+                                  }
+                                }}
+                                className="px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded text-xs"
+                              >
+                                Cancel
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -2914,13 +3248,13 @@ export default function AdminPortal() {
                     <Clock className="w-5 h-5 text-gray-400" />
                     Recent Events
                   </h3>
-                  {events.filter(e => new Date(e.scheduled_for) <= new Date()).length === 0 ? (
+                  {events.filter(e => new Date(e.scheduled_for || e.event_date) <= new Date()).length === 0 ? (
                     <p className="text-gray-400 text-center py-8">No past events</p>
                   ) : (
                     <div className="space-y-3">
                       {events
-                        .filter(e => new Date(e.scheduled_for) <= new Date())
-                        .sort((a, b) => new Date(b.scheduled_for).getTime() - new Date(a.scheduled_for).getTime())
+                        .filter(e => new Date(e.scheduled_for || e.event_date) <= new Date())
+                        .sort((a, b) => new Date(b.scheduled_for || b.event_date).getTime() - new Date(a.scheduled_for || a.event_date).getTime())
                         .slice(0, 5)
                         .map((event) => (
                           <div key={event.id} className="bg-gray-700 rounded-lg p-4 opacity-75">
@@ -2929,7 +3263,7 @@ export default function AdminPortal() {
                               <span className="text-xs text-gray-400">{event.participant_count || 0} attended</span>
                             </div>
                             <p className="text-sm text-gray-400">
-                              {new Date(event.scheduled_for).toLocaleDateString()}
+                              {new Date(event.scheduled_for || event.event_date).toLocaleDateString()}
                             </p>
                           </div>
                         ))}
@@ -2945,9 +3279,26 @@ export default function AdminPortal() {
             <div data-testid="learning-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">AI Learning & Moderation</h2>
-                <button onClick={loadLearning} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
-                  <RefreshCw className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      if (!token) return;
+                      try {
+                        await api.fetch(`/learning/patterns/seed-defaults?admin_id=${user?.id}`, { token, method: 'POST' });
+                        setSuccess('Default patterns seeded');
+                        loadLearning();
+                      } catch (err: any) {
+                        setError('Failed to seed patterns: ' + err.message);
+                      }
+                    }}
+                    className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm"
+                  >
+                    Seed Defaults
+                  </button>
+                  <button onClick={loadLearning} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Stats Grid */}
@@ -2974,7 +3325,7 @@ export default function AdminPortal() {
               <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                   <Eye className="w-5 h-5 text-yellow-400" />
-                  Moderation Queue
+                  Moderation Queue ({moderationQueue.length})
                 </h3>
                 {moderationQueue.length === 0 ? (
                   <p className="text-gray-400 text-center py-8">No items pending review</p>
@@ -2984,19 +3335,55 @@ export default function AdminPortal() {
                       <div key={item.id || index} className="bg-gray-700 rounded-lg p-4">
                         <div className="flex justify-between items-start mb-2">
                           <span className={`px-2 py-1 rounded text-xs ${
-                            item.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                            item.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                            item.category === 'safety' ? 'bg-red-500/20 text-red-400' :
+                            item.category === 'clinical' ? 'bg-orange-500/20 text-orange-400' :
                             'bg-blue-500/20 text-blue-400'
                           }`}>
-                            {item.priority || 'normal'}
+                            {item.category || 'general'}
                           </span>
-                          <span className="text-xs text-gray-400">{item.reason || 'Manual review'}</span>
+                          <span className="text-xs text-gray-400">{item.submitted_by || 'system'}</span>
                         </div>
-                        <p className="text-sm mb-3">{item.content?.substring(0, 100)}...</p>
+                        <p className="text-sm text-gray-300 mb-1"><strong>Context:</strong> {item.context?.substring(0, 80) || 'N/A'}...</p>
+                        <p className="text-sm text-gray-300 mb-3"><strong>Response:</strong> {item.ai_response_pattern?.substring(0, 80) || item.content?.substring(0, 80) || 'N/A'}...</p>
                         <div className="flex gap-2">
-                          <button className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">Approve</button>
-                          <button className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">Reject</button>
-                          <button className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm">View Full</button>
+                          <button 
+                            onClick={async () => {
+                              if (!token) return;
+                              try {
+                                await api.fetch(`/learning/approve/${item.id}?admin_id=${user?.id}`, { 
+                                  token, 
+                                  method: 'PUT',
+                                  body: JSON.stringify({ approved: true })
+                                });
+                                setSuccess('Learning approved');
+                                loadLearning();
+                              } catch (err: any) {
+                                setError('Failed to approve: ' + err.message);
+                              }
+                            }}
+                            className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                          >
+                            Approve
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (!token) return;
+                              try {
+                                await api.fetch(`/learning/approve/${item.id}?admin_id=${user?.id}`, { 
+                                  token, 
+                                  method: 'PUT',
+                                  body: JSON.stringify({ approved: false })
+                                });
+                                setSuccess('Learning rejected');
+                                loadLearning();
+                              } catch (err: any) {
+                                setError('Failed to reject: ' + err.message);
+                              }
+                            }}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
+                          >
+                            Reject
+                          </button>
                         </div>
                       </div>
                     ))}

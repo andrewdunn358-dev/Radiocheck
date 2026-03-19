@@ -11,13 +11,20 @@
 6. ✅ Compliance - Staff Wellbeing section, Run Security Review button, expanded metrics
 7. ✅ Logs - App Usage Analytics added previously
 8. ✅ Monitoring - Server health progress bars (CPU, Memory, Load), proper stats layout
+9. ✅ Governance - Weekly/Monthly report buttons, full report display with KPIs, recommendations
+10. ✅ Events - Create Event modal, Cancel button on events
+11. ✅ AI Learning - Seed Defaults button, working Approve/Reject buttons
+12. ✅ AI Usage - Budget progress bars for OpenAI/Gemini, character usage list
+
+### ALSO FIXED:
+- `.toFixed()` crash on non-numeric values (DATA TYPE ENFORCEMENT)
+- Legacy admin `loadDashboardData` → `loadLogsData` bug
+- Compliance backend 401 auth error
+- Login autocomplete warnings
 
 ### REMAINING TO DO:
 - Logs tab: Missing screening/callbacks/panic sub-tabs, location map, charts
-- Governance: Missing sub-tabs, add hazard modal, generate report buttons
-- AI Learning: Missing sub-tabs, pattern management, approve/reject actions
-- AI Usage: Missing daily usage chart, budget progress bars
-- Events: Missing edit modal, attendance view
+- Minor: Some tabs may need additional sub-tabs matching legacy exactly
 
 ---
 
