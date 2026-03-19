@@ -325,6 +325,16 @@ const api = {
   
   getApprovedLearnings: (token: string) =>
     api.fetch<any>('/learning/approved', { token }),
+
+  // Beta Testing
+  getBetaStatus: (token: string) =>
+    api.fetch<{ beta_enabled: boolean }>('/surveys/beta-enabled', { token }),
+  
+  getBetaStats: (token: string) =>
+    api.fetch<any>('/surveys/stats', { token }),
+  
+  getBetaResponses: (token: string) =>
+    api.fetch<any>('/surveys/responses?limit=50', { token }),
 };
 
 // Tab definitions - matching the original admin portal
@@ -409,6 +419,10 @@ export default function AdminPortal() {
   const [learningStats, setLearningStats] = useState<any>(null);
   const [moderationQueue, setModerationQueue] = useState<any[]>([]);
   
+  // Beta Testing state
+  const [betaEnabled, setBetaEnabled] = useState(false);
+  const [betaStats, setBetaStats] = useState<any>(null);
+  
   // Modal state
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
@@ -476,6 +490,9 @@ export default function AdminPortal() {
             break;
           case 'learning':
             await loadLearning();
+            break;
+          case 'beta':
+            await loadBetaTesting();
             break;
         }
       } catch (err: any) {
@@ -695,10 +712,11 @@ export default function AdminPortal() {
     if (!token) return;
     try {
       const [hazardsData, summaryData] = await Promise.all([
-        api.getHazards(token).catch(() => ({ hazards: [] })),
+        api.getHazards(token).catch(() => []),
         api.getGovernanceSummary(token).catch(() => null),
       ]);
-      setHazards(hazardsData?.hazards || []);
+      // Hazards endpoint returns array directly, not {hazards: []}
+      setHazards(Array.isArray(hazardsData) ? hazardsData : (hazardsData?.hazards || []));
       setGovernanceSummary(summaryData);
     } catch (err: any) {
       console.error('Governance data not available:', err);
@@ -718,6 +736,21 @@ export default function AdminPortal() {
       setModerationQueue(queueData?.learnings || queueData?.queue || []);
     } catch (err: any) {
       console.error('Learning data not available:', err);
+    }
+  };
+
+  // Load Beta Testing
+  const loadBetaTesting = async () => {
+    if (!token) return;
+    try {
+      const [statusData, statsData] = await Promise.all([
+        api.getBetaStatus(token).catch(() => ({ beta_enabled: false })),
+        api.getBetaStats(token).catch(() => null),
+      ]);
+      setBetaEnabled(statusData?.beta_enabled || false);
+      setBetaStats(statsData);
+    } catch (err: any) {
+      console.error('Beta testing data not available:', err);
     }
   };
 
@@ -1626,49 +1659,83 @@ export default function AdminPortal() {
             <div data-testid="beta-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Beta Testing & Feedback</h2>
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Invite Tester
-                </button>
+                <div className="flex gap-2 items-center">
+                  <span className={`px-3 py-1 rounded-full text-sm ${betaEnabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                    Beta {betaEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <button onClick={loadBetaTesting} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">Active Testers</p>
-                  <p className="text-2xl font-bold text-green-400">0</p>
+                  <p className="text-gray-400 text-sm">Pre-Surveys</p>
+                  <p className="text-2xl font-bold text-green-400">{betaStats?.total_pre_surveys || 0}</p>
                 </div>
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">Pending Feedback</p>
-                  <p className="text-2xl font-bold text-yellow-400">0</p>
+                  <p className="text-gray-400 text-sm">Post-Surveys</p>
+                  <p className="text-2xl font-bold text-blue-400">{betaStats?.total_post_surveys || 0}</p>
                 </div>
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">Bugs Reported</p>
-                  <p className="text-2xl font-bold text-red-400">0</p>
+                  <p className="text-gray-400 text-sm">Completion Rate</p>
+                  <p className="text-2xl font-bold text-yellow-400">{betaStats?.completion_rate || 0}%</p>
                 </div>
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">Feature Requests</p>
-                  <p className="text-2xl font-bold text-blue-400">0</p>
+                  <p className="text-gray-400 text-sm">NPS Score</p>
+                  <p className="text-2xl font-bold text-purple-400">{betaStats?.nps_score || '--'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Beta Testers List */}
+                {/* Pre-Survey Averages */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-400" />
-                    Beta Testers
+                    <BarChart3 className="w-5 h-5 text-blue-400" />
+                    Pre-Survey Averages
                   </h3>
-                  <p className="text-gray-400 text-center py-8">No active beta testers</p>
+                  {betaStats?.pre_averages ? (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
+                        <span>Wellbeing Score</span>
+                        <span className="text-green-400 font-bold">{betaStats.pre_averages.avg_wellbeing?.toFixed(1) || '--'}/10</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
+                        <span>Anxiety Level</span>
+                        <span className="text-yellow-400 font-bold">{betaStats.pre_averages.avg_anxiety?.toFixed(1) || '--'}/10</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
+                        <span>Mood Score</span>
+                        <span className="text-blue-400 font-bold">{betaStats.pre_averages.avg_mood?.toFixed(1) || '--'}/10</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-center py-8">No pre-survey data yet</p>
+                  )}
                 </div>
 
-                {/* Feedback Queue */}
+                {/* Post-Survey Improvement */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-yellow-400" />
-                    Recent Feedback
+                    <Activity className="w-5 h-5 text-green-400" />
+                    Post-Survey Improvement
                   </h3>
-                  <p className="text-gray-400 text-center py-8">No feedback received yet</p>
+                  {betaStats?.improvement && Object.keys(betaStats.improvement).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(betaStats.improvement).map(([key, value]: [string, any]) => (
+                        <div key={key} className="flex justify-between items-center bg-gray-700 p-3 rounded">
+                          <span className="capitalize">{key.replace('_', ' ')}</span>
+                          <span className={`font-bold ${value > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {value > 0 ? '+' : ''}{value?.toFixed(1) || 0}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-center py-8">No post-survey data yet</p>
+                  )}
                 </div>
               </div>
             </div>
