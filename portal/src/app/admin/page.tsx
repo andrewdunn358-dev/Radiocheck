@@ -1,13 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { 
   Users, Calendar, FileText, Bot, Shield, Activity, 
   Settings, BarChart3, Clock, BookOpen, AlertTriangle,
   LogOut, Menu, X, Plus, Edit, Trash2, Search,
   Phone, MessageSquare, Bell, ChevronDown, ChevronRight,
-  Download, RefreshCw, Check, XCircle, Eye, Filter, Heart, Play
+  Download, RefreshCw, Check, XCircle, Eye, Filter, Heart, Play, MapPin
 } from 'lucide-react';
+
+// Dynamic import for Leaflet (SSR issues)
+const LocationMap = dynamic(() => import('../components/LocationMap'), { 
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400">Loading map...</div>
+});
 
 // API Configuration
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
@@ -358,6 +365,9 @@ const api = {
   getAppUsageStats: (token: string) =>
     api.fetch<any>('/analytics/usage', { token }),
   
+  getLocationData: (token: string) =>
+    api.fetch<any>('/analytics/locations', { token }),
+  
   getAIChatStats: (token: string, days: number = 7) =>
     api.fetch<any>(`/ai-chat/stats?days=${days}`, { token }),
 
@@ -554,6 +564,7 @@ export default function AdminPortal() {
   // App Usage Analytics state
   const [appUsageStats, setAppUsageStats] = useState<any>(null);
   const [aiChatStats, setAiChatStats] = useState<any>(null);
+  const [locationData, setLocationData] = useState<any>(null);
 
   // AI Character editing state
   const [editingCharacter, setEditingCharacter] = useState<AICharacter | null>(null);
@@ -742,13 +753,15 @@ export default function AdminPortal() {
   const loadLogs = async () => {
     if (!token) return;
     try {
-      // Always load app usage and AI chat stats for the dashboard view
-      const [usageData, aiStatsData] = await Promise.all([
+      // Always load app usage, AI chat stats, and location data for the dashboard view
+      const [usageData, aiStatsData, locData] = await Promise.all([
         api.getAppUsageStats(token).catch(() => null),
         api.getAIChatStats(token).catch(() => null),
+        api.getLocationData(token).catch(() => null),
       ]);
       setAppUsageStats(usageData);
       setAiChatStats(aiStatsData);
+      setLocationData(locData);
       
       switch (activeLogSubTab) {
         case 'calls':
@@ -1622,6 +1635,15 @@ export default function AdminPortal() {
                   </div>
                 </div>
               )}
+
+              {/* Location Map Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-green-400" />
+                  Location Analytics
+                </h3>
+                <LocationMap data={locationData} />
+              </div>
 
               {/* Sub-tabs */}
               <div className="flex gap-2 mb-6">
