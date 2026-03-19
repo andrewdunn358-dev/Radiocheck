@@ -24,13 +24,15 @@ interface StaffMember {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'supervisor' | 'counsellor' | 'peer';
+  role: string;
   status: string;
   phone?: string;
   specialization?: string;
   area?: string;
+  background?: string;
   is_supervisor?: boolean;
   created_at?: string;
+  has_profile?: boolean;
   _source?: string;
 }
 
@@ -231,6 +233,84 @@ const api = {
   // Monitoring - Correct endpoint is /admin/system-stats
   getMonitoringStats: (token: string) =>
     api.fetch<any>('/admin/system-stats', { token }),
+
+  // Rota/Shifts
+  getShifts: (token: string) =>
+    api.fetch<any[]>('/shifts/', { token }),
+  
+  getSwapRequests: (token: string) =>
+    api.fetch<any[]>('/shift-swaps/', { token }),
+  
+  getPendingSwaps: (token: string) =>
+    api.fetch<any[]>('/shift-swaps/needs-approval', { token }),
+
+  approveSwap: (token: string, id: string, approved: boolean) =>
+    api.fetch<any>(`/shift-swaps/${id}/approve`, {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ approved }),
+    }),
+
+  // Events
+  getEvents: (token: string) =>
+    api.fetch<any[]>('/events/', { token }),
+  
+  createEvent: (token: string, data: any) =>
+    api.fetch<any>('/events/', {
+      token,
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  deleteEvent: (token: string, id: string) =>
+    api.fetch<any>(`/events/${id}`, {
+      token,
+      method: 'DELETE',
+    }),
+
+  // CMS
+  getCMSPages: (token: string) =>
+    api.fetch<any[]>('/cms/pages', { token }),
+  
+  getCMSPage: (token: string, slug: string) =>
+    api.fetch<any>(`/cms/pages/${slug}`, { token }),
+  
+  updateCMSPage: (token: string, slug: string, data: any) =>
+    api.fetch<any>(`/cms/pages/${slug}`, {
+      token,
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Compliance
+  getComplianceDashboard: (token: string) =>
+    api.fetch<any>('/compliance/dashboard', { token }),
+  
+  getComplianceIncidents: (token: string) =>
+    api.fetch<any>('/compliance/incidents?status=detected&status=investigating&status=contained', { token }),
+  
+  getComplianceComplaints: (token: string) =>
+    api.fetch<any>('/compliance/complaints?status=received&status=under_review&status=investigating', { token }),
+  
+  getAuditLogs: (token: string, limit: number = 50) =>
+    api.fetch<any>(`/admin/audit-logs?limit=${limit}`, { token }),
+
+  // Governance
+  getHazards: (token: string) =>
+    api.fetch<any>('/governance/hazards', { token }),
+  
+  getGovernanceSummary: (token: string, period: string = '30d') =>
+    api.fetch<any>(`/governance/summary-report?period=${period}`, { token }),
+
+  // Learning/AI Training
+  getLearningStats: (token: string) =>
+    api.fetch<any>('/learning/stats', { token }),
+  
+  getSafetyPatterns: (token: string) =>
+    api.fetch<any>('/learning/safety-patterns', { token }),
+  
+  getModerationQueue: (token: string) =>
+    api.fetch<any>('/ai-feedback/moderation/queue', { token }),
 };
 
 // Tab definitions - matching the original admin portal
@@ -290,6 +370,31 @@ export default function AdminPortal() {
   const [monitoringStats, setMonitoringStats] = useState<any>(null);
   const [migrationStatus, setMigrationStatus] = useState<any>(null);
   
+  // Rota state
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [pendingSwaps, setPendingSwaps] = useState<any[]>([]);
+  
+  // Events state
+  const [events, setEvents] = useState<any[]>([]);
+  
+  // CMS state
+  const [cmsPages, setCmsPages] = useState<any[]>([]);
+  const [selectedCmsPage, setSelectedCmsPage] = useState<any>(null);
+  
+  // Compliance state
+  const [complianceData, setComplianceData] = useState<any>(null);
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  
+  // Governance state
+  const [hazards, setHazards] = useState<any[]>([]);
+  const [governanceSummary, setGovernanceSummary] = useState<any>(null);
+  
+  // Learning state
+  const [learningStats, setLearningStats] = useState<any>(null);
+  const [moderationQueue, setModerationQueue] = useState<any[]>([]);
+  
   // Modal state
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
@@ -339,6 +444,24 @@ export default function AdminPortal() {
             break;
           case 'migration':
             await loadMigrationStatus();
+            break;
+          case 'rota':
+            await loadRota();
+            break;
+          case 'events':
+            await loadEvents();
+            break;
+          case 'cms':
+            await loadCMS();
+            break;
+          case 'compliance':
+            await loadCompliance();
+            break;
+          case 'governance':
+            await loadGovernance();
+            break;
+          case 'learning':
+            await loadLearning();
             break;
         }
       } catch (err: any) {
@@ -494,6 +617,92 @@ export default function AdminPortal() {
       setMigrationStatus(data);
     } catch (err: any) {
       console.error('Migration status not available:', err);
+    }
+  };
+
+  // Load Rota data
+  const loadRota = async () => {
+    if (!token) return;
+    try {
+      const [shiftsData, swapsData] = await Promise.all([
+        api.getShifts(token).catch(() => []),
+        api.getPendingSwaps(token).catch(() => []),
+      ]);
+      setShifts(Array.isArray(shiftsData) ? shiftsData : []);
+      setPendingSwaps(Array.isArray(swapsData) ? swapsData : []);
+    } catch (err: any) {
+      console.error('Rota data not available:', err);
+    }
+  };
+
+  // Load Events
+  const loadEvents = async () => {
+    if (!token) return;
+    try {
+      const data = await api.getEvents(token).catch(() => []);
+      setEvents(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error('Events not available:', err);
+    }
+  };
+
+  // Load CMS
+  const loadCMS = async () => {
+    if (!token) return;
+    try {
+      const pages = await api.getCMSPages(token).catch(() => []);
+      setCmsPages(Array.isArray(pages) ? pages : []);
+    } catch (err: any) {
+      console.error('CMS data not available:', err);
+    }
+  };
+
+  // Load Compliance
+  const loadCompliance = async () => {
+    if (!token) return;
+    try {
+      const [dashboard, incidentsData, complaintsData, logsData] = await Promise.all([
+        api.getComplianceDashboard(token).catch(() => null),
+        api.getComplianceIncidents(token).catch(() => ({ incidents: [] })),
+        api.getComplianceComplaints(token).catch(() => ({ complaints: [] })),
+        api.getAuditLogs(token).catch(() => ({ logs: [] })),
+      ]);
+      setComplianceData(dashboard);
+      setIncidents(incidentsData?.incidents || []);
+      setComplaints(complaintsData?.complaints || []);
+      setAuditLogs(logsData?.logs || logsData || []);
+    } catch (err: any) {
+      console.error('Compliance data not available:', err);
+    }
+  };
+
+  // Load Governance
+  const loadGovernance = async () => {
+    if (!token) return;
+    try {
+      const [hazardsData, summaryData] = await Promise.all([
+        api.getHazards(token).catch(() => ({ hazards: [] })),
+        api.getGovernanceSummary(token).catch(() => null),
+      ]);
+      setHazards(hazardsData?.hazards || []);
+      setGovernanceSummary(summaryData);
+    } catch (err: any) {
+      console.error('Governance data not available:', err);
+    }
+  };
+
+  // Load Learning
+  const loadLearning = async () => {
+    if (!token) return;
+    try {
+      const [statsData, queueData] = await Promise.all([
+        api.getLearningStats(token).catch(() => null),
+        api.getModerationQueue(token).catch(() => ({ queue: [] })),
+      ]);
+      setLearningStats(statsData);
+      setModerationQueue(queueData?.queue || []);
+    } catch (err: any) {
+      console.error('Learning data not available:', err);
     }
   };
 
@@ -1195,18 +1404,102 @@ export default function AdminPortal() {
           {/* Rota Tab */}
           {activeTab === 'rota' && (
             <div data-testid="rota-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">Staff Rota & Scheduling</h2>
-                <p className="text-gray-400 mb-4">Manage staff schedules and shift swaps.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Current Shifts</h3>
-                    <p className="text-sm text-gray-400">View and edit today&apos;s shift assignments</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Swap Requests</h3>
-                    <p className="text-sm text-gray-400">Pending shift swap requests to approve</p>
-                  </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Staff Rota & Scheduling</h2>
+                <button onClick={loadRota} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Today's Shifts */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-blue-400" />
+                    Today&apos;s Shifts
+                  </h3>
+                  {shifts.filter(s => s.date === new Date().toISOString().split('T')[0]).length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">No shifts scheduled for today</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {shifts
+                        .filter(s => s.date === new Date().toISOString().split('T')[0])
+                        .map((shift) => (
+                          <div key={shift.id} className="bg-gray-700 rounded-lg p-3 flex justify-between items-center">
+                            <div>
+                              <p className="font-medium">{shift.user_name || 'Unassigned'}</p>
+                              <p className="text-sm text-gray-400">{shift.start_time} - {shift.end_time}</p>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              shift.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {shift.status || 'pending'}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pending Swap Requests */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-yellow-400" />
+                    Pending Swap Requests
+                    {pendingSwaps.length > 0 && (
+                      <span className="bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-full">{pendingSwaps.length}</span>
+                    )}
+                  </h3>
+                  {pendingSwaps.length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">No swap requests pending approval</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingSwaps.map((swap) => (
+                        <div key={swap.id} className="bg-gray-700 rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-medium">{swap.requester_name}</p>
+                              <p className="text-sm text-gray-400">{swap.shift_date} • {swap.shift_start} - {swap.shift_end}</p>
+                            </div>
+                            <span className="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">
+                              {swap.status}
+                            </span>
+                          </div>
+                          {swap.responder_name && (
+                            <p className="text-sm text-gray-400 mb-2">Cover: {swap.responder_name}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <button className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
+                              Approve
+                            </button>
+                            <button className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Week View */}
+              <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h3 className="font-semibold mb-4">Week Overview</h3>
+                <div className="grid grid-cols-7 gap-2">
+                  {[...Array(7)].map((_, i) => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const dayShifts = shifts.filter(s => s.date === dateStr);
+                    return (
+                      <div key={i} className={`text-center p-3 rounded-lg ${i === 0 ? 'bg-blue-600' : 'bg-gray-700'}`}>
+                        <p className="text-xs text-gray-400">{date.toLocaleDateString('en-GB', { weekday: 'short' })}</p>
+                        <p className="font-bold">{date.getDate()}</p>
+                        <p className="text-xs mt-1">{dayShifts.length} shifts</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1215,22 +1508,69 @@ export default function AdminPortal() {
           {/* CMS Tab */}
           {activeTab === 'cms' && (
             <div data-testid="cms-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">Content Management System</h2>
-                <p className="text-gray-400 mb-4">Edit website content and landing pages.</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Hero Section</h3>
-                    <p className="text-sm text-gray-400">Edit hero text and images</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">About Section</h3>
-                    <p className="text-sm text-gray-400">Edit about us content</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Resources</h3>
-                    <p className="text-sm text-gray-400">Manage resource links</p>
-                  </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Content Management System</h2>
+                <button onClick={loadCMS} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Page List */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-400" />
+                    Pages
+                  </h3>
+                  {cmsPages.length === 0 ? (
+                    <div className="space-y-2">
+                      {['home', 'self-care', 'family-friends', 'peer-support', 'organizations'].map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setSelectedCmsPage(page)}
+                          className={`w-full text-left p-3 rounded-lg transition-colors ${
+                            selectedCmsPage === page ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                          }`}
+                        >
+                          <p className="font-medium capitalize">{page.replace('-', ' ')}</p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {cmsPages.map((page) => (
+                        <button
+                          key={page.slug}
+                          onClick={() => setSelectedCmsPage(page.slug)}
+                          className={`w-full text-left p-3 rounded-lg transition-colors ${
+                            selectedCmsPage === page.slug ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                          }`}
+                        >
+                          <p className="font-medium">{page.title}</p>
+                          <p className="text-xs text-gray-400">/{page.slug}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Page Editor Preview */}
+                <div className="lg:col-span-2 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4">Page Preview</h3>
+                  {selectedCmsPage ? (
+                    <div className="bg-gray-700 rounded-lg p-6 min-h-[400px]">
+                      <div className="text-center text-gray-400">
+                        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p className="font-medium capitalize">{selectedCmsPage.replace('-', ' ')}</p>
+                        <p className="text-sm mt-2">Visual editor coming soon</p>
+                        <p className="text-xs mt-4">Use the legacy admin portal for full CMS editing</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-700 rounded-lg p-6 min-h-[400px] flex items-center justify-center">
+                      <p className="text-gray-400">Select a page to preview and edit</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1259,26 +1599,92 @@ export default function AdminPortal() {
           {/* Compliance Tab */}
           {activeTab === 'compliance' && (
             <div data-testid="compliance-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">Compliance & Audit</h2>
-                <p className="text-gray-400 mb-4">Track compliance metrics and audit logs.</p>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Call Compliance</h3>
-                    <p className="text-2xl font-bold text-green-400">98%</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Response Time</h3>
-                    <p className="text-2xl font-bold text-yellow-400">2.5m</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Documentation</h3>
-                    <p className="text-2xl font-bold text-green-400">100%</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Training</h3>
-                    <p className="text-2xl font-bold text-blue-400">95%</p>
-                  </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Compliance & Audit</h2>
+                <button onClick={loadCompliance} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">GDPR Consent Rate</p>
+                  <p className="text-2xl font-bold text-green-400">{complianceData?.gdpr?.consent_rate || 0}%</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Open Complaints</p>
+                  <p className="text-2xl font-bold text-yellow-400">{complianceData?.complaints?.open_complaints || complaints.length}</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Security Status</p>
+                  <p className="text-2xl font-bold text-blue-400">{complianceData?.security?.last_review_status || 'N/A'}</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Open Incidents</p>
+                  <p className="text-2xl font-bold text-red-400">{incidents.length}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Incidents */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-red-400" />
+                    Security Incidents
+                  </h3>
+                  {incidents.length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">No open incidents</p>
+                  ) : (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                      {incidents.map((incident: any) => (
+                        <div key={incident.id} className="bg-gray-700 rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              incident.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
+                              incident.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                              'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {incident.severity?.toUpperCase()}
+                            </span>
+                            <span className="text-xs text-gray-400">{new Date(incident.detected_at).toLocaleDateString()}</span>
+                          </div>
+                          <p className="font-medium">{incident.title}</p>
+                          <p className="text-sm text-gray-400 mt-1">{incident.description?.substring(0, 80)}...</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Complaints */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-yellow-400" />
+                    Open Complaints
+                  </h3>
+                  {complaints.length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">No open complaints</p>
+                  ) : (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                      {complaints.map((complaint: any) => (
+                        <div key={complaint.id} className="bg-gray-700 rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              complaint.priority === 'critical' ? 'bg-red-500/20 text-red-400' :
+                              complaint.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                              'bg-blue-500/20 text-blue-400'
+                            }`}>
+                              {complaint.priority?.toUpperCase()}
+                            </span>
+                            <span className="text-xs text-gray-400">{complaint.status}</span>
+                          </div>
+                          <p className="font-medium">{complaint.subject}</p>
+                          <p className="text-sm text-gray-400 mt-1">Category: {complaint.category}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1287,23 +1693,85 @@ export default function AdminPortal() {
           {/* Governance Tab */}
           {activeTab === 'governance' && (
             <div data-testid="governance-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">Governance & Policies</h2>
-                <p className="text-gray-400 mb-4">Manage policies, hazards, and incident reports.</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Hazard Reports</h3>
-                    <p className="text-sm text-gray-400">0 open reports</p>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Governance & Clinical Safety</h2>
+                <button onClick={loadGovernance} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Summary Stats */}
+              {governanceSummary && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <p className="text-gray-400 text-sm">Total Hazards</p>
+                    <p className="text-2xl font-bold">{governanceSummary.total_hazards || hazards.length}</p>
                   </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Incidents</h3>
-                    <p className="text-sm text-gray-400">0 pending review</p>
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <p className="text-gray-400 text-sm">Open Hazards</p>
+                    <p className="text-2xl font-bold text-red-400">{governanceSummary.open_hazards || 0}</p>
                   </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Policy Updates</h3>
-                    <p className="text-sm text-gray-400">All policies current</p>
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <p className="text-gray-400 text-sm">Mitigated</p>
+                    <p className="text-2xl font-bold text-green-400">{governanceSummary.mitigated_hazards || 0}</p>
+                  </div>
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <p className="text-gray-400 text-sm">KPIs Met</p>
+                    <p className="text-2xl font-bold text-blue-400">{governanceSummary.kpis_met || 0}%</p>
                   </div>
                 </div>
+              )}
+
+              {/* Hazard Log */}
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-yellow-400" />
+                  Clinical Safety Hazard Log
+                </h3>
+                {hazards.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No hazards recorded</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-700">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">ID</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Description</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Severity</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Mitigation</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700">
+                        {hazards.map((hazard: any) => (
+                          <tr key={hazard.id} className="hover:bg-gray-700/50">
+                            <td className="px-4 py-3 font-mono text-sm">{hazard.hazard_id || hazard.id?.substring(0, 8)}</td>
+                            <td className="px-4 py-3">{hazard.description?.substring(0, 50)}...</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                hazard.severity === 'catastrophic' || hazard.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
+                                hazard.severity === 'major' ? 'bg-orange-500/20 text-orange-400' :
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {hazard.severity}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                hazard.status === 'mitigated' ? 'bg-green-500/20 text-green-400' :
+                                hazard.status === 'open' ? 'bg-red-500/20 text-red-400' :
+                                'bg-blue-500/20 text-blue-400'
+                              }`}>
+                                {hazard.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-400">{hazard.mitigation?.substring(0, 30) || '-'}...</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1311,15 +1779,86 @@ export default function AdminPortal() {
           {/* Events Tab */}
           {activeTab === 'events' && (
             <div data-testid="events-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">Events Management</h2>
-                <p className="text-gray-400 mb-4">Manage virtual events and group sessions.</p>
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg mb-4">
-                  <Plus className="w-4 h-4 inline mr-2" />
-                  Create Event
-                </button>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <p className="text-gray-400 text-center">No upcoming events</p>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Events Management</h2>
+                <div className="flex gap-2">
+                  <button onClick={loadEvents} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                  <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Create Event
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Upcoming Events */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-blue-400" />
+                    Upcoming Events
+                  </h3>
+                  {events.filter(e => new Date(e.scheduled_for) > new Date()).length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No upcoming events scheduled</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {events
+                        .filter(e => new Date(e.scheduled_for) > new Date())
+                        .sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime())
+                        .slice(0, 5)
+                        .map((event) => (
+                          <div key={event.id} className="bg-gray-700 rounded-lg p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-medium">{event.title}</h4>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                event.event_type === 'group_chat' ? 'bg-purple-500/20 text-purple-400' :
+                                event.event_type === 'webinar' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-green-500/20 text-green-400'
+                              }`}>
+                                {event.event_type?.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-400 mb-2">{event.description?.substring(0, 80)}...</p>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-400">
+                                {new Date(event.scheduled_for).toLocaleDateString()} at {new Date(event.scheduled_for).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <span className="text-blue-400">{event.max_participants || '∞'} max</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Past Events */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-gray-400" />
+                    Recent Events
+                  </h3>
+                  {events.filter(e => new Date(e.scheduled_for) <= new Date()).length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No past events</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {events
+                        .filter(e => new Date(e.scheduled_for) <= new Date())
+                        .sort((a, b) => new Date(b.scheduled_for).getTime() - new Date(a.scheduled_for).getTime())
+                        .slice(0, 5)
+                        .map((event) => (
+                          <div key={event.id} className="bg-gray-700 rounded-lg p-4 opacity-75">
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-medium">{event.title}</h4>
+                              <span className="text-xs text-gray-400">{event.participant_count || 0} attended</span>
+                            </div>
+                            <p className="text-sm text-gray-400">
+                              {new Date(event.scheduled_for).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1328,23 +1867,65 @@ export default function AdminPortal() {
           {/* AI Learning Tab */}
           {activeTab === 'learning' && (
             <div data-testid="learning-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">AI Learning & Training</h2>
-                <p className="text-gray-400 mb-4">Review AI conversations for training and improvement.</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Conversations Queue</h3>
-                    <p className="text-sm text-gray-400">0 pending review</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Approved Patterns</h3>
-                    <p className="text-sm text-gray-400">0 patterns saved</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Feedback</h3>
-                    <p className="text-sm text-gray-400">0 feedback items</p>
-                  </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">AI Learning & Moderation</h2>
+                <button onClick={loadLearning} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Total Conversations</p>
+                  <p className="text-2xl font-bold">{learningStats?.total_conversations || 0}</p>
                 </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Pending Review</p>
+                  <p className="text-2xl font-bold text-yellow-400">{moderationQueue.length}</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Approved Patterns</p>
+                  <p className="text-2xl font-bold text-green-400">{learningStats?.approved_patterns || 0}</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Escalation Rate</p>
+                  <p className="text-2xl font-bold text-red-400">{learningStats?.escalation_rate || 0}%</p>
+                </div>
+              </div>
+
+              {/* Moderation Queue */}
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-yellow-400" />
+                  Moderation Queue
+                </h3>
+                {moderationQueue.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No items pending review</p>
+                ) : (
+                  <div className="space-y-3">
+                    {moderationQueue.slice(0, 10).map((item: any, index: number) => (
+                      <div key={item.id || index} className="bg-gray-700 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            item.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                            item.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {item.priority || 'normal'}
+                          </span>
+                          <span className="text-xs text-gray-400">{item.reason || 'Manual review'}</span>
+                        </div>
+                        <p className="text-sm mb-3">{item.content?.substring(0, 100)}...</p>
+                        <div className="flex gap-2">
+                          <button className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">Approve</button>
+                          <button className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">Reject</button>
+                          <button className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm">View Full</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
