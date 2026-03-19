@@ -22,7 +22,7 @@ import uuid
 import time
 
 # Get base URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://staff-refactor-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-migration-5.preview.emergentagent.com').rstrip('/')
 
 # Delay between chat API calls to avoid rate limiting
 API_DELAY = 2  # seconds
