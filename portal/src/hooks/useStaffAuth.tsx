@@ -133,8 +133,12 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
     // If we have a profile, use it for the API call
     if (profile) {
       try {
+        // Use the profile's role to determine the correct endpoint
+        // profile.role is set when we load the profile (counsellor or peer)
         const staffType = profile.role === 'counsellor' ? 'counsellor' : 'peer';
         const staffId = profile.id || (profile as any)._id;
+        
+        console.log('Updating status:', { status, staffType, staffId, profileRole: profile.role });
         
         if (staffId) {
           await staffApi.updateStatus(token, status, staffId, staffType);
@@ -148,26 +152,27 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Fallback: If no profile, try to find one by user role
+    // Fallback: If no profile or update failed, try to get a fresh profile
     if (user) {
       try {
-        const staffType = user.role === 'counsellor' ? 'counsellor' : 'peer';
-        const endpoint = staffType === 'counsellor' ? '/counsellors' : '/peer-supporters';
-        
-        // Get all staff of this type and find the first one (to at least update something)
-        const staffList = await staffApi.getProfile(token);
-        if (staffList) {
-          const staffId = staffList.id || (staffList as any)._id;
+        // Get a fresh profile
+        const freshProfile = await staffApi.getProfile(token, user.id);
+        if (freshProfile) {
+          const staffType = freshProfile.role === 'counsellor' ? 'counsellor' : 'peer';
+          const staffId = freshProfile.id || (freshProfile as any)._id;
+          
+          console.log('Updating status via fresh profile:', { status, staffType, staffId });
+          
           if (staffId) {
             await staffApi.updateStatus(token, status, staffId, staffType);
-            setProfile({ ...staffList, status: status as StaffProfile['status'] });
+            setProfile({ ...freshProfile, status: status as StaffProfile['status'] });
             localStorage.setItem('staff_status', status);
-            console.log('Status updated to:', status, '(using fallback)');
+            console.log('Status updated to:', status, '(using fresh profile)');
             return;
           }
         }
       } catch (error) {
-        console.error('Failed to update status via fallback:', error);
+        console.error('Failed to update status via fresh profile:', error);
       }
     }
     

@@ -675,17 +675,22 @@ export default function StaffPortalPage() {
         <div className="p-4 border-b border-border">
           <label className="block text-xs text-gray-400 mb-2">My Status</label>
           <div className="flex gap-2">
-            {['available', 'busy', 'offline'].map((status) => (
+            {/* Use status values that work for both counsellors and peers */}
+            {[
+              { value: 'available', label: 'Available', color: 'bg-green-500' },
+              { value: 'limited', label: 'Busy', color: 'bg-yellow-500' },
+              { value: 'unavailable', label: 'Off Duty', color: 'bg-gray-500' }
+            ].map((statusOption) => (
               <button
-                key={status}
-                onClick={() => handleStatusChange(status)}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm capitalize transition-colors ${
-                  profile?.status === status 
-                    ? `${getStatusColor(status)} text-white` 
+                key={statusOption.value}
+                onClick={() => handleStatusChange(statusOption.value)}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm transition-colors ${
+                  profile?.status === statusOption.value 
+                    ? `${statusOption.color} text-white` 
                     : 'bg-primary-dark border border-border hover:bg-white/5'
                 }`}
               >
-                {status}
+                {statusOption.label}
               </button>
             ))}
           </div>
