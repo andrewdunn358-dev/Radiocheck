@@ -1340,7 +1340,7 @@ export default function AdminPortal() {
                     <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg p-4">
                       <h4 className="font-medium mb-3 text-purple-200">🔄 Return Rate (30 days)</h4>
                       <div className="text-center py-4">
-                        <p className="text-5xl font-bold">{appUsageStats?.return_rate?.toFixed(1) || 0}%</p>
+                        <p className="text-5xl font-bold">{typeof appUsageStats?.return_rate === 'number' ? appUsageStats.return_rate.toFixed(1) : (appUsageStats?.return_rate || 0)}%</p>
                         <p className="text-purple-200 mt-2">
                           {appUsageStats?.returning_visitors || 0} returning / {appUsageStats?.['30_days']?.unique_visitors || 0} total visitors
                         </p>
@@ -1577,7 +1577,7 @@ export default function AdminPortal() {
                   </div>
                   <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h3 className="text-gray-400 text-sm mb-2">Total Cost</h3>
-                    <p className="text-3xl font-bold">£{(aiUsage.total_cost_gbp || aiUsage.total_cost || 0).toFixed(4)}</p>
+                    <p className="text-3xl font-bold">£{Number(aiUsage.total_cost_gbp || aiUsage.total_cost || 0).toFixed(4)}</p>
                   </div>
                   <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h3 className="text-gray-400 text-sm mb-2">Providers</h3>
@@ -1587,7 +1587,7 @@ export default function AdminPortal() {
                           <span className="capitalize">{provider}</span>
                           <div className="text-right">
                             <span className="text-gray-400">{(data.total_tokens || 0).toLocaleString()} tokens</span>
-                            <span className="ml-2 text-green-400">£{(data.cost_gbp || 0).toFixed(4)}</span>
+                            <span className="ml-2 text-green-400">£{Number(data.cost_gbp || 0).toFixed(4)}</span>
                           </div>
                         </div>
                       ))}
@@ -2044,15 +2044,15 @@ export default function AdminPortal() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
                         <span>Wellbeing Score</span>
-                        <span className="text-green-400 font-bold">{betaStats.pre_averages.avg_wellbeing?.toFixed(1) || '--'}/10</span>
+                        <span className="text-green-400 font-bold">{typeof betaStats.pre_averages.avg_wellbeing === 'number' ? betaStats.pre_averages.avg_wellbeing.toFixed(1) : (betaStats.pre_averages.avg_wellbeing || '--')}/10</span>
                       </div>
                       <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
                         <span>Anxiety Level</span>
-                        <span className="text-yellow-400 font-bold">{betaStats.pre_averages.avg_anxiety?.toFixed(1) || '--'}/10</span>
+                        <span className="text-yellow-400 font-bold">{typeof betaStats.pre_averages.avg_anxiety === 'number' ? betaStats.pre_averages.avg_anxiety.toFixed(1) : (betaStats.pre_averages.avg_anxiety || '--')}/10</span>
                       </div>
                       <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
                         <span>Mood Score</span>
-                        <span className="text-blue-400 font-bold">{betaStats.pre_averages.avg_mood?.toFixed(1) || '--'}/10</span>
+                        <span className="text-blue-400 font-bold">{typeof betaStats.pre_averages.avg_mood === 'number' ? betaStats.pre_averages.avg_mood.toFixed(1) : (betaStats.pre_averages.avg_mood || '--')}/10</span>
                       </div>
                     </div>
                   ) : (
@@ -2072,7 +2072,7 @@ export default function AdminPortal() {
                         <div key={key} className="flex justify-between items-center bg-gray-700 p-3 rounded">
                           <span className="capitalize">{key.replace('_', ' ')}</span>
                           <span className={`font-bold ${value > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {value > 0 ? '+' : ''}{value?.toFixed(1) || 0}
+                            {typeof value === 'number' ? (value > 0 ? '+' : '') + value.toFixed(1) : (value || 0)}
                           </span>
                         </div>
                       ))}
