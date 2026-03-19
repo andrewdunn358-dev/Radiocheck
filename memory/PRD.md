@@ -137,9 +137,21 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 - Socket.IO: `/api/socket.io` - WebRTC signaling
 
 ## Test Credentials
+
+### Admin (Production) - USE FOR ALL ADMIN TASKS
+- **Email**: `admin@veteran.dbty.co.uk`
+- **Password**: `AS90155mm`
+- **API**: `https://veterans-support-api.onrender.com`
+
+### Staff Test User (Local)
 - Email: `test@staff.com`
 - Password: `test123`
 - Role: Counsellor with supervisor access
+
+### Other Test User
+- Email: `kev@radiocheck.me`
+- Password: `AS90155mm`
+- Note: This user has NO staff profile linked (will be fixed after migration)
 
 ## Known Issues
 1. ~~Some counsellor profiles missing `specialization`/`phone` fields cause 500 errors~~ (FIXED)
