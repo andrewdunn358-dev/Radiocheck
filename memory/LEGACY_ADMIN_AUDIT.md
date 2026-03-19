@@ -419,6 +419,20 @@
 
 ---
 
+## DATA TYPE ENFORCEMENT (CRITICAL)
+
+* All numeric values MUST remain numeric across the system
+* DO NOT convert numbers to strings
+* DO NOT return formatted numbers from the backend
+* Formatting (e.g. toFixed) must ONLY happen in the frontend
+* If a value is numeric in the original system, it MUST remain numeric
+
+If a type cannot be guaranteed:
+→ STOP and highlight the mismatch
+DO NOT guess or coerce silently
+
+---
+
 ## CRITICAL NOTES FOR REACT MIGRATION
 
 1. **Avatar URLs**: AI character avatars use relative paths. Must prepend `API_URL` to get full URL.
