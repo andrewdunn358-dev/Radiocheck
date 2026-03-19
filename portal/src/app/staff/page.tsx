@@ -40,6 +40,15 @@ export default function StaffPortalPage() {
   const [alertsSubTab, setAlertsSubTab] = useState<AlertsSubTab>('safeguarding');
   const [callbacksSubTab, setCallbacksSubTab] = useState<CallbacksSubTab>('pending');
   
+  // Case management state
+  const [selectedCase, setSelectedCase] = useState<Case | null>(null);
+  const [showCaseModal, setShowCaseModal] = useState(false);
+  const [caseStatusFilter, setCaseStatusFilter] = useState<string>('');
+  const [caseRiskFilter, setCaseRiskFilter] = useState<string>('');
+  const [showAddSessionModal, setShowAddSessionModal] = useState(false);
+  const [newSessionNote, setNewSessionNote] = useState('');
+  const [caseSessions, setCaseSessions] = useState<any[]>([]);
+  
   // Session timeout state (2 hour inactivity timeout)
   const lastActivityRef = useRef<number>(Date.now());
   const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -516,6 +525,49 @@ export default function StaffPortalPage() {
       alert('Failed to send panic alert. Please try again or call for help directly.');
     }
   };
+  
+  // Case management handlers
+  const handleViewCase = async (caseItem: Case) => {
+    setSelectedCase(caseItem);
+    // Load sessions for this case
+    if (token && caseItem._id) {
+      try {
+        const sessions = await staffApi.getCaseSessions(token, caseItem._id);
+        setCaseSessions(sessions);
+      } catch (err) {
+        console.error('Failed to load case sessions:', err);
+        setCaseSessions([]);
+      }
+    }
+    setShowCaseModal(true);
+  };
+  
+  const handleAddSessionNote = async () => {
+    if (!token || !selectedCase?._id || !newSessionNote.trim()) return;
+    try {
+      await staffApi.addCaseSession(token, selectedCase._id, {
+        notes: newSessionNote,
+        session_type: 'general',
+        staff_id: user?.id,
+        staff_name: user?.name
+      });
+      setNewSessionNote('');
+      setShowAddSessionModal(false);
+      // Reload sessions
+      const sessions = await staffApi.getCaseSessions(token, selectedCase._id);
+      setCaseSessions(sessions);
+    } catch (err) {
+      console.error('Failed to add session note:', err);
+      alert('Failed to add session note');
+    }
+  };
+  
+  // Filter cases
+  const filteredCases = cases.filter(c => {
+    if (caseStatusFilter && c.status !== caseStatusFilter) return false;
+    if (caseRiskFilter && c.risk_level !== caseRiskFilter) return false;
+    return true;
+  });
 
   // Shift actions
   const handleAddShift = async () => {
@@ -1389,10 +1441,39 @@ export default function StaffPortalPage() {
         {/* Cases Tab */}
         {activeTab === 'cases' && (
           <div>
-            <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Briefcase className="w-6 h-6 text-secondary" />
-              Cases
-            </h1>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Briefcase className="w-6 h-6 text-secondary" />
+                Cases
+              </h1>
+              <div className="flex gap-2">
+                <select
+                  value={caseStatusFilter}
+                  onChange={(e) => setCaseStatusFilter(e.target.value)}
+                  className="px-3 py-2 bg-card border border-border rounded-lg text-white"
+                >
+                  <option value="">All Status</option>
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="escalated">Escalated</option>
+                  <option value="closed">Closed</option>
+                </select>
+                <select
+                  value={caseRiskFilter}
+                  onChange={(e) => setCaseRiskFilter(e.target.value)}
+                  className="px-3 py-2 bg-card border border-border rounded-lg text-white"
+                >
+                  <option value="">All Risk</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+                <button onClick={loadCases} className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-white/5">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
 
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <table className="w-full">
@@ -1402,13 +1483,14 @@ export default function StaffPortalPage() {
                     <th className="px-6 py-4">User</th>
                     <th className="px-6 py-4">Risk Level</th>
                     <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Sessions</th>
                     <th className="px-6 py-4">Assigned To</th>
                     <th className="px-6 py-4">Updated</th>
                     <th className="px-6 py-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cases.map((c) => (
+                  {filteredCases.map((c) => (
                     <tr key={c._id} className="border-t border-border hover:bg-white/5">
                       <td className="px-6 py-4 font-mono">{c.case_number}</td>
                       <td className="px-6 py-4">{c.user_name || '-'}</td>
@@ -1427,18 +1509,24 @@ export default function StaffPortalPage() {
                           {c.status.replace('_', ' ')}
                         </span>
                       </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm">{c.session_count || 0}/6</span>
+                      </td>
                       <td className="px-6 py-4">{c.assigned_to_name || '-'}</td>
                       <td className="px-6 py-4 text-gray-400">{formatTimeAgo(c.updated_at)}</td>
                       <td className="px-6 py-4">
-                        <button className="text-secondary hover:underline text-sm">
-                          View <ChevronRight className="w-4 h-4 inline" />
+                        <button 
+                          onClick={() => handleViewCase(c)}
+                          className="text-secondary hover:underline text-sm flex items-center gap-1"
+                        >
+                          <Eye className="w-4 h-4" /> View
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {cases.length === 0 && (
+              {filteredCases.length === 0 && (
                 <div className="text-center py-12 text-gray-500">
                   <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No cases found</p>
@@ -2185,6 +2273,156 @@ export default function StaffPortalPage() {
                 className="w-full py-3 bg-secondary text-primary-dark font-semibold rounded-lg disabled:opacity-50"
               >
                 Save Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Case Detail Modal */}
+      {showCaseModal && selectedCase && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowCaseModal(false)}>
+          <div className="bg-card border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center sticky top-0 bg-card">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-secondary" />
+                Case {selectedCase.case_number}
+              </h2>
+              <button onClick={() => setShowCaseModal(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-6">
+              {/* Case Summary */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <p className="text-sm text-gray-400">User</p>
+                  <p className="font-semibold">{selectedCase.user_name || 'Unknown'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Risk Level</p>
+                  <span className={`px-2 py-1 rounded text-xs text-white ${getRiskBadgeColor(selectedCase.risk_level)}`}>
+                    {selectedCase.risk_level?.toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Status</p>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    selectedCase.status === 'open' ? 'bg-blue-500/20 text-blue-400' :
+                    selectedCase.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                    selectedCase.status === 'escalated' ? 'bg-red-500/20 text-red-400' :
+                    'bg-green-500/20 text-green-400'
+                  }`}>
+                    {selectedCase.status?.replace('_', ' ')}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Assigned To</p>
+                  <p>{selectedCase.assigned_to_name || 'Unassigned'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Sessions</p>
+                  <p>{selectedCase.session_count || 0} / 6</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Created</p>
+                  <p>{formatTimeAgo(selectedCase.created_at)}</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              {selectedCase.description && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-400 mb-2">Description</p>
+                  <p className="bg-primary-dark/50 rounded-lg p-4">{selectedCase.description}</p>
+                </div>
+              )}
+
+              {/* Safety Plan */}
+              {selectedCase.safety_plan && (
+                <div className="mb-6 bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <h3 className="font-semibold text-green-400 mb-2 flex items-center gap-2">
+                    <Shield className="w-4 h-4" /> Safety Plan
+                  </h3>
+                  <p className="text-sm whitespace-pre-wrap">{selectedCase.safety_plan}</p>
+                </div>
+              )}
+
+              {/* Sessions */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold">Session Notes ({caseSessions.length})</h3>
+                  <button
+                    onClick={() => setShowAddSessionModal(true)}
+                    className="flex items-center gap-2 px-3 py-1 bg-secondary text-primary-dark rounded-lg text-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Add Session
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {caseSessions.map((session, i) => (
+                    <div key={session._id || i} className="bg-primary-dark/30 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-sm text-secondary font-medium">{session.session_type || 'General'}</span>
+                        <span className="text-xs text-gray-500">{formatTimeAgo(session.created_at)}</span>
+                      </div>
+                      <p className="text-sm">{session.notes}</p>
+                      {session.staff_name && (
+                        <p className="text-xs text-gray-500 mt-2">By: {session.staff_name}</p>
+                      )}
+                    </div>
+                  ))}
+                  {caseSessions.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No session notes yet</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                {user?.role === 'peer' && selectedCase.status !== 'escalated' && (
+                  <button className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                    Escalate to Counsellor
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowCaseModal(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Session Modal */}
+      {showAddSessionModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setShowAddSessionModal(false)}>
+          <div className="bg-card border border-border rounded-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Plus className="w-5 h-5 text-secondary" />
+                Add Session Note
+              </h2>
+              <button onClick={() => setShowAddSessionModal(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Session Notes</label>
+                <textarea
+                  value={newSessionNote}
+                  onChange={(e) => setNewSessionNote(e.target.value)}
+                  placeholder="Write session notes..."
+                  rows={6}
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none resize-none"
+                />
+              </div>
+              <button
+                onClick={handleAddSessionNote}
+                disabled={!newSessionNote.trim()}
+                className="w-full py-3 bg-secondary text-primary-dark font-semibold rounded-lg disabled:opacity-50"
+              >
+                Save Session Note
               </button>
             </div>
           </div>

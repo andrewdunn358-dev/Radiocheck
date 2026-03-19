@@ -162,10 +162,29 @@ Implemented critical fixes based on the comprehensive audit:
    - SafeguardingAlert: Added contact_captured, ip_address, location, user_agent, isp, timezone
    - PanicAlert: Added id, triggered_by_name, triggered_by_role, message, phone
    - Callback: Added request_type
+   - Case: Added description, session_count, safety_plan
+
+6. **Case Management** (NEW)
+   - Filter dropdowns (status, risk_level)
+   - Session count display (X/6)
+   - View button opens Case Detail Modal
+   - Case Detail Modal with: case info, description, safety plan, session notes
+   - Add Session Note modal
+   - Sessions list display
+
+7. **WebRTC Multi-Session Fix** (Backend)
+   - Updated `/app/backend/webrtc_signaling.py` to use `answered_by_sid` for proper session routing
+   - Fixed webrtc_offer, webrtc_answer, and webrtc_ice_candidate handlers
+
+8. **Chart.js Analytics** (Admin Portal)
+   - Installed chart.js and react-chartjs-2
+   - Added 4 charts to Logs tab: Daily Visitors Line, Device Distribution Doughnut, Activity Summary Bar, Browser Distribution Doughnut
 
 **Files Modified:**
-- `/app/portal/src/app/staff/page.tsx` (now 2196 lines)
-- `/app/portal/src/lib/api.ts` (TypeScript interfaces)
+- `/app/portal/src/app/staff/page.tsx` (now ~2400 lines)
+- `/app/portal/src/app/admin/page.tsx` (charts added)
+- `/app/portal/src/lib/api.ts` (TypeScript interfaces + getCaseSessions)
+- `/app/backend/webrtc_signaling.py` (multi-session fix)
 
 ### March 19, 2026 - Staff Portal Audit COMPLETE ✅
 - **Full audit document created**: `/app/memory/STAFF_PORTAL_COMPARISON.md`
@@ -186,7 +205,7 @@ Implemented critical fixes based on the comprehensive audit:
 - [ ] User should test with OLD PORTAL CLOSED (socket conflict)
 - [ ] User `kev@radiocheck.me` needs staff profile created in admin
 - [ ] Redeploy backend to Render with latest code
-- [ ] **Fix WebRTC** - Refactor `/app/backend/webrtc_signaling.py` for multi-session support
+- [x] **Fix WebRTC** - Refactored `/app/backend/webrtc_signaling.py` for multi-session support (DONE - March 19, 2026)
 
 ### P1 - High Priority
 - [ ] Staff status auto-reset after call/chat ends

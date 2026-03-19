@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"app/admin/page.tsx -> ../components/LocationMap\":{\"id\":\"app/admin/page.tsx -> ../components/LocationMap\",\"files\":[\"static/css/_app-pages-browser_src_app_components_LocationMap_tsx.css\",\"static/chunks/_app-pages-browser_src_app_components_LocationMap_tsx.js\"]}}"

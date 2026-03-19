@@ -566,12 +566,19 @@ async def webrtc_offer(sid, data):
         return
     
     call = active_calls[call_id]
-    target_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
+    
+    # Determine target - use answered_by_sid if available (multi-session support)
+    if call['caller_sid'] == sid:
+        # Caller sending offer to callee
+        target_sid = call.get('answered_by_sid') or next(iter(call.get('callee_sids', set())), None)
+    else:
+        # Callee sending offer to caller (shouldn't happen normally)
+        target_sid = call['caller_sid']
     
     logger.info(f"webrtc_offer: Forwarding from {sid} to target_sid={target_sid}")
-    logger.info(f"webrtc_offer: Is target in connected_users? {target_sid in connected_users}")
+    logger.info(f"webrtc_offer: Is target in connected_users? {target_sid in connected_users if target_sid else False}")
     
-    if target_sid not in connected_users:
+    if not target_sid or target_sid not in connected_users:
         logger.error(f"webrtc_offer: Target {target_sid} not in connected_users!")
         logger.error(f"webrtc_offer: Connected users: {list(connected_users.keys())}")
         await sio.emit('webrtc_error', {
@@ -604,16 +611,25 @@ async def webrtc_answer(sid, data):
         return
     
     call = active_calls[call_id]
-    target_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
+    
+    # Determine target - answer always goes back to caller from callee
+    if call['caller_sid'] == sid:
+        # Caller sending answer (unusual)
+        target_sid = call.get('answered_by_sid') or next(iter(call.get('callee_sids', set())), None)
+    else:
+        # Callee sending answer to caller (normal flow)
+        target_sid = call['caller_sid']
     
     logger.info(f"webrtc_answer: Forwarding from {sid} to target_sid={target_sid}")
     
-    await sio.emit('webrtc_answer', {
-        'call_id': call_id,
-        'answer': answer
-    }, to=target_sid)
-    
-    logger.info(f"webrtc_answer: Answer forwarded successfully to {target_sid}")
+    if target_sid and target_sid in connected_users:
+        await sio.emit('webrtc_answer', {
+            'call_id': call_id,
+            'answer': answer
+        }, to=target_sid)
+        logger.info(f"webrtc_answer: Answer forwarded successfully to {target_sid}")
+    else:
+        logger.warning(f"webrtc_answer: Target {target_sid} not connected")
 
 
 @sio.event
@@ -626,12 +642,20 @@ async def webrtc_ice_candidate(sid, data):
         return
     
     call = active_calls[call_id]
-    target_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
     
-    await sio.emit('webrtc_ice_candidate', {
-        'call_id': call_id,
-        'candidate': candidate
-    }, to=target_sid)
+    # Determine target based on multi-session support
+    if call['caller_sid'] == sid:
+        # Caller sending ICE to callee
+        target_sid = call.get('answered_by_sid') or next(iter(call.get('callee_sids', set())), None)
+    else:
+        # Callee sending ICE to caller
+        target_sid = call['caller_sid']
+    
+    if target_sid and target_sid in connected_users:
+        await sio.emit('webrtc_ice_candidate', {
+            'call_id': call_id,
+            'candidate': candidate
+        }, to=target_sid)
 
 
 # ============ API Endpoints ============

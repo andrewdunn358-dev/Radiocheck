@@ -472,6 +472,8 @@ export const staffApi = {
     fetchAPI<Case[]>(`/cases${filter ? `?status=${filter}` : ''}`, { token }),
   getCase: (token: string, id: string) =>
     fetchAPI<CaseDetail>(`/cases/${id}`, { token }),
+  getCaseSessions: (token: string, caseId: string) =>
+    fetchAPI<any[]>(`/cases/${caseId}/sessions`, { token }),
   createCase: (token: string, data: CreateCaseData) =>
     fetchAPI<ActionResponse>('/cases', { token, method: 'POST', body: JSON.stringify(data) }),
   addCaseSession: (token: string, caseId: string, sessionData: any) =>
@@ -743,6 +745,9 @@ export interface Case {
   created_at: string;
   updated_at: string;
   summary?: string;
+  description?: string;
+  session_count?: number;
+  safety_plan?: string;
 }
 
 export interface CaseDetail extends Case {

@@ -9,6 +9,34 @@ import {
   Phone, MessageSquare, Bell, ChevronDown, ChevronRight,
   Download, RefreshCw, Check, XCircle, Eye, Filter, Heart, Play, MapPin
 } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line, Bar, Doughnut } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 // Dynamic import for Leaflet (SSR issues)
 const LocationMap = dynamic(() => import('../components/LocationMap'), { 
@@ -1732,10 +1760,10 @@ export default function AdminPortal() {
                       <h4 className="font-medium mb-3 text-red-400">📍 Visitors by Region (30 days)</h4>
                       <div className="space-y-2">
                         {appUsageStats?.regions && Object.keys(appUsageStats.regions).length > 0 ? (
-                          Object.entries(appUsageStats.regions).map(([region, count]: [string, any]) => (
+                          Object.entries(appUsageStats.regions).map(([region, data]: [string, any]) => (
                             <div key={region} className="flex justify-between items-center bg-gray-700 p-2 rounded">
                               <span className="capitalize">{region.replace('_', ' ')}</span>
-                              <strong>{count}</strong>
+                              <strong>{typeof data === 'object' ? (data.visits || data.unique || 0) : data}</strong>
                             </div>
                           ))
                         ) : (
@@ -1762,12 +1790,12 @@ export default function AdminPortal() {
                       <h4 className="font-medium mb-3 text-purple-400">📱 Device Type</h4>
                       <div className="space-y-2">
                         {appUsageStats?.devices && Object.keys(appUsageStats.devices).length > 0 ? (
-                          Object.entries(appUsageStats.devices).map(([device, count]: [string, any]) => (
+                          Object.entries(appUsageStats.devices).map(([device, data]: [string, any]) => (
                             <div key={device} className="flex justify-between items-center bg-gray-700 p-2 rounded">
                               <span className="capitalize flex items-center gap-2">
                                 {device === 'mobile' ? '📱' : device === 'desktop' ? '🖥️' : '📟'} {device}
                               </span>
-                              <strong>{count}</strong>
+                              <strong>{typeof data === 'object' ? (data.count || data.visits || 0) : data}</strong>
                             </div>
                           ))
                         ) : (
@@ -1781,10 +1809,10 @@ export default function AdminPortal() {
                       <h4 className="font-medium mb-3 text-green-400">🌐 Browser</h4>
                       <div className="space-y-2">
                         {appUsageStats?.browsers && Object.keys(appUsageStats.browsers).length > 0 ? (
-                          Object.entries(appUsageStats.browsers).map(([browser, count]: [string, any]) => (
+                          Object.entries(appUsageStats.browsers).map(([browser, data]: [string, any]) => (
                             <div key={browser} className="flex justify-between items-center bg-gray-700 p-2 rounded">
                               <span className="capitalize">{browser}</span>
-                              <strong>{count}</strong>
+                              <strong>{typeof data === 'object' ? (data.count || data.visits || 0) : data}</strong>
                             </div>
                           ))
                         ) : (
@@ -1801,13 +1829,13 @@ export default function AdminPortal() {
                       <h4 className="font-medium mb-3 text-yellow-400">💻 Operating System</h4>
                       <div className="space-y-2">
                         {appUsageStats?.operating_systems && Object.keys(appUsageStats.operating_systems).length > 0 ? (
-                          Object.entries(appUsageStats.operating_systems).map(([os, count]: [string, any]) => (
+                          Object.entries(appUsageStats.operating_systems).map(([os, data]: [string, any]) => (
                             <div key={os} className="flex justify-between items-center bg-gray-700 p-2 rounded">
                               <span className="capitalize flex items-center gap-2">
                                 {os === 'windows' ? '🪟' : os === 'apple' ? '🍎' : os === 'android' ? '🤖' : '💻'} 
                                 {os === 'apple' ? 'Apple (iOS/Mac)' : os.charAt(0).toUpperCase() + os.slice(1)}
                               </span>
-                              <strong>{count}</strong>
+                              <strong>{typeof data === 'object' ? (data.count || data.visits || 0) : data}</strong>
                             </div>
                           ))
                         ) : (
@@ -1834,6 +1862,153 @@ export default function AdminPortal() {
                             ? appUsageStats.return_rate.total_visitors
                             : appUsageStats?.['30_days']?.unique_visitors || 0} total visitors
                         </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Charts Section */}
+              {appUsageStats && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-cyan-400" />
+                    Usage Charts
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Daily Visitors Line Chart */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-4 text-blue-400">Daily Visitors (Last 7 Days)</h4>
+                      <div style={{ height: '250px' }}>
+                        <Line
+                          data={{
+                            labels: appUsageStats?.daily_trend?.slice(-7).map((d: any) => d._id) || [],
+                            datasets: [{
+                              label: 'Visitors',
+                              data: appUsageStats?.daily_trend?.slice(-7).map((d: any) => d.unique_visitors) || [],
+                              borderColor: '#3b82f6',
+                              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                              fill: true,
+                              tension: 0.3
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: { display: false }
+                            },
+                            scales: {
+                              y: { 
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: '#9ca3af' }
+                              },
+                              x: { 
+                                grid: { display: false },
+                                ticks: { color: '#9ca3af' }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Device Type Doughnut Chart */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-4 text-purple-400">Device Distribution</h4>
+                      <div style={{ height: '250px' }} className="flex justify-center">
+                        <Doughnut
+                          data={{
+                            labels: Object.keys(appUsageStats?.devices || { desktop: 0, mobile: 0 }),
+                            datasets: [{
+                              data: Object.values(appUsageStats?.devices || { desktop: 0, mobile: 0 }).map((d: any) => 
+                                typeof d === 'object' ? (d.count || d.visits || 0) : d
+                              ),
+                              backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981'],
+                              borderWidth: 0
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: { 
+                                position: 'bottom',
+                                labels: { color: '#9ca3af' }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Call Volume Bar Chart */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-4 text-green-400">Activity Summary</h4>
+                      <div style={{ height: '250px' }}>
+                        <Bar
+                          data={{
+                            labels: ['Calls', 'Chats', 'Safeguarding', 'AI Sessions'],
+                            datasets: [{
+                              label: 'Count',
+                              data: [
+                                callLogs.length,
+                                chatRooms.length,
+                                safeguardingAlerts.length,
+                                aiChatStats?.total_sessions || 0
+                              ],
+                              backgroundColor: ['#3b82f6', '#06b6d4', '#eab308', '#8b5cf6']
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: { display: false }
+                            },
+                            scales: {
+                              y: { 
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: '#9ca3af' }
+                              },
+                              x: { 
+                                grid: { display: false },
+                                ticks: { color: '#9ca3af' }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Browser Distribution Doughnut */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-4 text-yellow-400">Browser Distribution</h4>
+                      <div style={{ height: '250px' }} className="flex justify-center">
+                        <Doughnut
+                          data={{
+                            labels: Object.keys(appUsageStats?.browsers || { chrome: 0 }),
+                            datasets: [{
+                              data: Object.values(appUsageStats?.browsers || { chrome: 0 }).map((d: any) =>
+                                typeof d === 'object' ? (d.count || d.visits || 0) : d
+                              ),
+                              backgroundColor: ['#f59e0b', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6'],
+                              borderWidth: 0
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: { 
+                                position: 'bottom',
+                                labels: { color: '#9ca3af' }
+                              }
+                            }
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
