@@ -670,15 +670,31 @@ export interface SafeguardingAlert {
   created_at: string;
   notes?: string;
   conversation_history?: Array<{ role: string; content: string }>;
+  // Tracking info
+  contact_captured?: boolean;
+  ip_address?: string;
+  location?: string;
+  user_agent?: string;
+  isp?: string;
+  timezone?: string;
 }
 
 export interface PanicAlert {
+  id?: string;
   _id: string;
   user_id?: string;
   user_name?: string;
+  triggered_by_name?: string;
+  triggered_by_role?: string;
+  message?: string;
+  phone?: string;
   location?: string;
   status: 'active' | 'acknowledged' | 'resolved';
   responded_by_name?: string;
+  acknowledged_by?: string;
+  acknowledged_at?: string;
+  resolved_by?: string;
+  resolved_at?: string;
   created_at: string;
 }
 
@@ -776,6 +792,7 @@ export interface Callback {
   reason?: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   status: 'pending' | 'taken' | 'completed';
+  request_type?: 'peer' | 'counsellor';
   taken_by?: string;
   taken_by_name?: string;
   created_at: string;

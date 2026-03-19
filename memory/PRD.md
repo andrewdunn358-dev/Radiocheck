@@ -128,6 +128,45 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 - [x] WebRTC socket connection working (March 19, 2026)
 - [x] Twilio phone registration working (March 19, 2026)
 
+### March 19, 2026 - Staff Portal Fixes IMPLEMENTED ✅
+Implemented critical fixes based on the comprehensive audit:
+
+1. **Session Timeout** (Security)
+   - 2-hour inactivity timeout with activity tracking (mouse, key, scroll, touch)
+   - 24-hour absolute session timeout
+   - Warning modal 5 minutes before auto-logout
+   - Sound preference persisted to localStorage
+
+2. **Sound Alerts** (Web Audio API)
+   - 3 ascending beeps (800Hz, 1000Hz, 1200Hz)
+   - Plays on new safeguarding alerts, panic alerts, and live chats
+   - Sound toggle in sidebar with localStorage persistence
+
+3. **Alerts Tab Overhaul**
+   - Added Safeguarding / Panic Alerts sub-tabs
+   - Panic alert trigger button for peers (big red PANIC button)
+   - Panic alert acknowledge/resolve actions
+   - Role-based visibility (peers can't see panic alerts - they trigger them)
+   - Contact captured indicator on safeguarding alerts
+   - Session ID display
+   - Tracking info section (IP, location, user agent)
+
+4. **Callbacks Tab Overhaul**
+   - Pending / Active (Taken) / Completed sub-tabs with badge counts
+   - Release callback button
+   - Request type badge (peer/counsellor)
+   - Call Now button (Twilio integration)
+   - Taken by name display
+
+5. **TypeScript Interface Updates**
+   - SafeguardingAlert: Added contact_captured, ip_address, location, user_agent, isp, timezone
+   - PanicAlert: Added id, triggered_by_name, triggered_by_role, message, phone
+   - Callback: Added request_type
+
+**Files Modified:**
+- `/app/portal/src/app/staff/page.tsx` (now 2196 lines)
+- `/app/portal/src/lib/api.ts` (TypeScript interfaces)
+
 ### March 19, 2026 - Staff Portal Audit COMPLETE ✅
 - **Full audit document created**: `/app/memory/STAFF_PORTAL_COMPARISON.md`
 - **React Portal Completion**: ~35% compared to legacy
