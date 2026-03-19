@@ -309,28 +309,50 @@ async def login(credentials: UserLogin):
     if staff:
         # Found in unified staff collection
         password_hash = staff.get("password_hash")
-        if not password_hash:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
         
-        if not verify_password(credentials.password, password_hash):
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+        # If staff has a valid password hash, verify it
+        if password_hash and password_hash.strip():
+            if verify_password(credentials.password, password_hash):
+                staff_id = staff.get("id")
+                
+                # Update last_login
+                await db.staff.update_one(
+                    {"email": credentials.email},
+                    {"$set": {"last_login": datetime.utcnow()}}
+                )
+                
+                token = create_access_token({"sub": staff_id})
+                redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
+                
+                return TokenResponse(
+                    token=token,
+                    user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=staff.get("name", "")),
+                    redirect=redirect
+                )
         
-        staff_id = staff.get("id")
-        
-        # Update last_login
-        await db.staff.update_one(
-            {"email": credentials.email},
-            {"$set": {"last_login": datetime.utcnow()}}
-        )
-        
-        token = create_access_token({"sub": staff_id})
-        redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
-        
-        return TokenResponse(
-            token=token,
-            user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=staff.get("name", "")),
-            redirect=redirect
-        )
+        # Staff exists but password_hash is empty/invalid - check legacy users to get password
+        # This handles migrated users whose passwords weren't copied correctly
+        legacy_user_id = staff.get("legacy_user_id")
+        if legacy_user_id:
+            legacy_user = await db.users.find_one({"id": legacy_user_id})
+            if legacy_user:
+                legacy_hash = legacy_user.get("hashed_password") or legacy_user.get("password_hash")
+                if legacy_hash and verify_password(credentials.password, legacy_hash):
+                    # Password matches legacy - update staff with correct hash and login
+                    await db.staff.update_one(
+                        {"email": credentials.email},
+                        {"$set": {"password_hash": legacy_hash, "last_login": datetime.utcnow()}}
+                    )
+                    
+                    staff_id = staff.get("id")
+                    token = create_access_token({"sub": staff_id})
+                    redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
+                    
+                    return TokenResponse(
+                        token=token,
+                        user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=staff.get("name", "")),
+                        redirect=redirect
+                    )
     
     # FALLBACK: Check legacy users collection
     user = await db.users.find_one({"email": credentials.email})
