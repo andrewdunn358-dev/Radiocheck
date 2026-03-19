@@ -56,7 +56,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             raise HTTPException(status_code=401, detail="Invalid token")
         
         # FIRST: Check unified staff collection (new system)
+        # Check by id first, then by legacy_user_id (for tokens issued before migration)
         staff = await db.staff.find_one({"id": user_id})
+        if not staff:
+            staff = await db.staff.find_one({"legacy_user_id": user_id})
+        
         if staff:
             return User(
                 id=staff.get("id"),
