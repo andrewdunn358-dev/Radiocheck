@@ -3251,9 +3251,9 @@ async function clearLogs(logType) {
         
         showNotification('Successfully cleared ' + label, 'success');
         
-        // Refresh the dashboard after a short delay
+        // Refresh the logs data after a short delay
         setTimeout(() => {
-            loadDashboardData();
+            loadLogsData();
         }, 1000);
         
     } catch (error) {
