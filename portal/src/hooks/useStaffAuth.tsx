@@ -92,10 +92,26 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
 
   const loadProfile = async (authToken: string, userId?: string) => {
     try {
+      console.log('[StaffAuth] Loading profile for userId:', userId);
       const profileData = await staffApi.getProfile(authToken, userId);
-      setProfile(profileData);
+      
+      // CRITICAL: Only set profile if it matches the logged-in user
+      if (profileData && userId) {
+        // Verify the profile belongs to this user
+        if (profileData.id === userId || (profileData as any).user_id === userId || (profileData as any)._id === userId) {
+          console.log('[StaffAuth] Profile loaded successfully:', profileData.name);
+          setProfile(profileData);
+        } else {
+          console.warn('[StaffAuth] Profile user_id mismatch! Expected:', userId, 'Got:', profileData.id || (profileData as any).user_id);
+          setProfile(null);
+        }
+      } else if (!profileData) {
+        console.log('[StaffAuth] No profile found for user - this is OK, some features will be limited');
+        setProfile(null);
+      }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      console.error('[StaffAuth] Failed to load profile:', error);
+      setProfile(null);
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +150,6 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
     if (profile) {
       try {
         // Use the profile's role to determine the correct endpoint
-        // profile.role is set when we load the profile (counsellor or peer)
         const staffType = profile.role === 'counsellor' ? 'counsellor' : 'peer';
         const staffId = profile.id || (profile as any)._id;
         
@@ -148,37 +163,13 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
           return;
         }
       } catch (error) {
-        console.error('Failed to update status via profile:', error);
+        console.error('Failed to update status:', error);
       }
     }
     
-    // Fallback: If no profile or update failed, try to get a fresh profile
-    if (user) {
-      try {
-        // Get a fresh profile
-        const freshProfile = await staffApi.getProfile(token, user.id);
-        if (freshProfile) {
-          const staffType = freshProfile.role === 'counsellor' ? 'counsellor' : 'peer';
-          const staffId = freshProfile.id || (freshProfile as any)._id;
-          
-          console.log('Updating status via fresh profile:', { status, staffType, staffId });
-          
-          if (staffId) {
-            await staffApi.updateStatus(token, status, staffId, staffType);
-            setProfile({ ...freshProfile, status: status as StaffProfile['status'] });
-            localStorage.setItem('staff_status', status);
-            console.log('Status updated to:', status, '(using fresh profile)');
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('Failed to update status via fresh profile:', error);
-      }
-    }
-    
-    // Last resort - just update local storage
+    // No profile - just save locally
     localStorage.setItem('staff_status', status);
-    console.log('Status saved locally (no profile to update):', status);
+    console.log('Status saved locally (no profile):', status);
   };
 
   const refreshProfile = async () => {

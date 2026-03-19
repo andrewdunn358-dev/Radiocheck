@@ -318,26 +318,34 @@ export const staffApi = {
     }),
 
   // Profile & Status - uses counsellors/peer-supporters endpoints
-  // Must match by user_id from the login response, but falls back to first profile if not found
+  // Must match by user_id from the login response
   getProfile: async (token: string, userId?: string): Promise<StaffProfile | null> => {
     console.log('[API] getProfile called with userId:', userId);
     
-    let firstCounsellor: any = null;
-    let firstPeer: any = null;
+    // If no userId provided, we can't find a profile
+    if (!userId) {
+      console.log('[API] No userId provided, cannot find profile');
+      return null;
+    }
     
     try {
       console.log('[API] Fetching counsellors...');
       const counsellors = await fetchAPI<any[]>('/counsellors', { token });
       console.log('[API] Counsellors response:', counsellors?.length, 'found');
       if (counsellors && counsellors.length > 0) {
-        firstCounsellor = counsellors[0];
-        // Find by user_id if provided
-        if (userId) {
-          const match = counsellors.find((c: any) => c.user_id === userId);
-          console.log('[API] Counsellor match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
-          if (match) {
-            return { ...match, role: 'counsellor' } as StaffProfile;
-          }
+        // Match by user_id field - this is the link between the user and their staff profile
+        const match = counsellors.find((c: any) => c.user_id === userId);
+        console.log('[API] Counsellor match for userId:', userId, '=', match ? `FOUND (${match.name})` : 'NOT FOUND');
+        if (match) {
+          // Return profile with the id field set correctly for API calls
+          const profileId = match.id || match._id;
+          return { 
+            ...match, 
+            id: profileId,
+            role: 'counsellor',
+            // Ensure user_id is preserved for verification
+            user_id: match.user_id
+          } as StaffProfile;
         }
       }
     } catch (e) { 
@@ -349,32 +357,27 @@ export const staffApi = {
       const peers = await fetchAPI<any[]>('/peer-supporters', { token });
       console.log('[API] Peer supporters response:', peers?.length, 'found');
       if (peers && peers.length > 0) {
-        firstPeer = peers[0];
-        // Find by user_id if provided
-        if (userId) {
-          const match = peers.find((p: any) => p.user_id === userId);
-          console.log('[API] Peer match for userId:', userId, '=', match ? 'FOUND' : 'NOT FOUND');
-          if (match) {
-            return { ...match, role: 'peer' } as StaffProfile;
-          }
+        // Match by user_id field - this is the link between the user and their staff profile
+        const match = peers.find((p: any) => p.user_id === userId);
+        console.log('[API] Peer match for userId:', userId, '=', match ? `FOUND (${match.name})` : 'NOT FOUND');
+        if (match) {
+          // Return profile with the id field set correctly for API calls
+          const profileId = match.id || match._id;
+          return { 
+            ...match, 
+            id: profileId,
+            role: 'peer',
+            // Ensure user_id is preserved for verification
+            user_id: match.user_id
+          } as StaffProfile;
         }
       }
     } catch (e) { 
       console.error('[API] Error fetching peer-supporters:', e);
     }
     
-    // Fallback: return first available profile if we couldn't find exact match
-    // This allows the app to function even if user_id isn't linked
-    if (firstCounsellor) {
-      console.log('[API] Using first counsellor as fallback profile');
-      return { ...firstCounsellor, role: 'counsellor' } as StaffProfile;
-    }
-    if (firstPeer) {
-      console.log('[API] Using first peer as fallback profile');
-      return { ...firstPeer, role: 'peer' } as StaffProfile;
-    }
-    
-    console.log('[API] No profile found at all');
+    // No profile found - return null, don't use someone else's profile!
+    console.log('[API] No profile found for userId:', userId);
     return null;
   },
   updateStatus: (token: string, status: string, staffId: string, staffType: 'counsellor' | 'peer') =>
@@ -593,10 +596,11 @@ export interface StaffProfile {
   email: string;
   name: string;
   role: string;
-  status: 'available' | 'busy' | 'offline';
+  status: 'available' | 'busy' | 'offline' | 'limited' | 'unavailable';
   phone?: string;
   is_supervisor?: boolean;
   specializations?: string[];
+  user_id?: string;  // Link to the User record
 }
 
 export interface SafeguardingAlert {

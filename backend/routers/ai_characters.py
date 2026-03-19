@@ -109,8 +109,12 @@ async def get_all_characters():
                 "name": char_data["name"],
                 "description": get_character_description(char_id),
                 "avatar": char_data["avatar"],
-                "is_enabled": True
+                "is_enabled": True,
+                "order": get_character_order(char_id)  # Include order for sorting
             })
+        
+        # Sort by order before returning
+        fallback_chars.sort(key=lambda x: x.get("order", 99))
         
         return {"characters": fallback_chars, "source": "fallback"}
     except Exception as e:
@@ -170,8 +174,13 @@ async def get_all_characters_admin(user: dict = Depends(require_admin)):
                     "prompt": char_data["prompt"][:500] + "..." if len(char_data["prompt"]) > 500 else char_data["prompt"],
                     "avatar": char_data["avatar"],
                     "is_enabled": True,
+                    "order": get_character_order(char_id),
                     "is_hardcoded": True  # Flag to indicate this is from code
                 })
+            
+            # Sort by order before returning
+            fallback_chars.sort(key=lambda x: x.get("order", 99))
+            
             return {"characters": fallback_chars, "source": "fallback", "hint": "These are hardcoded. Create new characters to override."}
         
         return {"characters": characters, "source": "database"}
@@ -314,7 +323,7 @@ async def upload_avatar(file: UploadFile = File(...), user: dict = Depends(requi
         if file.content_type not in allowed_types:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Invalid file type. Allowed: PNG, JPEG, WebP, GIF"
+                detail="Invalid file type. Allowed: PNG, JPEG, WebP, GIF"
             )
         
         # Validate file size (max 2MB)
@@ -441,6 +450,7 @@ def get_character_category(char_id: str) -> str:
 def get_character_order(char_id: str) -> int:
     """Get display order for hardcoded character"""
     orders = {
+        "frankie": 0,  # PTI - Physical Training Instructor
         "tommy": 1,
         "doris": 2,
         "bob": 3,

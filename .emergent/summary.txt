@@ -1,167 +1,188 @@
 <analysis>**original_problem_statement:**
-The user initiated a major refactoring effort to migrate all legacy vanilla JavaScript portals (, , , ) into a single, modern, unified Next.js application. This was a direct response to the unmaintainable size of the legacy  file (over 8,400 lines).
+The user initiated a major refactoring effort to migrate all legacy vanilla JavaScript portals (, , , ) into a single, modern, unified Next.js application located at . This was a direct response to the unmaintainable size of the legacy  file.
 
-The initial phase focused on scaffolding the new portal and migrating the LMS (Learner and Admin) sections. The current phase is migrating the mission-critical Staff Portal. The user is actively involved in deploying and testing the new portal on Vercel.
+The current phase is migrating the mission-critical Staff Portal. The user is actively involved in deploying and testing the new portal on Vercel and wants to achieve full feature parity with the original portal, especially for real-time WebRTC/Twilio calling and live chat functionalities.
 
 **PRODUCT REQUIREMENTS:**
 1.  **(P0) Feature Parity:** The new React portals must have 100% of the functionality of the old vanilla JS portals before the old ones are decommissioned.
 2.  **(P0) Unified Codebase:** All admin, staff, and LMS portals should exist within a single Next.js project located at .
-3.  **(P0) Seamless Deployment:** The new portal should be deployable to Vercel and correctly routed using subdomains (, , etc.).
-4.  **(P1) Improved Maintainability:** The new codebase should be modular, leveraging shared components, hooks, and a centralized API client to be more maintainable than the legacy monolithic JS files.
+3.  **(P0) Seamless Deployment:** The new portal should be deployable to Vercel and correctly routed using subdomains.
+4.  **(P1) Improved Maintainability:** The new codebase should be modular, leveraging shared components, hooks, and a centralized API client.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A new, unified Next.js 14 portal has been created at . This portal contains the newly migrated React versions of the LMS Learner, LMS Admin, and Staff portals. A comprehensive audit of the legacy portals was performed and documented to guide the migration. The new portal is being deployed to a separate Vercel project that points to the  subdirectory of the main GitHub repository. The user is actively testing this Vercel deployment and providing real-time feedback. The legacy portals (, ) still exist and are serving as the production environment.
+A new, unified Next.js 14 portal exists at . The LMS (Learner/Admin) and Staff portals have been migrated. However, the Staff Portal's core interactive features—WebRTC calls, Twilio calls, and live chat—are not working correctly on the user's Vercel deployment.
+
+A series of deep-dive debugging sessions have occurred, fixing numerous underlying issues in both the frontend and backend, including incorrect API endpoints, authentication problems, data model mismatches, and faulty environment configuration. The legacy portals are still active and are the source of truth for functionality.
 
 **Last working item**:
--   **Last item agent was working**: Fixing a series of  errors in the new React Staff Portal. The user reported that critical data like the on-duty team list, staff profile, and status updates were failing. The root cause was that the API client () was using incorrect, assumed API endpoint paths (e.g., ) instead of the actual paths defined in the backend (e.g., ).
+-   **Last item agent was working**: Fixing a critical login issue where the portal would incorrectly display another user's profile (e.g., Sarah M) if the logged-in user (e.g., kev@radiocheck.me) did not have a linked staff profile in the database. The agent identified a flawed fallback logic in the  function and removed it to prevent this behavior.
 -   **Status**: USER VERIFICATION PENDING
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Frontend testing agent. The agent should be instructed to log in to the staff portal and verify that all tabs (especially Dashboard, Team, and the user profile/status in the header) load data without any 404 errors in the console.
--   **User Testing Done**: Y (User discovered and reported the 404 errors).
+-   **Which testing method agent to use?**: Manual testing. The user needs to deploy the latest code to Vercel, log in as , and confirm that Sarah M (or any other user) is no longer displayed. The header should show Kev (from the user object) even if profile-specific features are disabled.
+-   **User Testing Done**: Y (User reported the issue).
 
 **All Pending/In progress Issue list**:
--   Issue 1: Multiple  errors in the new React Staff Portal (P0, HIGHEST)
--   Issue 2: In-chat call (WebRTC/Twilio) is not working in the new React portal (P0, Recurring)
--   Issue 3: Live support requests are not reliably appearing in the staff portal (P0, Recurring)
--   Issue 4: Jitsi video chat in events is not working (P0, BLOCKED on user)
--   Issue 5: Staff status does not reset to available after a call/chat (P1, Recurring)
--   Issue 6: AI Character Sort Order is incorrect (P2, Recurring)
+-   Issue 1: Calls and Chats are not appearing in the UI (P0, HIGHEST, Recurring)
+-   Issue 2: Staff status updates fail or use incorrect values (P0, Recurring)
+-   Issue 3: Jitsi video chat in events is not working (P0, BLOCKED on user)
+-   Issue 4: User logs in but sees another user's profile (P1, Fix implemented, pending verification)
+-   Issue 5: AI Character Sort Order is incorrect (P2, Not Started)
 
 **Issues Detail**:
--   **Issue 1: Multiple  errors in the new React Staff Portal**
-    -   **Attempted fixes**: The agent correctly identified that the frontend was calling non-existent API endpoints. It audited the backend code () and the old portal's JS to find the correct paths. The file  was then updated with the correct endpoints (e.g.,  was changed to ). The code now builds successfully.
+-   **Issue 1: Calls and Chats are not appearing in the UI**
+    -   **Attempted fixes**:
+        -   Fixed mismatched Socket.IO event names between frontend () and backend ().
+        -   Identified a critical conflict: the backend only supports **one socket per user_id**. If the old and new portals are open simultaneously for the same user, they compete, and the last one to register gets the calls.
+        -   Integrated  and  hooks into the Staff Portal page to manage real-time connections.
     -   **Next debug checklist**:
-        1.  Wait for user to redeploy and confirm if the 404 errors are resolved.
-        2.  If errors persist, use the browser's developer tools (Network tab) on the Vercel deployment to inspect the failing API calls and verify their full URL, method, and headers.
-        3.  Cross-reference the failing calls with the backend router definitions in  and the  directory.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker. The Staff Portal is unusable without a connection to the backend. Fixing this will allow the user to test the core functionality of the newly migrated portal.
-    -   **Status**: USER VERIFICATION PENDING
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend
+        1.  User must test with the **old portal completely closed** to avoid the socket conflict.
+        2.  When a call is made to the logged-in user, check the browser console for the  message.
+        3.  If the log appears but the UI modal doesn't, investigate the React state updates for  in .
+        4.  If the log does *not* appear, it confirms the backend is not routing the call to the new portal's socket, likely due to the socket conflict.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the primary function of the Staff Portal and the main blocker for migration.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on other issue**: None
+
+-   **Issue 2: Staff status updates fail or use incorrect values**
+    -   **Attempted fixes**:
+        -   Identified that the backend Pydantic models for  and  accept different status values. (e.g., Peers do not accept  or ).
+        -   Updated the status buttons in  to send valid values ( instead of ,  instead of ).
+        -   Fixed  to use the correct API endpoint ( or ) based on the loaded profile's role.
+    -   **Next debug checklist**:
+        1.  This issue is blocked by the profile loading problem. Once a user with a valid profile logs in, re-test the status buttons.
+        2.  Verify the network requests in the browser's developer tools to confirm the correct  request and payload are being sent.
+    -   **Why fix this issue and what will be achieved with the fix?**: Core staff functionality for managing availability.
+    -   **Status**: BLOCKED
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on other issue**: Issue 4 (User profile loading)
 
 **In progress Task List**:
 -   **Task 1: Complete Staff Portal Migration (P0)**
-    -   **Where to resume**: The API endpoint paths have been corrected in . The next step is user verification. Once verified, the agent needs to implement the WebRTC/Twilio phone integration.
-    -   **What will be achieved with this?**: This will bring the new React Staff Portal to near-full feature parity with the legacy version, making it ready for final testing and eventual production use.
+    -   **Where to resume**: Debugging the incoming call UI is the next step. After the user tests with the old portal closed, the agent needs to analyze the console logs to see if the  event is received.
+    -   **What will be achieved with this?**: Achieve feature parity with the legacy Staff Portal.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both (Frontend for UI, Backend for Twilio integration).
-    -   **Blocked on something**: User verification of the 404 error fixes.
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on something**: Issue 1 and Issue 2.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P0) CRITICAL**: Begin migration of the main **Admin Portal** () to the React app at , using  as a guide.
-    -   **(P0)** Implement the WebRTC/Twilio phone integration in the new React Staff Portal to make in-app calls functional.
-    -   **(P1)** After the new portals are fully tested and approved by the user, delete the legacy directories (, , , ).
+    -   **(P0) CRITICAL**: Begin migration of the main **Admin Portal** (), using .
+    -   **(P1)** After the new portals are fully tested and approved, delete the legacy directories (, , etc.).
 -   **Future Tasks**:
     -   **(P1)** Create a native mobile app (iOS/Android).
     -   **(P2)** Implement Discussion Forums, a Mood Tracker Journal, and Appointment Booking.
     -   **(P2)** Add Welsh Language Support.
 
 **Completed work in this session**
--   **Legacy Portal Fixes**:
-    -   Fixed  bug in .
-    -   Added a UI for viewing Audit Logs to the legacy admin portal.
--   **New React Portal Creation ()**:
-    -   **Scaffolded a complete Next.js 14 project** with TypeScript and a modular structure.
-    -   **Migrated LMS Portal**: Built the Learner () and Admin () sections.
-    -   **Migrated Staff Portal**:
-        - Audited the legacy portal and created .
-        - Implemented the UI and logic for all 9 tabs (Dashboard, Alerts, Cases, Rota, etc.) in .
-        - Added connection status banners for calling and chat.
-    -   **Deployment & Configuration**:
-        - Created  for multi-domain routing.
-        - Guided the user on deploying the  directory as a separate Vercel project.
--   **Bug Fixing (New Portal)**:
-    -   **Resolved multiple 404 errors** by correcting the API endpoint paths in  to match the actual backend implementation.
-    -   Fixed various build errors related to CSS, regex, and TypeScript types during development.
+-   **Backend Fixes**:
+    -   Fixed a 500 error on the  endpoint by making  and  fields optional in the  Pydantic model in .
+    -   Corrected the  logic in  and  to handle MongoDB's  field for JWT validation.
+    -   Added a  endpoint to .
+-   **Frontend Fixes**:
+    -   **WebRTC/Twilio**: Created and integrated  and  hooks. Fixed incorrect Socket.IO event names to match the backend.
+    -   **API Client ()**: Corrected dozens of endpoint paths, request bodies, and response interfaces (for shifts, live chat, safeguarding alerts, etc.) to align with the backend.
+    -   **Authentication**: Removed the faulty profile fallback logic that was displaying the wrong user's data.
+    -   **Status Updates**: Corrected the logic to send valid status values (, ) based on the user's role (Peer vs. Counsellor).
+-   **Configuration**:
+    -   Corrected the  environment variable to point to the production backend URL instead of the frontend preview URL.
+    -   Updated  to include the correct environment variable.
 
 **Earlier issues found/mentioned but not fixed**
--   **Jitsi video chat not working**: This remains blocked on the user's side, possibly due to a stale deployment.
--   **In-chat call functionality and live support request reliability**: These are high-priority recurring issues that now need to be addressed within the new React portal implementation.
+-   **Jitsi video chat not working**: Blocked on user, not investigated this session.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork**: In-chat call functionality and live support request reliability.
 -   **Recurrence count**: 3+
--   **Status**: NOT STARTED (in the new React portal).
+-   **Status**: IN PROGRESS
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Incremental Refactoring**: Migrating a large legacy vanilla JS application into a modern Next.js monorepo-style application ().
--   **Vercel Multi-Project Deployment**: Using a single GitHub repository to deploy two separate Vercel projects, with the new portal project configured to use  as its root directory.
--   **Subdomain Routing**: Using  to route different subdomains (e.g., , ) to different pages/layouts within the single Next.js application.
--   **Centralized API Client**: Consolidating all backend API calls into a typed file () for easier maintenance and debugging. This was the focus of the last bug-fixing session.
+-   **Incremental Refactoring**: Migrating a large legacy JS app to a modern Next.js stack.
+-   **Socket.IO Event Mismatch**: Frontend and backend event names ( vs ) must be identical for real-time communication to work.
+-   **Socket Connection Conflict**: The backend design () only allows one active connection per user ID. Running the old and new portals simultaneously causes them to overwrite each other's connections, leading to unpredictable call routing.
+-   **Backend Data Validation**: Strict Pydantic models on the backend can cause 500 errors if the data in the database is incomplete. Fields must be explicitly marked as  to handle legacy or incomplete records.
+-   **Environment Variable Scope**:  must be correctly set in the Vercel build environment to point to the backend API, not the frontend's own URL.
 
 **key DB schema**
--   No changes to the database schema were made in this session.
+-   No schema changes were made. The session focused on fixing code to align with the existing schema.
 
 **changes in tech stack**
--   **Introduced Next.js 14, React, TypeScript, and TailwindCSS** for the new unified portal application at .
+-    added to 
+-    added to 
 
 **All files of reference**
--   : The main component for the new React Staff Portal.
--   : The centralized API client, which was heavily modified to fix multiple 404 errors.
--   : The Vercel routing configuration file.
--   : The feature checklist for the portal migration.
--   : Inspected to determine the correct backend API endpoint paths.
+-   : The main UI for the Staff Portal. All state and hook integrations happen here.
+-   : The central API client. Was heavily modified to fix endpoints, request bodies, and profile loading logic.
+-   : Manages user authentication, profile loading, and status updates.
+-   : New hook containing all peer-to-peer call logic via Socket.IO.
+-   : Main backend file where the Counsellor data model was fixed to prevent 500 errors.
+-   : The legacy portal's JS file, used as a source of truth for debugging how features are supposed to work.
+-   , , : Configuration files updated to use the correct backend API URL.
 
 **Areas that need refactoring**:
--   The  function in  is a temporary local-only fix. It needs to be updated to call the correct backend endpoint ( or ) once the staff member's profile (containing their ID and type) is successfully loaded.
+-   The dependency on a user having a  or  profile is a significant weak point. A more robust solution would be to automatically create a basic profile for new staff users or have the UI gracefully handle the absence of a profile for all features.
 
 **key api endpoints**
--   The key discovery was the mismatch between frontend calls and backend routes. The correct endpoints that were implemented are:
-    -   Login: 
-    -   Get On-Duty Staff: 
-    -   Get Staff Profile:  or 
-    -   Update Staff Status:  or 
+-   **Authentication**: 
+-   **Status Update**:  or . These have different accepted status values.
+-   **WebRTC Signaling**: via Socket.IO connection to  using events like , , , etc.
 
 **Critical Info for New Agent**
--   The primary task is the portal migration. The user is highly focused on achieving feature parity between the old JS portals and the new React one in .
--   **API paths are inconsistent.** Do not assume RESTful conventions. Always verify API endpoints against the backend code ( and ) or the legacy portal's network requests before implementing them.
--   The user has a two-project setup on Vercel from a single repository. The new portal project's Root Directory is set to .
--   **Test with the correct URLs.** Subdomain routing () is active. To test a specific portal section like staff, use the direct Vercel deployment URL (e.g., ), not a subdomain intended for another section (like ).
+-   **SOCKET CONFLICT IS THE KEY**: The user MUST close the old legacy portal when testing the new one. The backend only allows one socket per user, and the last client to register wins and gets all the calls. This is the most likely reason calls are not appearing on the new portal.
+-   **VERCEL DEPLOYMENT LAG**: The user's console logs frequently show outdated code is running on Vercel. Any frontend fixes will NOT work until Vercel has successfully built and deployed the latest commit. You must guide the user to confirm their deployment is up-to-date.
+-   **USER ACCOUNTS**: The user  does NOT have a staff profile in the database. This causes  to be . While the agent removed the bad fallback logic, any feature that relies on a profile ID (like status updates) will be disabled for this user until a profile is created for them in the admin portal.
+-   **BACKEND DEPLOYMENT**: The agent has made critical fixes to the Python backend (). These fixes are only local. They will not take effect on the user's live site until the user redeploys their backend application on Render.com.
 
 **documents and test reports created in this job**
 -   
+-    (Updated with latest progress)
 
 **Last 10 User Messages and any pending HUMAN messages**
--   10. User reports login is now working on the staff portal and asks the agent to finish the remaining pages.
--   9. Agent completes the implementation for the Rota, Team, Notes, and Supervision tabs in the Staff Portal.
--   8. User reports that the status banners for In-App Calling and Live Chat from the old portal are missing.
--   7. Agent implements the status banners in the new React Staff Portal.
--   6. User reports new  errors for , , and .
--   5. Agent identifies that the API endpoint paths in  are incorrect.
--   4. Agent inspects backend code to find the correct, non-standard API paths.
--   3. Agent updates  with the correct endpoint paths.
--   2. Agent fixes the resulting TypeScript and build errors.
--   1. The build is now successful. The agent has informed the user that the API paths are corrected and is awaiting user verification after redeployment.
+-   10. User reports login as 'kev' shows 'Sarah M' profile.
+-   9. Agent removes the faulty fallback logic. Finishes.
+-   8. User reports 'kev' login still not working and posts console logs showing 'no token or profile'.
+-   7. Agent realizes backend fixes are local-only and not on user's Render deployment. Also sees login 401 error.
+-   6. Agent asks for working credentials and if Vercel has redeployed.
+-   5. User provides credentials ( / ) and console logs showing status update failures ().
+-   4. Agent identifies  is due to sending invalid status values for peer-supporters (e.g. 'busy'). Fixes the status buttons.
+-   3. User posts new console logs. WebRTC and Twilio are connecting, but calls are still not showing up.
+-   2. Agent realizes the socket conflict (old portal vs new portal fighting for the same user_id).
+-   1. User confirms that when they test, the old portal gets the call. This confirms the socket conflict theory.
 
 **Project Health Check:**
 -   **Broken**:
-    -   The new React Staff Portal () is partially functional but has data-loading issues pending verification of the recent 404 fixes.
-    -   WebRTC phone functionality is not yet implemented in the new React portal.
+    -   Staff portal real-time features (calls, chat UI) are not functional on the user's deployment.
+    -   Staff status updates are partially broken due to profile-loading issues.
 -   **Blocked**:
-    -   Jitsi video chat functionality remains blocked on the user.
+    -   Jitsi video chat.
+    -   The main task of migrating the Admin portal is blocked until the Staff portal is stable.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   **Next.js 14**: New framework for the portal migration.
--   **Vercel**: The deployment platform for the new portal.
--   **Twilio**: Used for WebRTC in-app calling (functionality needs to be migrated to the new portal).
--   **Jitsi Meet**: Used for group video conferencing in events.
+-   **Next.js 14**: Framework for the new portal.
+-   **Vercel**: Deployment platform for the frontend.
+-   **Twilio**: Used for WebRTC/browser-to-phone calling. The  is now a dependency.
+-   **Jitsi Meet**: Used for group video conferencing.
+-   **Socket.IO**: Used for real-time signaling for WebRTC calls. The  is now a dependency.
 
 **Testing status**
 -   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: []
--   **Known regressions**: Multiple API calls in the new Staff Portal were broken due to incorrect endpoint paths. Fixes have been implemented but are pending verification.
+-   **Known regressions**: None new, but the main features remain broken.
 
 **Credentials to test flow:**
--   Credentials for the admin/staff portals can be found in  or by reviewing previous logs. The user is actively testing with their own credentials.
+-   User is testing with  and password . This user is a 'peer' and does not have a linked staff profile in the database.
+-   An agent-created test user  /  exists locally and has a linked counsellor profile.
 
 **What agent forgot to execute**
--   The previous agent did not initially verify the backend API endpoint paths when building the new Staff Portal. It assumed a standard RESTful structure () which was incorrect, leading to multiple  errors and rework. This has since been corrected, but the oversight caused a significant delay.</analysis>
+-   The agent repeatedly forgot that its local backend fixes were not being deployed to the user's production Render environment, leading to confusion when backend-related bugs persisted for the user.
+-   The agent initially implemented a poor fallback mechanism for profile loading which caused significant confusion by showing the wrong user's data. This has since been removed.
+-   A full end-to-end trace of the WebRTC signaling path was not done until late in the process, which delayed the discovery of the socket conflict issue.</analysis>

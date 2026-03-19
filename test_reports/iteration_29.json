@@ -1,0 +1,99 @@
+{
+  "summary": "Completed e2e testing of Staff Portal Migration. All 14 backend tests PASSED. Frontend UI tests PASSED including login, profile matching, status buttons, WebRTC socket connection, and Twilio phone registration. Profile loading correctly verifies user_id match. Status buttons are enabled for users with linked profiles.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_portal_migration.py",
+    "/app/test_reports/pytest/pytest_staff_portal_migration.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_staff_portal_migration.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% (All UI tests passed)"
+  },
+  "test_credentials": {
+    "email": "test@staff.com",
+    "password": "test123",
+    "user_id": "69bb1c83f3e67acd3b55b138",
+    "profile_id": "b0c9595e-76f0-434e-aca7-a635bf87a189"
+  },
+  "seed_data_creation": "N/A - used existing test user",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Staff Portal migration testing complete. The Next.js portal runs on localhost:3001 (development) and is accessed via /staff route. Key verified features: 1) Login with profile matching - profile.user_id must match logged-in user.id, 2) Status buttons disabled when no profile linked, 3) Warning banners appear appropriately, 4) AI Characters sorted by order field, 5) WebRTC socket connects via Socket.IO path /api/socket.io, 6) Twilio phone device registers for browser calling. The preview URL (https://staff-refactor-1.preview.emergentagent.com) runs the Expo frontend which redirects staff to external portal at staff.radiocheck.me. The portal directory /app/portal is separate Next.js app deployed to Vercel.",
+  "features_tested": {
+    "staff_login": {
+      "status": "PASS",
+      "details": "Login with test@staff.com/test123 returns user with id, role, name, and token"
+    },
+    "profile_user_id_matching": {
+      "status": "PASS",
+      "details": "Profile loaded correctly matches userId 69bb1c83f3e67acd3b55b138 to counsellor profile 'Test Staff' (profile_id: b0c9595e-76f0-434e-aca7-a635bf87a189)"
+    },
+    "status_buttons": {
+      "status": "PASS",
+      "details": "All 3 status buttons (Available, Busy, Off Duty) are enabled when profile is linked. Status update to 'available' worked correctly."
+    },
+    "no_profile_warning_banner": {
+      "status": "PASS",
+      "details": "Warning banner NOT shown for users with linked profiles (correct behavior)"
+    },
+    "socket_error_warning_banner": {
+      "status": "PASS",
+      "details": "Warning banner NOT shown when socket connection is successful"
+    },
+    "ai_characters_sorted_by_order": {
+      "status": "PASS",
+      "details": "Characters returned sorted by order field: frankie(0), tommy(2), doris(3), bob(4), sentry(5), jack(5), margie(7), rita(8), catherine(9), baz(10)"
+    },
+    "live_chat_rooms_api": {
+      "status": "PASS",
+      "details": "Returns list of chat rooms with status, staff_id, messages etc."
+    },
+    "counsellors_api": {
+      "status": "PASS",
+      "details": "Returns 15 counsellors with user_id field for profile matching"
+    },
+    "peer_supporters_api": {
+      "status": "PASS",
+      "details": "Returns 4 peer supporters with user_id field"
+    },
+    "webrtc_socket_connection": {
+      "status": "PASS",
+      "details": "Socket.IO connected to server, user registered successfully with status 'online'"
+    },
+    "twilio_phone_registration": {
+      "status": "PASS",
+      "details": "Twilio Device registered, identity: staff_b0c9595e-76f0-434e-aca7-a635bf87a189"
+    },
+    "safeguarding_alerts_api": {
+      "status": "PASS",
+      "details": "Returns list of safeguarding alerts"
+    },
+    "callbacks_api": {
+      "status": "PASS",
+      "details": "Returns list of callback requests"
+    },
+    "cases_api": {
+      "status": "PASS",
+      "details": "Returns list of cases"
+    }
+  },
+  "verification_of_reported_issues": {
+    "issue_1_calls_chats_not_appearing": "VERIFIED FIXED - WebRTC socket connects and registers, Live Chat shows in UI",
+    "issue_2_staff_status_updates_failing": "VERIFIED FIXED - Status update to 'available' succeeded via API",
+    "issue_3_user_sees_wrong_profile": "VERIFIED FIXED - Profile loading verifies user_id match",
+    "issue_4_ai_character_sort_order": "VERIFIED FIXED - Characters sorted by order field"
+  }
+}
