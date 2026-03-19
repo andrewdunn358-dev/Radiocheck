@@ -38,8 +38,9 @@ connected_users: Dict[str, dict] = {}
 # Format: {call_id: {caller_sid, callee_sid, status, started_at}}
 active_calls: Dict[str, dict] = {}
 
-# Reverse lookup: user_id -> socket_id
-user_to_socket: Dict[str, str] = {}
+# Reverse lookup: user_id -> set of socket_ids (supports multiple connections per user)
+# A user can have multiple tabs/devices connected simultaneously
+user_to_sockets: Dict[str, set] = {}
 
 # Track claimed chat requests to prevent multiple staff accepting same request
 claimed_chat_requests: set = set()
@@ -78,11 +79,17 @@ async def disconnect(sid):
     
     # Clean up from connected_users immediately
     if sid in connected_users:
-        if user_id and user_id in user_to_socket:
-            # Only remove if this is the current socket for this user
-            if user_to_socket.get(user_id) == sid:
-                del user_to_socket[user_id]
         del connected_users[sid]
+    
+    # Remove this socket from user's socket set
+    if user_id and user_id in user_to_sockets:
+        user_to_sockets[user_id].discard(sid)
+        # Only clean up if NO sockets remain for this user
+        if not user_to_sockets[user_id]:
+            del user_to_sockets[user_id]
+            logger.info(f"All connections closed for user {user_id}")
+        else:
+            logger.info(f"User {user_id} still has {len(user_to_sockets[user_id])} active connections")
     
     # End any active calls immediately (no grace period for calls)
     for call_id, call in list(active_calls.items()):
@@ -114,7 +121,7 @@ async def disconnect(sid):
                 await asyncio.sleep(DISCONNECT_GRACE_PERIOD)
                 
                 # Check if user reconnected during grace period
-                if user_id in user_to_socket:
+                if user_id in user_to_sockets and user_to_sockets[user_id]:
                     logger.info(f"User {user_id} reconnected during grace period - not sending disconnect notification")
                     return
                 
@@ -192,9 +199,13 @@ async def register(sid, data):
         'status': status,
         'connected_at': datetime.utcnow().isoformat()
     }
-    user_to_socket[user_id] = sid
     
-    logger.info(f"User registered: {name} ({user_type}) - {user_id}")
+    # Add this socket to the user's set of connections
+    if user_id not in user_to_sockets:
+        user_to_sockets[user_id] = set()
+    user_to_sockets[user_id].add(sid)
+    
+    logger.info(f"User registered: {name} ({user_type}) - {user_id} (now has {len(user_to_sockets[user_id])} connections)")
     
     await sio.emit('registered', {
         'success': True,
@@ -295,27 +306,29 @@ async def call_initiate(sid, data):
     call_type = data.get('call_type', 'audio')
     client_call_id = data.get('call_id')  # Client may provide their own call_id
     
-    logger.info(f"=== CALL INITIATE ===")
+    logger.info("=== CALL INITIATE ===")
     logger.info(f"Caller SID: {sid}")
     logger.info(f"Caller info: {caller_info}")
     logger.info(f"Target user_id: {target_user_id}")
     logger.info(f"Client call_id: {client_call_id}")
     logger.info(f"All connected users: {list(connected_users.keys())}")
-    logger.info(f"User to socket mapping: {user_to_socket}")
+    logger.info(f"User to socket mapping: {dict((k, list(v)) for k, v in user_to_sockets.items())}")
     
-    # Find target's socket
-    target_sid = user_to_socket.get(target_user_id)
+    # Find target's sockets (user may have multiple tabs/devices)
+    target_sids = user_to_sockets.get(target_user_id, set())
     
-    logger.info(f"Found target_sid: {target_sid}")
+    logger.info(f"Found target_sids: {target_sids}")
     
-    if not target_sid:
-        logger.warning(f"Target user {target_user_id} not found in user_to_socket mapping!")
+    if not target_sids:
+        logger.warning(f"Target user {target_user_id} not found in user_to_sockets mapping!")
         await sio.emit('call_failed', {
             'reason': 'user_offline',
             'message': 'The person you are trying to call is not available'
         }, to=sid)
         return
     
+    # Use the first socket for status checks (they all represent the same user)
+    target_sid = next(iter(target_sids))
     target_info = connected_users.get(target_sid, {})
     logger.info(f"Target info: {target_info}")
     
@@ -348,7 +361,7 @@ async def call_initiate(sid, data):
         'caller_sid': sid,
         'caller_id': caller_info.get('user_id'),
         'caller_name': caller_info.get('name', data.get('caller_name', 'Unknown')),
-        'callee_sid': target_sid,
+        'callee_sids': target_sids.copy(),  # Store ALL sockets for the callee
         'callee_id': target_user_id,
         'callee_name': target_info.get('name'),
         'call_type': call_type,
@@ -358,9 +371,12 @@ async def call_initiate(sid, data):
     
     # Update statuses
     connected_users[sid]['status'] = 'in_call'
-    connected_users[target_sid]['status'] = 'ringing'
+    # Update status on ALL callee's sockets
+    for ts in target_sids:
+        if ts in connected_users:
+            connected_users[ts]['status'] = 'ringing'
     
-    logger.info(f"Call initiated: {call_id} from {caller_info.get('name')} to {target_info.get('name')}")
+    logger.info(f"Call initiated: {call_id} from {caller_info.get('name')} to {target_info.get('name')} ({len(target_sids)} devices)")
     
     # Notify caller
     await sio.emit('call_ringing', {
@@ -368,13 +384,15 @@ async def call_initiate(sid, data):
         'target_name': target_info.get('name')
     }, to=sid)
     
-    # Notify callee (incoming call)
-    await sio.emit('incoming_call', {
-        'call_id': call_id,
-        'caller_id': caller_info.get('user_id'),
-        'caller_name': caller_info.get('name', 'Unknown'),
-        'call_type': call_type
-    }, to=target_sid)
+    # Notify callee on ALL their connected devices/tabs (incoming call)
+    for ts in target_sids:
+        await sio.emit('incoming_call', {
+            'call_id': call_id,
+            'caller_id': caller_info.get('user_id'),
+            'caller_name': caller_info.get('name', 'Unknown'),
+            'call_type': call_type
+        }, to=ts)
+        logger.info(f"Sent incoming_call to socket {ts}")
 
 
 @sio.event
@@ -382,7 +400,7 @@ async def call_accept(sid, data):
     """Callee accepts the call"""
     call_id = data.get('call_id')
     
-    logger.info(f"=== CALL ACCEPT EVENT ===")
+    logger.info("=== CALL ACCEPT EVENT ===")
     logger.info(f"call_accept: Received from sid={sid}, call_id={call_id}")
     logger.info(f"call_accept: Active calls: {list(active_calls.keys())}")
     
@@ -392,7 +410,8 @@ async def call_accept(sid, data):
         return
     
     call = active_calls[call_id]
-    logger.info(f"call_accept: Call info - caller_sid={call['caller_sid']}, callee_sid={call['callee_sid']}, callee_id={call['callee_id']}")
+    callee_sids = call.get('callee_sids', set())
+    logger.info(f"call_accept: Call info - caller_sid={call['caller_sid']}, callee_sids={callee_sids}, callee_id={call['callee_id']}")
     
     # Check if this socket is the callee by user_id (more reliable than sid which can change)
     caller_info = connected_users.get(sid, {})
@@ -400,24 +419,30 @@ async def call_accept(sid, data):
     
     logger.info(f"call_accept: Accepting user_id={accepting_user_id}, expected callee_id={call['callee_id']}")
     
-    # The callee could have reconnected with a new socket ID
-    # So we check if the user_id matches the callee_id
-    if call['callee_sid'] != sid:
-        # Socket ID changed - check if user_id matches
-        if accepting_user_id != call['callee_id']:
-            logger.warning(f"call_accept: User {accepting_user_id} is not the callee {call['callee_id']}")
-            await sio.emit('call_failed', {'reason': 'not_authorized'}, to=sid)
-            return
-        else:
-            # User reconnected - update the callee_sid to their new socket
-            logger.info(f"call_accept: Callee socket changed from {call['callee_sid']} to {sid}")
-            call['callee_sid'] = sid
+    # Verify the accepting user is the callee
+    if accepting_user_id != call['callee_id']:
+        logger.warning(f"call_accept: User {accepting_user_id} is not the callee {call['callee_id']}")
+        await sio.emit('call_failed', {'reason': 'not_authorized'}, to=sid)
+        return
     
+    # Store the specific socket that answered
+    call['answered_by_sid'] = sid
     call['status'] = 'accepted'
+    
     if sid in connected_users:
         connected_users[sid]['status'] = 'in_call'
     
     logger.info(f"call_accept: Call {call_id} accepted by {accepting_user_id}")
+    
+    # Stop ringing on ALL other devices for this user (they already answered on this one)
+    for other_sid in callee_sids:
+        if other_sid != sid and other_sid in connected_users:
+            connected_users[other_sid]['status'] = 'available'
+            await sio.emit('call_answered_elsewhere', {
+                'call_id': call_id,
+                'message': 'Call answered on another device'
+            }, to=other_sid)
+            logger.info(f"Notified {other_sid} that call was answered elsewhere")
     
     # Notify caller to start WebRTC negotiation (they will create the offer)
     logger.info(f"call_accept: Sending call_accepted to CALLER sid={call['caller_sid']}")
@@ -435,7 +460,7 @@ async def call_accept(sid, data):
         'is_callee': True  # Flag to indicate they should wait for offer
     }, to=sid)
     
-    logger.info(f"call_accept: Both parties notified, waiting for WebRTC offer from caller")
+    logger.info("call_accept: Both parties notified, waiting for WebRTC offer from caller")
 
 
 @sio.event
@@ -448,12 +473,15 @@ async def call_reject(sid, data):
         return
     
     call = active_calls[call_id]
+    callee_sids = call.get('callee_sids', set())
     
     # Reset statuses
     if call['caller_sid'] in connected_users:
         connected_users[call['caller_sid']]['status'] = 'available'
-    if call['callee_sid'] in connected_users:
-        connected_users[call['callee_sid']]['status'] = 'available'
+    # Reset status on ALL callee's sockets
+    for cs in callee_sids:
+        if cs in connected_users:
+            connected_users[cs]['status'] = 'available'
     
     logger.info(f"Call rejected: {call_id} - {reason}")
     
@@ -462,6 +490,14 @@ async def call_reject(sid, data):
         'call_id': call_id,
         'reason': reason
     }, to=call['caller_sid'])
+    
+    # Stop ringing on all other devices
+    for cs in callee_sids:
+        if cs != sid:
+            await sio.emit('call_cancelled', {
+                'call_id': call_id,
+                'reason': 'rejected_on_another_device'
+            }, to=cs)
     
     del active_calls[call_id]
 
@@ -475,23 +511,31 @@ async def call_end(sid, data):
         return
     
     call = active_calls[call_id]
+    callee_sids = call.get('callee_sids', set())
+    answered_sid = call.get('answered_by_sid')
     
-    # Determine other party
-    other_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
+    # Determine other party - if we know which socket answered, use that
+    if call['caller_sid'] == sid:
+        other_sid = answered_sid if answered_sid else next(iter(callee_sids), None)
+    else:
+        other_sid = call['caller_sid']
     
     # Reset statuses
     if call['caller_sid'] in connected_users:
         connected_users[call['caller_sid']]['status'] = 'available'
-    if call['callee_sid'] in connected_users:
-        connected_users[call['callee_sid']]['status'] = 'available'
+    # Reset status on ALL callee's sockets
+    for cs in callee_sids:
+        if cs in connected_users:
+            connected_users[cs]['status'] = 'available'
     
     logger.info(f"Call ended: {call_id}")
     
     # Notify other party
-    await sio.emit('call_ended', {
-        'call_id': call_id,
-        'reason': 'ended_by_peer'
-    }, to=other_sid)
+    if other_sid:
+        await sio.emit('call_ended', {
+            'call_id': call_id,
+            'reason': 'ended_by_peer'
+        }, to=other_sid)
     
     del active_calls[call_id]
 
@@ -504,7 +548,7 @@ async def webrtc_offer(sid, data):
     call_id = data.get('call_id')
     offer = data.get('offer')
     
-    logger.info(f"=== WEBRTC OFFER EVENT ===")
+    logger.info("=== WEBRTC OFFER EVENT ===")
     logger.info(f"webrtc_offer: Received from sid={sid}, call_id={call_id}")
     logger.info(f"webrtc_offer: Offer type={offer.get('type') if offer else 'None'}")
     logger.info(f"webrtc_offer: Active calls: {list(active_calls.keys())}")
@@ -512,7 +556,7 @@ async def webrtc_offer(sid, data):
     if call_id not in active_calls:
         logger.error(f"webrtc_offer: CRITICAL - Call {call_id} not found in active_calls!")
         logger.error(f"webrtc_offer: Available call IDs: {list(active_calls.keys())}")
-        logger.error(f"webrtc_offer: This usually means call_id mismatch between client and server")
+        logger.error("webrtc_offer: This usually means call_id mismatch between client and server")
         # Emit error back to sender so they know the offer failed
         await sio.emit('webrtc_error', {
             'error': 'call_not_found',
@@ -551,7 +595,7 @@ async def webrtc_answer(sid, data):
     call_id = data.get('call_id')
     answer = data.get('answer')
     
-    logger.info(f"=== WEBRTC ANSWER EVENT ===")
+    logger.info("=== WEBRTC ANSWER EVENT ===")
     logger.info(f"webrtc_answer: Received from sid={sid}, call_id={call_id}")
     logger.info(f"webrtc_answer: Answer type={answer.get('type') if answer else 'None'}")
     
@@ -783,7 +827,7 @@ async def request_human_chat(sid, data):
     session_id = data.get('session_id', '')  # Original AI chat session ID for matching
     alert_id = data.get('alert_id', '')  # Associated safeguarding alert ID
     
-    logger.info(f"=== REQUEST_HUMAN_CHAT EVENT ===")
+    logger.info("=== REQUEST_HUMAN_CHAT EVENT ===")
     logger.info(f"From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
     logger.info(f"Total connected users: {len(connected_users)}")
     
@@ -878,7 +922,7 @@ async def request_human_call(sid, data):
     session_id = data.get('session_id', '')  # Original AI chat session ID
     alert_id = data.get('alert_id', '')  # Associated safeguarding alert ID
     
-    logger.info(f"=== REQUEST_HUMAN_CALL EVENT ===")
+    logger.info("=== REQUEST_HUMAN_CALL EVENT ===")
     logger.info(f"From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
     logger.info(f"Total connected users: {len(connected_users)}")
     
@@ -966,7 +1010,7 @@ async def accept_call_request(sid, data):
     staff_name = data.get('staff_name', 'Staff')
     staff_type = data.get('staff_type', 'counsellor')
     
-    logger.info(f"=== ACCEPT CALL REQUEST ===")
+    logger.info("=== ACCEPT CALL REQUEST ===")
     logger.info(f"Staff {staff_name} ({staff_id}) accepting call request {request_id} from user {requester_user_id}")
     
     # Find the user's socket
@@ -1018,7 +1062,7 @@ async def accept_chat_request(sid, data):
     request_id = data.get('request_id')
     requester_user_id = data.get('user_id')
     
-    logger.info(f"=== ACCEPT CHAT REQUEST ===")
+    logger.info("=== ACCEPT CHAT REQUEST ===")
     logger.info(f"accept_chat_request: request_id={request_id}, requester_user_id={requester_user_id}")
     
     # Check if this request has already been claimed
@@ -1033,7 +1077,7 @@ async def accept_chat_request(sid, data):
     # Mark as claimed immediately to prevent race conditions
     claimed_chat_requests.add(request_id)
     
-    logger.info(f"accept_chat_request: user_to_socket keys: {list(user_to_socket.keys())}")
+    logger.info(f"accept_chat_request: user_to_sockets keys: {list(user_to_sockets.keys())}")
     
     staff_info = connected_users.get(sid, {})
     
@@ -1042,13 +1086,13 @@ async def accept_chat_request(sid, data):
         claimed_chat_requests.discard(request_id)  # Release the claim
         return
     
-    # Find the requester's socket
-    requester_sid = user_to_socket.get(requester_user_id)
+    # Find the requester's sockets (they may have multiple connections)
+    requester_sids = user_to_sockets.get(requester_user_id, set())
     
-    logger.info(f"accept_chat_request: Found requester_sid={requester_sid}")
+    logger.info(f"accept_chat_request: Found requester_sids={requester_sids}")
     
-    if not requester_sid:
-        logger.warning(f"accept_chat_request: User {requester_user_id} not found in user_to_socket")
+    if not requester_sids:
+        logger.warning(f"accept_chat_request: User {requester_user_id} not found in user_to_sockets")
         claimed_chat_requests.discard(request_id)  # Release the claim
         await sio.emit('chat_request_expired', {
             'request_id': request_id,
@@ -1088,28 +1132,32 @@ async def accept_chat_request(sid, data):
     
     # === CRITICAL: Join both parties to the Socket.IO room ===
     await sio.enter_room(sid, room_id)  # Staff joins room
-    await sio.enter_room(requester_sid, room_id)  # User joins room
     
-    # Track room participants
+    # Join ALL of the requester's sockets to the room (so all their devices get messages)
+    for rs in requester_sids:
+        await sio.enter_room(rs, room_id)
+    
+    # Track room participants (all user sockets are joined to the room)
     active_chat_rooms[room_id] = {
         'participants': [staff_info.get('user_id'), requester_user_id],
         'created_at': datetime.utcnow().isoformat(),
         'staff_sid': sid,
-        'user_sid': requester_sid
+        'user_sids': list(requester_sids)  # Store all user's sockets
     }
     
-    logger.info(f"Both parties joined Socket.IO room {room_id}")
+    logger.info(f"Both parties joined Socket.IO room {room_id} ({len(requester_sids)} user devices)")
     logger.info(f"Staff {staff_info.get('name')} accepted chat request {request_id}, room: {room_id}")
     
-    # Notify the requester
-    logger.info(f"accept_chat_request: Emitting human_chat_accepted to requester {requester_sid}")
-    await sio.emit('human_chat_accepted', {
-        'request_id': request_id,
-        'room_id': room_id,
-        'staff_id': staff_info.get('user_id'),
-        'staff_name': staff_info.get('name'),
-        'staff_type': staff_info.get('user_type')
-    }, to=requester_sid)
+    # Notify the requester on ALL their devices
+    for rs in requester_sids:
+        logger.info(f"accept_chat_request: Emitting human_chat_accepted to requester socket {rs}")
+        await sio.emit('human_chat_accepted', {
+            'request_id': request_id,
+            'room_id': room_id,
+            'staff_id': staff_info.get('user_id'),
+            'staff_name': staff_info.get('name'),
+            'staff_type': staff_info.get('user_type')
+        }, to=rs)
     
     # Confirm to staff
     logger.info(f"accept_chat_request: Emitting chat_request_confirmed to staff {sid}")

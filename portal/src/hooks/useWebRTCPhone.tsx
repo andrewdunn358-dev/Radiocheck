@@ -458,6 +458,30 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       endCall();
     });
 
+    // Call answered on another device (multi-device support)
+    socket.on('call_answered_elsewhere', (data: { call_id: string; message?: string }) => {
+      console.log('[WebRTCPhone] Call answered on another device:', data.message);
+      stopRingtone();
+      setState(prev => ({
+        ...prev,
+        hasIncomingCall: false,
+        callerInfo: null
+      }));
+      updateStatus('online', 'Call answered elsewhere');
+    });
+
+    // Call cancelled (e.g., rejected on another device)
+    socket.on('call_cancelled', (data: { call_id: string; reason?: string }) => {
+      console.log('[WebRTCPhone] Call cancelled:', data.reason);
+      stopRingtone();
+      setState(prev => ({
+        ...prev,
+        hasIncomingCall: false,
+        callerInfo: null
+      }));
+      updateStatus('online', 'Online');
+    });
+
     socket.on('disconnect', () => {
       console.log('[WebRTCPhone] Socket disconnected');
       updateStatus('offline', 'Disconnected');
