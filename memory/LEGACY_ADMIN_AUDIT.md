@@ -241,16 +241,130 @@
 
 ---
 
-## TAB 9: GOVERNANCE
-**API Endpoints:**
-- `GET /governance/hazards` - Clinical hazards []
-- `GET /governance/summary-report?period={7d|30d|weekly|monthly}` - Summary report
-- `GET /governance/kpis` - KPI data
-- `POST /governance/hazards` - Create hazard
-- `PUT /governance/hazards/{id}` - Update hazard
-- `PATCH /governance/hazards/{id}/status` - Update hazard status
+## TAB 9: GOVERNANCE (Clinical Safety Governance)
+**Sub-tabs:** Hazard Register, Safeguarding KPIs, Incident Management, Peer Moderation, CSO Approvals, AI Compliance, Summary Reports
 
-**Sub-tabs:** Hazards, KPIs, Incidents, Moderation, Approvals, Compliance, Reports
+### Sub-tab 9.1: HAZARD REGISTER
+**API Endpoints:**
+- `GET /governance/hazards` - Get all hazards []
+- `POST /governance/hazards` - Create new hazard
+- `PUT /governance/hazards/{id}` - Update hazard
+- `POST /governance/hazards/{id}/review?reviewer_id={email}` - Mark hazard as reviewed
+
+**Hazard Data Structure:**
+```
+{
+  hazard_id: "H1", title, cause, severity, likelihood, risk_rating (1-25),
+  status: "open|mitigated|closed", owner, mitigation, review_date
+}
+```
+
+**Features:**
+- Table display: ID, Title/Cause, Severity badge, Likelihood, Risk Rating (color coded), Status, Owner, Actions
+- Risk rating colors: critical >=15, high >=10, medium >=6, low <6
+- Review button (marks hazard as reviewed)
+- Edit button (opens edit modal)
+- Add Hazard button (placeholder in legacy)
+
+### Sub-tab 9.2: SAFEGUARDING KPIs
+**API Endpoints:**
+- `GET /governance/kpis?days={days}` - Get KPI data
+
+**KPI Data Structure:**
+```
+{
+  kpis: {
+    avg_high_risk_response_time, avg_imminent_risk_response_time,
+    pct_high_risk_reviewed_in_sla, total_high_risk_alerts,
+    total_imminent_risk_alerts, total_medium_risk_alerts,
+    risk_level_distribution: { imminent, high, medium, low }
+  }
+}
+```
+
+**Features:**
+- Period selector dropdown (30/60/90 days)
+- KPI cards: Avg Response Time (High), Avg Response Time (Imminent), SLA Compliance %, High/Imminent/Medium counts
+- Doughnut chart showing risk level distribution (Imminent/High/Medium/Low)
+
+### Sub-tab 9.3: INCIDENT MANAGEMENT
+**API Endpoints:**
+- `GET /governance/incidents` - Get all incidents []
+- `POST /governance/incidents` - Create incident (placeholder)
+- `GET /governance/incidents/{incident_number}` - View incident details
+
+**Incident Data Structure:**
+```
+{
+  incident_number: "INC-001", title, level: "level_1_low|level_2_moderate|level_3_high|level_4_critical",
+  status: "open|investigating|resolved|closed", created_at
+}
+```
+
+**Features:**
+- Table: Number, Title, Level badge, Status badge, Date, View button
+- Add Incident button (placeholder)
+- View Incident modal (placeholder)
+
+### Sub-tab 9.4: PEER MODERATION
+**API Endpoints:**
+- `GET /governance/peer-reports?status=pending` - Get pending reports []
+- `PUT /governance/peer-reports/{id}/action?action={action}&moderator_id={email}` - Take action
+
+**Actions:** reviewed, warning_issued, suspended
+
+**Report Data Structure:**
+```
+{
+  id, reported_user_id, reason, status, created_at
+}
+```
+
+**Features:**
+- Table: Report ID, User ID, Reason, Status, Date, Actions
+- Action buttons: Approve (reviewed), Warn (warning_issued), Suspend (suspended)
+
+### Sub-tab 9.5: CSO APPROVALS
+**API Endpoints:**
+- `GET /governance/cso/approvals` - Get pending approvals []
+- `POST /governance/cso/approvals` - Create approval request
+- `PUT /governance/cso/approvals/{id}?approved={bool}&reviewer_id={email}&notes={notes}` - Process approval
+
+**Approval Data Structure:**
+```
+{
+  id, request_type, description, requested_by, requested_at, current_value, proposed_value
+}
+```
+
+**Features:**
+- Table: ID, Type, Description, Requested By, Date, Actions
+- Approve/Deny buttons with notes prompt
+- CSO sign-off form (name, qualification)
+
+### Sub-tab 9.6: AI COMPLIANCE CHECKER
+**No API - Client-side check**
+
+**Compliance Frameworks:**
+- DCB0129 (NHS): Hazard Register, Risk Scoring, CSO Role, Incident Management, Audit Trail, Periodic Review
+- Samaritans AI Policy: No Harmful Instructions, Crisis Resources, Human Escalation, No Romanticizing, Session Monitoring, Dependency Detection
+- Online Safety Act: Age Verification, Reporting Mechanism, Moderation System, Transparency
+- ICO Data Protection: Human Oversight, Decision Logging, Explainability, Data Minimization
+
+**Features:**
+- Run Compliance Check button
+- Overall compliance score
+- Framework-by-framework breakdown with pass/fail per requirement
+- Last check timestamp stored in localStorage
+
+### Sub-tab 9.7: SUMMARY REPORTS
+**API Endpoints:**
+- `GET /governance/summary-report?period={weekly|monthly}` - Generate report
+- `GET /governance/summary-report/pdf?period={period}` - Download PDF
+- `POST /governance/summary-report/email?email={email}&period={period}` - Email report
+- `GET /governance/scheduled-reports` - Get scheduled reports {schedules[]}
+- `POST /governance/scheduled-reports?email={email}&frequency={weekly|monthly}&enabled=true` - Create schedule
+- `DELETE /governance/scheduled-reports/{email}` - Delete schedule
 
 **Summary Report Structure:**
 ```
@@ -264,13 +378,13 @@
 ```
 
 **Features:**
-- Hazard log with risk matrix visualization
-- Add hazard modal (title, description, risk level, category, mitigation)
-- KPI dashboard with SLA metrics
-- Weekly/monthly summary report generation
-- Report display with safeguarding, KPIs, engagement sections
-- Recommendations list
-- Export functionality
+- Period selector (Weekly/Monthly)
+- Generate Report button
+- Report display: Safeguarding card, KPIs card, Engagement card, Recommendations list
+- Export as PDF button
+- Print Report button
+- Email report input + Send button
+- Scheduled Reports section: Add schedule (email, frequency), List existing schedules, Delete schedule
 
 ---
 
