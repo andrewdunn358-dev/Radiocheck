@@ -67,6 +67,7 @@ interface CallLog {
 interface ChatRoom {
   id: string;
   user_session_id?: string;
+  user_name?: string;
   staff_name?: string;
   status: string;
   created_at: string;
@@ -77,11 +78,25 @@ interface SafeguardingAlert {
   id: string;
   user_name?: string;
   risk_level: string;
+  risk_score?: number;
+  score?: number;
   trigger_phrase?: string;
+  triggered_indicators?: string[];
+  triggering_message?: string;
+  session_id?: string;
   status: string;
   created_at: string;
   acknowledged_by?: string;
   resolved_by?: string;
+  geo_city?: string;
+  geo_country?: string;
+  location_city?: string;
+  location_country?: string;
+  ip_address?: string;
+  isp?: string;
+  timezone?: string;
+  user_agent?: string;
+  conversation_history?: any[];
 }
 
 interface AICharacter {
@@ -230,15 +245,11 @@ const api = {
       method: 'POST',
     }),
 
-  // Logs - Call Logs (returns {total_calls, recent_logs})
-  getCallLogs: (token: string, days: number = 30) =>
-    api.fetch<{ total_calls: number; recent_logs: CallLog[] }>(`/call-logs?days=${days}`, { token }),
-  
-  // Logs - Chat Rooms
+  // Logs - Chat Rooms (old endpoint, kept for backward compatibility)
   getChatRooms: (token: string) =>
     api.fetch<ChatRoom[]>('/live-chat/rooms', { token }),
   
-  // Logs - Safeguarding Alerts
+  // Logs - Safeguarding Alerts (old endpoint, kept for backward compatibility)
   getSafeguardingAlerts: (token: string) =>
     api.fetch<SafeguardingAlert[]>('/safeguarding-alerts', { token }),
 
@@ -361,6 +372,43 @@ const api = {
   getAuditLogs: (token: string, limit: number = 50) =>
     api.fetch<any>(`/admin/audit-logs?limit=${limit}`, { token }),
 
+  // Logs - All sub-tabs
+  getCallLogs: (token: string) =>
+    api.fetch<any>('/admin/logs/calls', { token }),
+  
+  getChatLogs: (token: string) =>
+    api.fetch<any>('/admin/logs/chats', { token }),
+  
+  getSafeguardingLogs: (token: string) =>
+    api.fetch<any>('/admin/logs/safeguarding', { token }),
+  
+  getScreeningLogs: (token: string) =>
+    api.fetch<any>('/admin/logs/screening', { token }),
+  
+  getCallbackLogs: (token: string) =>
+    api.fetch<any>('/admin/logs/callbacks', { token }),
+  
+  getPanicLogs: (token: string) =>
+    api.fetch<any>('/admin/logs/panic', { token }),
+
+  // Screening actions
+  updateScreeningStatus: (token: string, id: string, status: string) =>
+    api.fetch<any>(`/safeguarding/screening-submissions/${id}/status?status=${status}`, { token, method: 'PATCH' }),
+
+  // Chat history
+  getChatMessages: (token: string, chatId: string) =>
+    api.fetch<any>(`/live-chat/rooms/${chatId}/messages`, { token }),
+
+  // Safeguarding actions
+  acknowledgeSafeguardingAlert: (token: string, alertId: string) =>
+    api.fetch<any>(`/safeguarding-alerts/${alertId}/acknowledge`, { token, method: 'PATCH' }),
+  
+  resolveSafeguardingAlert: (token: string, alertId: string) =>
+    api.fetch<any>(`/safeguarding-alerts/${alertId}/resolve`, { token, method: 'PATCH' }),
+  
+  getSafeguardingAlertDetail: (token: string, alertId: string) =>
+    api.fetch<any>(`/safeguarding-alerts/${alertId}`, { token }),
+
   // App Usage Analytics
   getAppUsageStats: (token: string) =>
     api.fetch<any>('/analytics/usage', { token }),
@@ -370,6 +418,24 @@ const api = {
   
   getAIChatStats: (token: string, days: number = 7) =>
     api.fetch<any>(`/ai-chat/stats?days=${days}`, { token }),
+
+  // Settings
+  getSettings: (token: string) =>
+    api.fetch<any>('/settings', { token }),
+  
+  updateSettings: (token: string, settings: any) =>
+    api.fetch<any>('/settings', { 
+      token, 
+      method: 'PUT',
+      body: JSON.stringify(settings) 
+    }),
+  
+  clearLogs: (token: string, logType: string) =>
+    api.fetch<any>('/admin/clear-logs', { 
+      token, 
+      method: 'POST',
+      body: JSON.stringify({ log_type: logType, confirm: true }) 
+    }),
 
   // Governance
   getHazards: (token: string) =>
@@ -483,9 +549,13 @@ const TABS = [
 ];
 
 const LOG_SUBTABS = [
-  { id: 'calls', label: 'Call Logs' },
-  { id: 'chats', label: 'Chat Logs' },
+  { id: 'calls', label: 'Calls' },
+  { id: 'chats', label: 'Chats' },
   { id: 'safeguarding', label: 'Safeguarding' },
+  { id: 'screening', label: 'Screening' },
+  { id: 'callbacks', label: 'Callbacks' },
+  { id: 'panic', label: 'Panic' },
+  { id: 'audit', label: 'Audit' },
 ];
 
 // Main Component
@@ -515,6 +585,15 @@ export default function AdminPortal() {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [safeguardingAlerts, setSafeguardingAlerts] = useState<SafeguardingAlert[]>([]);
+  const [screeningLogs, setScreeningLogs] = useState<any[]>([]);
+  const [callbackLogs, setCallbackLogs] = useState<any[]>([]);
+  const [panicLogs, setPanicLogs] = useState<any[]>([]);
+  const [adminAuditLogs, setAdminAuditLogs] = useState<any[]>([]);
+  const [auditEventFilter, setAuditEventFilter] = useState<string>('');
+  const [selectedChatHistory, setSelectedChatHistory] = useState<any[]>([]);
+  const [showChatHistoryModal, setShowChatHistoryModal] = useState(false);
+  const [selectedSafeguardingAlert, setSelectedSafeguardingAlert] = useState<any>(null);
+  const [showAlertDetailModal, setShowAlertDetailModal] = useState(false);
   const [aiCharacters, setAICharacters] = useState<AICharacter[]>([]);
   const [aiUsage, setAIUsage] = useState<AIUsageSummary | null>(null);
   const [monitoringStats, setMonitoringStats] = useState<any>(null);
@@ -566,6 +645,16 @@ export default function AdminPortal() {
   const [aiChatStats, setAiChatStats] = useState<any>(null);
   const [locationData, setLocationData] = useState<any>(null);
 
+  // Settings state
+  const [systemSettings, setSystemSettings] = useState<any>({
+    logo_url: '',
+    admin_notification_email: '',
+    cso_email: '',
+    peer_registration_notification_email: '',
+  });
+  const [clearLogsType, setClearLogsType] = useState<string>('');
+  const [clearLogsConfirmText, setClearLogsConfirmText] = useState('');
+
   // AI Character editing state
   const [editingCharacter, setEditingCharacter] = useState<AICharacter | null>(null);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
@@ -614,7 +703,73 @@ export default function AdminPortal() {
       setUser(JSON.parse(savedUser));
     }
     setIsLoading(false);
+    
+    // Strip sensitive params from URL
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('password') || url.searchParams.has('email')) {
+        url.searchParams.delete('password');
+        url.searchParams.delete('email');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
   }, []);
+
+  // Session timeout management (2hr inactivity, 24hr absolute)
+  useEffect(() => {
+    if (!token) return;
+    
+    const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
+    const ABSOLUTE_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+    
+    // Check token age on load
+    const tokenTime = localStorage.getItem('admin_token_time');
+    if (tokenTime) {
+      const tokenAge = Date.now() - parseInt(tokenTime);
+      if (tokenAge > ABSOLUTE_TIMEOUT) {
+        handleLogout();
+        return;
+      }
+    }
+    
+    // Activity tracking
+    let lastActivity = Date.now();
+    localStorage.setItem('admin_last_activity', lastActivity.toString());
+    
+    const resetActivity = () => {
+      lastActivity = Date.now();
+      localStorage.setItem('admin_last_activity', lastActivity.toString());
+    };
+    
+    // Check for timeout every minute
+    const timeoutChecker = setInterval(() => {
+      const now = Date.now();
+      const storedLastActivity = localStorage.getItem('admin_last_activity');
+      const inactiveTime = now - (storedLastActivity ? parseInt(storedLastActivity) : lastActivity);
+      
+      if (inactiveTime > SESSION_TIMEOUT) {
+        handleLogout();
+      }
+      
+      // Also check absolute timeout
+      const tokenTime = localStorage.getItem('admin_token_time');
+      if (tokenTime) {
+        const tokenAge = now - parseInt(tokenTime);
+        if (tokenAge > ABSOLUTE_TIMEOUT) {
+          handleLogout();
+        }
+      }
+    }, 60000); // Check every minute
+    
+    // Activity listeners
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => window.addEventListener(event, resetActivity));
+    
+    return () => {
+      clearInterval(timeoutChecker);
+      events.forEach(event => window.removeEventListener(event, resetActivity));
+    };
+  }, [token]);
 
   // Load data when tab changes
   useEffect(() => {
@@ -766,17 +921,38 @@ export default function AdminPortal() {
       switch (activeLogSubTab) {
         case 'calls':
           const callsResponse = await api.getCallLogs(token).catch(() => ({ total_calls: 0, recent_logs: [] }));
-          // Handle the response format: {total_calls, recent_logs}
           const logs = callsResponse?.recent_logs || callsResponse;
           setCallLogs(Array.isArray(logs) ? logs : []);
           break;
         case 'chats':
-          const chats = await api.getChatRooms(token).catch(() => []);
-          setChatRooms(Array.isArray(chats) ? chats : []);
+          const chats = await api.getChatLogs(token).catch(() => []);
+          const chatArr = chats?.rooms || chats;
+          setChatRooms(Array.isArray(chatArr) ? chatArr : []);
           break;
         case 'safeguarding':
-          const alerts = await api.getSafeguardingAlerts(token).catch(() => []);
-          setSafeguardingAlerts(Array.isArray(alerts) ? alerts : []);
+          const alerts = await api.getSafeguardingLogs(token).catch(() => []);
+          const alertArr = alerts?.alerts || alerts;
+          setSafeguardingAlerts(Array.isArray(alertArr) ? alertArr : []);
+          break;
+        case 'screening':
+          const screening = await api.getScreeningLogs(token).catch(() => []);
+          const screenArr = screening?.submissions || screening;
+          setScreeningLogs(Array.isArray(screenArr) ? screenArr : []);
+          break;
+        case 'callbacks':
+          const callbacks = await api.getCallbackLogs(token).catch(() => []);
+          const callbackArr = callbacks?.callbacks || callbacks;
+          setCallbackLogs(Array.isArray(callbackArr) ? callbackArr : []);
+          break;
+        case 'panic':
+          const panic = await api.getPanicLogs(token).catch(() => []);
+          const panicArr = panic?.alerts || panic;
+          setPanicLogs(Array.isArray(panicArr) ? panicArr : []);
+          break;
+        case 'audit':
+          const audit = await api.getAuditLogs(token, 100).catch(() => []);
+          const auditArr = audit?.logs || audit;
+          setAdminAuditLogs(Array.isArray(auditArr) ? auditArr : []);
           break;
       }
     } catch (err: any) {
@@ -993,6 +1169,8 @@ export default function AdminPortal() {
       setUser(response.user);
       localStorage.setItem('admin_token', response.token);
       localStorage.setItem('admin_user', JSON.stringify(response.user));
+      localStorage.setItem('admin_token_time', Date.now().toString());
+      localStorage.setItem('admin_last_activity', Date.now().toString());
     } catch (err: any) {
       setLoginError(err.message || 'Login failed');
     } finally {
@@ -1006,6 +1184,8 @@ export default function AdminPortal() {
     setUser(null);
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
+    localStorage.removeItem('admin_token_time');
+    localStorage.removeItem('admin_last_activity');
   };
 
   // Staff CRUD handlers
@@ -1717,23 +1897,22 @@ export default function AdminPortal() {
                     <thead className="bg-gray-700">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Room ID</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Staff</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">User</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Staff</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Messages</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
                       {chatRooms.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-gray-400">No chat logs found</td>
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No chat logs found</td>
                         </tr>
                       ) : (
                         chatRooms.map((room) => (
                           <tr key={room.id} className="hover:bg-gray-700/50">
                             <td className="px-4 py-3 text-gray-400">{new Date(room.created_at).toLocaleString()}</td>
-                            <td className="px-4 py-3 font-mono text-sm">{room.id}</td>
-                            <td className="px-4 py-3">{room.staff_name || 'N/A'}</td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded text-xs ${
                                 room.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
@@ -1741,12 +1920,64 @@ export default function AdminPortal() {
                                 {room.status}
                               </span>
                             </td>
+                            <td className="px-4 py-3">{room.user_name || 'Anonymous'}</td>
+                            <td className="px-4 py-3">{room.staff_name || 'N/A'}</td>
                             <td className="px-4 py-3">{room.message_count || 0}</td>
+                            <td className="px-4 py-3">
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    const messages = await api.getChatMessages(token!, room.id);
+                                    setSelectedChatHistory(Array.isArray(messages) ? messages : messages?.messages || []);
+                                    setShowChatHistoryModal(true);
+                                  } catch (err) {
+                                    setError('Failed to load chat history');
+                                  }
+                                }}
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs"
+                              >
+                                View
+                              </button>
+                            </td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Chat History Modal */}
+              {showChatHistoryModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700 max-h-[80vh] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold">Chat History</h3>
+                      <button onClick={() => setShowChatHistoryModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-3">
+                      {selectedChatHistory.length === 0 ? (
+                        <p className="text-gray-400 text-center py-8">No messages in this chat</p>
+                      ) : (
+                        selectedChatHistory.map((msg: any, idx: number) => (
+                          <div key={idx} className={`p-3 rounded-lg ${msg.sender_type === 'staff' ? 'bg-gray-700 ml-8' : 'bg-blue-900/30 mr-8'}`}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-medium">{msg.sender_name || msg.sender_type || 'User'}</span>
+                              <span className="text-xs text-gray-500">{new Date(msg.created_at || msg.timestamp).toLocaleString()}</span>
+                            </div>
+                            <p className="text-sm">{msg.content || msg.message}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <button onClick={() => setShowChatHistoryModal(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                        Close
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1757,39 +1988,307 @@ export default function AdminPortal() {
                     <thead className="bg-gray-700">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">User</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Risk Level</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Trigger</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Risk</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Score</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Session</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Location</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
                       {safeguardingAlerts.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-gray-400">No safeguarding alerts</td>
+                          <td colSpan={7} className="px-4 py-8 text-center text-gray-400">No safeguarding alerts</td>
                         </tr>
                       ) : (
                         safeguardingAlerts.map((alert) => (
                           <tr key={alert.id} className="hover:bg-gray-700/50">
-                            <td className="px-4 py-3 text-gray-400">{new Date(alert.created_at).toLocaleString()}</td>
-                            <td className="px-4 py-3">{alert.user_name || 'Anonymous'}</td>
+                            <td className="px-4 py-3 text-gray-400 text-sm">{new Date(alert.created_at).toLocaleString()}</td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                alert.risk_level === 'high' || alert.risk_level === 'critical' ? 'bg-red-500/20 text-red-400' :
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                alert.risk_level === 'imminent' || alert.risk_level === 'critical' ? 'bg-red-600 text-white' :
+                                alert.risk_level === 'high' ? 'bg-orange-500/20 text-orange-400' :
                                 alert.risk_level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
                                 'bg-blue-500/20 text-blue-400'
                               }`}>
-                                {alert.risk_level}
+                                {(alert.risk_level || 'unknown').toUpperCase()}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm">{alert.trigger_phrase || '-'}</td>
+                            <td className="px-4 py-3 font-mono text-sm">{alert.risk_score || alert.score || '-'}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-gray-400">{alert.session_id?.substring(0, 12) || '-'}...</td>
+                            <td className="px-4 py-3 text-sm">
+                              {alert.geo_city || alert.location_city || '-'}
+                              {(alert.geo_country || alert.location_country) && `, ${alert.geo_country || alert.location_country}`}
+                              {!alert.geo_city && !alert.location_city && alert.ip_address && <span className="text-gray-500">{alert.ip_address}</span>}
+                            </td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded text-xs ${
                                 alert.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
                                 alert.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400' :
                                 'bg-red-500/20 text-red-400'
                               }`}>
-                                {alert.status}
+                                {alert.status || 'active'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1">
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      const detail = await api.getSafeguardingAlertDetail(token!, alert.id);
+                                      setSelectedSafeguardingAlert(detail);
+                                      setShowAlertDetailModal(true);
+                                    } catch (err) {
+                                      setSelectedSafeguardingAlert(alert);
+                                      setShowAlertDetailModal(true);
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs"
+                                >
+                                  View
+                                </button>
+                                {alert.status !== 'acknowledged' && alert.status !== 'resolved' && (
+                                  <button 
+                                    onClick={async () => {
+                                      try {
+                                        await api.acknowledgeSafeguardingAlert(token!, alert.id);
+                                        setSuccess('Alert acknowledged');
+                                        loadLogs();
+                                      } catch (err: any) {
+                                        setError('Failed to acknowledge: ' + err.message);
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs"
+                                  >
+                                    Ack
+                                  </button>
+                                )}
+                                {alert.status !== 'resolved' && (
+                                  <button 
+                                    onClick={async () => {
+                                      try {
+                                        await api.resolveSafeguardingAlert(token!, alert.id);
+                                        setSuccess('Alert resolved');
+                                        loadLogs();
+                                      } catch (err: any) {
+                                        setError('Failed to resolve: ' + err.message);
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs"
+                                  >
+                                    Resolve
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Safeguarding Alert Detail Modal */}
+              {showAlertDetailModal && selectedSafeguardingAlert && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-3xl border border-gray-700 max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold flex items-center gap-2">
+                        <AlertTriangle className={`w-5 h-5 ${
+                          selectedSafeguardingAlert.risk_level === 'imminent' || selectedSafeguardingAlert.risk_level === 'critical' ? 'text-red-500' :
+                          selectedSafeguardingAlert.risk_level === 'high' ? 'text-orange-500' : 'text-yellow-500'
+                        }`} />
+                        Safeguarding Alert Details
+                      </h3>
+                      <button onClick={() => setShowAlertDetailModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="bg-gray-700/50 rounded p-3">
+                        <p className="text-xs text-gray-400">Risk Level</p>
+                        <p className={`text-lg font-bold ${
+                          selectedSafeguardingAlert.risk_level === 'imminent' ? 'text-red-500' :
+                          selectedSafeguardingAlert.risk_level === 'high' ? 'text-orange-500' : 'text-yellow-500'
+                        }`}>{(selectedSafeguardingAlert.risk_level || 'unknown').toUpperCase()}</p>
+                      </div>
+                      <div className="bg-gray-700/50 rounded p-3">
+                        <p className="text-xs text-gray-400">Risk Score</p>
+                        <p className="text-lg font-bold">{selectedSafeguardingAlert.risk_score || selectedSafeguardingAlert.score || '-'}</p>
+                      </div>
+                    </div>
+
+                    {/* Trigger Info */}
+                    {(selectedSafeguardingAlert.trigger_phrase || selectedSafeguardingAlert.triggered_indicators) && (
+                      <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 mb-4">
+                        <p className="text-xs text-red-400 mb-2">Triggered By</p>
+                        <p className="text-white font-medium">
+                          {selectedSafeguardingAlert.trigger_phrase || selectedSafeguardingAlert.triggered_indicators?.join(', ')}
+                        </p>
+                        {selectedSafeguardingAlert.triggering_message && (
+                          <p className="text-gray-300 mt-2 italic">&ldquo;{selectedSafeguardingAlert.triggering_message}&rdquo;</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Location & Tracking Info */}
+                    <div className="bg-gray-700/50 rounded-lg p-4 mb-4">
+                      <p className="text-xs text-gray-400 mb-2">Tracking Information</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-gray-400">Location:</span> {selectedSafeguardingAlert.geo_city || selectedSafeguardingAlert.location_city || '-'}, {selectedSafeguardingAlert.geo_country || selectedSafeguardingAlert.location_country || '-'}</div>
+                        <div><span className="text-gray-400">IP:</span> {selectedSafeguardingAlert.ip_address || '-'}</div>
+                        <div><span className="text-gray-400">ISP:</span> {selectedSafeguardingAlert.isp || '-'}</div>
+                        <div><span className="text-gray-400">Timezone:</span> {selectedSafeguardingAlert.timezone || '-'}</div>
+                        <div className="col-span-2"><span className="text-gray-400">Device:</span> {selectedSafeguardingAlert.user_agent || '-'}</div>
+                      </div>
+                    </div>
+
+                    {/* Conversation History */}
+                    {selectedSafeguardingAlert.conversation_history && selectedSafeguardingAlert.conversation_history.length > 0 && (
+                      <div className="bg-gray-700/50 rounded-lg p-4 mb-4">
+                        <p className="text-xs text-gray-400 mb-2">Recent Conversation</p>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {selectedSafeguardingAlert.conversation_history.slice(-6).map((msg: any, idx: number) => (
+                            <div key={idx} className={`p-2 rounded text-sm ${msg.role === 'user' ? 'bg-blue-900/30' : 'bg-gray-600/50'}`}>
+                              <span className="font-medium">{msg.role === 'user' ? 'User' : 'AI'}:</span> {msg.content}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 mt-4">
+                      <button onClick={() => setShowAlertDetailModal(false)} className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                        Close
+                      </button>
+                      {selectedSafeguardingAlert.status !== 'resolved' && (
+                        <button 
+                          onClick={async () => {
+                            try {
+                              await api.resolveSafeguardingAlert(token!, selectedSafeguardingAlert.id);
+                              setSuccess('Alert resolved');
+                              setShowAlertDetailModal(false);
+                              loadLogs();
+                            } catch (err: any) {
+                              setError('Failed: ' + err.message);
+                            }
+                          }}
+                          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg"
+                        >
+                          Mark Resolved
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Screening Logs */}
+              {activeLogSubTab === 'screening' && (
+                <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">User</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Risk Score</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Responses</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {screeningLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No screening submissions found</td>
+                        </tr>
+                      ) : (
+                        screeningLogs.map((log: any) => (
+                          <tr key={log.id} className="hover:bg-gray-700/50">
+                            <td className="px-4 py-3 text-gray-400">{new Date(log.created_at || log.submitted_at).toLocaleString()}</td>
+                            <td className="px-4 py-3">{log.user_name || log.session_id?.substring(0, 12) || 'Anonymous'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                (log.risk_score || 0) >= 8 ? 'bg-red-500/20 text-red-400' :
+                                (log.risk_score || 0) >= 5 ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-green-500/20 text-green-400'
+                              }`}>
+                                {log.risk_score || log.total_score || 0}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm">{log.responses?.length || log.questions_answered || 0} questions</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                log.status === 'reviewed' ? 'bg-green-500/20 text-green-400' :
+                                log.status === 'flagged' ? 'bg-red-500/20 text-red-400' :
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {log.status || 'pending'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button 
+                                onClick={() => {
+                                  // View screening details
+                                }}
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs"
+                              >
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Callbacks Logs */}
+              {activeLogSubTab === 'callbacks' && (
+                <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Type</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Phone</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Handled By</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {callbackLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No callback logs found</td>
+                        </tr>
+                      ) : (
+                        callbackLogs.map((log: any) => (
+                          <tr key={log.id} className={`hover:bg-gray-700/50 ${log.request_type === 'urgent' ? 'bg-red-900/20' : ''}`}>
+                            <td className="px-4 py-3 text-gray-400">{new Date(log.created_at).toLocaleString()}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                log.request_type === 'urgent' ? 'bg-red-500/20 text-red-400' :
+                                log.request_type === 'counsellor' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-green-500/20 text-green-400'
+                              }`}>
+                                {log.request_type || 'peer'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-medium">{log.name || 'Unknown'}</td>
+                            <td className="px-4 py-3 text-gray-400">{log.phone || '-'}</td>
+                            <td className="px-4 py-3">{log.handled_by_name || log.assigned_to_name || '-'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                log.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                log.status === 'in_progress' || log.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {log.status || 'pending'}
                               </span>
                             </td>
                           </tr>
@@ -1797,6 +2296,139 @@ export default function AdminPortal() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Panic Logs */}
+              {activeLogSubTab === 'panic' && (
+                <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">User</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Location</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Message</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Responded By</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {panicLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No panic alerts found</td>
+                        </tr>
+                      ) : (
+                        panicLogs.map((log: any) => (
+                          <tr key={log.id} className={`hover:bg-gray-700/50 ${log.status === 'active' ? 'bg-red-900/30 animate-pulse' : ''}`}>
+                            <td className="px-4 py-3 text-gray-400">{new Date(log.created_at).toLocaleString()}</td>
+                            <td className="px-4 py-3 font-medium">{log.user_name || 'Unknown'}</td>
+                            <td className="px-4 py-3 text-sm">{log.location || log.geo_city || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-400">{log.message?.substring(0, 50) || '-'}{log.message?.length > 50 ? '...' : ''}</td>
+                            <td className="px-4 py-3">{log.responded_by_name || log.acknowledged_by || '-'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                log.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                                log.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-red-500/20 text-red-400'
+                              }`}>
+                                {log.status || 'active'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Audit Logs */}
+              {activeLogSubTab === 'audit' && (
+                <div className="space-y-4">
+                  {/* Audit filter */}
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm text-gray-400">Filter by type:</label>
+                    <select 
+                      value={auditEventFilter}
+                      onChange={(e) => setAuditEventFilter(e.target.value)}
+                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    >
+                      <option value="">All Events</option>
+                      <option value="auth.">Authentication</option>
+                      <option value="safeguarding.">Safeguarding</option>
+                      <option value="data.">Data Access</option>
+                      <option value="admin.">Admin Actions</option>
+                      <option value="support.">Support</option>
+                    </select>
+                  </div>
+                  
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-700">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Event Type</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">User</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Outcome</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Risk</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700">
+                        {adminAuditLogs.filter(log => !auditEventFilter || log.event_type?.startsWith(auditEventFilter)).length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No audit logs found</td>
+                          </tr>
+                        ) : (
+                          adminAuditLogs.filter(log => !auditEventFilter || log.event_type?.startsWith(auditEventFilter)).map((log: any) => {
+                            // Color-code event types
+                            const eventColor = 
+                              log.event_type?.startsWith('auth.') ? 'bg-blue-500/20 text-blue-400' :
+                              log.event_type?.startsWith('safeguarding.') ? 'bg-red-500/20 text-red-400' :
+                              log.event_type?.startsWith('data.') ? 'bg-purple-500/20 text-purple-400' :
+                              log.event_type?.startsWith('admin.') ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-gray-500/20 text-gray-400';
+                            
+                            return (
+                              <tr key={log.id} className="hover:bg-gray-700/50">
+                                <td className="px-4 py-3 text-gray-400 text-sm">{new Date(log.created_at || log.timestamp).toLocaleString()}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2 py-1 rounded text-xs ${eventColor}`}>
+                                    {log.event_type || 'unknown'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">{log.user_email || log.user_id || '-'}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    log.outcome === 'success' ? 'bg-green-500/20 text-green-400' :
+                                    log.outcome === 'failure' ? 'bg-red-500/20 text-red-400' :
+                                    'bg-gray-500/20 text-gray-400'
+                                  }`}>
+                                    {log.outcome || 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  {log.risk_level && (
+                                    <span className={`px-2 py-1 rounded text-xs ${
+                                      log.risk_level === 'high' || log.risk_level === 'critical' ? 'bg-red-500/20 text-red-400' :
+                                      log.risk_level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                      'bg-green-500/20 text-green-400'
+                                    }`}>
+                                      {log.risk_level}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-400 max-w-xs truncate" title={log.details}>
+                                  {log.details || '-'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -4302,97 +4934,187 @@ export default function AdminPortal() {
             <div data-testid="settings-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">System Settings</h2>
+                <button 
+                  onClick={async () => {
+                    try {
+                      const settings = await api.getSettings(token!);
+                      setSystemSettings(settings);
+                    } catch (err) {
+                      console.error('Failed to load settings');
+                    }
+                  }}
+                  className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* General Settings */}
+                {/* Logo Settings */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-blue-400" />
-                    General Settings
+                    <FileText className="w-5 h-5 text-blue-400" />
+                    Logo Settings
                   </h3>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Dark Mode</p>
-                        <p className="text-sm text-gray-400">Enable dark theme</p>
-                      </div>
-                      <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer">
-                        <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Email Notifications</p>
-                        <p className="text-sm text-gray-400">Receive email alerts</p>
-                      </div>
-                      <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer">
-                        <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Current Logo</label>
+                      <div className="bg-gray-700 rounded-lg p-4 flex items-center justify-center">
+                        {systemSettings.logo_url ? (
+                          <img src={systemSettings.logo_url} alt="Logo" className="max-h-20" />
+                        ) : (
+                          <span className="text-gray-500">No logo uploaded</span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Sound Notifications</p>
-                        <p className="text-sm text-gray-400">Play sounds for alerts</p>
-                      </div>
-                      <div className="w-12 h-6 bg-gray-600 rounded-full relative cursor-pointer">
-                        <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5"></div>
-                      </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Logo URL</label>
+                      <input
+                        type="text"
+                        value={systemSettings.logo_url || ''}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, logo_url: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        placeholder="https://example.com/logo.png"
+                      />
                     </div>
-                  </div>
-                </div>
-
-                {/* Security Settings */}
-                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-green-400" />
-                    Security
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Two-Factor Authentication</p>
-                        <p className="text-sm text-gray-400">Add extra security layer</p>
-                      </div>
-                      <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">Enable</button>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Session Timeout</p>
-                        <p className="text-sm text-gray-400">Auto-logout after inactivity</p>
-                      </div>
-                      <select className="px-3 py-1 bg-gray-700 rounded text-sm">
-                        <option>30 minutes</option>
-                        <option>1 hour</option>
-                        <option>2 hours</option>
-                        <option>Never</option>
-                      </select>
-                    </div>
-                    <button className="w-full mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm">
-                      Change Password
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await api.updateSettings(token!, { logo_url: systemSettings.logo_url });
+                          setSuccess('Logo updated');
+                        } catch (err: any) {
+                          setError('Failed to update logo: ' + err.message);
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
+                    >
+                      Save Logo
                     </button>
                   </div>
                 </div>
 
-                {/* API Settings */}
+                {/* Email Settings */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-purple-400" />
-                    API & Integrations
+                    <MessageSquare className="w-5 h-5 text-green-400" />
+                    Email Notifications
                   </h3>
-                  <div className="space-y-3">
-                    <div className="bg-gray-700 rounded-lg p-3">
-                      <p className="font-medium">API Endpoint</p>
-                      <p className="text-sm text-gray-400 font-mono break-all">{API_URL}</p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Admin Notification Email</label>
+                      <input
+                        type="email"
+                        value={systemSettings.admin_notification_email || ''}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, admin_notification_email: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        placeholder="admin@example.com"
+                      />
                     </div>
-                    <div className="bg-gray-700 rounded-lg p-3">
-                      <p className="font-medium">Twilio Status</p>
-                      <p className="text-sm text-green-400">Connected</p>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">CSO Email</label>
+                      <input
+                        type="email"
+                        value={systemSettings.cso_email || ''}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, cso_email: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        placeholder="cso@example.com"
+                      />
                     </div>
-                    <div className="bg-gray-700 rounded-lg p-3">
-                      <p className="font-medium">Socket.IO Status</p>
-                      <p className="text-sm text-green-400">Connected</p>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Peer Registration Notification Email</label>
+                      <input
+                        type="email"
+                        value={systemSettings.peer_registration_notification_email || ''}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, peer_registration_notification_email: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        placeholder="notifications@example.com"
+                      />
                     </div>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await api.updateSettings(token!, {
+                            admin_notification_email: systemSettings.admin_notification_email,
+                            cso_email: systemSettings.cso_email,
+                            peer_registration_notification_email: systemSettings.peer_registration_notification_email,
+                          });
+                          setSuccess('Email settings saved');
+                        } catch (err: any) {
+                          setError('Failed to save: ' + err.message);
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg"
+                    >
+                      Save Email Settings
+                    </button>
+                  </div>
+                </div>
+
+                {/* Clear Logs */}
+                <div className="bg-gray-800 rounded-lg border border-red-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2 text-red-400">
+                    <Trash2 className="w-5 h-5" />
+                    Clear Logs (Danger Zone)
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Select Log Type to Clear</label>
+                      <select
+                        value={clearLogsType}
+                        onChange={(e) => setClearLogsType(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      >
+                        <option value="">Select log type...</option>
+                        <option value="safeguarding">Safeguarding Alerts</option>
+                        <option value="calls">Call Logs</option>
+                        <option value="chats">Chat Logs</option>
+                        <option value="analytics">Analytics Data</option>
+                        <option value="callbacks">Callback Logs</option>
+                        <option value="screening">Screening Data</option>
+                        <option value="panic">Panic Alerts</option>
+                        <option value="all">ALL DATA (Dangerous!)</option>
+                      </select>
+                    </div>
+                    
+                    {clearLogsType === 'all' && (
+                      <div className="bg-red-900/30 border border-red-600 rounded-lg p-3">
+                        <p className="text-red-300 text-sm mb-2">This will delete ALL logs permanently. Type "DELETE ALL" to confirm:</p>
+                        <input
+                          type="text"
+                          value={clearLogsConfirmText}
+                          onChange={(e) => setClearLogsConfirmText(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-red-600 rounded-lg text-white"
+                          placeholder="Type DELETE ALL"
+                        />
+                      </div>
+                    )}
+                    
+                    <button 
+                      onClick={async () => {
+                        if (!clearLogsType) {
+                          setError('Please select a log type');
+                          return;
+                        }
+                        if (clearLogsType === 'all' && clearLogsConfirmText !== 'DELETE ALL') {
+                          setError('Please type "DELETE ALL" to confirm');
+                          return;
+                        }
+                        if (!confirm(`Are you sure you want to clear ${clearLogsType} logs? This cannot be undone.`)) return;
+                        
+                        try {
+                          await api.clearLogs(token!, clearLogsType);
+                          setSuccess(`${clearLogsType} logs cleared successfully`);
+                          setClearLogsType('');
+                          setClearLogsConfirmText('');
+                        } catch (err: any) {
+                          setError('Failed to clear logs: ' + err.message);
+                        }
+                      }}
+                      disabled={!clearLogsType || (clearLogsType === 'all' && clearLogsConfirmText !== 'DELETE ALL')}
+                      className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg"
+                    >
+                      Clear Selected Logs
+                    </button>
                   </div>
                 </div>
 
@@ -4412,8 +5134,8 @@ export default function AdminPortal() {
                       <span className="text-green-400">Production</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Last Updated</span>
-                      <span>{new Date().toLocaleDateString()}</span>
+                      <span className="text-gray-400">API Endpoint</span>
+                      <span className="text-xs font-mono text-gray-400 truncate max-w-[200px]">{API_URL}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Logged in as</span>
