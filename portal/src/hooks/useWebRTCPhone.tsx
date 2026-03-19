@@ -465,7 +465,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       setState(prev => ({
         ...prev,
         hasIncomingCall: false,
-        callerInfo: null
+        callerInfo: undefined
       }));
       updateStatus('online', 'Call answered elsewhere');
     });
@@ -477,7 +477,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       setState(prev => ({
         ...prev,
         hasIncomingCall: false,
-        callerInfo: null
+        callerInfo: undefined
       }));
       updateStatus('online', 'Online');
     });
