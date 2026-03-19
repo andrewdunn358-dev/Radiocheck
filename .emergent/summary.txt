@@ -1,134 +1,133 @@
 <analysis>**original_problem_statement:**
 The user is undertaking a large-scale project to migrate four legacy vanilla JavaScript portals (, , , ) into a single, unified Next.js application located at .
 
-The initial focus was on the Staff Portal, which involved fixing critical real-time features (WebRTC/Twilio) and resolving a major architectural flaw in the backend's socket handling that only allowed one connection per user. This led to the discovery of a fragmented data model, with , , and  in separate database collections, causing significant data integrity problems (e.g., staff members without profiles).
-
-The user then approved a major backend refactoring to create a unified  data model. After implementing this complex migration, the user requested the agent to begin migrating the Admin Portal, applying all the lessons learned from the difficult Staff Portal and data model refactoring process.
+The initial focus was on migrating the Admin Portal. After the agent implemented all 15 tabs and verified them in a local preview environment, the user reported that the portal is non-functional on their production environment. The immediate priority is to fix the broken Admin Portal so it works correctly against the live production backend, and then address a critical, long-standing issue with WebRTC calls in the Staff Portal.
 
 **PRODUCT REQUIREMENTS:**
 1.  **(P0) Feature Parity:** The new React portals must replicate all functionality of the old vanilla JS portals.
 2.  **(P0) Unified Codebase:** All portals must be consolidated within the single Next.js project at .
-3.  **(P0) Unified Data Model:** All staff-related data should be stored in a single  collection, eliminating the separate , , and  collections.
+3.  **(P0) Unified Data Model:** All staff-related data should be stored in a single  collection.
 4.  **(P1) Improved Maintainability:** The new codebase should be modular, with shared components, hooks, and a centralized API client.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A unified Next.js application exists at . A significant backend refactoring has been completed to introduce a unified  data model and API endpoints, alongside complex backward-compatibility logic to support the transition from the old, fragmented collections (, , etc.). The backend has also been updated to support multiple socket connections per user, fixing a major WebRTC issue.
+A unified Next.js application at  with a corresponding FastAPI backend. The agent has built the complete UI for the new Admin Portal at , implementing all 15 tabs from the legacy version.
 
-A new, but non-functional, Admin Portal page has been created at . It includes the UI for all the tabs from the legacy portal but is failing to load any data due to incorrect API endpoint calls. The project is in a fragile state, with numerous critical fixes implemented but not yet fully validated on the user's deployed production environment (Render for backend, Vercel for frontend).
+While the agent successfully tested and verified all functionality in a local preview environment, the user has confirmed that on their live production environment (which uses ), the Admin Portal is almost entirely broken. Many tabs display no data, and the browser console shows numerous  and  errors for API calls. This indicates a critical discrepancy between the API endpoints implemented by the agent and the actual endpoints available on the user's production backend.
 
 **Last working item**:
--   **Last item agent was working**: Debugging the newly created Admin Portal. The user reported that no data was being displayed and provided console logs showing  errors for critical API endpoints like  and . The agent correctly identified that the new React component was using incorrect API paths that do not exist on the backend.
+-   **Last item agent was working**: Addressing the user's report that the newly completed Admin Portal is non-functional on their production environment. The user provided console logs detailing multiple  errors (e.g., for , ) and  errors (e.g., for ), as well as broken image links for AI avatars. The agent correctly concluded that the implemented API calls in the new portal do not match the ones used by the legacy portal and required by the production backend. The agent was just beginning to re-analyze the legacy code to find the correct endpoints.
 -   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Manual testing. The agent must first inspect the legacy admin portal's code () to find the correct API endpoints. Then, the agent must update the API calls within the new Admin Portal component () to use these correct paths.
--   **User Testing Done**: Y (User reported the issue).
+-   **Agent Testing Done**: N (Previous testing was on a non-representative local environment and is now invalid).
+-   **Which testing method agent to use?**: Manual testing. The agent must systematically fix each broken tab in  by finding the correct API endpoint and data-handling logic in the legacy  file. No further testing is needed until all reported issues are addressed.
+-   **User Testing Done**: Y (User confirmed the portal is broken on production).
 
 **All Pending/In progress Issue list**:
--   Issue 1: New Admin Portal displays no data due to incorrect API endpoints (P0, HIGHEST)
--   Issue 2: Login for user  is still failing on the deployed environment (P0, Recurring)
--   Issue 3: General instability from the major backend refactor and deployment mismatches (P1, Recurring)
--   Issue 4: Jitsi video chat in events is not working (P2, BLOCKED on user)
+-   Issue 1: Admin Portal is non-functional on production due to incorrect API endpoints (P0, HIGHEST).
+-   Issue 2: WebRTC calls are not working in the Staff Portal on production (P0).
+-   Issue 3: Login for user  is still failing on the deployed environment (P1, Recurring).
+-   Issue 4: AI character avatar images are not loading in the Admin Portal (P2).
 
 **Issues Detail**:
--   **Issue 1: New Admin Portal displays no data due to incorrect API endpoints**
-    -   **Attempted fixes**: The agent created the UI and placeholder data-loading functions. The agent also added error handling for non-array responses, but this did not fix the root cause of the  errors.
+-   **Issue 1: Admin Portal is non-functional on production**
+    -   **Attempted fixes**: The agent implemented all 15 tabs and verified them against a local preview environment. This fix was ineffective as the preview environment's API differs from the user's production API.
     -   **Next debug checklist**:
-        1.  Analyze  to find the correct API paths for each admin feature (e.g., AI characters, monitoring, logs).
-        2.  Correct the  calls in  to use the valid endpoints (e.g., change  to , and  to ).
-        3.  Ensure all data-loading functions correctly handle API error responses to prevent the UI from crashing.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is the primary blocker for the Admin Portal migration. Fixing it will enable the user to see live data and begin testing the new interface.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on other issue**: Blocked on successful admin login (Issue 2/3).
-
--   **Issue 2: Login for user  is still failing**
-    -   **Attempted fixes**: Numerous backend fixes were implemented, including updating the data migration logic, creating a password-fix endpoint, making authentication backward-compatible by checking , and fixing duplicated  functions.
-    -   **Next debug checklist**:
-        1.  Confirm with the user that the **absolute latest** backend code has been successfully deployed and restarted on Render. The symptoms (Invalid Password, Auth Token Failure) strongly suggest a code mismatch.
-        2.  Once deployed, use the admin credentials to trigger the  endpoint.
-        3.  Test the  login using a  command to isolate the issue from the frontend.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a key validation of the complex data model migration and a critical user-facing bug.
+        1.  Carefully read the user's last message and the provided console logs to get a full list of failing API calls (e.g., , , , ).
+        2.  For each failing tab/feature (Rota, CMS, AI Personas, AI Usage, Governance, Events, AI Learning), search  to find the **correct** production API endpoint and its expected data structure.
+        3.  Update the  calls in the  object within  to use these correct endpoints.
+        4.  Update the React components for each tab to correctly render the data structure returned by the production API.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the current top priority. The Admin Portal migration cannot be considered complete until it works on the user's live environment.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Backend
-    -   **Blocked on other issue**: Blocked on user correctly deploying the latest code to Render.
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
+
+-   **Issue 2: WebRTC calls are not working in the Staff Portal**
+    -   **Attempted fixes**: Agent verified WebRTC works in the local preview environment, which is not where the user is experiencing the problem.
+    -   **Next debug checklist**:
+        1.  After the Admin Portal is fully fixed and verified by the user, switch focus to this issue.
+        2.  Ask the user for specific console logs from the Staff Portal () when a call fails on their end.
+        3.  Investigate the WebRTC and Socket.IO connection logic in  and the backend's .
+        4.  Confirm that the production backend on Render has the latest code deployed, especially the multi-device socket support fixes.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical, core feature of the application and the user's next highest priority.
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on other issue**: Blocked on completing Issue 1.
 
 **In progress Task List**:
--   **Task 1: Complete Admin Portal Migration (P0)**
-    -   **Where to resume**: Correcting the API endpoint paths in the data-loading functions within .
-    -   **What will be achieved with this?**: A functional Admin Portal that displays live data from the backend, ready for user testing.
+-   **Task 1: Fix the production Admin Portal (P0)**
+    -   **Where to resume**: The agent was about to start correcting the API calls in  based on the correct endpoints found in . Start with the endpoints listed in the user's error logs.
+    -   **What will be achieved with this?**: A functional Admin Portal on the user's live production environment, matching the functionality of the legacy portal.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on something**: Issue 1 and Issue 2.
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on something**: None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P0)** Implement the functionality for the remaining Admin Portal tabs (Rota, CMS, Events, Governance, etc.).
-    -   **(P1)** Once both portals are verified, plan and execute the removal of all legacy code. This includes deleting the  and  directories and removing all backward-compatibility logic (e.g., fallbacks in , deprecated endpoints) from the backend.
+    -   **(P0)** Fix the Staff Portal WebRTC call functionality on production.
+    -   **(P1)** Plan and execute the removal of all legacy code (, ) and backward-compatibility logic from the backend.
 -   **Future Tasks**:
     -   **(P1)** Create a native mobile app.
     -   **(P2)** Implement Discussion Forums, Mood Tracker Journal, and Appointment Booking.
     -   **(P2)** Add Welsh Language Support.
 
 **Completed work in this session**
--   **Backend Architecture**:
-    -   **Multi-Device Support**: Refactored  to allow multiple socket connections per user, resolving a fundamental WebRTC conflict.
-    -   **Unified Data Model**: Executed a major refactor, creating a unified  collection and  model to replace the fragmented , , and  collections.
-    -   **API & Migration**: Added new unified endpoints (, ), a data migration endpoint (), and a password-fix endpoint.
-    -   **Backward-Compatible Auth**: Rewrote  and  functions in both  and  to handle both legacy and new data models, including different ID schemes and password hash field names.
-    -   **Data Decryption**: Added decryption logic to all user-related API responses to prevent encrypted names from appearing in the UI.
--   **Frontend Development**:
-    -   **New Admin Portal**: Created the complete UI for the new Admin Portal at , including all 15 tabs from the legacy version.
-    -   **Staff Portal Hardening**: Added UI warnings for connection issues, a handler for calls answered on other devices, and updated it to use the new  endpoint.
--   **Bug Fixes**:
-    -   Fixed incorrect AI character sort order on the backend.
-    -   Resolved a TypeScript build error in the WebRTC hook.
+-   **Admin Portal UI Completion**: Implemented the UI and initial data-fetching logic for all 15 tabs of the Admin Portal, including Rota, CMS, Events, Governance, Compliance, AI Learning, Beta Testing, Time Tracking, and Settings.
+-   **Local Environment Fixes**: Corrected initial API endpoint errors and reset the admin password to allow for successful testing within the local preview environment.
+-   **Staff Portal Verification (Local)**: Verified that the Staff Portal connects to WebRTC and shows an Available for calls status in the local preview environment.
+
+**Earlier issues found/mentioned but not fixed**
+-   **Issue 1: Broken avatar image paths**
+    -   **Debug checklist**: The user's logs show  errors for images like . The  field in the API response for AI characters () contains paths like . The frontend is likely prepending the wrong base URL. The code needs to be adjusted to use the correct API base URL for these relative image paths.
+    -   **Why to solve this issue and what will be achieved with this?**: Fixes broken images in the UI for a better user experience.
+    -   **Should Test frontend/backend/both after fix**: Frontend.
+    -   **Is recurring issue?**: N
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Data Model Refactoring**: Migrating from three separate collections (, , ) to a single  collection.
--   **Backward Compatibility**: Designing APIs and auth logic to handle old and new data models simultaneously during the transition, which involved handling different database field names ( vs. ) and ID schemes (uid=0(root) gid=0(root) groups=0(root) vs. ).
--   **Deployment Synchronization**: The critical dependency between frontend (Vercel) and backend (Render) deployments. A mismatch between deployed versions has been the root cause of numerous bugs.
--   **Code Duplication Bug**: A critical auth bug was caused by having two separate  implementations (in  and ) that fell out of sync. Both must be updated for any auth changes.
+-   **Deployment Synchronization**: The primary problem is the mismatch between the agent's local preview environment and the user's live production environment (Vercel/Render). The production backend has different API endpoints than what the agent implemented.
+-   **Legacy Code as Source of Truth**: The legacy file  is the only reliable source for the correct production API endpoints and data structures. It must be followed precisely.
 
 **All files of reference**
--   : The new Admin Portal. **Currently calls incorrect API endpoints.**
--   : The legacy Admin Portal. Use this as the **source of truth** for correct API paths.
--   : Contains the new unified  model, migration logic, and a critical, duplicated  function.
--   : The primary location for the complex, backward-compatible authentication logic.
--   : A new document outlining the data model changes.
+-   : **The file to be fixed.** It's a large single-file component containing all 15 admin tabs and their broken API calls.
+-   : **The source of truth.** Use this file to find the correct API endpoints and logic for the production environment.
+-   : The Staff Portal, which is the next major task after the Admin Portal is fixed.
+-   : The main backend file, useful for checking if a required endpoint exists at all.
+-   : The Product Requirements Document.
 
 **Critical Info for New Agent**
--   **API ENDPOINTS ARE WRONG**: The new Admin Portal at  is broken because it calls API endpoints that don't exist (e.g., ). You **must** reference the legacy  file to find the correct API paths for each feature and update the new React component.
--   **AUTH IS COMPLEX & DUPLICATED**: Authentication logic is backward-compatible and complex. Crucially, the  function exists in **two places**:  and . Both must be kept perfectly in sync if any changes are made.
--   **DEPLOYMENT MISMATCH IS THE LIKELY CULPRIT**: The user's deployed environment (Render) is frequently out of sync with the latest code. If the user reports authentication or data issues that you cannot reproduce locally, the first step is to guide them to redeploy the backend on Render.
--   **DATA IS ENCRYPTED**: User data (like names) is encrypted in the database. Any API endpoint returning this data must use the  or  helpers to avoid sending raw encrypted strings to the frontend.
+-   **THE ADMIN PORTAL IS BROKEN ON PRODUCTION.** Do not trust the previous agent's completed status. Your immediate task is to fix the functionality of all Admin Portal tabs based on the user's bug report.
+-   **USE THE LEGACY CODE AS YOUR GUIDE.** The root cause of the failure is that the agent implemented API calls that do not exist on the user's live backend. You must reference  to find the correct API paths and data structures for every feature you fix.
+-   **USER'S PRIORITIES:** 1) Fix the Admin Portal so it's fully functional on their live site. 2) Fix the Staff Portal so WebRTC calls work reliably.
+-   **EXPECT MISSING BACKEND ENDPOINTS:** The user's logs show  errors for routes like . It's possible these endpoints were never created on the backend. You may need to either find an alternative endpoint in the legacy code or create the missing endpoint in  or a relevant router.
+
+**documents and test reports created in this job**
+-   /app/test_reports/iteration_30.json
+-   /app/test_reports/iteration_31.json
+-   /app/memory/PRD.md
 
 **Last 10 User Messages and any pending HUMAN messages**
--   10. User reports the new Admin portal is not showing data correctly and provides console logs with  errors for several API calls.
--   9. Agent adds all missing tabs from the legacy portal to the new Admin portal UI.
--   8. User reports that half the tabs are missing from the new Admin Portal compared to the old one.
--   7. Agent fixes a frontend crash () caused by the API returning an error object instead of an array when not authenticated.
--   6. User reports a frontend crash in the new Admin Portal.
--   5. User requests the agent to start refactoring the Admin Portal, learning from all the mistakes made during the Staff Portal migration.
--   4. Agent explains the old staff portal is showing an encrypted name because Render has not been redeployed with the backend decryption fix yet.
--   3. User reports the old vanilla JS staff portal () is still showing an encrypted name for the user kev.
--   2. Agent provides a final fix for the login/auth flow and instructs the user to redeploy Render one last time.
--   1. User reports that a build is failing on Vercel due to a TypeScript error ( vs ).
+-   10. **(PENDING)** User reports the Admin Portal is not working on production, providing extensive console logs with 404/401 errors, a list of non-functional tabs (Rota, CMS, AI Personas, etc.), and noting broken avatar images. Asks for an explanation of why it's broken and how it will be fixed.
+-   9. Agent finishes, stating the Admin Portal is complete and the Staff Portal call system is verified (this was incorrect).
+-   8. User asks the agent to build out all remaining tabs and then switch focus to fixing the Staff Portal calls.
+-   7. Agent finishes, stating all remaining Admin tabs (Rota, CMS, Events, etc.) are implemented and tested (incorrectly, as it was only on local preview).
+-   6. User requests implementation of the remaining Admin tabs.
+-   5. Agent finishes, stating the initial Admin Portal migration is complete after fixing the first set of tabs.
+-   4. User replies 1 yes, 2 thats worked, 3 all, carefully look at it all to the agent's initial plan.
+-   3. Agent asks for confirmation on its plan to fix the Admin Portal.
+-   2. User tells the agent to use  to confirm its plan.
+-   1. The session started with the initial handoff summary detailing the Admin Portal migration task.
 
 **Project Health Check:**
 -   **Broken**:
-    -   The new Admin Portal is non-functional due to incorrect API endpoint calls.
-    -   Authentication for migrated users is unreliable on the user's live deployment, likely due to out-of-sync code.
--   **Blocked**:
-    -   User testing of the Admin Portal is blocked.
-    -   Final decommissioning of legacy portals is blocked.
--   **Mocked**: None.
+    -   The new Admin Portal is non-functional on the user's production deployment. All recently implemented tabs (Rota, CMS, Events, Governance, AI Learning, etc.) are failing to load data.
+    -   Staff Portal calls are reportedly not working on production.
+    -   Authentication for  remains broken on production.
+-   **Blocked**: All user testing of the Admin Portal is blocked.
 
 **3rd Party Integrations**
 -   **Next.js 14**: Framework for the new portal.
@@ -139,10 +138,10 @@ A new, but non-functional, Admin Portal page has been created at . It includes t
 -   **Socket.IO**: Used for real-time signaling.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES (for initial Staff Portal fixes).
+-   **Testing agent used after significant changes**: YES, but the tests were run against a non-representative local environment and gave a false sense of completion. The results are now invalid for the production issues.
 -   **Test files created**: []
--   **Known regressions**: The major backend refactoring has introduced significant instability, particularly around authentication, which is highly dependent on the correct code being deployed.
+-   **Known regressions**: The entire Admin Portal functionality is a regression. It was marked as complete but is broken on the user's live environment.
 
 **Credentials to test flow:**
 -   **Admin**:  / 
--   **Problematic User**:  /  (Note: This password has repeatedly failed against the production API, likely due to migration/deployment issues. The user insists it is correct).</analysis>
+-   **Problematic User**:  /  (Note: This user does not exist in the local database but is the one the user cares about on production).</analysis>

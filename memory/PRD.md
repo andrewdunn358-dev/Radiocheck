@@ -32,6 +32,27 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 
 ## What's Been Implemented
 
+### March 19, 2026 - Admin Portal Production Fixes ✅
+**Root Cause**: Previous agent tested on local preview environment, not production. API endpoints didn't match production backend.
+
+**Fixes Applied**:
+1. **Events API** - Changed `/events/` to `/events/admin/all?include_past=true` (was returning 404)
+2. **AI Avatar URLs** - Added `resolveAvatarUrl()` helper to prepend API URL for relative paths like `/images/tommy.png`
+3. **AI Personas Tab** - Now properly displays avatars with fallback on error
+4. **Learning Endpoints** - Changed:
+   - `/learning/safety-patterns` → `/learning/patterns?is_active=true`
+   - `/ai-feedback/moderation/queue` → `/learning/queue?status=pending` (was 404)
+5. **Learning Stats Display** - Fixed to read correct nested structure: `patterns.active`, `learnings.pending`, `learnings.approved`, `feedback.pending`
+
+**Verified on Production** (veterans-support-api.onrender.com):
+- ✅ Events: Returns 4 events
+- ✅ AI Characters: Returns 9 characters with avatars
+- ✅ Learning Stats: Returns 31 active patterns
+- ✅ Governance Summary: Returns report with KPIs
+- ✅ CMS Pages: Returns 6 pages
+- ✅ Shifts: Returns 25 shifts
+- ✅ Compliance Dashboard: Accessible
+
 ### March 19, 2026 - Admin Portal COMPLETE ✅
 1. **Admin Portal Migration Complete** (`/app/portal/src/app/admin/page.tsx`)
    - **All 15 tabs fully implemented with real API data**:
@@ -169,7 +190,8 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 3. Staff status doesn't auto-reset after calls (needs implementation)
 4. ~~User sees wrong profile when profile loading fails~~ (FIXED - March 19, 2026)
 5. **SOCKET CONFLICT**: Old and new portals fight for the same socket - close old portal when testing new one
-6. Minor: AI Persona avatar images return 404 (cosmetic - fallback text shown)
+6. ~~AI Persona avatar images return 404~~ (FIXED - March 19, 2026 - added resolveAvatarUrl helper)
+7. ~~Events, Learning tabs returning 404 errors~~ (FIXED - March 19, 2026 - corrected API endpoints)
 
 ## Critical Notes for Production Testing
 1. **CLOSE OLD PORTAL** when testing the new one (socket conflict issue)

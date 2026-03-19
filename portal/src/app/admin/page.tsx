@@ -12,6 +12,17 @@ import {
 // API Configuration
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
 
+// Helper to resolve avatar URLs - prepend API URL if path is relative
+function resolveAvatarUrl(avatarPath: string | undefined): string {
+  if (!avatarPath) return '';
+  // If already absolute URL, return as-is
+  if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+    return avatarPath;
+  }
+  // Prepend API URL for relative paths
+  return `${API_URL}${avatarPath}`;
+}
+
 // Types
 interface User {
   id: string;
@@ -251,19 +262,19 @@ const api = {
       body: JSON.stringify({ approved }),
     }),
 
-  // Events
-  getEvents: (token: string) =>
-    api.fetch<any[]>('/events/', { token }),
+  // Events - use /events/admin/all for full list with past events option
+  getEvents: (token: string, includePast: boolean = true) =>
+    api.fetch<any[]>(`/events/admin/all?include_past=${includePast}`, { token }),
   
   createEvent: (token: string, data: any) =>
-    api.fetch<any>('/events/', {
+    api.fetch<any>('/events/admin/create', {
       token,
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
   deleteEvent: (token: string, id: string) =>
-    api.fetch<any>(`/events/${id}`, {
+    api.fetch<any>(`/events/admin/${id}`, {
       token,
       method: 'DELETE',
     }),
@@ -307,10 +318,13 @@ const api = {
     api.fetch<any>('/learning/stats', { token }),
   
   getSafetyPatterns: (token: string) =>
-    api.fetch<any>('/learning/safety-patterns', { token }),
+    api.fetch<any>('/learning/patterns?is_active=true', { token }),
   
-  getModerationQueue: (token: string) =>
-    api.fetch<any>('/ai-feedback/moderation/queue', { token }),
+  getLearningQueue: (token: string) =>
+    api.fetch<any>('/learning/queue?status=pending', { token }),
+  
+  getApprovedLearnings: (token: string) =>
+    api.fetch<any>('/learning/approved', { token }),
 };
 
 // Tab definitions - matching the original admin portal
@@ -695,12 +709,13 @@ export default function AdminPortal() {
   const loadLearning = async () => {
     if (!token) return;
     try {
-      const [statsData, queueData] = await Promise.all([
+      const [statsData, queueData, patternsData] = await Promise.all([
         api.getLearningStats(token).catch(() => null),
-        api.getModerationQueue(token).catch(() => ({ queue: [] })),
+        api.getLearningQueue(token).catch(() => ({ learnings: [] })),
+        api.getSafetyPatterns(token).catch(() => ({ patterns: [] })),
       ]);
       setLearningStats(statsData);
-      setModerationQueue(queueData?.queue || []);
+      setModerationQueue(queueData?.learnings || queueData?.queue || []);
     } catch (err: any) {
       console.error('Learning data not available:', err);
     }
@@ -1239,28 +1254,58 @@ export default function AdminPortal() {
           {/* AI Personas Tab */}
           {activeTab === 'ai-personas' && (
             <div data-testid="ai-personas-tab">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">AI Chat Personas</h2>
+                <button onClick={loadAICharacters} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {aiCharacters.map((char) => (
-                  <div key={char.id} className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                    <div className="flex items-start gap-4">
-                      {char.avatar && (
-                        <img src={char.avatar} alt={char.name} className="w-16 h-16 rounded-full object-cover" />
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-bold text-lg">{char.name}</h3>
-                        <p className="text-sm text-gray-400 mt-1">{char.description || 'No description'}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded text-xs ${char.is_enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                            {char.is_enabled ? 'Enabled' : 'Disabled'}
-                          </span>
-                          {char.order !== undefined && (
-                            <span className="text-xs text-gray-500">Order: {char.order}</span>
-                          )}
+                {aiCharacters.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-gray-400">
+                    No AI characters configured
+                  </div>
+                ) : (
+                  aiCharacters.map((char) => {
+                    const avatarUrl = resolveAvatarUrl(char.avatar);
+                    return (
+                      <div key={char.id} className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                        <div className="flex items-start gap-4">
+                          {avatarUrl ? (
+                            <img 
+                              src={avatarUrl} 
+                              alt={char.name} 
+                              className="w-16 h-16 rounded-full object-cover bg-gray-700" 
+                              onError={(e) => {
+                                // Hide broken image and show fallback
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                                if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className={`w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-2xl font-bold ${avatarUrl ? 'hidden' : ''}`}
+                          >
+                            {(char.name || 'A')[0].toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-lg">{char.name}</h3>
+                            <p className="text-sm text-gray-400 mt-1">{char.description || 'No description'}</p>
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded text-xs ${char.is_enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                {char.is_enabled ? 'Enabled' : 'Disabled'}
+                              </span>
+                              {char.order !== undefined && (
+                                <span className="text-xs text-gray-500">Order: {char.order}</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
@@ -1910,20 +1955,20 @@ export default function AdminPortal() {
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">Total Conversations</p>
-                  <p className="text-2xl font-bold">{learningStats?.total_conversations || 0}</p>
+                  <p className="text-gray-400 text-sm">Active Patterns</p>
+                  <p className="text-2xl font-bold">{learningStats?.patterns?.active || 0}</p>
                 </div>
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
                   <p className="text-gray-400 text-sm">Pending Review</p>
-                  <p className="text-2xl font-bold text-yellow-400">{moderationQueue.length}</p>
+                  <p className="text-2xl font-bold text-yellow-400">{learningStats?.learnings?.pending || moderationQueue.length}</p>
                 </div>
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">Approved Patterns</p>
-                  <p className="text-2xl font-bold text-green-400">{learningStats?.approved_patterns || 0}</p>
+                  <p className="text-gray-400 text-sm">Approved Learnings</p>
+                  <p className="text-2xl font-bold text-green-400">{learningStats?.learnings?.approved || 0}</p>
                 </div>
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">Escalation Rate</p>
-                  <p className="text-2xl font-bold text-red-400">{learningStats?.escalation_rate || 0}%</p>
+                  <p className="text-gray-400 text-sm">Pending Feedback</p>
+                  <p className="text-2xl font-bold text-blue-400">{learningStats?.feedback?.pending || 0}</p>
                 </div>
               </div>
 
