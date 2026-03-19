@@ -128,11 +128,26 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 - [x] WebRTC socket connection working (March 19, 2026)
 - [x] Twilio phone registration working (March 19, 2026)
 
+### March 19, 2026 - Staff Portal Audit COMPLETE ✅
+- **Full audit document created**: `/app/memory/STAFF_PORTAL_COMPARISON.md`
+- **React Portal Completion**: ~35% compared to legacy
+- **Key gaps identified**:
+  - ❌ WebRTC backend broken (multi-session issue)
+  - ❌ No sound alerts for new safeguarding/chats
+  - ❌ No session timeout (security issue)
+  - ❌ Panic alerts not functional (no actions, no trigger button for peers)
+  - ❌ Case management incomplete (no sessions, safety plans, referrals)
+  - ❌ Create escalation missing
+- **Avatar/Image Fix Applied**:
+  - Added `/images` mount in backend to serve `/app/website/images/`
+  - AI character avatars now accessible at `/images/tommy.png`, etc.
+
 ### P0 - Critical (REMAINING - For Production Testing)
 - [ ] Deploy to Vercel and verify all fixes work ON PRODUCTION
 - [ ] User should test with OLD PORTAL CLOSED (socket conflict)
 - [ ] User `kev@radiocheck.me` needs staff profile created in admin
 - [ ] Redeploy backend to Render with latest code
+- [ ] **Fix WebRTC** - Refactor `/app/backend/webrtc_signaling.py` for multi-session support
 
 ### P1 - High Priority
 - [ ] Staff status auto-reset after call/chat ends
@@ -190,8 +205,9 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 3. Staff status doesn't auto-reset after calls (needs implementation)
 4. ~~User sees wrong profile when profile loading fails~~ (FIXED - March 19, 2026)
 5. **SOCKET CONFLICT**: Old and new portals fight for the same socket - close old portal when testing new one
-6. ~~AI Persona avatar images return 404~~ (FIXED - March 19, 2026 - added resolveAvatarUrl helper)
+6. ~~AI Persona avatar images return 404~~ (FIXED - March 19, 2026 - added /images mount and resolveAvatarUrl helper)
 7. ~~Events, Learning tabs returning 404 errors~~ (FIXED - March 19, 2026 - corrected API endpoints)
+8. **WebRTC Multi-Session**: Backend doesn't support multiple sessions per user - causes call failures
 
 ## Critical Notes for Production Testing
 1. **CLOSE OLD PORTAL** when testing the new one (socket conflict issue)

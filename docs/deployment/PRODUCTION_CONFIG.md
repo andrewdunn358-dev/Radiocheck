@@ -34,5 +34,5 @@ When forking a session, agents sometimes change these URLs to the preview enviro
 
 ## Preview Environment (Emergent)
 
-- Preview URL: `https://signaling-rebuild.preview.emergentagent.com`
+- Preview URL: `https://staff-webrtc.preview.emergentagent.com`
 - This is for testing ONLY - changes here don't affect production until deployed

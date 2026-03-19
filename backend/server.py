@@ -6834,7 +6834,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://signaling-rebuild.preview.emergentagent.com",
+        "https://staff-webrtc.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],
@@ -7630,6 +7630,12 @@ if LMS_LEARNER_PATH.exists():
 STATIC_AVATARS_PATH = Path(__file__).parent / "static" / "avatars"
 STATIC_AVATARS_PATH.mkdir(parents=True, exist_ok=True)
 app.mount("/static/avatars", StaticFiles(directory=str(STATIC_AVATARS_PATH)), name="avatars")
+
+# Mount website images directory for AI character avatars
+# These are referenced in AI character configs as /images/tommy.png, etc.
+WEBSITE_IMAGES_PATH = Path(__file__).parent.parent / "website" / "images"
+if WEBSITE_IMAGES_PATH.exists():
+    app.mount("/images", StaticFiles(directory=str(WEBSITE_IMAGES_PATH)), name="website-images")
 
 # Mount docs folder for funding documents
 DOCS_PATH = Path(__file__).parent.parent / "docs"
