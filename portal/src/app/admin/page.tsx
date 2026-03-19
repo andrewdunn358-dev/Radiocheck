@@ -262,6 +262,20 @@ const api = {
       body: JSON.stringify({ approved }),
     }),
 
+  // Create Shift
+  createShift: (token: string, shift: { date: string; start_time: string; end_time: string }, userId: string, userName: string, userEmail: string) =>
+    api.fetch<any>(`/shifts/?user_id=${encodeURIComponent(userId)}&user_name=${encodeURIComponent(userName)}&user_email=${encodeURIComponent(userEmail)}`, {
+      token,
+      method: 'POST',
+      body: JSON.stringify(shift),
+    }),
+
+  deleteShift: (token: string, shiftId: string) =>
+    api.fetch<any>(`/shifts/${shiftId}`, {
+      token,
+      method: 'DELETE',
+    }),
+
   // Events - use /events/admin/all for full list with past events option
   getEvents: (token: string, includePast: boolean = true) =>
     api.fetch<any[]>(`/events/admin/all?include_past=${includePast}`, { token }),
@@ -305,6 +319,13 @@ const api = {
   
   getAuditLogs: (token: string, limit: number = 50) =>
     api.fetch<any>(`/admin/audit-logs?limit=${limit}`, { token }),
+
+  // App Usage Analytics
+  getAppUsageStats: (token: string) =>
+    api.fetch<any>('/analytics/usage', { token }),
+  
+  getAIChatStats: (token: string, days: number = 7) =>
+    api.fetch<any>(`/ai-chat/stats?days=${days}`, { token }),
 
   // Governance
   getHazards: (token: string) =>
@@ -430,6 +451,10 @@ export default function AdminPortal() {
   const [betaEnabled, setBetaEnabled] = useState(false);
   const [betaStats, setBetaStats] = useState<any>(null);
   
+  // App Usage Analytics state
+  const [appUsageStats, setAppUsageStats] = useState<any>(null);
+  const [aiChatStats, setAiChatStats] = useState<any>(null);
+  
   // Modal state
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
@@ -441,6 +466,15 @@ export default function AdminPortal() {
     phone: '',
     specialization: '',
     area: '',
+  });
+
+  // Add Shift modal state
+  const [showAddShiftModal, setShowAddShiftModal] = useState(false);
+  const [newShift, setNewShift] = useState({
+    date: new Date().toISOString().split('T')[0],
+    start_time: '09:00',
+    end_time: '17:00',
+    user_id: '',
   });
 
   // Check for existing session
@@ -591,6 +625,14 @@ export default function AdminPortal() {
   const loadLogs = async () => {
     if (!token) return;
     try {
+      // Always load app usage and AI chat stats for the dashboard view
+      const [usageData, aiStatsData] = await Promise.all([
+        api.getAppUsageStats(token).catch(() => null),
+        api.getAIChatStats(token).catch(() => null),
+      ]);
+      setAppUsageStats(usageData);
+      setAiChatStats(aiStatsData);
+      
       switch (activeLogSubTab) {
         case 'calls':
           const callsResponse = await api.getCallLogs(token).catch(() => ({ total_calls: 0, recent_logs: [] }));
@@ -918,6 +960,7 @@ export default function AdminPortal() {
                 onChange={(e) => setLoginEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 outline-none"
                 placeholder="admin@example.com"
+                autoComplete="email"
                 required
               />
             </div>
@@ -930,6 +973,7 @@ export default function AdminPortal() {
                 onChange={(e) => setLoginPassword(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 outline-none"
                 placeholder="Enter password"
+                autoComplete="current-password"
                 required
               />
             </div>
@@ -1134,6 +1178,178 @@ export default function AdminPortal() {
           {/* Logs Tab */}
           {activeTab === 'logs' && (
             <div data-testid="logs-tab">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Logs & Analytics</h2>
+                <button onClick={loadLogs} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Stats Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4">
+                  <p className="text-blue-200 text-sm">Total Calls</p>
+                  <p className="text-2xl font-bold">{callLogs.length}</p>
+                </div>
+                <div className="bg-gradient-to-br from-cyan-600 to-cyan-700 rounded-lg p-4">
+                  <p className="text-cyan-200 text-sm">Live Chats</p>
+                  <p className="text-2xl font-bold">{chatRooms.length}</p>
+                </div>
+                <div className="bg-gradient-to-br from-yellow-600 to-yellow-700 rounded-lg p-4">
+                  <p className="text-yellow-200 text-sm">Safeguarding</p>
+                  <p className="text-2xl font-bold">{safeguardingAlerts.length}</p>
+                </div>
+                <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-4">
+                  <p className="text-red-200 text-sm">Panic Alerts</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-4">
+                  <p className="text-purple-200 text-sm">AI Sessions</p>
+                  <p className="text-2xl font-bold">{aiChatStats?.total_sessions || 0}</p>
+                </div>
+                <div className="bg-gradient-to-br from-pink-600 to-pink-700 rounded-lg p-4">
+                  <p className="text-pink-200 text-sm">AI Messages (7d)</p>
+                  <p className="text-2xl font-bold">{aiChatStats?.total_messages || 0}</p>
+                </div>
+              </div>
+
+              {/* App Usage Analytics Section */}
+              {appUsageStats && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-blue-400" />
+                    App Usage Analytics
+                  </h3>
+                  
+                  {/* Period Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-center">
+                      <p className="text-3xl font-bold">{appUsageStats?.currently_connected || 0}</p>
+                      <p className="text-green-200 text-sm">Connected Now</p>
+                    </div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold">{appUsageStats?.['7_days']?.unique_visitors || 0}</p>
+                      <p className="text-gray-400 text-sm">Last 7 Days</p>
+                    </div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold">{appUsageStats?.['30_days']?.unique_visitors || 0}</p>
+                      <p className="text-gray-400 text-sm">Last 30 Days</p>
+                    </div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold">{appUsageStats?.['6_months']?.unique_visitors || 0}</p>
+                      <p className="text-gray-400 text-sm">Last 6 Months</p>
+                    </div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold">{appUsageStats?.['12_months']?.unique_visitors || 0}</p>
+                      <p className="text-gray-400 text-sm">Last 12 Months</p>
+                    </div>
+                  </div>
+
+                  {/* Analytics Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    {/* Visitors by Region */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-3 text-red-400">📍 Visitors by Region (30 days)</h4>
+                      <div className="space-y-2">
+                        {appUsageStats?.regions && Object.keys(appUsageStats.regions).length > 0 ? (
+                          Object.entries(appUsageStats.regions).map(([region, count]: [string, any]) => (
+                            <div key={region} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                              <span className="capitalize">{region.replace('_', ' ')}</span>
+                              <strong>{count}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-sm">No region data yet</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Daily Trend */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-3 text-blue-400">📅 Daily Trend (Last 7 days)</h4>
+                      <div className="space-y-1">
+                        {appUsageStats?.daily_trend?.slice(-7).map((day: any) => (
+                          <div key={day._id} className="flex justify-between items-center bg-gray-700 p-2 rounded text-sm">
+                            <span>{day._id}</span>
+                            <span><strong>{day.unique_visitors}</strong> visitors</span>
+                          </div>
+                        )) || <p className="text-gray-500 text-sm">No data yet</p>}
+                      </div>
+                    </div>
+
+                    {/* Device Type */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-3 text-purple-400">📱 Device Type</h4>
+                      <div className="space-y-2">
+                        {appUsageStats?.devices && Object.keys(appUsageStats.devices).length > 0 ? (
+                          Object.entries(appUsageStats.devices).map(([device, count]: [string, any]) => (
+                            <div key={device} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                              <span className="capitalize flex items-center gap-2">
+                                {device === 'mobile' ? '📱' : device === 'desktop' ? '🖥️' : '📟'} {device}
+                              </span>
+                              <strong>{count}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-sm">No device data yet</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Browser */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-3 text-green-400">🌐 Browser</h4>
+                      <div className="space-y-2">
+                        {appUsageStats?.browsers && Object.keys(appUsageStats.browsers).length > 0 ? (
+                          Object.entries(appUsageStats.browsers).map(([browser, count]: [string, any]) => (
+                            <div key={browser} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                              <span className="capitalize">{browser}</span>
+                              <strong>{count}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-sm">No browser data yet</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OS and Return Rate */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Operating System */}
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                      <h4 className="font-medium mb-3 text-yellow-400">💻 Operating System</h4>
+                      <div className="space-y-2">
+                        {appUsageStats?.operating_systems && Object.keys(appUsageStats.operating_systems).length > 0 ? (
+                          Object.entries(appUsageStats.operating_systems).map(([os, count]: [string, any]) => (
+                            <div key={os} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                              <span className="capitalize flex items-center gap-2">
+                                {os === 'windows' ? '🪟' : os === 'apple' ? '🍎' : os === 'android' ? '🤖' : '💻'} 
+                                {os === 'apple' ? 'Apple (iOS/Mac)' : os.charAt(0).toUpperCase() + os.slice(1)}
+                              </span>
+                              <strong>{count}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-sm">No OS data yet</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Return Rate */}
+                    <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg p-4">
+                      <h4 className="font-medium mb-3 text-purple-200">🔄 Return Rate (30 days)</h4>
+                      <div className="text-center py-4">
+                        <p className="text-5xl font-bold">{appUsageStats?.return_rate?.toFixed(1) || 0}%</p>
+                        <p className="text-purple-200 mt-2">
+                          {appUsageStats?.returning_visitors || 0} returning / {appUsageStats?.['30_days']?.unique_visitors || 0} total visitors
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Sub-tabs */}
               <div className="flex gap-2 mb-6">
                 {LOG_SUBTABS.map((tab) => (
@@ -1491,10 +1707,117 @@ export default function AdminPortal() {
             <div data-testid="rota-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Staff Rota & Scheduling</h2>
-                <button onClick={loadRota} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
-                  <RefreshCw className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setShowAddShiftModal(true)} 
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Shift
+                  </button>
+                  <button onClick={loadRota} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              {/* Add Shift Modal */}
+              {showAddShiftModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-700">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold">Add New Shift</h3>
+                      <button onClick={() => setShowAddShiftModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!token || !newShift.user_id) return;
+                      try {
+                        const selectedStaff = staff.find((s: StaffMember) => s.id === newShift.user_id);
+                        await api.createShift(
+                          token,
+                          { date: newShift.date, start_time: newShift.start_time, end_time: newShift.end_time },
+                          newShift.user_id,
+                          selectedStaff?.name || '',
+                          selectedStaff?.email || ''
+                        );
+                        setShowAddShiftModal(false);
+                        setNewShift({ date: new Date().toISOString().split('T')[0], start_time: '09:00', end_time: '17:00', user_id: '' });
+                        loadRota();
+                        setSuccess('Shift created successfully');
+                      } catch (err: any) {
+                        setError('Failed to create shift: ' + err.message);
+                      }
+                    }}>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Staff Member</label>
+                          <select
+                            value={newShift.user_id}
+                            onChange={(e) => setNewShift({ ...newShift, user_id: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            required
+                          >
+                            <option value="">Select staff member...</option>
+                            {staff.map((staffMember: StaffMember) => (
+                              <option key={staffMember.id} value={staffMember.id}>{staffMember.name} ({staffMember.role})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Date</label>
+                          <input
+                            type="date"
+                            value={newShift.date}
+                            onChange={(e) => setNewShift({ ...newShift, date: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            required
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Start Time</label>
+                            <input
+                              type="time"
+                              value={newShift.start_time}
+                              onChange={(e) => setNewShift({ ...newShift, start_time: e.target.value })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">End Time</label>
+                            <input
+                              type="time"
+                              value={newShift.end_time}
+                              onChange={(e) => setNewShift({ ...newShift, end_time: e.target.value })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddShiftModal(false)}
+                          className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
+                        >
+                          Create Shift
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Today's Shifts */}
