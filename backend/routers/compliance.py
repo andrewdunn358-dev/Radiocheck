@@ -85,28 +85,42 @@ async def log_audit(
 
 
 async def get_current_user(request: Request):
-    """Simple auth check - get user from Authorization header"""
+    """Auth check - get user from Authorization header and verify JWT"""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     token = auth_header.replace("Bearer ", "")
-    user = await db.users.find_one({"id": token}, {"_id": 0, "password_hash": 0})
-    if not user:
-        # Try to decode JWT token
-        import jwt
-        try:
-            payload = jwt.decode(token, options={"verify_signature": False})
-            user_id = payload.get("sub") or payload.get("user_id")
-            if user_id:
-                user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
-        except:
-            pass
     
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    return user
+    # Decode and verify the JWT token
+    import jwt
+    try:
+        # Get the secret key from environment (same as server.py)
+        jwt_secret = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+        payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # First check unified staff collection
+        user = await db.staff.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+        if not user:
+            user = await db.staff.find_one({"legacy_user_id": user_id}, {"_id": 0, "password_hash": 0})
+        
+        # Fallback to legacy users collection
+        if not user:
+            user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return user
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 
 def require_admin(user):
