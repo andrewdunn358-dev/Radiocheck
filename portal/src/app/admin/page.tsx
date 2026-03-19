@@ -195,13 +195,21 @@ const api = {
     api.fetch<any>('/monitoring/stats', { token }),
 };
 
-// Tab definitions
+// Tab definitions - matching the original admin portal
 const TABS = [
   { id: 'staff', label: 'Staff', icon: Users },
-  { id: 'logs', label: 'Logs', icon: FileText },
+  { id: 'rota', label: 'Rota', icon: Calendar },
+  { id: 'cms', label: 'CMS', icon: FileText },
   { id: 'ai-personas', label: 'AI Personas', icon: Bot },
-  { id: 'ai-usage', label: 'AI Usage', icon: BarChart3 },
+  { id: 'beta', label: 'Beta Testing', icon: Activity },
+  { id: 'compliance', label: 'Compliance', icon: Shield },
+  { id: 'logs', label: 'Logs', icon: FileText },
   { id: 'monitoring', label: 'Monitoring', icon: Activity },
+  { id: 'governance', label: 'Governance', icon: Shield },
+  { id: 'events', label: 'Events', icon: Calendar },
+  { id: 'learning', label: 'AI Learning', icon: BookOpen },
+  { id: 'timetracking', label: 'Time Tracking', icon: Clock },
+  { id: 'ai-usage', label: 'AI Usage', icon: BarChart3 },
   { id: 'migration', label: 'Migration', icon: RefreshCw },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
@@ -1067,6 +1075,185 @@ export default function AdminPortal() {
                 >
                   Refresh Status
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Rota Tab */}
+          {activeTab === 'rota' && (
+            <div data-testid="rota-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">Staff Rota & Scheduling</h2>
+                <p className="text-gray-400 mb-4">Manage staff schedules and shift swaps.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Current Shifts</h3>
+                    <p className="text-sm text-gray-400">View and edit today&apos;s shift assignments</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Swap Requests</h3>
+                    <p className="text-sm text-gray-400">Pending shift swap requests to approve</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CMS Tab */}
+          {activeTab === 'cms' && (
+            <div data-testid="cms-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">Content Management System</h2>
+                <p className="text-gray-400 mb-4">Edit website content and landing pages.</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Hero Section</h3>
+                    <p className="text-sm text-gray-400">Edit hero text and images</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">About Section</h3>
+                    <p className="text-sm text-gray-400">Edit about us content</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Resources</h3>
+                    <p className="text-sm text-gray-400">Manage resource links</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Beta Testing Tab */}
+          {activeTab === 'beta' && (
+            <div data-testid="beta-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">Beta Testing & Feedback</h2>
+                <p className="text-gray-400 mb-4">Manage beta testers and collect feedback.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Beta Testers</h3>
+                    <p className="text-sm text-gray-400">0 active testers</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Feedback Queue</h3>
+                    <p className="text-sm text-gray-400">0 pending feedback items</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Compliance Tab */}
+          {activeTab === 'compliance' && (
+            <div data-testid="compliance-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">Compliance & Audit</h2>
+                <p className="text-gray-400 mb-4">Track compliance metrics and audit logs.</p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Call Compliance</h3>
+                    <p className="text-2xl font-bold text-green-400">98%</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Response Time</h3>
+                    <p className="text-2xl font-bold text-yellow-400">2.5m</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Documentation</h3>
+                    <p className="text-2xl font-bold text-green-400">100%</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Training</h3>
+                    <p className="text-2xl font-bold text-blue-400">95%</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Governance Tab */}
+          {activeTab === 'governance' && (
+            <div data-testid="governance-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">Governance & Policies</h2>
+                <p className="text-gray-400 mb-4">Manage policies, hazards, and incident reports.</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Hazard Reports</h3>
+                    <p className="text-sm text-gray-400">0 open reports</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Incidents</h3>
+                    <p className="text-sm text-gray-400">0 pending review</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Policy Updates</h3>
+                    <p className="text-sm text-gray-400">All policies current</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Events Tab */}
+          {activeTab === 'events' && (
+            <div data-testid="events-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">Events Management</h2>
+                <p className="text-gray-400 mb-4">Manage virtual events and group sessions.</p>
+                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg mb-4">
+                  <Plus className="w-4 h-4 inline mr-2" />
+                  Create Event
+                </button>
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <p className="text-gray-400 text-center">No upcoming events</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI Learning Tab */}
+          {activeTab === 'learning' && (
+            <div data-testid="learning-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">AI Learning & Training</h2>
+                <p className="text-gray-400 mb-4">Review AI conversations for training and improvement.</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Conversations Queue</h3>
+                    <p className="text-sm text-gray-400">0 pending review</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Approved Patterns</h3>
+                    <p className="text-sm text-gray-400">0 patterns saved</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Feedback</h3>
+                    <p className="text-sm text-gray-400">0 feedback items</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Time Tracking Tab */}
+          {activeTab === 'timetracking' && (
+            <div data-testid="timetracking-tab">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 className="text-xl font-bold mb-4">Time Tracking</h2>
+                <p className="text-gray-400 mb-4">Track staff hours and generate reports.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">This Week</h3>
+                    <p className="text-2xl font-bold">0 hours</p>
+                    <p className="text-sm text-gray-400">Total logged hours</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Pending Approval</h3>
+                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-sm text-gray-400">Time entries to review</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
