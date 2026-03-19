@@ -84,6 +84,10 @@ interface AICharacter {
   avatar?: string;
   is_enabled: boolean;
   order?: number;
+  personality?: string;
+  background?: string;
+  greeting_message?: string;
+  voice_style?: string;
 }
 
 interface AIUsageSummary {
@@ -228,10 +232,23 @@ const api = {
     api.fetch<{ characters: AICharacter[]; source: string }>('/ai-characters/admin/all', { token }),
   
   updateAICharacter: (token: string, id: string, data: Partial<AICharacter>) =>
-    api.fetch<AICharacter>(`/ai-characters/${id}`, {
+    api.fetch<AICharacter>(`/ai-characters/admin/${id}`, {
       token,
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+
+  toggleAICharacterStatus: (token: string, id: string, enabled: boolean) =>
+    api.fetch<any>(`/ai-characters/admin/${id}/status`, {
+      token,
+      method: 'PATCH',
+      body: JSON.stringify({ is_enabled: enabled }),
+    }),
+
+  seedAICharacters: (token: string) =>
+    api.fetch<any>('/ai-characters/seed-from-hardcoded', {
+      token,
+      method: 'POST',
     }),
 
   // AI Usage - Correct endpoint format
@@ -305,6 +322,12 @@ const api = {
       token,
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+
+  seedCMSDefaults: (token: string) =>
+    api.fetch<any>('/cms/seed-public', {
+      token,
+      method: 'POST',
     }),
 
   // Compliance
@@ -454,6 +477,10 @@ export default function AdminPortal() {
   // App Usage Analytics state
   const [appUsageStats, setAppUsageStats] = useState<any>(null);
   const [aiChatStats, setAiChatStats] = useState<any>(null);
+
+  // AI Character editing state
+  const [editingCharacter, setEditingCharacter] = useState<AICharacter | null>(null);
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
   
   // Modal state
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
@@ -1140,13 +1167,118 @@ export default function AdminPortal() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              member.status === 'available' ? 'bg-green-500/20 text-green-400' :
-                              member.status === 'busy' || member.status === 'limited' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {member.status || 'offline'}
-                            </span>
+                            {/* Status buttons - different options for counsellors vs peers */}
+                            {member.role === 'counsellor' ? (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.updateCounsellorStatus(token!, member.id, 'available');
+                                      setSuccess('Status updated');
+                                      loadStaff();
+                                    } catch (err: any) { setError(err.message); }
+                                  }}
+                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                    member.status === 'available' 
+                                      ? 'bg-green-500 text-white' 
+                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                  }`}
+                                >
+                                  Available
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.updateCounsellorStatus(token!, member.id, 'busy');
+                                      setSuccess('Status updated');
+                                      loadStaff();
+                                    } catch (err: any) { setError(err.message); }
+                                  }}
+                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                    member.status === 'busy' 
+                                      ? 'bg-yellow-500 text-white' 
+                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                  }`}
+                                >
+                                  Busy
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.updateCounsellorStatus(token!, member.id, 'off');
+                                      setSuccess('Status updated');
+                                      loadStaff();
+                                    } catch (err: any) { setError(err.message); }
+                                  }}
+                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                    member.status === 'off' 
+                                      ? 'bg-gray-500 text-white' 
+                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                  }`}
+                                >
+                                  Off
+                                </button>
+                              </div>
+                            ) : member.role === 'peer' ? (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.updatePeerStatus(token!, member.id, 'available');
+                                      setSuccess('Status updated');
+                                      loadStaff();
+                                    } catch (err: any) { setError(err.message); }
+                                  }}
+                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                    member.status === 'available' 
+                                      ? 'bg-green-500 text-white' 
+                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                  }`}
+                                >
+                                  Available
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.updatePeerStatus(token!, member.id, 'limited');
+                                      setSuccess('Status updated');
+                                      loadStaff();
+                                    } catch (err: any) { setError(err.message); }
+                                  }}
+                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                    member.status === 'limited' 
+                                      ? 'bg-yellow-500 text-white' 
+                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                  }`}
+                                >
+                                  Limited
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.updatePeerStatus(token!, member.id, 'unavailable');
+                                      setSuccess('Status updated');
+                                      loadStaff();
+                                    } catch (err: any) { setError(err.message); }
+                                  }}
+                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                    member.status === 'unavailable' 
+                                      ? 'bg-gray-500 text-white' 
+                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                  }`}
+                                >
+                                  Unavailable
+                                </button>
+                              </div>
+                            ) : (
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                member.status === 'available' ? 'bg-green-500/20 text-green-400' :
+                                member.status === 'busy' || member.status === 'limited' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {member.status || 'offline'}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
@@ -1512,14 +1644,134 @@ export default function AdminPortal() {
             <div data-testid="ai-personas-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">AI Chat Personas</h2>
-                <button onClick={loadAICharacters} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
-                  <RefreshCw className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      if (!token) return;
+                      try {
+                        await api.seedAICharacters(token);
+                        setSuccess('Default AI characters imported');
+                        loadAICharacters();
+                      } catch (err: any) {
+                        setError('Failed to import defaults: ' + err.message);
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Import Defaults
+                  </button>
+                  <button onClick={loadAICharacters} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              {/* Edit Character Modal */}
+              {showCharacterModal && editingCharacter && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg border border-gray-700 max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold">Edit AI Character</h3>
+                      <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }} className="p-1 hover:bg-gray-700 rounded">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!token || !editingCharacter) return;
+                      try {
+                        await api.updateAICharacter(token, editingCharacter.id, editingCharacter);
+                        setSuccess('Character updated successfully');
+                        setShowCharacterModal(false);
+                        setEditingCharacter(null);
+                        loadAICharacters();
+                      } catch (err: any) {
+                        setError('Failed to update character: ' + err.message);
+                      }
+                    }}>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Name</label>
+                          <input
+                            type="text"
+                            value={editingCharacter.name}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Description</label>
+                          <textarea
+                            value={editingCharacter.description || ''}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, description: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Personality</label>
+                          <textarea
+                            value={editingCharacter.personality || ''}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, personality: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Greeting Message</label>
+                          <textarea
+                            value={editingCharacter.greeting_message || ''}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, greeting_message: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Order</label>
+                            <input
+                              type="number"
+                              value={editingCharacter.order || 0}
+                              onChange={(e) => setEditingCharacter({ ...editingCharacter, order: parseInt(e.target.value) })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 pt-6">
+                            <input
+                              type="checkbox"
+                              id="char-enabled"
+                              checked={editingCharacter.is_enabled}
+                              onChange={(e) => setEditingCharacter({ ...editingCharacter, is_enabled: e.target.checked })}
+                              className="w-4 h-4"
+                            />
+                            <label htmlFor="char-enabled" className="text-sm">Enabled</label>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }}
+                          className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {aiCharacters.length === 0 ? (
                   <div className="col-span-full text-center py-8 text-gray-400">
-                    No AI characters configured
+                    <p>No AI characters configured</p>
+                    <p className="text-sm mt-2">Click "Import Defaults" to add default characters</p>
                   </div>
                 ) : (
                   aiCharacters.map((char) => {
@@ -1533,7 +1785,6 @@ export default function AdminPortal() {
                               alt={char.name} 
                               className="w-16 h-16 rounded-full object-cover bg-gray-700" 
                               onError={(e) => {
-                                // Hide broken image and show fallback
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 const fallback = (e.target as HTMLImageElement).nextElementSibling;
                                 if (fallback) (fallback as HTMLElement).style.display = 'flex';
@@ -1547,15 +1798,42 @@ export default function AdminPortal() {
                           </div>
                           <div className="flex-1">
                             <h3 className="font-bold text-lg">{char.name}</h3>
-                            <p className="text-sm text-gray-400 mt-1">{char.description || 'No description'}</p>
-                            <div className="mt-2 flex items-center gap-2">
-                              <span className={`px-2 py-1 rounded text-xs ${char.is_enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                            <p className="text-sm text-gray-400 mt-1 line-clamp-2">{char.description || 'No description'}</p>
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                              {/* Enable/Disable Toggle */}
+                              <button
+                                onClick={async () => {
+                                  if (!token) return;
+                                  try {
+                                    await api.toggleAICharacterStatus(token, char.id, !char.is_enabled);
+                                    setSuccess(`${char.name} ${!char.is_enabled ? 'enabled' : 'disabled'}`);
+                                    loadAICharacters();
+                                  } catch (err: any) {
+                                    setError('Failed to update status: ' + err.message);
+                                  }
+                                }}
+                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                  char.is_enabled 
+                                    ? 'bg-green-500 hover:bg-green-600 text-white' 
+                                    : 'bg-gray-600 hover:bg-gray-500 text-gray-300'
+                                }`}
+                              >
                                 {char.is_enabled ? 'Enabled' : 'Disabled'}
-                              </span>
+                              </button>
                               {char.order !== undefined && (
                                 <span className="text-xs text-gray-500">Order: {char.order}</span>
                               )}
                             </div>
+                            {/* Edit Button */}
+                            <button
+                              onClick={() => {
+                                setEditingCharacter({ ...char });
+                                setShowCharacterModal(true);
+                              }}
+                              className="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs"
+                            >
+                              Edit
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1819,6 +2097,64 @@ export default function AdminPortal() {
                 </div>
               )}
               
+              {/* Coverage Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg p-4">
+                  <p className="text-green-200 text-sm">Counsellors Today</p>
+                  <p className="text-2xl font-bold">
+                    {shifts.filter(s => {
+                      if (s.date !== new Date().toISOString().split('T')[0]) return false;
+                      const staffMember = staff.find((st: StaffMember) => st.id === s.user_id);
+                      return staffMember?.role === 'counsellor';
+                    }).length}
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4">
+                  <p className="text-blue-200 text-sm">Peers Today</p>
+                  <p className="text-2xl font-bold">
+                    {shifts.filter(s => {
+                      if (s.date !== new Date().toISOString().split('T')[0]) return false;
+                      const staffMember = staff.find((st: StaffMember) => st.id === s.user_id);
+                      return staffMember?.role === 'peer';
+                    }).length}
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-4">
+                  <p className="text-purple-200 text-sm">Shifts This Week</p>
+                  <p className="text-2xl font-bold">
+                    {shifts.filter(s => {
+                      const shiftDate = new Date(s.date);
+                      const today = new Date();
+                      const weekEnd = new Date();
+                      weekEnd.setDate(today.getDate() + 7);
+                      return shiftDate >= today && shiftDate < weekEnd;
+                    }).length}
+                  </p>
+                </div>
+                {(() => {
+                  // Calculate coverage gaps (days in next 7 days with no shifts)
+                  let gaps = 0;
+                  for (let i = 0; i < 7; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const dayShifts = shifts.filter(s => s.date === dateStr);
+                    if (dayShifts.length === 0) gaps++;
+                  }
+                  return gaps > 0 ? (
+                    <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-4">
+                      <p className="text-red-200 text-sm">Coverage Gaps</p>
+                      <p className="text-2xl font-bold">{gaps} days</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-4">
+                      <p className="text-gray-300 text-sm">Coverage Status</p>
+                      <p className="text-lg font-bold text-green-400">✓ Full Coverage</p>
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Today's Shifts */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
@@ -1918,9 +2254,27 @@ export default function AdminPortal() {
             <div data-testid="cms-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Content Management System</h2>
-                <button onClick={loadCMS} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
-                  <RefreshCw className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      if (!token) return;
+                      try {
+                        await api.seedCMSDefaults(token);
+                        setSuccess('Default CMS content loaded');
+                        loadCMS();
+                      } catch (err: any) {
+                        setError('Failed to load defaults: ' + err.message);
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Load Defaults
+                  </button>
+                  <button onClick={loadCMS} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1928,21 +2282,12 @@ export default function AdminPortal() {
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-400" />
-                    Pages
+                    Pages ({cmsPages.length})
                   </h3>
                   {cmsPages.length === 0 ? (
-                    <div className="space-y-2">
-                      {['home', 'self-care', 'family-friends', 'peer-support', 'organizations'].map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => setSelectedCmsPage(page)}
-                          className={`w-full text-left p-3 rounded-lg transition-colors ${
-                            selectedCmsPage === page ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                          }`}
-                        >
-                          <p className="font-medium capitalize">{page.replace('-', ' ')}</p>
-                        </button>
-                      ))}
+                    <div className="text-center py-8">
+                      <p className="text-gray-400 mb-4">No CMS pages found</p>
+                      <p className="text-sm text-gray-500">Click "Load Defaults" to add default pages</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1962,21 +2307,54 @@ export default function AdminPortal() {
                   )}
                 </div>
 
-                {/* Page Editor Preview */}
+                {/* Page Content */}
                 <div className="lg:col-span-2 bg-gray-800 rounded-lg border border-gray-700 p-6">
-                  <h3 className="font-semibold mb-4">Page Preview</h3>
+                  <h3 className="font-semibold mb-4">Page Content</h3>
                   {selectedCmsPage ? (
-                    <div className="bg-gray-700 rounded-lg p-6 min-h-[400px]">
-                      <div className="text-center text-gray-400">
-                        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p className="font-medium capitalize">{selectedCmsPage.replace('-', ' ')}</p>
-                        <p className="text-sm mt-2">Visual editor coming soon</p>
-                        <p className="text-xs mt-4">Use the legacy admin portal for full CMS editing</p>
-                      </div>
+                    <div className="space-y-4">
+                      {(() => {
+                        const page = cmsPages.find(p => p.slug === selectedCmsPage);
+                        if (!page) return <p className="text-gray-400">Page not found</p>;
+                        return (
+                          <>
+                            <div className="bg-gray-700 rounded-lg p-4">
+                              <h4 className="font-medium text-lg">{page.title}</h4>
+                              <p className="text-sm text-gray-400 mt-1">{page.description || 'No description'}</p>
+                            </div>
+                            {page.sections && page.sections.length > 0 ? (
+                              <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-400">Sections:</h5>
+                                {page.sections.map((section: any, idx: number) => (
+                                  <div key={idx} className="bg-gray-700 rounded-lg p-3">
+                                    <p className="font-medium">{section.title || `Section ${idx + 1}`}</p>
+                                    <p className="text-sm text-gray-400">{section.description || section.content || 'No content'}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : page.cards && page.cards.length > 0 ? (
+                              <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-400">Cards:</h5>
+                                {page.cards.map((card: any, idx: number) => (
+                                  <div key={idx} className="bg-gray-700 rounded-lg p-3 flex items-start gap-3">
+                                    {card.icon && <span className="text-2xl">{card.icon}</span>}
+                                    <div>
+                                      <p className="font-medium">{card.title}</p>
+                                      <p className="text-sm text-gray-400">{card.description}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-400 text-center py-4">No sections or cards in this page</p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-4">Note: Full visual editor available in legacy admin portal</p>
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : (
-                    <div className="bg-gray-700 rounded-lg p-6 min-h-[400px] flex items-center justify-center">
-                      <p className="text-gray-400">Select a page to preview and edit</p>
+                    <div className="bg-gray-700 rounded-lg p-6 min-h-[300px] flex items-center justify-center">
+                      <p className="text-gray-400">Select a page to view content</p>
                     </div>
                   )}
                 </div>
