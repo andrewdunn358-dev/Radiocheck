@@ -34,21 +34,21 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 
 ### March 19, 2026 - Admin Portal COMPLETE ✅
 1. **Admin Portal Migration Complete** (`/app/portal/src/app/admin/page.tsx`)
-   - **All 15 tabs working with correct API endpoints**:
-     - Staff Management (unified-staff data display)
-     - Rota (placeholder)
-     - CMS (placeholder)
-     - AI Personas (12 characters with avatars, descriptions, order)
+   - **All 15 tabs fully implemented with real API data**:
+     - Staff Management (unified-staff data display) ✅
+     - Rota (Today's Shifts, Pending Swap Requests, Week Overview) ✅
+     - CMS (6 pages from backend, page preview area) ✅
+     - AI Personas (12 characters with avatars, descriptions, order) ✅
      - Beta Testing (placeholder)
-     - Compliance (placeholder)
-     - Logs (Call Logs, Chat Logs, Safeguarding - all with live data)
-     - Monitoring (system stats: active calls, chats, staff online)
-     - Governance (placeholder)
-     - Events (placeholder)
-     - AI Learning (placeholder)
+     - Compliance (GDPR metrics, Security Incidents, Open Complaints) ✅
+     - Logs (Call Logs, Chat Logs, Safeguarding - all with live data) ✅
+     - Monitoring (system stats: active calls, chats, staff online) ✅
+     - Governance (Clinical Safety Hazard Log) ✅
+     - Events (Upcoming/Recent Events, Create Event button) ✅
+     - AI Learning (Stats grid, Moderation Queue) ✅
      - Time Tracking (placeholder)
-     - AI Usage (token counts, costs, provider breakdown)
-     - Migration (legacy vs unified counts, action buttons)
+     - AI Usage (token counts, costs, provider breakdown) ✅
+     - Migration (legacy vs unified counts, action buttons) ✅
      - Settings (placeholder)
    
 2. **Fixed API Endpoints**:
@@ -58,8 +58,13 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
    - `/api/call-logs?days=30` with proper response handling
    - `/api/admin/ai-usage/summary?days=30` for AI usage stats
    - `/api/admin/migration-status` for migration dashboard
+   - `/api/shifts/` for rota shifts
+   - `/api/shift-swaps/needs-approval` for pending swap requests
+   - `/api/cms/pages` for CMS page list
+   - `/api/compliance/dashboard`, `/api/compliance/incidents`, `/api/compliance/complaints`
+   - `/api/governance/hazards` for clinical safety hazard log
 
-3. **Testing Status**: 100% pass rate - all 9 core features verified working
+3. **Testing Status**: 100% pass rate - all 15 tabs verified working (iterations 30 & 31)
 
 ### March 19, 2026 - Staff Portal Fixes (Previous)
 1. **CRITICAL: Unified Staff Data Model**
