@@ -2357,11 +2357,14 @@ async def get_all_staff(
     
     staff_list = await db.staff.find(query).to_list(1000)
     
-    # Remove sensitive fields
+    # Remove sensitive fields and decrypt names
     for staff in staff_list:
         staff.pop("password_hash", None)
         staff.pop("_id", None)
         staff.pop("sip_password", None)
+        # Decrypt name if encrypted
+        if staff.get("name") and str(staff.get("name")).startswith("ENC:"):
+            staff["name"] = decrypt_field(staff["name"])
     
     return staff_list
 
@@ -2378,6 +2381,9 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
         staff.pop("password_hash", None)
         staff.pop("_id", None)
         staff.pop("sip_password", None)
+        # Decrypt name if encrypted
+        if staff.get("name") and str(staff.get("name")).startswith("ENC:"):
+            staff["name"] = decrypt_field(staff["name"])
         return staff
     
     # Fallback: Build profile from legacy collections (users + counsellors/peers)
@@ -2393,8 +2399,12 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
     profile = None
     if role in ["counsellor", "supervisor"]:
         profile = await db.counsellors.find_one({"user_id": user_id})
+        if profile:
+            profile = decrypt_document("counsellors", profile)
     elif role == "peer":
         profile = await db.peer_supporters.find_one({"user_id": user_id})
+        if profile:
+            profile = decrypt_document("peer_supporters", profile)
     
     if profile:
         # Build unified response from legacy data
