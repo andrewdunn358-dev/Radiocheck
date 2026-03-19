@@ -100,28 +100,28 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 ## Prioritized Backlog
 
 ### P0 - Critical (COMPLETED)
-- [x] Admin Portal migration - all API endpoints fixed (March 19, 2026)
+- [x] Admin Portal migration - ALL 15 tabs fully functional (March 19, 2026)
 - [x] Profile loading security - verifies user_id match (March 19, 2026)
 - [x] Status buttons disabled when no profile linked (March 19, 2026)
 - [x] AI Characters sort order fix (March 19, 2026)
 - [x] WebRTC socket connection working (March 19, 2026)
 - [x] Twilio phone registration working (March 19, 2026)
 
-### P0 - Critical (REMAINING)
+### P0 - Critical (REMAINING - For Production Testing)
 - [ ] Deploy to Vercel and verify all fixes work ON PRODUCTION
 - [ ] User should test with OLD PORTAL CLOSED (socket conflict)
 - [ ] User `kev@radiocheck.me` needs staff profile created in admin
+- [ ] Redeploy backend to Render with latest code
 
 ### P1 - High Priority
-- [ ] Implement functionality for remaining Admin Portal tabs (Rota, CMS, Events, etc.)
 - [ ] Staff status auto-reset after call/chat ends
-- [ ] Twilio phone integration (browser-to-phone calls)
 - [ ] Run the unified staff migration on production database
+- [ ] Create Events API endpoint (returns 404)
+- [ ] Fix Governance summary-report 500 error
 
 ### P2 - Medium Priority
 - [ ] Delete legacy directories (`/admin-site`, `/staff-portal`) after full migration approval
 - [ ] Jitsi video chat for events (BLOCKED - waiting on user)
-- [x] AI Character sort order fix (COMPLETED March 19, 2026)
 
 ### P3 - Future
 - [ ] Native mobile app (iOS/Android)

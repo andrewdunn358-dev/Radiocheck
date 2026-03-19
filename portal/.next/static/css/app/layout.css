@@ -520,17 +520,26 @@ video {
 .bottom-4 {
   bottom: 1rem;
 }
+.left-0\.5 {
+  left: 0.125rem;
+}
 .left-3 {
   left: 0.75rem;
 }
 .right-0 {
   right: 0px;
 }
+.right-0\.5 {
+  right: 0.125rem;
+}
 .right-4 {
   right: 1rem;
 }
 .top-0 {
   top: 0px;
+}
+.top-0\.5 {
+  top: 0.125rem;
 }
 .top-1\/2 {
   top: 50%;
@@ -919,6 +928,9 @@ video {
 .whitespace-pre-wrap {
   white-space: pre-wrap;
 }
+.break-all {
+  word-break: break-all;
+}
 .rounded {
   border-radius: 0.25rem;
 }
@@ -1139,6 +1151,10 @@ video {
 }
 .bg-secondary\/30 {
   background-color: rgb(201 162 39 / 0.3);
+}
+.bg-white {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
 }
 .bg-yellow-500 {
   --tw-bg-opacity: 1;

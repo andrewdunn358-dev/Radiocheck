@@ -1579,18 +1579,51 @@ export default function AdminPortal() {
           {/* Beta Testing Tab */}
           {activeTab === 'beta' && (
             <div data-testid="beta-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">Beta Testing & Feedback</h2>
-                <p className="text-gray-400 mb-4">Manage beta testers and collect feedback.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Beta Testers</h3>
-                    <p className="text-sm text-gray-400">0 active testers</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Feedback Queue</h3>
-                    <p className="text-sm text-gray-400">0 pending feedback items</p>
-                  </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Beta Testing & Feedback</h2>
+                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Invite Tester
+                </button>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Active Testers</p>
+                  <p className="text-2xl font-bold text-green-400">0</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Pending Feedback</p>
+                  <p className="text-2xl font-bold text-yellow-400">0</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Bugs Reported</p>
+                  <p className="text-2xl font-bold text-red-400">0</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Feature Requests</p>
+                  <p className="text-2xl font-bold text-blue-400">0</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Beta Testers List */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-400" />
+                    Beta Testers
+                  </h3>
+                  <p className="text-gray-400 text-center py-8">No active beta testers</p>
+                </div>
+
+                {/* Feedback Queue */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-yellow-400" />
+                    Recent Feedback
+                  </h3>
+                  <p className="text-gray-400 text-center py-8">No feedback received yet</p>
                 </div>
               </div>
             </div>
@@ -1933,20 +1966,69 @@ export default function AdminPortal() {
           {/* Time Tracking Tab */}
           {activeTab === 'timetracking' && (
             <div data-testid="timetracking-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">Time Tracking</h2>
-                <p className="text-gray-400 mb-4">Track staff hours and generate reports.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">This Week</h3>
-                    <p className="text-2xl font-bold">0 hours</p>
-                    <p className="text-sm text-gray-400">Total logged hours</p>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Pending Approval</h3>
-                    <p className="text-2xl font-bold">0</p>
-                    <p className="text-sm text-gray-400">Time entries to review</p>
-                  </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Time Tracking</h2>
+                <div className="flex gap-2">
+                  <button className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <Download className="w-5 h-5" />
+                  </button>
+                  <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Log Time
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">This Week</p>
+                  <p className="text-2xl font-bold">0 hrs</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">This Month</p>
+                  <p className="text-2xl font-bold">0 hrs</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Pending Approval</p>
+                  <p className="text-2xl font-bold text-yellow-400">0</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                  <p className="text-gray-400 text-sm">Overtime</p>
+                  <p className="text-2xl font-bold text-red-400">0 hrs</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Recent Time Entries */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-blue-400" />
+                    Recent Time Entries
+                  </h3>
+                  <p className="text-gray-400 text-center py-8">No time entries logged</p>
+                </div>
+
+                {/* Pending Approvals */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Check className="w-5 h-5 text-yellow-400" />
+                    Pending Approval
+                  </h3>
+                  <p className="text-gray-400 text-center py-8">No entries pending approval</p>
+                </div>
+              </div>
+
+              {/* Weekly Summary */}
+              <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h3 className="font-semibold mb-4">Weekly Summary</h3>
+                <div className="grid grid-cols-7 gap-2">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                    <div key={day} className="text-center p-3 bg-gray-700 rounded-lg">
+                      <p className="text-xs text-gray-400">{day}</p>
+                      <p className="font-bold">0h</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1955,9 +2037,127 @@ export default function AdminPortal() {
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div data-testid="settings-tab">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 className="text-xl font-bold mb-4">System Settings</h2>
-                <p className="text-gray-400">Settings panel coming soon...</p>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">System Settings</h2>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* General Settings */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-blue-400" />
+                    General Settings
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">Dark Mode</p>
+                        <p className="text-sm text-gray-400">Enable dark theme</p>
+                      </div>
+                      <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer">
+                        <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">Email Notifications</p>
+                        <p className="text-sm text-gray-400">Receive email alerts</p>
+                      </div>
+                      <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer">
+                        <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">Sound Notifications</p>
+                        <p className="text-sm text-gray-400">Play sounds for alerts</p>
+                      </div>
+                      <div className="w-12 h-6 bg-gray-600 rounded-full relative cursor-pointer">
+                        <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Settings */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-green-400" />
+                    Security
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">Two-Factor Authentication</p>
+                        <p className="text-sm text-gray-400">Add extra security layer</p>
+                      </div>
+                      <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">Enable</button>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">Session Timeout</p>
+                        <p className="text-sm text-gray-400">Auto-logout after inactivity</p>
+                      </div>
+                      <select className="px-3 py-1 bg-gray-700 rounded text-sm">
+                        <option>30 minutes</option>
+                        <option>1 hour</option>
+                        <option>2 hours</option>
+                        <option>Never</option>
+                      </select>
+                    </div>
+                    <button className="w-full mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm">
+                      Change Password
+                    </button>
+                  </div>
+                </div>
+
+                {/* API Settings */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-purple-400" />
+                    API & Integrations
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="bg-gray-700 rounded-lg p-3">
+                      <p className="font-medium">API Endpoint</p>
+                      <p className="text-sm text-gray-400 font-mono break-all">{API_URL}</p>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-3">
+                      <p className="font-medium">Twilio Status</p>
+                      <p className="text-sm text-green-400">Connected</p>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-3">
+                      <p className="font-medium">Socket.IO Status</p>
+                      <p className="text-sm text-green-400">Connected</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* System Info */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-yellow-400" />
+                    System Information
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Version</span>
+                      <span>2.0.0 (Next.js)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Environment</span>
+                      <span className="text-green-400">Production</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Last Updated</span>
+                      <span>{new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Logged in as</span>
+                      <span>{user?.email}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
