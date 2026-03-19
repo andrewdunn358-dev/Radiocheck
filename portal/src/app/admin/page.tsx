@@ -330,6 +330,13 @@ const api = {
   getBetaStatus: (token: string) =>
     api.fetch<{ beta_enabled: boolean }>('/surveys/beta-enabled', { token }),
   
+  setBetaStatus: (token: string, enabled: boolean) =>
+    api.fetch<any>('/surveys/beta-enabled', {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    }),
+  
   getBetaStats: (token: string) =>
     api.fetch<any>('/surveys/stats', { token }),
   
@@ -1660,8 +1667,22 @@ export default function AdminPortal() {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Beta Testing & Feedback</h2>
                 <div className="flex gap-2 items-center">
+                  <button 
+                    onClick={async () => {
+                      if (!token) return;
+                      try {
+                        await api.setBetaStatus(token, !betaEnabled);
+                        setBetaEnabled(!betaEnabled);
+                      } catch (err) {
+                        console.error('Failed to toggle beta:', err);
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium ${betaEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+                  >
+                    {betaEnabled ? 'Disable Beta' : 'Enable Beta'}
+                  </button>
                   <span className={`px-3 py-1 rounded-full text-sm ${betaEnabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                    Beta {betaEnabled ? 'Enabled' : 'Disabled'}
+                    {betaEnabled ? 'Active' : 'Inactive'}
                   </span>
                   <button onClick={loadBetaTesting} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
                     <RefreshCw className="w-5 h-5" />
