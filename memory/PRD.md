@@ -32,14 +32,22 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 ## What's Been Implemented
 
 ### March 19, 2026 - Staff Portal Fixes (Latest)
-1. **CRITICAL: Multi-Device Socket Support**
+1. **CRITICAL: Unified Staff Data Model**
+   - Created new `staff` collection that combines `users` + `counsellors` + `peer_supporters`
+   - Single document per person with all their data
+   - No more orphaned profiles or user/profile mismatch
+   - New endpoints: `POST/GET/PATCH/DELETE /api/staff`, `GET /api/staff/me`
+   - Migration endpoint: `POST /api/admin/migrate-to-unified-staff`
+   - See `/app/memory/MIGRATION_NOTES.md` for full details
+
+2. **CRITICAL: Multi-Device Socket Support**
    - Changed `user_to_socket` from `Dict[str, str]` to `user_to_sockets: Dict[str, set]`
    - A user can now have multiple tabs/devices connected simultaneously
    - When a call comes in, ALL of a user's devices ring
    - When answered on one device, other devices stop ringing via `call_answered_elsewhere` event
    - Fixes the root cause of "old portal steals calls from new portal"
 
-2. **Profile Loading Security Fix**
+3. **Profile Loading Security Fix**
    - Fixed profile loading to verify `user_id` matches logged-in user
    - Prevents showing wrong user's profile (e.g., "Sarah M" bug)
    - Added `user_id` field preservation in API response

@@ -46,7 +46,7 @@ def create_access_token(data: dict) -> str:
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
-    """Validate JWT token and return current user"""
+    """Validate JWT token and return current user - checks unified staff collection first"""
     db = get_database()
     secret_key = get_jwt_secret()
     try:
@@ -55,6 +55,17 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
+        # FIRST: Check unified staff collection (new system)
+        staff = await db.staff.find_one({"id": user_id})
+        if staff:
+            return User(
+                id=staff.get("id"),
+                email=staff["email"],
+                role=staff.get("role", "user"),
+                name=staff.get("name", "")
+            )
+        
+        # FALLBACK: Check legacy users collection
         # Try to find by 'id' field first, then by '_id' (for older users)
         user = await db.users.find_one({"id": user_id})
         if user is None:
@@ -285,8 +296,39 @@ async def register_user(user_input: UserCreate, current_user: User = Depends(req
 
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
-    """Login and get JWT token"""
+    """Login and get JWT token - checks unified staff collection first, then legacy users"""
     db = get_database()
+    
+    # FIRST: Check unified staff collection (new system)
+    staff = await db.staff.find_one({"email": credentials.email})
+    
+    if staff:
+        # Found in unified staff collection
+        password_hash = staff.get("password_hash")
+        if not password_hash:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        if not verify_password(credentials.password, password_hash):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        staff_id = staff.get("id")
+        
+        # Update last_login
+        await db.staff.update_one(
+            {"email": credentials.email},
+            {"$set": {"last_login": datetime.utcnow()}}
+        )
+        
+        token = create_access_token({"sub": staff_id})
+        redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
+        
+        return TokenResponse(
+            token=token,
+            user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=staff.get("name", "")),
+            redirect=redirect
+        )
+    
+    # FALLBACK: Check legacy users collection
     user = await db.users.find_one({"email": credentials.email})
     
     if not user:

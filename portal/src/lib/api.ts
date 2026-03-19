@@ -317,34 +317,60 @@ export const staffApi = {
       body: JSON.stringify({ email, password }),
     }),
 
-  // Profile & Status - uses counsellors/peer-supporters endpoints
-  // Must match by user_id from the login response
+  // Profile & Status - NOW uses the unified staff endpoint
   getProfile: async (token: string, userId?: string): Promise<StaffProfile | null> => {
     console.log('[API] getProfile called with userId:', userId);
     
-    // If no userId provided, we can't find a profile
+    // Try the new unified staff endpoint first
+    try {
+      console.log('[API] Fetching from /staff/me (unified)...');
+      const profile = await fetchAPI<any>('/staff/me', { token });
+      console.log('[API] Unified staff profile:', profile);
+      
+      if (profile && profile.id) {
+        // Check if user has a full profile or just basic info
+        if (profile.has_profile === false) {
+          console.log('[API] User exists but has no profile linked');
+          return null;
+        }
+        
+        return {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role,
+          status: profile.status || 'unavailable',
+          phone: profile.phone,
+          is_supervisor: profile.is_supervisor,
+          specializations: profile.specialization ? [profile.specialization] : undefined,
+          user_id: profile.legacy_user_id || profile.id,
+          _source: profile._source  // Track where data came from
+        } as StaffProfile;
+      }
+    } catch (e) {
+      console.log('[API] Unified staff endpoint failed, falling back to legacy...', e);
+    }
+    
+    // FALLBACK: Try legacy endpoints for backward compatibility
+    // This can be removed after migration is complete
     if (!userId) {
-      console.log('[API] No userId provided, cannot find profile');
+      console.log('[API] No userId provided for legacy fallback, cannot find profile');
       return null;
     }
     
     try {
-      console.log('[API] Fetching counsellors...');
+      console.log('[API] Fetching counsellors (legacy)...');
       const counsellors = await fetchAPI<any[]>('/counsellors', { token });
-      console.log('[API] Counsellors response:', counsellors?.length, 'found');
       if (counsellors && counsellors.length > 0) {
-        // Match by user_id field - this is the link between the user and their staff profile
         const match = counsellors.find((c: any) => c.user_id === userId);
-        console.log('[API] Counsellor match for userId:', userId, '=', match ? `FOUND (${match.name})` : 'NOT FOUND');
         if (match) {
-          // Return profile with the id field set correctly for API calls
           const profileId = match.id || match._id;
           return { 
             ...match, 
             id: profileId,
             role: 'counsellor',
-            // Ensure user_id is preserved for verification
-            user_id: match.user_id
+            user_id: match.user_id,
+            _source: 'legacy_counsellors'
           } as StaffProfile;
         }
       }
@@ -353,22 +379,18 @@ export const staffApi = {
     }
     
     try {
-      console.log('[API] Fetching peer-supporters...');
+      console.log('[API] Fetching peer-supporters (legacy)...');
       const peers = await fetchAPI<any[]>('/peer-supporters', { token });
-      console.log('[API] Peer supporters response:', peers?.length, 'found');
       if (peers && peers.length > 0) {
-        // Match by user_id field - this is the link between the user and their staff profile
         const match = peers.find((p: any) => p.user_id === userId);
-        console.log('[API] Peer match for userId:', userId, '=', match ? `FOUND (${match.name})` : 'NOT FOUND');
         if (match) {
-          // Return profile with the id field set correctly for API calls
           const profileId = match.id || match._id;
           return { 
             ...match, 
             id: profileId,
             role: 'peer',
-            // Ensure user_id is preserved for verification
-            user_id: match.user_id
+            user_id: match.user_id,
+            _source: 'legacy_peers'
           } as StaffProfile;
         }
       }
@@ -376,16 +398,30 @@ export const staffApi = {
       console.error('[API] Error fetching peer-supporters:', e);
     }
     
-    // No profile found - return null, don't use someone else's profile!
+    // No profile found
     console.log('[API] No profile found for userId:', userId);
     return null;
   },
-  updateStatus: (token: string, status: string, staffId: string, staffType: 'counsellor' | 'peer') =>
-    fetchAPI<ActionResponse>(`/${staffType === 'counsellor' ? 'counsellors' : 'peer-supporters'}/${staffId}/status`, {
-      token,
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    }),
+  
+  // Status update - now also supports unified staff endpoint
+  updateStatus: async (token: string, status: string, staffId: string, staffType: 'counsellor' | 'peer' | 'staff') => {
+    // Try unified endpoint first
+    try {
+      return await fetchAPI<ActionResponse>(`/staff/${staffId}/status`, {
+        token,
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+    } catch (e) {
+      // Fallback to legacy endpoints
+      console.log('[API] Unified status update failed, trying legacy endpoint...');
+      return fetchAPI<ActionResponse>(`/${staffType === 'counsellor' ? 'counsellors' : 'peer-supporters'}/${staffId}/status`, {
+        token,
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+    }
+  },
 
   // Safeguarding Alerts
   getSafeguardingAlerts: (token: string) =>
@@ -595,12 +631,19 @@ export interface StaffProfile {
   id: string;
   email: string;
   name: string;
-  role: string;
-  status: 'available' | 'busy' | 'offline' | 'limited' | 'unavailable';
+  role: string;  // 'admin' | 'supervisor' | 'counsellor' | 'peer'
+  status: 'available' | 'busy' | 'offline' | 'limited' | 'unavailable' | 'off';
   phone?: string;
   is_supervisor?: boolean;
   specializations?: string[];
-  user_id?: string;  // Link to the User record
+  // For peers
+  area?: string;
+  background?: string;
+  years_served?: string;
+  // Link fields
+  user_id?: string;  // Link to legacy User record (if migrated)
+  // Metadata
+  _source?: string;  // 'unified' | 'legacy_counsellors' | 'legacy_peers' | 'legacy_no_profile'
 }
 
 export interface SafeguardingAlert {

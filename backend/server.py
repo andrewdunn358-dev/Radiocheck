@@ -408,6 +408,96 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: User
 
+# =============================================================================
+# UNIFIED STAFF MODEL (New - replaces separate counsellors/peer_supporters)
+# =============================================================================
+# NOTE: This is the new unified model. The old Counsellor and PeerSupporter 
+# models below are DEPRECATED and will be removed after full migration.
+# All new code should use the Staff model.
+# =============================================================================
+
+class StaffCreate(BaseModel):
+    """Create a new staff member - unified model for all staff types"""
+    email: EmailStr
+    password: str
+    role: str = Field(..., pattern="^(admin|supervisor|counsellor|peer)$")
+    name: str
+    # Contact info
+    phone: Optional[str] = None
+    sms: Optional[str] = None
+    whatsapp: Optional[str] = None
+    # Role-specific fields
+    specialization: Optional[str] = None  # For counsellors/supervisors
+    area: Optional[str] = None  # For peers - service area
+    background: Optional[str] = None  # For peers - military background
+    years_served: Optional[str] = None  # For peers
+    # SIP/calling
+    sip_extension: Optional[str] = None
+    sip_password: Optional[str] = None
+    # Permissions
+    is_supervisor: bool = False
+
+class Staff(BaseModel):
+    """Unified staff model - single source of truth for all staff members"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: EmailStr
+    password_hash: str  # Stored hashed
+    role: str  # admin, supervisor, counsellor, peer
+    name: str
+    # Status
+    status: str = "unavailable"  # available, limited, unavailable, busy, off
+    next_available: Optional[str] = None
+    # Contact info
+    phone: Optional[str] = None
+    sms: Optional[str] = None
+    whatsapp: Optional[str] = None
+    # Role-specific fields (all optional, used based on role)
+    specialization: Optional[str] = None  # For counsellors/supervisors
+    area: Optional[str] = None  # For peers
+    background: Optional[str] = None  # For peers
+    years_served: Optional[str] = None  # For peers
+    # SIP/calling
+    sip_extension: Optional[str] = None
+    sip_password: Optional[str] = None  # Encrypted
+    # Permissions
+    is_supervisor: bool = False
+    # Metadata
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
+    # Legacy link (for migration tracking - can be removed after migration)
+    legacy_user_id: Optional[str] = None  # Original users collection ID
+    legacy_profile_id: Optional[str] = None  # Original counsellors/peer_supporters ID
+
+class StaffUpdate(BaseModel):
+    """Update staff member details"""
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    sms: Optional[str] = None
+    whatsapp: Optional[str] = None
+    specialization: Optional[str] = None
+    area: Optional[str] = None
+    background: Optional[str] = None
+    years_served: Optional[str] = None
+    sip_extension: Optional[str] = None
+    sip_password: Optional[str] = None
+    is_supervisor: Optional[bool] = None
+
+class StaffStatusUpdate(BaseModel):
+    """Update staff status - works for all roles"""
+    status: str = Field(..., pattern="^(available|limited|unavailable|busy|off)$")
+    next_available: Optional[str] = None
+
+class StaffPublic(BaseModel):
+    """Public view of staff member - no sensitive data"""
+    id: str
+    name: str
+    role: str
+    status: str
+    specialization: Optional[str] = None
+    area: Optional[str] = None
+    is_supervisor: bool = False
+
 # Counsellor Models
 class CounsellorCreate(BaseModel):
     name: str
@@ -2174,6 +2264,440 @@ async def clear_logs_for_testing(request: ClearLogsRequest, current_user: User =
         "deleted": results
     }
 
+
+# =============================================================================
+# UNIFIED STAFF API ENDPOINTS
+# =============================================================================
+# These replace the old separate /counsellors and /peer-supporters endpoints.
+# The old endpoints are kept for backward compatibility during migration.
+# TODO: Remove old endpoints after migration is complete.
+# =============================================================================
+
+@api_router.post("/staff", response_model=dict)
+async def create_staff(staff_data: StaffCreate, current_user: User = Depends(require_role("admin"))):
+    """
+    Create a new staff member with unified profile.
+    This is the NEW way to create staff - creates both auth and profile in one step.
+    """
+    # Check if email already exists
+    existing = await db.staff.find_one({"email": staff_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Also check legacy users collection for duplicates
+    legacy_user = await db.users.find_one({"email": staff_data.email})
+    if legacy_user:
+        raise HTTPException(status_code=400, detail="Email already exists in legacy users. Please migrate first.")
+    
+    # Create the unified staff document
+    staff_doc = {
+        "id": str(uuid.uuid4()),
+        "email": staff_data.email,
+        "password_hash": hash_password(staff_data.password),
+        "role": staff_data.role,
+        "name": staff_data.name,
+        "status": "unavailable",
+        "next_available": None,
+        "phone": staff_data.phone or "",
+        "sms": staff_data.sms,
+        "whatsapp": staff_data.whatsapp,
+        "specialization": staff_data.specialization or ("General Support" if staff_data.role in ["counsellor", "supervisor"] else None),
+        "area": staff_data.area or ("General" if staff_data.role == "peer" else None),
+        "background": staff_data.background,
+        "years_served": staff_data.years_served,
+        "sip_extension": staff_data.sip_extension,
+        "sip_password": encrypt_field(staff_data.sip_password) if staff_data.sip_password else None,
+        "is_supervisor": staff_data.is_supervisor or staff_data.role == "supervisor",
+        "created_at": datetime.utcnow(),
+        "updated_at": None,
+        "last_login": None,
+        "legacy_user_id": None,
+        "legacy_profile_id": None
+    }
+    
+    await db.staff.insert_one(staff_doc)
+    
+    # Remove password_hash from response
+    staff_doc.pop("password_hash", None)
+    staff_doc.pop("_id", None)
+    
+    logging.info(f"Created new staff member: {staff_data.email} ({staff_data.role})")
+    
+    return {"message": "Staff member created successfully", "staff": staff_doc}
+
+@api_router.get("/staff", response_model=List[dict])
+async def get_all_staff(
+    role: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all staff members from the unified staff collection.
+    Optionally filter by role or status.
+    """
+    query = {}
+    if role:
+        query["role"] = role
+    if status:
+        query["status"] = status
+    
+    staff_list = await db.staff.find(query).to_list(1000)
+    
+    # Remove sensitive fields
+    for staff in staff_list:
+        staff.pop("password_hash", None)
+        staff.pop("_id", None)
+        staff.pop("sip_password", None)
+    
+    return staff_list
+
+@api_router.get("/staff/me", response_model=dict)
+async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
+    """
+    Get the current user's staff profile from the unified collection.
+    This is the NEW profile endpoint for the staff portal.
+    """
+    # First try unified staff collection
+    staff = await db.staff.find_one({"email": current_user.email})
+    
+    if staff:
+        staff.pop("password_hash", None)
+        staff.pop("_id", None)
+        staff.pop("sip_password", None)
+        return staff
+    
+    # Fallback: Build profile from legacy collections (users + counsellors/peers)
+    # This supports staff who haven't been migrated yet
+    user = await db.users.find_one({"email": current_user.email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_id = user.get("id") or str(user.get("_id"))
+    role = user.get("role")
+    
+    # Try to find linked profile
+    profile = None
+    if role in ["counsellor", "supervisor"]:
+        profile = await db.counsellors.find_one({"user_id": user_id})
+    elif role == "peer":
+        profile = await db.peer_supporters.find_one({"user_id": user_id})
+    
+    if profile:
+        # Build unified response from legacy data
+        return {
+            "id": profile.get("id") or str(profile.get("_id")),
+            "email": user.get("email"),
+            "role": role,
+            "name": profile.get("name") or profile.get("firstName") or user.get("name"),
+            "status": profile.get("status", "unavailable"),
+            "phone": profile.get("phone"),
+            "specialization": profile.get("specialization"),
+            "area": profile.get("area"),
+            "background": profile.get("background"),
+            "years_served": profile.get("yearsServed"),
+            "is_supervisor": role == "supervisor",
+            "legacy_user_id": user_id,
+            "legacy_profile_id": profile.get("id") or str(profile.get("_id")),
+            "_source": "legacy"  # Indicates this came from old collections
+        }
+    
+    # User exists but has no profile - return basic info
+    return {
+        "id": user_id,
+        "email": user.get("email"),
+        "role": role,
+        "name": user.get("name"),
+        "status": "unavailable",
+        "has_profile": False,
+        "_source": "legacy_no_profile"
+    }
+
+@api_router.get("/staff/{staff_id}", response_model=dict)
+async def get_staff_by_id(staff_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific staff member by ID"""
+    staff = await db.staff.find_one({"id": staff_id})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    staff.pop("password_hash", None)
+    staff.pop("_id", None)
+    staff.pop("sip_password", None)
+    
+    return staff
+
+@api_router.patch("/staff/{staff_id}", response_model=dict)
+async def update_staff(
+    staff_id: str,
+    update_data: StaffUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update staff member details"""
+    staff = await db.staff.find_one({"id": staff_id})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    # Check permissions - admin can update anyone, others can only update themselves
+    if current_user.role != "admin" and staff.get("email") != current_user.email:
+        raise HTTPException(status_code=403, detail="Not authorized to update this profile")
+    
+    # Build update document
+    update_doc = {"updated_at": datetime.utcnow()}
+    for field, value in update_data.model_dump(exclude_unset=True).items():
+        if field == "sip_password" and value:
+            update_doc[field] = encrypt_field(value)
+        else:
+            update_doc[field] = value
+    
+    await db.staff.update_one({"id": staff_id}, {"$set": update_doc})
+    
+    updated = await db.staff.find_one({"id": staff_id})
+    updated.pop("password_hash", None)
+    updated.pop("_id", None)
+    updated.pop("sip_password", None)
+    
+    return updated
+
+@api_router.patch("/staff/{staff_id}/status", response_model=dict)
+async def update_staff_status(
+    staff_id: str,
+    status_update: StaffStatusUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update staff member status"""
+    staff = await db.staff.find_one({"id": staff_id})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    # Check permissions
+    if current_user.role != "admin" and staff.get("email") != current_user.email:
+        raise HTTPException(status_code=403, detail="Not authorized to update this status")
+    
+    update_doc = {
+        "status": status_update.status,
+        "updated_at": datetime.utcnow()
+    }
+    if status_update.next_available:
+        update_doc["next_available"] = status_update.next_available
+    
+    await db.staff.update_one({"id": staff_id}, {"$set": update_doc})
+    
+    updated = await db.staff.find_one({"id": staff_id})
+    updated.pop("password_hash", None)
+    updated.pop("_id", None)
+    
+    return {"message": "Status updated", "status": updated.get("status")}
+
+@api_router.delete("/staff/{staff_id}")
+async def delete_staff(staff_id: str, current_user: User = Depends(require_role("admin"))):
+    """Delete a staff member (admin only)"""
+    result = await db.staff.delete_one({"id": staff_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    return {"message": "Staff member deleted"}
+
+# =============================================================================
+# MIGRATION ENDPOINTS
+# =============================================================================
+
+@api_router.post("/admin/migrate-to-unified-staff")
+async def migrate_to_unified_staff(current_user: User = Depends(require_role("admin"))):
+    """
+    Migrate all data from legacy collections (users, counsellors, peer_supporters)
+    to the new unified staff collection.
+    
+    This is IDEMPOTENT - can be run multiple times safely.
+    Already migrated users will be skipped.
+    """
+    stats = {
+        "users_processed": 0,
+        "staff_created": 0,
+        "already_migrated": 0,
+        "errors": [],
+        "details": []
+    }
+    
+    # Get all legacy users
+    users = await db.users.find().to_list(1000)
+    
+    # Build lookup maps for profiles
+    counsellors_by_user_id = {}
+    peers_by_user_id = {}
+    
+    async for c in db.counsellors.find():
+        if c.get("user_id"):
+            counsellors_by_user_id[c["user_id"]] = c
+    
+    async for p in db.peer_supporters.find():
+        if p.get("user_id"):
+            peers_by_user_id[p["user_id"]] = p
+    
+    for user in users:
+        stats["users_processed"] += 1
+        
+        user_id = user.get("id") or str(user.get("_id"))
+        email = user.get("email")
+        role = user.get("role")
+        name = user.get("name", "Unknown")
+        
+        # Check if already migrated
+        existing = await db.staff.find_one({"email": email})
+        if existing:
+            stats["already_migrated"] += 1
+            continue
+        
+        try:
+            # Find linked profile
+            profile = None
+            if role in ["counsellor", "supervisor"]:
+                profile = counsellors_by_user_id.get(user_id)
+            elif role == "peer":
+                profile = peers_by_user_id.get(user_id)
+            
+            # Build unified staff document
+            staff_doc = {
+                "id": str(uuid.uuid4()),
+                "email": email,
+                "password_hash": user.get("password_hash", ""),  # Keep existing hash
+                "role": role,
+                "name": profile.get("name") or profile.get("firstName") or name if profile else name,
+                "status": profile.get("status", "unavailable") if profile else "unavailable",
+                "next_available": profile.get("next_available") if profile else None,
+                "phone": profile.get("phone", "") if profile else "",
+                "sms": profile.get("sms") if profile else None,
+                "whatsapp": profile.get("whatsapp") if profile else None,
+                "specialization": profile.get("specialization") if profile else None,
+                "area": profile.get("area") if profile else None,
+                "background": profile.get("background") if profile else None,
+                "years_served": profile.get("yearsServed") if profile else None,
+                "sip_extension": profile.get("sip_extension") if profile else None,
+                "sip_password": profile.get("sip_password") if profile else None,  # Already encrypted
+                "is_supervisor": role == "supervisor",
+                "created_at": user.get("created_at", datetime.utcnow()),
+                "updated_at": None,
+                "last_login": None,
+                "legacy_user_id": user_id,
+                "legacy_profile_id": profile.get("id") or str(profile.get("_id")) if profile else None
+            }
+            
+            await db.staff.insert_one(staff_doc)
+            stats["staff_created"] += 1
+            stats["details"].append({
+                "email": email,
+                "role": role,
+                "had_profile": profile is not None
+            })
+            
+        except Exception as e:
+            stats["errors"].append({"email": email, "error": str(e)})
+            logging.error(f"Error migrating user {email}: {e}")
+    
+    # Also migrate orphan counsellors/peers that have no user linked
+    orphan_counsellors = await db.counsellors.find({"$or": [{"user_id": None}, {"user_id": {"$exists": False}}]}).to_list(1000)
+    for c in orphan_counsellors:
+        # Create a placeholder email for orphan profiles
+        email = f"orphan_counsellor_{c.get('id', str(c.get('_id')))}@placeholder.local"
+        existing = await db.staff.find_one({"legacy_profile_id": c.get("id") or str(c.get("_id"))})
+        if existing:
+            continue
+        
+        try:
+            staff_doc = {
+                "id": str(uuid.uuid4()),
+                "email": email,
+                "password_hash": "",  # No password - needs to be set
+                "role": "counsellor",
+                "name": c.get("name", "Unknown Counsellor"),
+                "status": c.get("status", "unavailable"),
+                "phone": c.get("phone", ""),
+                "specialization": c.get("specialization"),
+                "sip_extension": c.get("sip_extension"),
+                "sip_password": c.get("sip_password"),
+                "is_supervisor": False,
+                "created_at": c.get("created_at", datetime.utcnow()),
+                "legacy_user_id": None,
+                "legacy_profile_id": c.get("id") or str(c.get("_id")),
+                "_orphan": True  # Flag as orphan for review
+            }
+            await db.staff.insert_one(staff_doc)
+            stats["staff_created"] += 1
+            stats["details"].append({"email": email, "role": "counsellor", "orphan": True})
+        except Exception as e:
+            stats["errors"].append({"email": email, "error": str(e)})
+    
+    orphan_peers = await db.peer_supporters.find({"$or": [{"user_id": None}, {"user_id": {"$exists": False}}]}).to_list(1000)
+    for p in orphan_peers:
+        email = f"orphan_peer_{p.get('id', str(p.get('_id')))}@placeholder.local"
+        existing = await db.staff.find_one({"legacy_profile_id": p.get("id") or str(p.get("_id"))})
+        if existing:
+            continue
+        
+        try:
+            staff_doc = {
+                "id": str(uuid.uuid4()),
+                "email": email,
+                "password_hash": "",
+                "role": "peer",
+                "name": p.get("firstName", "Unknown Peer"),
+                "status": p.get("status", "unavailable"),
+                "phone": p.get("phone", ""),
+                "area": p.get("area"),
+                "background": p.get("background"),
+                "years_served": p.get("yearsServed"),
+                "sip_extension": p.get("sip_extension"),
+                "sip_password": p.get("sip_password"),
+                "is_supervisor": False,
+                "created_at": p.get("created_at", datetime.utcnow()),
+                "legacy_user_id": None,
+                "legacy_profile_id": p.get("id") or str(p.get("_id")),
+                "_orphan": True
+            }
+            await db.staff.insert_one(staff_doc)
+            stats["staff_created"] += 1
+            stats["details"].append({"email": email, "role": "peer", "orphan": True})
+        except Exception as e:
+            stats["errors"].append({"email": email, "error": str(e)})
+    
+    logging.info(f"Migration completed: {stats}")
+    
+    return {
+        "message": "Migration completed",
+        "stats": stats
+    }
+
+@api_router.get("/admin/migration-status")
+async def get_migration_status(current_user: User = Depends(require_role("admin"))):
+    """Check the status of the staff migration"""
+    legacy_users = await db.users.count_documents({})
+    legacy_counsellors = await db.counsellors.count_documents({})
+    legacy_peers = await db.peer_supporters.count_documents({})
+    unified_staff = await db.staff.count_documents({})
+    
+    # Count migrated (have legacy_user_id or legacy_profile_id)
+    migrated = await db.staff.count_documents({
+        "$or": [
+            {"legacy_user_id": {"$ne": None}},
+            {"legacy_profile_id": {"$ne": None}}
+        ]
+    })
+    
+    # Count orphans
+    orphans = await db.staff.count_documents({"_orphan": True})
+    
+    return {
+        "legacy_counts": {
+            "users": legacy_users,
+            "counsellors": legacy_counsellors,
+            "peer_supporters": legacy_peers
+        },
+        "unified_staff_count": unified_staff,
+        "migrated_count": migrated,
+        "orphan_count": orphans,
+        "migration_complete": unified_staff > 0 and migrated >= legacy_users
+    }
+
+
+
 class CreateUsersForStaffRequest(BaseModel):
     default_password: str = "TempPassword123!"
 
@@ -2413,14 +2937,20 @@ async def seed_default_content(current_user: User = Depends(require_role("admin"
 # [MIGRATED TO ROUTERS - # ============ ENHANCED CMS ENDPOINTS ============]
 
 
-# ============ COUNSELLOR ENDPOINTS ============
+# =============================================================================
+# LEGACY COUNSELLOR ENDPOINTS - DEPRECATED
+# =============================================================================
+# These endpoints are DEPRECATED and will be removed after migration.
+# Use the new unified /api/staff endpoints instead.
+# See /app/memory/MIGRATION_NOTES.md for migration guide.
+# =============================================================================
 
 @api_router.post("/counsellors", response_model=Counsellor)
 async def create_counsellor(
     counsellor_input: CounsellorCreate,
     current_user: User = Depends(require_role("admin"))
 ):
-    """Create a new counsellor (admin only)"""
+    """DEPRECATED: Use POST /api/staff instead. Create a new counsellor (admin only)"""
     counsellor_obj = Counsellor(**counsellor_input.dict())
     # Encrypt sensitive fields before storing
     encrypted_data = encrypt_document('counsellors', counsellor_obj.dict())
@@ -2523,14 +3053,20 @@ async def delete_counsellor(
         raise HTTPException(status_code=404, detail="Counsellor not found")
     return {"message": "Counsellor deleted successfully"}
 
-# ============ PEER SUPPORTER ENDPOINTS ============
+# =============================================================================
+# LEGACY PEER SUPPORTER ENDPOINTS - DEPRECATED
+# =============================================================================
+# These endpoints are DEPRECATED and will be removed after migration.
+# Use the new unified /api/staff endpoints instead.
+# See /app/memory/MIGRATION_NOTES.md for migration guide.
+# =============================================================================
 
 @api_router.post("/peer-supporters", response_model=PeerSupporter)
 async def create_peer_supporter(
     peer_input: PeerSupporterCreate,
     current_user: User = Depends(require_role("admin"))
 ):
-    """Create a new peer supporter (admin only)"""
+    """DEPRECATED: Use POST /api/staff instead. Create a new peer supporter (admin only)"""
     peer_obj = PeerSupporter(**peer_input.dict())
     # Encrypt sensitive fields before storing
     encrypted_data = encrypt_document('peer_supporters', peer_obj.dict())
