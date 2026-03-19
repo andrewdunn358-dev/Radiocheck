@@ -17,9 +17,20 @@ from models.schemas import (
     UserLogin, UserCreate, User, TokenResponse,
     ChangePassword, ResetPasswordRequest, ResetPassword, AdminResetPassword
 )
+from encryption import decrypt_field
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
+
+# Helper to decrypt name if encrypted
+def get_decrypted_name(name_value):
+    """Decrypt name if it's encrypted, otherwise return as-is"""
+    if name_value and str(name_value).startswith("ENC:"):
+        try:
+            return decrypt_field(name_value)
+        except:
+            return name_value
+    return name_value or ""
 
 # JWT Configuration
 def get_jwt_secret():
@@ -326,7 +337,7 @@ async def login(credentials: UserLogin):
                 
                 return TokenResponse(
                     token=token,
-                    user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=staff.get("name", "")),
+                    user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=get_decrypted_name(staff.get("name"))),
                     redirect=redirect
                 )
         
@@ -350,7 +361,7 @@ async def login(credentials: UserLogin):
                     
                     return TokenResponse(
                         token=token,
-                        user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=staff.get("name", "")),
+                        user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=get_decrypted_name(staff.get("name"))),
                         redirect=redirect
                     )
     
@@ -386,7 +397,7 @@ async def login(credentials: UserLogin):
     
     return TokenResponse(
         token=token,
-        user=User(id=user_id, email=user["email"], role=user.get("role", "user"), name=user.get("name", "")),
+        user=User(id=user_id, email=user["email"], role=user.get("role", "user"), name=get_decrypted_name(user.get("name"))),
         redirect=redirect
     )
 
