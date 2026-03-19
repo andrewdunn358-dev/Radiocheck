@@ -1,5 +1,26 @@
 # ADMIN PORTAL COMPARISON: Legacy vs React
 
+## PROGRESS UPDATE - March 2026
+
+### COMPLETED FIXES:
+1. ✅ Staff - Status toggle buttons (Available/Busy/Off for counsellors, Available/Limited/Unavailable for peers)
+2. ✅ Rota - Coverage stats section (Counsellors Today, Peers Today, Shifts This Week, Coverage Gaps)
+3. ✅ CMS - Load Defaults button, shows page content (title, sections, cards)
+4. ✅ AI Personas - Edit modal, Enable/Disable toggle, Import Defaults button
+5. ✅ Beta Testing - Survey responses list, Export CSV button
+6. ✅ Compliance - Staff Wellbeing section, Run Security Review button, expanded metrics
+7. ✅ Logs - App Usage Analytics added previously
+8. ✅ Monitoring - Server health progress bars (CPU, Memory, Load), proper stats layout
+
+### REMAINING TO DO:
+- Logs tab: Missing screening/callbacks/panic sub-tabs, location map, charts
+- Governance: Missing sub-tabs, add hazard modal, generate report buttons
+- AI Learning: Missing sub-tabs, pattern management, approve/reject actions
+- AI Usage: Missing daily usage chart, budget progress bars
+- Events: Missing edit modal, attendance view
+
+---
+
 ## Status Legend:
 - ✅ DONE - Fully implemented and matches legacy
 - ⚠️ PARTIAL - Implemented but missing features
