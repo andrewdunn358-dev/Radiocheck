@@ -81,13 +81,17 @@ interface AICharacter {
   id: string;
   name: string;
   description?: string;
+  bio?: string;
+  prompt?: string;
   avatar?: string;
   is_enabled: boolean;
   order?: number;
+  category?: string;
   personality?: string;
   background?: string;
   greeting_message?: string;
   voice_style?: string;
+  is_hardcoded?: boolean;
 }
 
 interface AIUsageSummary {
@@ -235,8 +239,11 @@ const api = {
   getAICharacters: (token: string) =>
     api.fetch<{ characters: AICharacter[]; source: string }>('/ai-characters/admin/all', { token }),
   
+  getAICharacter: (token: string, id: string) =>
+    api.fetch<AICharacter>(`/ai-characters/admin/${id}`, { token }),
+
   updateAICharacter: (token: string, id: string, data: Partial<AICharacter>) =>
-    api.fetch<AICharacter>(`/ai-characters/admin/${id}`, {
+    api.fetch<AICharacter>(`/ai-characters/${id}`, {
       token,
       method: 'PUT',
       body: JSON.stringify(data),
@@ -1492,9 +1499,19 @@ export default function AdminPortal() {
                     <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg p-4">
                       <h4 className="font-medium mb-3 text-purple-200">🔄 Return Rate (30 days)</h4>
                       <div className="text-center py-4">
-                        <p className="text-5xl font-bold">{typeof appUsageStats?.return_rate === 'number' ? appUsageStats.return_rate.toFixed(1) : (appUsageStats?.return_rate || 0)}%</p>
+                        <p className="text-5xl font-bold">
+                          {typeof appUsageStats?.return_rate === 'object' && appUsageStats?.return_rate?.percentage !== undefined
+                            ? Number(appUsageStats.return_rate.percentage).toFixed(1)
+                            : typeof appUsageStats?.return_rate === 'number'
+                            ? Number(appUsageStats.return_rate).toFixed(1)
+                            : '0.0'}%
+                        </p>
                         <p className="text-purple-200 mt-2">
-                          {appUsageStats?.returning_visitors || 0} returning / {appUsageStats?.['30_days']?.unique_visitors || 0} total visitors
+                          {typeof appUsageStats?.return_rate === 'object' && appUsageStats?.return_rate?.returning_visitors !== undefined
+                            ? appUsageStats.return_rate.returning_visitors
+                            : appUsageStats?.returning_visitors || 0} returning / {typeof appUsageStats?.return_rate === 'object' && appUsageStats?.return_rate?.total_visitors !== undefined
+                            ? appUsageStats.return_rate.total_visitors
+                            : appUsageStats?.['30_days']?.unique_visitors || 0} total visitors
                         </p>
                       </div>
                     </div>
@@ -1690,7 +1707,7 @@ export default function AdminPortal() {
               {/* Edit Character Modal */}
               {showCharacterModal && editingCharacter && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg border border-gray-700 max-h-[90vh] overflow-y-auto">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-bold">Edit AI Character</h3>
                       <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }} className="p-1 hover:bg-gray-700 rounded">
@@ -1711,48 +1728,78 @@ export default function AdminPortal() {
                       }
                     }}>
                       <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Name</label>
-                          <input
-                            type="text"
-                            value={editingCharacter.name}
-                            onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Description</label>
-                          <textarea
-                            value={editingCharacter.description || ''}
-                            onChange={(e) => setEditingCharacter({ ...editingCharacter, description: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Personality</label>
-                          <textarea
-                            value={editingCharacter.personality || ''}
-                            onChange={(e) => setEditingCharacter({ ...editingCharacter, personality: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Greeting Message</label>
-                          <textarea
-                            value={editingCharacter.greeting_message || ''}
-                            onChange={(e) => setEditingCharacter({ ...editingCharacter, greeting_message: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
-                          />
-                        </div>
+                        {/* Row 1: Name and Character ID */}
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm text-gray-400 mb-1">Order</label>
+                            <label className="block text-sm text-gray-400 mb-1">Character Name *</label>
+                            <input
+                              type="text"
+                              value={editingCharacter.name}
+                              onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Character ID</label>
+                            <input
+                              type="text"
+                              value={editingCharacter.id}
+                              disabled
+                              className="w-full px-3 py-2 bg-gray-600 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Cannot be changed after creation</p>
+                          </div>
+                        </div>
+
+                        {/* Short Description */}
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Short Description</label>
+                          <input
+                            type="text"
+                            value={editingCharacter.description || ''}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, description: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            placeholder="Brief description shown in character list"
+                          />
+                        </div>
+
+                        {/* Bio */}
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Bio (Optional)</label>
+                          <textarea
+                            value={editingCharacter.bio || ''}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, bio: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
+                            placeholder="Longer biography shown in character detail view"
+                          />
+                        </div>
+
+                        {/* Row 2: Category, Order, Enabled */}
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Category</label>
+                            <select
+                              value={editingCharacter.category || 'general'}
+                              onChange={(e) => setEditingCharacter({ ...editingCharacter, category: e.target.value })}
+                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            >
+                              <option value="general">General</option>
+                              <option value="legal">Legal</option>
+                              <option value="wellbeing">Wellbeing</option>
+                              <option value="addiction">Addiction</option>
+                              <option value="family">Family</option>
+                              <option value="fitness">Fitness</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Display Order</label>
                             <input
                               type="number"
                               value={editingCharacter.order || 0}
                               onChange={(e) => setEditingCharacter({ ...editingCharacter, order: parseInt(e.target.value) })}
                               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                              min="0"
                             />
                           </div>
                           <div className="flex items-center gap-2 pt-6">
@@ -1763,9 +1810,54 @@ export default function AdminPortal() {
                               onChange={(e) => setEditingCharacter({ ...editingCharacter, is_enabled: e.target.checked })}
                               className="w-4 h-4"
                             />
-                            <label htmlFor="char-enabled" className="text-sm">Enabled</label>
+                            <label htmlFor="char-enabled" className="text-sm">Enabled (visible to users)</label>
                           </div>
                         </div>
+
+                        {/* Avatar Section */}
+                        <div className="border border-gray-600 rounded-lg p-4">
+                          <label className="block text-sm text-gray-400 mb-2">Avatar</label>
+                          <div className="flex items-start gap-4">
+                            {editingCharacter.avatar && (
+                              <img 
+                                src={editingCharacter.avatar} 
+                                alt={editingCharacter.name}
+                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-600"
+                              />
+                            )}
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                value={editingCharacter.avatar || ''}
+                                onChange={(e) => setEditingCharacter({ ...editingCharacter, avatar: e.target.value })}
+                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                                placeholder="Enter avatar URL (e.g., /static/avatars/character.png)"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">Enter URL or use /static/avatars/ path</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* System Prompt */}
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">System Prompt *</label>
+                          <textarea
+                            value={editingCharacter.prompt || ''}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, prompt: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                            rows={12}
+                            placeholder="Enter the system prompt that defines this character's personality, behavior, and responses..."
+                          />
+                          <p className="text-xs text-gray-500 mt-1">This defines how the AI character responds to users</p>
+                        </div>
+
+                        {editingCharacter.is_hardcoded && (
+                          <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
+                            <p className="text-yellow-300 text-sm">
+                              ⚠️ This is a hardcoded character. Changes will create a database override.
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-3 mt-6">
                         <button
@@ -1846,9 +1938,17 @@ export default function AdminPortal() {
                             </div>
                             {/* Edit Button */}
                             <button
-                              onClick={() => {
-                                setEditingCharacter({ ...char });
-                                setShowCharacterModal(true);
+                              onClick={async () => {
+                                try {
+                                  // Fetch full character details including prompt
+                                  const fullChar = await api.getAICharacter(token!, char.id);
+                                  setEditingCharacter(fullChar);
+                                  setShowCharacterModal(true);
+                                } catch (err) {
+                                  // Fallback to current data if fetch fails
+                                  setEditingCharacter({ ...char });
+                                  setShowCharacterModal(true);
+                                }
                               }}
                               className="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs"
                             >
