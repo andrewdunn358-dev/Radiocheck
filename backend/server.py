@@ -1993,7 +1993,7 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(to_encode, get_jwt_secret(), algorithm=ALGORITHM)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
-    """Get current authenticated user from JWT token"""
+    """Get current authenticated user from JWT token - checks staff collection first, then legacy users"""
     try:
         token = credentials.credentials
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[ALGORITHM])
@@ -2001,7 +2001,21 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
         
-        # Look up by user ID (not email - the token contains user_id)
+        # FIRST: Check unified staff collection (new system)
+        # Check by id first, then by legacy_user_id (for tokens issued before migration)
+        staff = await db.staff.find_one({"id": user_id})
+        if not staff:
+            staff = await db.staff.find_one({"legacy_user_id": user_id})
+        
+        if staff:
+            return User(
+                id=staff.get("id"),
+                email=staff["email"],
+                role=staff.get("role", "user"),
+                name=staff.get("name", "")
+            )
+        
+        # FALLBACK: Check legacy users collection
         # Try 'id' field first, then '_id' for older users
         user_data = await db.users.find_one({"id": user_id})
         if user_data is None:
