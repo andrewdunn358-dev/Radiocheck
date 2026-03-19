@@ -31,6 +31,26 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 
 ## What's Been Implemented
 
+### March 19, 2026 - Staff Portal Fixes (Latest)
+1. **Profile Loading Security Fix**
+   - Fixed profile loading to verify `user_id` matches logged-in user
+   - Prevents showing wrong user's profile (e.g., "Sarah M" bug)
+   - Added `user_id` field preservation in API response
+
+2. **UI Improvements**
+   - Status buttons now disabled with tooltip when no profile is linked
+   - Added "No Staff Profile Linked" warning banner
+   - Added "Socket Connection Error" warning banner with refresh option
+   - Added `data-testid` attributes for automated testing
+
+3. **AI Characters Sort Order Fix**
+   - Fallback characters now sorted by `order` field
+   - Added Frankie to character order list (order: 0)
+
+4. **Code Quality**
+   - Improved logging throughout profile loading flow
+   - Enhanced error handling for edge cases
+
 ### December 18, 2025 - Staff Portal Fixes
 1. **WebRTC Phone Integration**
    - Created `useWebRTCPhone.tsx` hook with full Socket.IO integration
@@ -59,12 +79,17 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 
 ## Prioritized Backlog
 
-### P0 - Critical
-- [ ] Deploy to Vercel and verify all fixes work
-- [ ] Test WebRTC calling between staff members
-- [ ] Test live chat functionality
-- [ ] Test status update (available/busy/offline)
-- [ ] Test safeguarding alert acknowledge/resolve
+### P0 - Critical (COMPLETED)
+- [x] Profile loading security - verifies user_id match (March 19, 2026)
+- [x] Status buttons disabled when no profile linked (March 19, 2026)
+- [x] AI Characters sort order fix (March 19, 2026)
+- [x] WebRTC socket connection working (March 19, 2026)
+- [x] Twilio phone registration working (March 19, 2026)
+
+### P0 - Critical (REMAINING)
+- [ ] Deploy to Vercel and verify all fixes work ON PRODUCTION
+- [ ] User should test with OLD PORTAL CLOSED (socket conflict)
+- [ ] User `kev@radiocheck.me` needs staff profile created in admin
 
 ### P1 - High Priority
 - [ ] Begin Admin Portal migration to `/app/portal/src/app/admin`
@@ -73,8 +98,8 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 
 ### P2 - Medium Priority
 - [ ] Delete legacy directories after full migration approval
-- [ ] Jitsi video chat for events
-- [ ] AI Character sort order fix
+- [ ] Jitsi video chat for events (BLOCKED - waiting on user)
+- [x] AI Character sort order fix (COMPLETED March 19, 2026)
 
 ### P3 - Future
 - [ ] Native mobile app (iOS/Android)
@@ -102,9 +127,17 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 - Role: Counsellor with supervisor access
 
 ## Known Issues
-1. Some counsellor profiles missing `specialization`/`phone` fields cause 500 errors
+1. ~~Some counsellor profiles missing `specialization`/`phone` fields cause 500 errors~~ (FIXED)
 2. Jitsi video chat blocked on user's side
 3. Staff status doesn't auto-reset after calls (needs implementation)
+4. ~~User sees wrong profile when profile loading fails~~ (FIXED - March 19, 2026)
+5. **SOCKET CONFLICT**: Old and new portals fight for the same socket - close old portal when testing new one
+
+## Critical Notes for Production Testing
+1. **CLOSE OLD PORTAL** when testing the new one (socket conflict issue)
+2. User `kev@radiocheck.me` needs a staff profile created in admin before status updates work
+3. Backend changes need redeployment on Render.com to take effect
+4. Frontend changes need Vercel to complete build before they're live
 
 ## Deployment
 - Portal: Vercel project with root directory `/portal`
