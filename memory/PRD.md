@@ -31,6 +31,27 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 
 ## What's Been Implemented
 
+### March 19, 2026 - Admin Portal Created
+1. **New Admin Portal** (`/app/portal/src/app/admin/page.tsx`)
+   - Complete React admin interface with all tabs
+   - Staff Management (CRUD with unified staff endpoint)
+   - Logs (Calls, Chats, Safeguarding alerts)
+   - AI Personas viewer
+   - AI Usage stats
+   - Monitoring dashboard
+   - Migration tools (run migration, fix passwords)
+   - Settings placeholder
+   - Uses unified `/api/staff` endpoints
+   - Vercel routing added for `admin.radiocheck.me`
+
+2. **Fixed Name Decryption in Login**
+   - Added `get_decrypted_name()` helper in auth.py
+   - Login now decrypts encrypted names before returning
+
+3. **Fixed Two `get_current_user` Functions**
+   - Both `auth.py` AND `server.py` now check `staff` collection first
+   - Falls back to `legacy_user_id` lookup for migrated users
+
 ### March 19, 2026 - Staff Portal Fixes (Latest)
 1. **CRITICAL: Unified Staff Data Model**
    - Created new `staff` collection that combines `users` + `counsellors` + `peer_supporters`

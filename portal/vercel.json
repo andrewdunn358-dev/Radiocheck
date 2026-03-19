@@ -32,6 +32,16 @@
       "source": "/:path*", 
       "has": [{ "type": "host", "value": "staff.radiocheck.me" }],
       "destination": "/staff/:path*"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "admin.radiocheck.me" }],
+      "destination": "/admin"
+    },
+    {
+      "source": "/:path*", 
+      "has": [{ "type": "host", "value": "admin.radiocheck.me" }],
+      "destination": "/admin/:path*"
     }
   ]
 }
