@@ -308,22 +308,24 @@ export default function AdminPortal() {
     if (!token) return;
     try {
       const data = await api.getStaff(token, staffRoleFilter !== 'all' ? staffRoleFilter : undefined);
-      setStaff(data);
+      // Ensure we always have an array
+      setStaff(Array.isArray(data) ? data : []);
     } catch (err: any) {
       // Fallback to legacy endpoints if new endpoint fails
-      console.log('Falling back to legacy endpoints...');
+      console.log('Falling back to legacy endpoints...', err.message);
       try {
         const [counsellors, peers] = await Promise.all([
-          api.fetch<any[]>('/counsellors', { token }),
-          api.fetch<any[]>('/peer-supporters', { token }),
+          api.fetch<any[]>('/counsellors', { token }).catch(() => []),
+          api.fetch<any[]>('/peer-supporters', { token }).catch(() => []),
         ]);
         const combined = [
-          ...counsellors.map((c: any) => ({ ...c, role: 'counsellor' })),
-          ...peers.map((p: any) => ({ ...p, role: 'peer', name: p.firstName || p.name })),
+          ...(Array.isArray(counsellors) ? counsellors : []).map((c: any) => ({ ...c, role: 'counsellor' })),
+          ...(Array.isArray(peers) ? peers : []).map((p: any) => ({ ...p, role: 'peer', name: p.firstName || p.name })),
         ];
         setStaff(combined);
       } catch (legacyErr: any) {
-        throw new Error('Failed to load staff: ' + legacyErr.message);
+        console.error('Failed to load staff:', legacyErr);
+        setStaff([]);
       }
     }
   };
@@ -333,20 +335,20 @@ export default function AdminPortal() {
     try {
       switch (activeLogSubTab) {
         case 'calls':
-          const calls = await api.getCallLogs(token);
-          setCallLogs(calls);
+          const calls = await api.getCallLogs(token).catch(() => []);
+          setCallLogs(Array.isArray(calls) ? calls : []);
           break;
         case 'chats':
-          const chats = await api.getChatRooms(token);
-          setChatRooms(chats);
+          const chats = await api.getChatRooms(token).catch(() => []);
+          setChatRooms(Array.isArray(chats) ? chats : []);
           break;
         case 'safeguarding':
-          const alerts = await api.getSafeguardingAlerts(token);
-          setSafeguardingAlerts(alerts);
+          const alerts = await api.getSafeguardingAlerts(token).catch(() => []);
+          setSafeguardingAlerts(Array.isArray(alerts) ? alerts : []);
           break;
       }
     } catch (err: any) {
-      throw new Error('Failed to load logs: ' + err.message);
+      console.error('Failed to load logs:', err.message);
     }
   };
 
@@ -354,11 +356,15 @@ export default function AdminPortal() {
     if (!token) return;
     try {
       const data = await api.getAICharacters(token);
-      setAICharacters(data.characters || []);
+      setAICharacters(Array.isArray(data?.characters) ? data.characters : []);
     } catch (err: any) {
       // Fallback to public endpoint
-      const data = await api.fetch<{ characters: AICharacter[] }>('/ai-characters', {});
-      setAICharacters(data.characters || []);
+      try {
+        const data = await api.fetch<{ characters: AICharacter[] }>('/ai-characters', {});
+        setAICharacters(Array.isArray(data?.characters) ? data.characters : []);
+      } catch {
+        setAICharacters([]);
+      }
     }
   };
 
