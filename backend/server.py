@@ -2558,7 +2558,7 @@ async def migrate_to_unified_staff(current_user: User = Depends(require_role("ad
             staff_doc = {
                 "id": str(uuid.uuid4()),
                 "email": email,
-                "password_hash": user.get("password_hash", ""),  # Keep existing hash
+                "password_hash": user.get("hashed_password") or user.get("password_hash", ""),  # Support both field names
                 "role": role,
                 "name": profile.get("name") or profile.get("firstName") or name if profile else name,
                 "status": profile.get("status", "unavailable") if profile else "unavailable",
@@ -2695,6 +2695,69 @@ async def get_migration_status(current_user: User = Depends(require_role("admin"
         "orphan_count": orphans,
         "migration_complete": unified_staff > 0 and migrated >= legacy_users
     }
+
+
+
+@api_router.post("/admin/fix-staff-passwords")
+async def fix_staff_passwords(current_user: User = Depends(require_role("admin"))):
+    """
+    Fix password hashes for migrated staff who have empty passwords.
+    Copies the correct password hash from the legacy users collection.
+    """
+    stats = {
+        "checked": 0,
+        "fixed": 0,
+        "errors": []
+    }
+    
+    # Find all staff with empty or missing password_hash
+    staff_to_fix = await db.staff.find({
+        "$or": [
+            {"password_hash": ""},
+            {"password_hash": None},
+            {"password_hash": {"$exists": False}}
+        ],
+        "legacy_user_id": {"$ne": None}  # Only fix migrated users
+    }).to_list(1000)
+    
+    for staff in staff_to_fix:
+        stats["checked"] += 1
+        legacy_user_id = staff.get("legacy_user_id")
+        
+        if not legacy_user_id:
+            continue
+        
+        # Find the legacy user
+        legacy_user = await db.users.find_one({"id": legacy_user_id})
+        if not legacy_user:
+            # Try by _id
+            from bson import ObjectId
+            try:
+                legacy_user = await db.users.find_one({"_id": ObjectId(legacy_user_id)})
+            except:
+                pass
+        
+        if not legacy_user:
+            stats["errors"].append({"email": staff.get("email"), "error": "Legacy user not found"})
+            continue
+        
+        # Get password hash - check both field names
+        password_hash = legacy_user.get("hashed_password") or legacy_user.get("password_hash")
+        
+        if password_hash:
+            await db.staff.update_one(
+                {"id": staff.get("id")},
+                {"$set": {"password_hash": password_hash}}
+            )
+            stats["fixed"] += 1
+        else:
+            stats["errors"].append({"email": staff.get("email"), "error": "No password hash in legacy user"})
+    
+    return {
+        "message": "Password fix completed",
+        "stats": stats
+    }
+
 
 
 
