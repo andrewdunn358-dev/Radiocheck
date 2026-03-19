@@ -22,7 +22,7 @@ import uuid
 import time
 
 # Get base URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-portal-fix-30.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://signaling-rebuild.preview.emergentagent.com').rstrip('/')
 
 # Delay between chat API calls to avoid rate limiting
 API_DELAY = 2  # seconds

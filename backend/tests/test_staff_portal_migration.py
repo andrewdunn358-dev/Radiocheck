@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 
 # Use the internal preview URL (same as frontend uses)
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-portal-fix-30.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://signaling-rebuild.preview.emergentagent.com')
 
 # Test credentials
 TEST_EMAIL = "test@staff.com"

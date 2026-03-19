@@ -15,7 +15,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-portal-fix-30.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://signaling-rebuild.preview.emergentagent.com').rstrip('/')
 
 # Test credentials from main agent
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"
