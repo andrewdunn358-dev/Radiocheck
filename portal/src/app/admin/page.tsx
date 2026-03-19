@@ -502,14 +502,27 @@ const api = {
   getLearningStats: (token: string) =>
     api.fetch<any>('/learning/stats', { token }),
   
-  getSafetyPatterns: (token: string) =>
-    api.fetch<any>('/learning/patterns?is_active=true', { token }),
+  getSafetyPatterns: (token: string, category: string = '', severity: string = '') => {
+    let url = '/learning/patterns?is_active=true';
+    if (category) url += `&category=${category}`;
+    if (severity) url += `&severity=${severity}`;
+    return api.fetch<any>(url, { token });
+  },
   
   getLearningQueue: (token: string) =>
     api.fetch<any>('/learning/queue?status=pending', { token }),
   
   getApprovedLearnings: (token: string) =>
     api.fetch<any>('/learning/approved', { token }),
+  
+  getResponseFeedback: (token: string) =>
+    api.fetch<any>('/learning/feedback?status=pending', { token }),
+  
+  deletePattern: (token: string, patternId: string) =>
+    api.fetch<any>(`/learning/patterns/${patternId}`, { token, method: 'DELETE' }),
+  
+  reviewFeedback: (token: string, feedbackId: string, action: 'approve' | 'reject') =>
+    api.fetch<any>(`/learning/feedback/${feedbackId}/review?action=${action}`, { token, method: 'POST' }),
 
   // Beta Testing
   getBetaStatus: (token: string) =>
@@ -634,6 +647,12 @@ export default function AdminPortal() {
   // Learning state
   const [learningStats, setLearningStats] = useState<any>(null);
   const [moderationQueue, setModerationQueue] = useState<any[]>([]);
+  const [learningSubTab, setLearningSubTab] = useState<'patterns' | 'queue' | 'approved' | 'feedback'>('patterns');
+  const [safetyPatterns, setSafetyPatterns] = useState<any[]>([]);
+  const [approvedLearnings, setApprovedLearnings] = useState<any[]>([]);
+  const [responseFeedback, setResponseFeedback] = useState<any[]>([]);
+  const [patternCategoryFilter, setPatternCategoryFilter] = useState('');
+  const [patternSeverityFilter, setPatternSeverityFilter] = useState('');
   
   // Beta Testing state
   const [betaEnabled, setBetaEnabled] = useState(false);
@@ -1121,13 +1140,18 @@ export default function AdminPortal() {
   const loadLearning = async () => {
     if (!token) return;
     try {
-      const [statsData, queueData, patternsData] = await Promise.all([
+      const [statsData, queueData, patternsData, approvedData, feedbackData] = await Promise.all([
         api.getLearningStats(token).catch(() => null),
         api.getLearningQueue(token).catch(() => ({ learnings: [] })),
-        api.getSafetyPatterns(token).catch(() => ({ patterns: [] })),
+        api.getSafetyPatterns(token, patternCategoryFilter, patternSeverityFilter).catch(() => ({ patterns: [] })),
+        api.getApprovedLearnings(token).catch(() => ({ learnings: [] })),
+        api.getResponseFeedback(token).catch(() => ({ feedback: [] })),
       ]);
       setLearningStats(statsData);
       setModerationQueue(queueData?.learnings || queueData?.queue || []);
+      setSafetyPatterns(patternsData?.patterns || []);
+      setApprovedLearnings(approvedData?.learnings || []);
+      setResponseFeedback(feedbackData?.feedback || feedbackData || []);
     } catch (err: any) {
       console.error('Learning data not available:', err);
     }
@@ -4786,75 +4810,274 @@ export default function AdminPortal() {
                 </div>
               </div>
 
-              {/* Moderation Queue */}
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-yellow-400" />
-                  Moderation Queue ({moderationQueue.length})
-                </h3>
-                {moderationQueue.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No items pending review</p>
-                ) : (
-                  <div className="space-y-3">
-                    {moderationQueue.slice(0, 10).map((item: any, index: number) => (
-                      <div key={item.id || index} className="bg-gray-700 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            item.category === 'safety' ? 'bg-red-500/20 text-red-400' :
-                            item.category === 'clinical' ? 'bg-orange-500/20 text-orange-400' :
-                            'bg-blue-500/20 text-blue-400'
-                          }`}>
-                            {item.category || 'general'}
-                          </span>
-                          <span className="text-xs text-gray-400">{item.submitted_by || 'system'}</span>
-                        </div>
-                        <p className="text-sm text-gray-300 mb-1"><strong>Context:</strong> {item.context?.substring(0, 80) || 'N/A'}...</p>
-                        <p className="text-sm text-gray-300 mb-3"><strong>Response:</strong> {item.ai_response_pattern?.substring(0, 80) || item.content?.substring(0, 80) || 'N/A'}...</p>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={async () => {
-                              if (!token) return;
-                              try {
-                                await api.fetch(`/learning/approve/${item.id}?admin_id=${user?.id}`, { 
-                                  token, 
-                                  method: 'PUT',
-                                  body: JSON.stringify({ approved: true })
-                                });
-                                setSuccess('Learning approved');
-                                loadLearning();
-                              } catch (err: any) {
-                                setError('Failed to approve: ' + err.message);
-                              }
-                            }}
-                            className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
-                          >
-                            Approve
-                          </button>
-                          <button 
-                            onClick={async () => {
-                              if (!token) return;
-                              try {
-                                await api.fetch(`/learning/approve/${item.id}?admin_id=${user?.id}`, { 
-                                  token, 
-                                  method: 'PUT',
-                                  body: JSON.stringify({ approved: false })
-                                });
-                                setSuccess('Learning rejected');
-                                loadLearning();
-                              } catch (err: any) {
-                                setError('Failed to reject: ' + err.message);
-                              }
-                            }}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* Sub-tabs */}
+              <div className="flex gap-2 mb-6">
+                {[
+                  { id: 'patterns', label: 'Safety Patterns', icon: '🛡️' },
+                  { id: 'queue', label: 'Approval Queue', icon: '⏳', badge: moderationQueue.length },
+                  { id: 'approved', label: 'Approved', icon: '✅' },
+                  { id: 'feedback', label: 'Feedback', icon: '💬', badge: learningStats?.feedback?.pending },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setLearningSubTab(tab.id as any)}
+                    className={`px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                      learningSubTab === tab.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                    {tab.badge && tab.badge > 0 && (
+                      <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{tab.badge}</span>
+                    )}
+                  </button>
+                ))}
               </div>
+
+              {/* Safety Patterns Sub-tab */}
+              {learningSubTab === 'patterns' && (
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <div className="flex gap-4 mb-4">
+                    <select
+                      value={patternCategoryFilter}
+                      onChange={(e) => setPatternCategoryFilter(e.target.value)}
+                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    >
+                      <option value="">All Categories</option>
+                      <option value="crisis">Crisis</option>
+                      <option value="safety">Safety</option>
+                      <option value="clinical">Clinical</option>
+                      <option value="wellbeing">Wellbeing</option>
+                    </select>
+                    <select
+                      value={patternSeverityFilter}
+                      onChange={(e) => setPatternSeverityFilter(e.target.value)}
+                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    >
+                      <option value="">All Severities</option>
+                      <option value="critical">Critical</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                    <button onClick={loadLearning} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg">
+                      Filter
+                    </button>
+                  </div>
+                  
+                  {safetyPatterns.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No patterns found. Click "Seed Defaults" to add standard patterns.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {safetyPatterns.map((pattern: any) => (
+                        <div key={pattern.id} className="bg-gray-700 rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="font-semibold text-lg">&quot;{pattern.pattern}&quot;</span>
+                              <span className={`ml-3 px-2 py-1 rounded text-xs font-medium ${
+                                pattern.severity === 'critical' ? 'bg-red-500 text-white' :
+                                pattern.severity === 'high' ? 'bg-orange-500 text-white' :
+                                pattern.severity === 'medium' ? 'bg-yellow-500 text-black' :
+                                'bg-green-500 text-white'
+                              }`}>
+                                {pattern.severity?.toUpperCase()}
+                              </span>
+                            </div>
+                            <button 
+                              onClick={async () => {
+                                if (!confirm('Delete this pattern?')) return;
+                                try {
+                                  await api.deletePattern(token!, pattern.id);
+                                  setSuccess('Pattern deleted');
+                                  loadLearning();
+                                } catch (err: any) {
+                                  setError('Failed: ' + err.message);
+                                }
+                              }}
+                              className="p-1 bg-red-600 hover:bg-red-700 rounded"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="mt-2 text-sm text-gray-400 flex gap-4">
+                            <span>📁 {pattern.category}</span>
+                            <span>⚙️ {pattern.response_action}</span>
+                            <span>📝 {pattern.pattern_type}</span>
+                          </div>
+                          {pattern.description && <p className="mt-2 text-sm text-gray-400">{pattern.description}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Approval Queue Sub-tab */}
+              {learningSubTab === 'queue' && (
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-yellow-400" />
+                    Pending Approval ({moderationQueue.length})
+                  </h3>
+                  {moderationQueue.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No items pending review</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {moderationQueue.map((item: any, index: number) => (
+                        <div key={item.id || index} className="bg-gray-700 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              item.category === 'safety' ? 'bg-red-500/20 text-red-400' :
+                              item.category === 'clinical' ? 'bg-orange-500/20 text-orange-400' :
+                              'bg-blue-500/20 text-blue-400'
+                            }`}>
+                              {item.category || 'general'}
+                            </span>
+                            <span className="text-xs text-gray-400">{item.submitted_by || 'system'}</span>
+                          </div>
+                          <p className="text-sm text-gray-300 mb-1"><strong>Context:</strong> {item.context?.substring(0, 100) || 'N/A'}...</p>
+                          <p className="text-sm text-gray-300 mb-3"><strong>Response:</strong> {item.ai_response_pattern?.substring(0, 100) || item.content?.substring(0, 100) || 'N/A'}...</p>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={async () => {
+                                if (!token) return;
+                                try {
+                                  await api.fetch(`/learning/approve/${item.id}?admin_id=${user?.id}`, { 
+                                    token, 
+                                    method: 'PUT',
+                                    body: JSON.stringify({ approved: true })
+                                  });
+                                  setSuccess('Learning approved');
+                                  loadLearning();
+                                } catch (err: any) {
+                                  setError('Failed: ' + err.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                            >
+                              Approve
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                if (!token) return;
+                                try {
+                                  await api.fetch(`/learning/approve/${item.id}?admin_id=${user?.id}`, { 
+                                    token, 
+                                    method: 'PUT',
+                                    body: JSON.stringify({ approved: false })
+                                  });
+                                  setSuccess('Learning rejected');
+                                  loadLearning();
+                                } catch (err: any) {
+                                  setError('Failed: ' + err.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Approved Learnings Sub-tab */}
+              {learningSubTab === 'approved' && (
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Check className="w-5 h-5 text-green-400" />
+                    Approved Learnings ({approvedLearnings.length})
+                  </h3>
+                  {approvedLearnings.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No approved learnings yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {approvedLearnings.map((item: any, index: number) => (
+                        <div key={item.id || index} className="bg-gray-700 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              item.category === 'safety' ? 'bg-red-500/20 text-red-400' :
+                              'bg-green-500/20 text-green-400'
+                            }`}>
+                              {item.category || 'general'}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              Approved by {item.approved_by || 'admin'} on {item.approved_at ? new Date(item.approved_at).toLocaleDateString() : 'N/A'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-300">{item.context || item.content || 'N/A'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Response Feedback Sub-tab */}
+              {learningSubTab === 'feedback' && (
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-blue-400" />
+                    Response Feedback ({Array.isArray(responseFeedback) ? responseFeedback.length : 0})
+                  </h3>
+                  {!Array.isArray(responseFeedback) || responseFeedback.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No feedback pending review</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {responseFeedback.map((item: any, index: number) => (
+                        <div key={item.id || index} className="bg-gray-700 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              item.feedback_type === 'negative' ? 'bg-red-500/20 text-red-400' :
+                              item.feedback_type === 'positive' ? 'bg-green-500/20 text-green-400' :
+                              'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {item.feedback_type || 'neutral'}
+                            </span>
+                            <span className="text-xs text-gray-400">{item.submitted_at ? new Date(item.submitted_at).toLocaleDateString() : 'N/A'}</span>
+                          </div>
+                          <p className="text-sm text-gray-300 mb-1"><strong>AI Response:</strong> {item.ai_response?.substring(0, 100) || 'N/A'}...</p>
+                          <p className="text-sm text-gray-300 mb-3"><strong>Feedback:</strong> {item.feedback_text || item.notes || 'No comments'}</p>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  await api.reviewFeedback(token!, item.id, 'approve');
+                                  setSuccess('Feedback reviewed');
+                                  loadLearning();
+                                } catch (err: any) {
+                                  setError('Failed: ' + err.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                            >
+                              Mark Reviewed
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  await api.reviewFeedback(token!, item.id, 'reject');
+                                  setSuccess('Feedback dismissed');
+                                  loadLearning();
+                                } catch (err: any) {
+                                  setError('Failed: ' + err.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
