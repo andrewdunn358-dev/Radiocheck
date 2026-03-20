@@ -388,6 +388,15 @@ async def call_initiate(sid, data):
     # Also check if they're in a real call vs stuck status
     target_status = target_info.get('status', 'offline')
     if target_status not in ['available', 'in_chat']:
+        # If status is 'limited' or 'unavailable', they've explicitly set themselves busy/off
+        if target_status in ['limited', 'unavailable', 'busy']:
+            logger.info(f"Target user {target_user_id} status is '{target_status}' - not available for calls")
+            await sio.emit('call_failed', {
+                'reason': 'user_busy',
+                'message': 'The person you are trying to call is not available'
+            }, to=sid)
+            return
+        
         # Check if this is a stuck status - no active call for this user
         is_actually_busy = False
         for call_id, call in active_calls.items():
@@ -917,8 +926,13 @@ async def request_human_chat(sid, data):
         if user['user_type'] in ['counsellor', 'peer']:
             user_status = user.get('status', 'offline')
             
-            # Check if status is stuck (not in a real active call or chat)
-            if user_status not in ['available', 'offline']:
+            # Skip staff who have explicitly set themselves as unavailable or limited
+            if user_status in ['limited', 'unavailable', 'busy', 'offline']:
+                logger.info(f"  Skipping {user.get('name')} - status: {user_status}")
+                continue
+            
+            # Check if status is stuck (not 'available' but not intentionally set)
+            if user_status != 'available':
                 is_actually_busy = False
                 # Check active calls
                 for call_id, call in active_calls.items():
