@@ -1,5 +1,6 @@
 """
 Documents Router - Serves compliance documents as PDFs
+Uses fpdf2 for PDF generation (pure Python, no system dependencies)
 """
 import os
 import logging
@@ -8,21 +9,12 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response, JSONResponse
 import markdown
+from fpdf import FPDF
+from html.parser import HTMLParser
+import re
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
-
-# Lazy import weasyprint - only needed for PDF generation
-# This allows the server to start even if weasyprint isn't installed
-_weasyprint_available = False
-HTML = None
-CSS = None
-
-try:
-    from weasyprint import HTML, CSS
-    _weasyprint_available = True
-except ImportError:
-    logger.warning("weasyprint not available - PDF generation disabled, markdown download still works")
 
 # Path to compliance documents - use relative path from backend folder
 DOCS_PATH = Path(__file__).parent.parent / "docs" / "compliance"
@@ -37,151 +29,221 @@ DOCUMENTS = {
     "SAFEGUARDING": "SAFEGUARDING_DISCLAIMER.md",
 }
 
-# CSS styling for PDF documents
-PDF_CSS = """
-@page {
-    size: A4;
-    margin: 2cm;
-    @bottom-center {
-        content: "Radio Check - Confidential";
-        font-size: 10px;
-        color: #666;
+
+def sanitize_text(text: str) -> str:
+    """Remove or replace special characters that fpdf2 can't handle with built-in fonts"""
+    replacements = {
+        '•': '-',
+        '–': '-',
+        '—': '-',
+        '"': '"',
+        '"': '"',
+        ''': "'",
+        ''': "'",
+        '…': '...',
+        '©': '(c)',
+        '®': '(R)',
+        '™': '(TM)',
+        '×': 'x',
+        '→': '->',
+        '←': '<-',
+        '✓': '[x]',
+        '✗': '[ ]',
+        '★': '*',
+        '☆': '*',
+        '\u00a0': ' ',  # Non-breaking space
     }
-    @bottom-right {
-        content: "Page " counter(page) " of " counter(pages);
-        font-size: 10px;
-        color: #666;
-    }
-}
+    for char, replacement in replacements.items():
+        text = text.replace(char, replacement)
+    # Remove any remaining non-ASCII characters
+    text = text.encode('ascii', 'replace').decode('ascii')
+    return text
 
-body {
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    font-size: 11pt;
-    line-height: 1.6;
-    color: #333;
-}
 
-h1 {
-    color: #1a365d;
-    border-bottom: 3px solid #3182ce;
-    padding-bottom: 10px;
-    font-size: 24pt;
-    margin-top: 0;
-}
+class HTMLtoPDFParser(HTMLParser):
+    """Simple HTML parser that extracts text for PDF generation"""
+    
+    def __init__(self):
+        super().__init__()
+        self.elements = []
+        self.current_tag = None
+        self.current_text = ""
+        self.in_list = False
+        self.list_type = None
+        self.list_counter = 0
+    
+    def handle_starttag(self, tag, attrs):
+        if self.current_text.strip():
+            self.elements.append((self.current_tag or 'p', self.current_text.strip()))
+            self.current_text = ""
+        self.current_tag = tag
+        if tag == 'ul':
+            self.in_list = True
+            self.list_type = 'ul'
+        elif tag == 'ol':
+            self.in_list = True
+            self.list_type = 'ol'
+            self.list_counter = 0
+        elif tag == 'li' and self.list_type == 'ol':
+            self.list_counter += 1
+    
+    def handle_endtag(self, tag):
+        if self.current_text.strip():
+            if tag == 'li' and self.in_list:
+                prefix = f"{self.list_counter}. " if self.list_type == 'ol' else "- "
+                self.elements.append(('li', prefix + self.current_text.strip()))
+            else:
+                self.elements.append((tag, self.current_text.strip()))
+            self.current_text = ""
+        if tag in ('ul', 'ol'):
+            self.in_list = False
+            self.list_type = None
+        self.current_tag = None
+    
+    def handle_data(self, data):
+        self.current_text += data
 
-h2 {
-    color: #2c5282;
-    border-bottom: 1px solid #cbd5e0;
-    padding-bottom: 5px;
-    font-size: 16pt;
-    margin-top: 24pt;
-}
 
-h3 {
-    color: #2d3748;
-    font-size: 13pt;
-    margin-top: 18pt;
-}
+class DocumentPDF(FPDF):
+    """Custom PDF class for compliance documents"""
+    
+    def __init__(self, title="Radio Check Document"):
+        super().__init__()
+        self.doc_title = title
+        # Use built-in fonts only
+        self.set_auto_page_break(auto=True, margin=25)
+    
+    def header(self):
+        self.set_font('Helvetica', 'B', 12)
+        self.set_text_color(26, 54, 93)  # Dark blue
+        self.cell(0, 10, 'Radio Check', align='C')
+        self.ln(5)
+        self.set_font('Helvetica', '', 9)
+        self.set_text_color(100, 100, 100)
+        self.cell(0, 5, 'Veterans Mental Health Support', align='C')
+        self.ln(10)
+        # Separator line
+        self.set_draw_color(49, 130, 206)
+        self.line(10, self.get_y(), 200, self.get_y())
+        self.ln(5)
+    
+    def footer(self):
+        self.set_y(-20)
+        self.set_font('Helvetica', 'I', 8)
+        self.set_text_color(128, 128, 128)
+        self.cell(0, 10, 'Radio Check - Confidential', align='L')
+        self.cell(0, 10, f'Page {self.page_no()}/{{nb}}', align='R')
+    
+    def add_title(self, title):
+        self.set_font('Helvetica', 'B', 20)
+        self.set_text_color(26, 54, 93)
+        self.multi_cell(0, 12, title)
+        self.ln(5)
+    
+    def add_confidential_notice(self):
+        self.set_fill_color(254, 215, 215)  # Light red
+        self.set_text_color(197, 48, 48)  # Dark red
+        self.set_font('Helvetica', 'B', 10)
+        self.cell(0, 10, 'CONFIDENTIAL - FOR AUTHORIZED PERSONNEL ONLY', 
+                  align='C', fill=True)
+        self.ln(10)
+        self.set_text_color(0, 0, 0)
+    
+    def add_heading(self, text, level=1):
+        text = sanitize_text(text)
+        if level == 1:
+            self.set_font('Helvetica', 'B', 16)
+            self.set_text_color(26, 54, 93)
+        elif level == 2:
+            self.set_font('Helvetica', 'B', 14)
+            self.set_text_color(44, 82, 130)
+        elif level == 3:
+            self.set_font('Helvetica', 'B', 12)
+            self.set_text_color(45, 55, 72)
+        else:
+            self.set_font('Helvetica', 'B', 11)
+            self.set_text_color(74, 85, 104)
+        
+        self.ln(5)
+        self.multi_cell(0, 8, text)
+        self.ln(3)
+        self.set_text_color(0, 0, 0)
+    
+    def add_paragraph(self, text):
+        text = sanitize_text(text)
+        self.set_font('Helvetica', '', 10)
+        self.set_text_color(51, 51, 51)
+        # Clean up text
+        text = re.sub(r'\s+', ' ', text).strip()
+        self.multi_cell(0, 6, text)
+        self.ln(3)
+    
+    def add_list_item(self, text):
+        text = sanitize_text(text)
+        self.set_font('Helvetica', '', 10)
+        self.set_text_color(51, 51, 51)
+        self.set_x(15)  # Indent
+        self.multi_cell(0, 6, text)
+        self.ln(1)
+    
+    def add_code_block(self, text):
+        text = sanitize_text(text)
+        self.set_fill_color(247, 250, 252)
+        self.set_font('Courier', '', 9)
+        self.set_x(15)
+        self.multi_cell(0, 5, text, fill=True)
+        self.ln(3)
 
-h4 {
-    color: #4a5568;
-    font-size: 11pt;
-    margin-top: 14pt;
-}
 
-p {
-    margin-bottom: 10pt;
-    text-align: justify;
-}
+def markdown_to_pdf(md_content: str, title: str) -> bytes:
+    """Convert markdown content to PDF bytes"""
+    
+    # Convert markdown to HTML
+    md = markdown.Markdown(extensions=['tables', 'fenced_code'])
+    html_content = md.convert(md_content)
+    
+    # Parse HTML to extract elements
+    parser = HTMLtoPDFParser()
+    parser.feed(html_content)
+    
+    # Create PDF
+    pdf = DocumentPDF(title=title)
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    
+    # Add title and confidential notice
+    pdf.add_title(title)
+    pdf.add_confidential_notice()
+    
+    # Add generation info
+    import datetime
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    pdf.ln(10)
+    
+    # Process elements
+    for tag, text in parser.elements:
+        if not text:
+            continue
+        
+        if tag == 'h1':
+            pdf.add_heading(text, 1)
+        elif tag == 'h2':
+            pdf.add_heading(text, 2)
+        elif tag == 'h3':
+            pdf.add_heading(text, 3)
+        elif tag in ('h4', 'h5', 'h6'):
+            pdf.add_heading(text, 4)
+        elif tag == 'li':
+            pdf.add_list_item(text)
+        elif tag in ('code', 'pre'):
+            pdf.add_code_block(text)
+        else:
+            pdf.add_paragraph(text)
+    
+    return pdf.output()
 
-ul, ol {
-    margin-left: 20pt;
-    margin-bottom: 10pt;
-}
-
-li {
-    margin-bottom: 5pt;
-}
-
-code {
-    background-color: #f7fafc;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-family: 'Courier New', monospace;
-    font-size: 10pt;
-}
-
-pre {
-    background-color: #f7fafc;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid #e2e8f0;
-    overflow-x: auto;
-    font-size: 9pt;
-}
-
-blockquote {
-    border-left: 4px solid #3182ce;
-    margin-left: 0;
-    padding-left: 20px;
-    color: #4a5568;
-    font-style: italic;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 15pt 0;
-}
-
-th, td {
-    border: 1px solid #e2e8f0;
-    padding: 8px 12px;
-    text-align: left;
-}
-
-th {
-    background-color: #edf2f7;
-    font-weight: bold;
-    color: #2d3748;
-}
-
-tr:nth-child(even) {
-    background-color: #f7fafc;
-}
-
-.header {
-    text-align: center;
-    margin-bottom: 30pt;
-    padding-bottom: 20pt;
-    border-bottom: 2px solid #3182ce;
-}
-
-.header img {
-    max-width: 150px;
-    margin-bottom: 10pt;
-}
-
-.confidential-notice {
-    background-color: #fed7d7;
-    border: 1px solid #fc8181;
-    color: #c53030;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 20pt;
-    font-weight: bold;
-    text-align: center;
-}
-
-.version-info {
-    background-color: #e6fffa;
-    border: 1px solid #81e6d9;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 20pt;
-    font-size: 10pt;
-}
-"""
 
 @router.get("/list")
 async def list_documents():
@@ -234,54 +296,14 @@ async def download_document(doc_id: str, format: str = "pdf"):
                 }
             )
         
-        # PDF format requested - check if weasyprint is available
-        if not _weasyprint_available:
-            raise HTTPException(
-                status_code=503, 
-                detail="PDF generation is not available. Please download as markdown format instead using ?format=md"
-            )
-        
-        # Convert markdown to HTML
-        md = markdown.Markdown(extensions=['tables', 'fenced_code', 'toc'])
-        html_content = md.convert(md_content)
-        
-        # Add header and styling
-        full_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>{doc_id.replace('_', ' ').title()} - Radio Check</title>
-        </head>
-        <body>
-            <div class="header">
-                <h1 style="margin-bottom: 5px;">Radio Check</h1>
-                <p style="color: #666; margin: 0;">Veterans Mental Health Support</p>
-            </div>
-            <div class="confidential-notice">
-                CONFIDENTIAL - FOR AUTHORIZED PERSONNEL ONLY
-            </div>
-            <div class="version-info">
-                <strong>Document:</strong> {doc_id.replace('_', ' ').title()}<br>
-                <strong>Generated:</strong> {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}
-            </div>
-            {html_content}
-        </body>
-        </html>
-        """
-        
-        # Convert HTML to PDF
-        pdf_buffer = BytesIO()
-        HTML(string=full_html).write_pdf(
-            pdf_buffer,
-            stylesheets=[CSS(string=PDF_CSS)]
-        )
-        pdf_buffer.seek(0)
+        # Convert to PDF using fpdf2
+        title = doc_id.replace('_', ' ').title()
+        pdf_bytes = markdown_to_pdf(md_content, title)
         
         pdf_filename = filename.replace('.md', '.pdf')
         
         return Response(
-            content=pdf_buffer.getvalue(),
+            content=bytes(pdf_bytes),
             media_type="application/pdf",
             headers={
                 "Content-Disposition": f'attachment; filename="{pdf_filename}"'
