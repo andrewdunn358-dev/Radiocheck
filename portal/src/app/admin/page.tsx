@@ -4785,7 +4785,7 @@ export default function AdminPortal() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <a 
-                    href="/documents/safeguarding-policy.pdf" 
+                    href={`${API_URL}/api/documents/download/SAFEGUARDING`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
@@ -4797,38 +4797,38 @@ export default function AdminPortal() {
                     </div>
                   </a>
                   <a 
-                    href="/documents/gdpr-policy.pdf" 
+                    href={`${API_URL}/api/documents/download/GDPR_AUDIT`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                   >
                     <Download className="w-5 h-5 text-blue-400" />
                     <div>
-                      <p className="font-medium">GDPR Policy</p>
+                      <p className="font-medium">GDPR Audit Report</p>
                       <p className="text-xs text-gray-400">PDF Document</p>
                     </div>
                   </a>
                   <a 
-                    href="/documents/staff-code-of-conduct.pdf" 
+                    href={`${API_URL}/api/documents/download/BACP_COMPLIANCE`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                   >
                     <Download className="w-5 h-5 text-purple-400" />
                     <div>
-                      <p className="font-medium">Staff Code of Conduct</p>
+                      <p className="font-medium">BACP Compliance</p>
                       <p className="text-xs text-gray-400">PDF Document</p>
                     </div>
                   </a>
                   <a 
-                    href="/documents/complaints-procedure.pdf" 
+                    href={`${API_URL}/api/documents/download/INCIDENT_RESPONSE`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                   >
                     <Download className="w-5 h-5 text-yellow-400" />
                     <div>
-                      <p className="font-medium">Complaints Procedure</p>
+                      <p className="font-medium">Incident Response Plan</p>
                       <p className="text-xs text-gray-400">PDF Document</p>
                     </div>
                   </a>
