@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ============================================================================
 
-# Similarity thresholds
-SIMILARITY_THRESHOLD_HIGH = 0.80    # Strong semantic match
-SIMILARITY_THRESHOLD_MEDIUM = 0.70  # Moderate semantic match  
-SIMILARITY_THRESHOLD_LOW = 0.60     # Weak semantic match
+# Similarity thresholds - calibrated for OpenAI text-embedding-3-small
+SIMILARITY_THRESHOLD_HIGH = 0.75    # Strong semantic match (was 0.80)
+SIMILARITY_THRESHOLD_MEDIUM = 0.60  # Moderate semantic match (was 0.70)
+SIMILARITY_THRESHOLD_LOW = 0.50     # Weak semantic match (was 0.60)
 
 # Risk weights based on similarity level
 SIMILARITY_RISK_WEIGHTS = {
