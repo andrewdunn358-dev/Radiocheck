@@ -198,12 +198,22 @@ export default function LocationMap({ data }: LocationMapProps) {
           <h4 className="font-medium text-red-400 mb-3">🇬🇧 UK Regions</h4>
           <div className="space-y-2 max-h-32 overflow-y-auto">
             {data?.uk_regions && Object.keys(data.uk_regions).length > 0 ? (
-              Object.entries(data.uk_regions).map(([region, count]) => (
-                <div key={region} className="flex justify-between items-center bg-gray-700 p-2 rounded text-sm">
-                  <span>{regionIcons[region] || '📍'} {region.replace('_', ' ')}</span>
-                  <strong>{count as number}</strong>
-                </div>
-              ))
+              (Array.isArray(data.uk_regions)
+                ? data.uk_regions
+                : Object.entries(data.uk_regions).map(([region, val]: [string, any]) => ({
+                    region,
+                    visits: typeof val === 'number' ? val : (val?.visits || val?.count || 0)
+                  }))
+              ).map((item: any, idx: number) => {
+                const regionName = String(item.region || item.name || '');
+                const visitCount = Number(item.visits || item.unique || item.count || 0);
+                return (
+                  <div key={idx} className="flex justify-between items-center bg-gray-700 p-2 rounded text-sm">
+                    <span>{regionIcons[regionName] || '📍'} {regionName.replace('_', ' ')}</span>
+                    <strong>{visitCount}</strong>
+                  </div>
+                );
+              })
             ) : (
               <p className="text-gray-500 text-sm">No UK region data</p>
             )}
