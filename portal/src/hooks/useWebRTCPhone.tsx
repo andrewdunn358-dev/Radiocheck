@@ -785,6 +785,27 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       updateStatus('online', 'Online');
     });
 
+    // ===== CHAT MESSAGE EVENTS =====
+    // Listen for incoming chat messages (real-time via Socket.IO)
+    socket.on('new_chat_message', (data: {
+      room_id: string;
+      message: string;
+      sender_id: string;
+      sender_name: string;
+      sender_type: string;
+      timestamp: string;
+      message_id: string;
+    }) => {
+      console.log('[WebRTCPhone] New chat message:', data);
+      // Dispatch event so the chat UI can update
+      window.dispatchEvent(new CustomEvent('new_chat_message', { detail: data }));
+    });
+
+    // Listen for typing indicators
+    socket.on('user_typing', (data: { room_id: string; user_id: string; user_name: string; is_typing: boolean }) => {
+      window.dispatchEvent(new CustomEvent('user_typing', { detail: data }));
+    });
+
     socket.on('disconnect', () => {
       console.log('[WebRTCPhone] Socket disconnected');
       updateStatus('offline', 'Disconnected');
@@ -805,6 +826,36 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Send a chat message via Socket.IO (for real-time delivery)
+  const sendChatMessage = (roomId: string, message: string, senderId: string, senderName: string, senderType: string = 'staff') => {
+    if (socketRef.current?.connected) {
+      const messageData = {
+        room_id: roomId,
+        message: message,
+        sender_id: senderId,
+        sender_name: senderName,
+        sender_type: senderType
+      };
+      console.log('[WebRTCPhone] Sending chat_message:', messageData);
+      socketRef.current.emit('chat_message', messageData);
+      return true;
+    } else {
+      console.error('[WebRTCPhone] Socket not connected - cannot send message');
+      return false;
+    }
+  };
+
+  // Start/stop typing indicator
+  const sendTypingIndicator = (roomId: string, isTyping: boolean) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit(isTyping ? 'typing_start' : 'typing_stop', {
+        room_id: roomId,
+        user_id: userId,
+        user_name: userName
+      });
+    }
+  };
+
   return {
     ...state,
     onlineUsers,
@@ -818,6 +869,11 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     acceptChatRequest,
     acceptCallRequest,
     dismissRequest,
+    // Chat functions
+    sendChatMessage,
+    sendTypingIndicator,
+    // Socket reference (for checking connection state)
+    isSocketConnected: socketRef.current?.connected || false,
   };
 }
 

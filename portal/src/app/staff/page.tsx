@@ -393,6 +393,55 @@ export default function StaffPortalPage() {
     };
   }, [token, user?.id, user?.name, webrtcUserId, loadLiveChats]);
 
+  // Listen for real-time chat messages via Socket.IO
+  useEffect(() => {
+    const handleNewMessage = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        room_id: string;
+        message: string;
+        sender_id: string;
+        sender_name: string;
+        sender_type: string;
+        timestamp: string;
+        message_id: string;
+      }>;
+      const data = customEvent.detail;
+      
+      console.log('[StaffPage] Received new_chat_message:', data);
+      
+      // Only add to messages if this is for the active chat room
+      // AND the sender is not us (avoid duplicates from our own messages)
+      const currentRoomId = activeChatRoom?.id || activeChatRoom?.room_id || activeChatRoom?._id;
+      const myId = webrtcUserId || user?.id;
+      
+      if (data.room_id === currentRoomId && data.sender_id !== myId) {
+        const newMsg = {
+          id: data.message_id,
+          text: data.message,
+          sender: data.sender_type === 'staff' ? 'staff' : 'user',
+          sender_name: data.sender_name,
+          timestamp: data.timestamp
+        };
+        setChatMessages(prev => {
+          // Prevent duplicates by checking message_id
+          if (prev.some(m => m.id === data.message_id)) {
+            return prev;
+          }
+          return [...prev, newMsg];
+        });
+      }
+      
+      // Reload live chats to update the list view
+      loadLiveChats();
+    };
+    
+    window.addEventListener('new_chat_message', handleNewMessage);
+    
+    return () => {
+      window.removeEventListener('new_chat_message', handleNewMessage);
+    };
+  }, [activeChatRoom, webrtcUserId, user?.id, loadLiveChats]);
+
   // Session timeout logic
   useEffect(() => {
     if (!token) return;
@@ -562,10 +611,34 @@ export default function StaffPortalPage() {
         console.error('No room ID found');
         return;
       }
+      
+      // CRITICAL: Use Socket.IO for real-time delivery (like legacy portal)
+      const messageSent = webrtcPhone.sendChatMessage(
+        roomId,
+        newMessage,
+        webrtcUserId || user?.id || '',
+        user?.name || 'Staff',
+        'staff'
+      );
+      
+      // Also persist to database via REST API
       await staffApi.sendLiveChatMessage(token, roomId, newMessage);
+      
+      // Add message to local state immediately for responsive UI
+      const newMsg = {
+        id: `msg_${Date.now()}`,
+        text: newMessage,
+        sender: 'staff',
+        sender_name: user?.name || 'Staff',
+        timestamp: new Date().toISOString()
+      };
+      setChatMessages(prev => [...prev, newMsg]);
+      
       setNewMessage('');
-      const messages = await staffApi.getLiveChatMessages(token, roomId);
-      setChatMessages(messages);
+      
+      if (!messageSent) {
+        console.warn('Socket message not sent - relying on API persistence');
+      }
     } catch (err) {
       console.error('Failed to send message:', err);
     }

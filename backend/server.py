@@ -6865,15 +6865,38 @@ async def end_live_chat_room(room_id: str):
 @api_router.get("/live-chat/rooms")
 async def get_active_chat_rooms(current_user: User = Depends(get_current_user)):
     """Get all active chat rooms for staff (staff only)"""
-    if current_user.role not in ["admin", "supervisor", "counsellor", "peer"]:
+    # Normalize role check
+    user_role = (current_user.role or "").lower()
+    allowed_roles = ["admin", "supervisor", "counsellor", "peer", "peer_supporter"]
+    
+    if user_role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Only staff can view chat rooms")
     
     rooms = await db.live_chat_rooms.find(
-        {"status": "active"},
+        {"status": {"$in": ["active", "waiting"]}},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
     
-    return rooms
+    # Decrypt messages in each room
+    decrypted_rooms = []
+    for room in rooms:
+        room_copy = room.copy()
+        if room_copy.get("messages"):
+            decrypted_messages = []
+            for msg in room_copy["messages"]:
+                msg_copy = msg.copy()
+                # Decrypt message text if encrypted
+                if msg_copy.get("text") and str(msg_copy["text"]).startswith("ENC:"):
+                    try:
+                        msg_copy["text"] = decrypt_field(msg_copy["text"])
+                    except Exception as e:
+                        logging.warning(f"Failed to decrypt message: {e}")
+                        msg_copy["text"] = "[Unable to decrypt message]"
+                decrypted_messages.append(msg_copy)
+            room_copy["messages"] = decrypted_messages
+        decrypted_rooms.append(room_copy)
+    
+    return decrypted_rooms
 
 # Note: include_router moved to end of file after all routes are defined
 
