@@ -45,6 +45,19 @@ interface WebRTCPhoneState {
     type: string;
   };
   hasIncomingCall: boolean;
+  // User request states (from mobile app users)
+  hasIncomingChatRequest: boolean;
+  hasIncomingCallRequest: boolean;
+  pendingRequest?: {
+    request_id: string;
+    user_id: string;
+    user_name: string;
+    session_id?: string;
+    room_id?: string;
+    type: 'chat' | 'call';
+    risk_level?: string;
+    timestamp: string;
+  };
 }
 
 interface OnlineUser {
@@ -63,6 +76,8 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     isMuted: false,
     callDuration: 0,
     hasIncomingCall: false,
+    hasIncomingChatRequest: false,
+    hasIncomingCallRequest: false,
   });
 
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -280,6 +295,55 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     }
   }, [state.isMuted]);
 
+  // Accept chat request from user
+  const acceptChatRequest = useCallback(() => {
+    if (!socketRef.current || !state.pendingRequest) return;
+    
+    console.log('[WebRTCPhone] Accepting chat request:', state.pendingRequest.request_id);
+    stopRingtone();
+    
+    socketRef.current.emit('accept_chat_request', {
+      request_id: state.pendingRequest.request_id,
+      user_id: state.pendingRequest.user_id,
+      staff_id: userId,
+      staff_name: userName,
+    });
+    
+    // The chat_request_confirmed event will update the state with room_id
+  }, [state.pendingRequest, userId, userName, stopRingtone]);
+
+  // Dismiss chat/call request
+  const dismissRequest = useCallback(() => {
+    console.log('[WebRTCPhone] Dismissing request');
+    stopRingtone();
+    setState(prev => ({
+      ...prev,
+      hasIncomingChatRequest: false,
+      hasIncomingCallRequest: false,
+      pendingRequest: undefined,
+    }));
+  }, [stopRingtone]);
+
+  // Accept call request from user (safeguarding)
+  const acceptCallRequest = useCallback(() => {
+    if (!socketRef.current || !state.pendingRequest) return;
+    
+    console.log('[WebRTCPhone] Accepting call request:', state.pendingRequest.request_id);
+    stopRingtone();
+    
+    socketRef.current.emit('accept_call_request', {
+      request_id: state.pendingRequest.request_id,
+      user_id: state.pendingRequest.user_id,
+      staff_id: userId,
+      staff_name: userName,
+    });
+    
+    setState(prev => ({
+      ...prev,
+      hasIncomingCallRequest: false,
+    }));
+  }, [state.pendingRequest, userId, userName, stopRingtone]);
+
   // Initialize socket connection
   useEffect(() => {
     console.log('[WebRTCPhone] Init check:', { serverUrl, userId, userType, userName, enabled });
@@ -345,6 +409,91 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     // Online staff list
     socket.on('online_staff_list', (data: { staff: any[] }) => {
       console.log('[WebRTCPhone] Online staff list:', data.staff);
+    });
+
+    // Incoming CHAT request from user (mobile app user wants to chat with staff)
+    socket.on('incoming_chat_request', (data: { 
+      request_id: string; 
+      user_id: string; 
+      user_name: string; 
+      session_id?: string;
+      risk_level?: string;
+    }) => {
+      console.log('[WebRTCPhone] *** INCOMING CHAT REQUEST ***', data);
+      playRingtone();
+      setState(prev => ({
+        ...prev,
+        hasIncomingChatRequest: true,
+        pendingRequest: {
+          request_id: data.request_id,
+          user_id: data.user_id,
+          user_name: data.user_name || 'Veteran',
+          session_id: data.session_id,
+          risk_level: data.risk_level,
+          type: 'chat',
+          timestamp: new Date().toISOString(),
+        }
+      }));
+    });
+
+    // Incoming CALL request from user (mobile app user wants to call staff - safeguarding flow)
+    socket.on('incoming_call_request', (data: { 
+      request_id: string; 
+      user_id: string; 
+      user_name: string; 
+      session_id?: string;
+      risk_level?: string;
+    }) => {
+      console.log('[WebRTCPhone] *** INCOMING CALL REQUEST (safeguarding) ***', data);
+      playRingtone();
+      setState(prev => ({
+        ...prev,
+        hasIncomingCallRequest: true,
+        pendingRequest: {
+          request_id: data.request_id,
+          user_id: data.user_id,
+          user_name: data.user_name || 'Veteran',
+          session_id: data.session_id,
+          risk_level: data.risk_level,
+          type: 'call',
+          timestamp: new Date().toISOString(),
+        }
+      }));
+    });
+
+    // Chat request confirmed - staff accepted and room is ready
+    socket.on('chat_request_confirmed', (data: { room_id: string; user_id: string }) => {
+      console.log('[WebRTCPhone] Chat request confirmed, room:', data.room_id);
+      stopRingtone();
+      setState(prev => ({
+        ...prev,
+        hasIncomingChatRequest: false,
+        pendingRequest: prev.pendingRequest ? { ...prev.pendingRequest, room_id: data.room_id } : undefined,
+      }));
+    });
+
+    // Chat request claimed by another staff member
+    socket.on('chat_request_claimed', (data: { request_id: string; claimed_by: string }) => {
+      console.log('[WebRTCPhone] Chat request claimed by:', data.claimed_by);
+      stopRingtone();
+      setState(prev => ({
+        ...prev,
+        hasIncomingChatRequest: false,
+        hasIncomingCallRequest: false,
+        pendingRequest: undefined,
+      }));
+    });
+
+    // Chat request already claimed
+    socket.on('chat_request_already_claimed', () => {
+      console.log('[WebRTCPhone] Chat request already claimed');
+      stopRingtone();
+      setState(prev => ({
+        ...prev,
+        hasIncomingChatRequest: false,
+        hasIncomingCallRequest: false,
+        pendingRequest: undefined,
+      }));
     });
 
     // Incoming call (from backend)
@@ -511,6 +660,10 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     rejectCall,
     endCall,
     toggleMute,
+    // User request functions
+    acceptChatRequest,
+    acceptCallRequest,
+    dismissRequest,
   };
 }
 

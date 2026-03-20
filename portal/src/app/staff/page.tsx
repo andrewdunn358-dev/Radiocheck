@@ -154,6 +154,17 @@ export default function StaffPortalPage() {
   // Escalations state
   const [escalationsTab, setEscalationsTab] = useState<'pending' | 'all'>('pending');
 
+  // Panic button state (for peers)
+  const [showPanicModal, setShowPanicModal] = useState(false);
+  const [panicReason, setPanicReason] = useState('');
+  const [triggeringPanic, setTriggeringPanic] = useState(false);
+
+  // AI Feedback modal state
+  const [showAiFeedbackModal, setShowAiFeedbackModal] = useState(false);
+  const [aiFeedbackData, setAiFeedbackData] = useState<{ messageId: string; message: string; response: string } | null>(null);
+  const [aiFeedbackRating, setAiFeedbackRating] = useState<'good' | 'needs_improvement' | 'inappropriate' | 'missed_risk' | null>(null);
+  const [aiFeedbackComment, setAiFeedbackComment] = useState('');
+
   // Load data
   const loadAlerts = useCallback(async () => {
     if (!token) return;
@@ -732,6 +743,67 @@ export default function StaffPortalPage() {
   const pendingCallbacksCount = callbacks.filter(c => c.status === 'pending').length;
   const activeCallbacksCount = callbacks.filter(c => c.status === 'taken').length;
 
+  // Trigger panic alert (for peer supporters)
+  const triggerPanicAlert = async () => {
+    if (!token || triggeringPanic) return;
+    setTriggeringPanic(true);
+    try {
+      await fetch(`${API_URL}/api/safeguarding/panic-alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          staff_id: user?.id,
+          staff_name: user?.name || user?.email,
+          reason: panicReason || 'Staff member triggered panic button',
+          location: 'staff_portal',
+          risk_level: 'critical'
+        })
+      });
+      setShowPanicModal(false);
+      setPanicReason('');
+      alert('Panic alert sent! A counsellor will be notified.');
+    } catch (err) {
+      console.error('Failed to trigger panic:', err);
+      alert('Failed to send panic alert. Please try again.');
+    } finally {
+      setTriggeringPanic(false);
+    }
+  };
+
+  // Submit AI feedback
+  const submitAiFeedback = async () => {
+    if (!token || !aiFeedbackData || !aiFeedbackRating) return;
+    try {
+      await fetch(`${API_URL}/api/ai-feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          session_id: activeChatRoom?.room_id || 'staff_review',
+          message_index: 0,
+          ai_character: 'support_ai',
+          rating: aiFeedbackRating === 'good' ? 5 : aiFeedbackRating === 'needs_improvement' ? 3 : 1,
+          feedback_type: aiFeedbackRating,
+          comment: aiFeedbackComment,
+          user_message: aiFeedbackData.message,
+          ai_response: aiFeedbackData.response,
+        })
+      });
+      setShowAiFeedbackModal(false);
+      setAiFeedbackData(null);
+      setAiFeedbackRating(null);
+      setAiFeedbackComment('');
+      alert('Feedback submitted. Thank you!');
+    } catch (err) {
+      console.error('Failed to submit AI feedback:', err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-primary-dark">
@@ -874,6 +946,103 @@ export default function StaffPortalPage() {
                 className="p-2 rounded-full bg-red-500 hover:bg-red-600"
               >
                 <PhoneOff className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Incoming Chat Request Banner (from mobile app users) */}
+      {webrtcPhone.hasIncomingChatRequest && webrtcPhone.pendingRequest && (
+        <div data-testid="incoming-chat-request-banner" className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white p-4 z-50 shadow-lg animate-pulse">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-bold text-lg">Incoming Chat Request</p>
+                <p className="text-sm opacity-90">
+                  {webrtcPhone.pendingRequest.user_name} needs to chat with staff
+                  {webrtcPhone.pendingRequest.risk_level && (
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                      webrtcPhone.pendingRequest.risk_level === 'RED' ? 'bg-red-500' :
+                      webrtcPhone.pendingRequest.risk_level === 'AMBER' ? 'bg-amber-500' :
+                      'bg-yellow-500'
+                    }`}>
+                      {webrtcPhone.pendingRequest.risk_level}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                data-testid="dismiss-chat-request-btn"
+                onClick={webrtcPhone.dismissRequest}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm"
+              >
+                Dismiss
+              </button>
+              <button
+                data-testid="accept-chat-request-btn"
+                onClick={() => {
+                  webrtcPhone.acceptChatRequest();
+                  // Switch to live chat tab
+                  setActiveTab('livechat');
+                  // Reload live chats to get the new room
+                  setTimeout(() => loadLiveChats(), 1000);
+                }}
+                className="px-4 py-2 bg-white text-blue-600 hover:bg-gray-100 rounded-lg text-sm font-semibold"
+              >
+                Accept Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Incoming Call Request Banner (safeguarding - user wants to talk to someone) */}
+      {webrtcPhone.hasIncomingCallRequest && webrtcPhone.pendingRequest && (
+        <div data-testid="incoming-call-request-banner" className="fixed top-0 left-0 right-0 bg-gradient-to-r from-red-600 to-red-500 text-white p-4 z-50 shadow-lg animate-pulse">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center animate-bounce">
+                <Phone className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-bold text-lg">🚨 URGENT: Call Request</p>
+                <p className="text-sm opacity-90">
+                  {webrtcPhone.pendingRequest.user_name} needs to speak with someone urgently
+                  {webrtcPhone.pendingRequest.risk_level && (
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                      webrtcPhone.pendingRequest.risk_level === 'RED' ? 'bg-white text-red-600' :
+                      webrtcPhone.pendingRequest.risk_level === 'AMBER' ? 'bg-amber-300 text-amber-800' :
+                      'bg-yellow-300 text-yellow-800'
+                    }`}>
+                      {webrtcPhone.pendingRequest.risk_level} RISK
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                data-testid="dismiss-call-request-btn"
+                onClick={webrtcPhone.dismissRequest}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm"
+              >
+                Dismiss
+              </button>
+              <button
+                data-testid="accept-call-request-btn"
+                onClick={() => {
+                  webrtcPhone.acceptCallRequest();
+                }}
+                className="px-4 py-2 bg-white text-red-600 hover:bg-gray-100 rounded-lg text-sm font-semibold flex items-center gap-2"
+              >
+                <Phone className="w-4 h-4" />
+                Accept & Call
               </button>
             </div>
           </div>
@@ -1102,6 +1271,23 @@ export default function StaffPortalPage() {
                 <div className="text-3xl font-bold">{pendingCallbacksCount}</div>
               </div>
             </div>
+
+            {/* Panic Button for Peers */}
+            {user?.role === 'peer' && (
+              <div className="mb-6">
+                <button
+                  data-testid="panic-button"
+                  onClick={() => setShowPanicModal(true)}
+                  className="w-full p-4 bg-red-500/10 border-2 border-red-500 rounded-xl hover:bg-red-500/20 transition flex items-center justify-center gap-3 group"
+                >
+                  <AlertTriangle className="w-6 h-6 text-red-500 group-hover:animate-pulse" />
+                  <span className="text-red-500 font-semibold text-lg">Need Help? Trigger Panic Alert</span>
+                </button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Click this button if you need immediate support from a counsellor
+                </p>
+              </div>
+            )}
 
             {/* Recent Alerts */}
             <div className="bg-card border border-border rounded-xl p-6 mb-6">
@@ -2103,6 +2289,20 @@ export default function StaffPortalPage() {
                 <p className="text-sm text-gray-400">Room: {activeChatRoom.room_id}</p>
               </div>
               <div className="flex gap-2">
+                {/* Call User Button */}
+                <button
+                  data-testid="call-from-chat-btn"
+                  onClick={() => {
+                    if (activeChatRoom.user_id) {
+                      webrtcPhone.makeCall(activeChatRoom.user_id);
+                    }
+                  }}
+                  disabled={!activeChatRoom.user_id || webrtcPhone.isInCall}
+                  className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  <Phone className="w-4 h-4" />
+                  Call User
+                </button>
                 <button
                   onClick={handleEndChat}
                   className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
@@ -2126,10 +2326,36 @@ export default function StaffPortalPage() {
                   className={`p-3 rounded-lg max-w-[80%] ${
                     msg.sender === 'staff' 
                       ? 'bg-secondary/20 ml-auto' 
-                      : 'bg-primary-light/30'
+                      : msg.sender === 'ai' || msg.is_ai_response
+                        ? 'bg-blue-500/20 border border-blue-500/30'
+                        : 'bg-primary-light/30'
                   }`}
                 >
-                  <p className="text-xs text-gray-400 mb-1">{msg.sender === 'staff' ? 'You' : 'User'}</p>
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="text-xs text-gray-400 mb-1">
+                      {msg.sender === 'staff' ? 'You' : msg.sender === 'ai' || msg.is_ai_response ? 'AI Assistant' : 'User'}
+                    </p>
+                    {/* AI Feedback button for AI responses */}
+                    {(msg.sender === 'ai' || msg.is_ai_response) && (
+                      <button
+                        data-testid={`ai-feedback-btn-${i}`}
+                        onClick={() => {
+                          // Find the user message this AI was responding to
+                          const userMsg = chatMessages.slice(0, i).reverse().find(m => m.sender === 'user' || (!m.is_ai_response && m.sender !== 'staff'));
+                          setAiFeedbackData({
+                            messageId: msg.id || msg._id || `msg_${i}`,
+                            message: userMsg?.text || 'Unknown user message',
+                            response: msg.text
+                          });
+                          setShowAiFeedbackModal(true);
+                        }}
+                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        Feedback
+                      </button>
+                    )}
+                  </div>
                   <p>{msg.text}</p>
                   <p className="text-xs text-gray-500 mt-1">{new Date(msg.timestamp).toLocaleTimeString()}</p>
                 </div>
@@ -2423,6 +2649,135 @@ export default function StaffPortalPage() {
                 className="w-full py-3 bg-secondary text-primary-dark font-semibold rounded-lg disabled:opacity-50"
               >
                 Save Session Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Panic Button Modal (for peer supporters) */}
+      {showPanicModal && (
+        <div data-testid="panic-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl p-8 max-w-md w-full mx-4">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-red-500">Trigger Panic Alert</h2>
+              <p className="text-gray-400 mt-2">This will immediately notify all available counsellors</p>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm text-gray-400 mb-2">Reason (optional)</label>
+              <textarea
+                data-testid="panic-reason"
+                value={panicReason}
+                onChange={(e) => setPanicReason(e.target.value)}
+                className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                placeholder="Describe the situation..."
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-4">
+              <button
+                data-testid="cancel-panic-btn"
+                onClick={() => {
+                  setShowPanicModal(false);
+                  setPanicReason('');
+                }}
+                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="confirm-panic-btn"
+                onClick={triggerPanicAlert}
+                disabled={triggeringPanic}
+                className="flex-1 px-4 py-3 rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {triggeringPanic ? 'Sending...' : (
+                  <>
+                    <AlertTriangle className="w-5 h-5" />
+                    Send Alert
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Feedback Modal */}
+      {showAiFeedbackModal && aiFeedbackData && (
+        <div data-testid="ai-feedback-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-card rounded-2xl p-6 max-w-2xl w-full mx-4 my-8">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-secondary" />
+              AI Response Feedback
+            </h2>
+            
+            <div className="space-y-4 mb-6">
+              <div className="bg-primary-dark rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">User message:</p>
+                <p className="text-sm">{aiFeedbackData.message}</p>
+              </div>
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <p className="text-xs text-blue-400 mb-1">AI response:</p>
+                <p className="text-sm">{aiFeedbackData.response}</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm text-gray-400 mb-3">Rate this response:</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { value: 'good', label: 'Good Response', icon: '✓', color: 'border-green-500 bg-green-500/10 text-green-400' },
+                  { value: 'needs_improvement', label: 'Needs Improvement', icon: '!', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-400' },
+                  { value: 'inappropriate', label: 'Inappropriate', icon: '✗', color: 'border-red-500 bg-red-500/10 text-red-400' },
+                  { value: 'missed_risk', label: 'Missed Risk', icon: '⚠', color: 'border-orange-500 bg-orange-500/10 text-orange-400' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setAiFeedbackRating(option.value as any)}
+                    className={`p-3 rounded-lg border-2 transition flex items-center gap-2 ${
+                      aiFeedbackRating === option.value ? option.color : 'border-border hover:border-gray-600'
+                    }`}
+                  >
+                    <span>{option.icon}</span>
+                    <span className="text-sm">{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm text-gray-400 mb-2">Additional comments:</label>
+              <textarea
+                value={aiFeedbackComment}
+                onChange={(e) => setAiFeedbackComment(e.target.value)}
+                className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                placeholder="What could be improved? What was missed?"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowAiFeedbackModal(false);
+                  setAiFeedbackData(null);
+                  setAiFeedbackRating(null);
+                  setAiFeedbackComment('');
+                }}
+                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitAiFeedback}
+                disabled={!aiFeedbackRating}
+                className="flex-1 px-4 py-3 rounded-lg bg-secondary text-black hover:bg-secondary/90 transition disabled:opacity-50"
+              >
+                Submit Feedback
               </button>
             </div>
           </div>
