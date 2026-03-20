@@ -1,19 +1,20 @@
 """
 RadioCheck Safeguarding - Semantic Safety Model
 ================================================
-Version 1.0 - March 2026
+Version 2.0 - March 2026
 
-Semantic similarity detection using sentence embeddings.
+Semantic similarity detection using OpenAI embeddings.
 Detects suicidal intent even when exact phrases don't match.
 
-Uses sentence-transformers for embedding generation and
+Uses OpenAI text-embedding-3-small for embedding generation and
 cosine similarity for phrase matching.
 """
 
 import logging
-import time
-from typing import Dict, List, Optional, Tuple, Any
-import numpy as np
+import math
+import asyncio
+import os
+from typing import Dict, List, Optional, Any
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,8 @@ SIMILARITY_RISK_WEIGHTS = {
 }
 
 # Model configuration
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-EMBEDDING_DIMENSION = 384
+EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_DIMENSION = 1536  # text-embedding-3-small dimension
 
 # ============================================================================
 # REFERENCE PHRASES FOR SEMANTIC MATCHING
@@ -119,94 +120,215 @@ SEMANTIC_REFERENCE_PHRASES = {
 }
 
 # ============================================================================
-# MODEL MANAGEMENT
+# OPENAI CLIENT & EMBEDDING CACHE
 # ============================================================================
 
-_model = None
-_reference_embeddings: Dict[str, List[np.ndarray]] = {}
+_openai_client = None
+_embedding_cache: Dict[str, List[float]] = {}
+_reference_embeddings: Dict[str, List[List[float]]] = {}
 _model_loaded = False
 
 
-def _load_model():
-    """Load the sentence transformer model."""
-    global _model, _model_loaded
-    
-    if _model_loaded:
-        return True
-    
-    try:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer(MODEL_NAME)
-        _model_loaded = True
-        logger.info(f"[SemanticSafetyModel] Loaded model: {MODEL_NAME}")
-        return True
-    except ImportError:
-        logger.warning("[SemanticSafetyModel] sentence-transformers not installed. Semantic analysis disabled.")
-        return False
-    except Exception as e:
-        logger.error(f"[SemanticSafetyModel] Failed to load model: {e}")
-        return False
-
-
-def _precompute_reference_embeddings():
-    """Pre-compute embeddings for all reference phrases."""
-    global _reference_embeddings
-    
-    if not _model:
-        return
-    
-    start_time = time.time()
-    
-    for category, phrases in SEMANTIC_REFERENCE_PHRASES.items():
-        embeddings = _model.encode(phrases, convert_to_numpy=True)
-        _reference_embeddings[category] = list(embeddings)
-    
-    elapsed = (time.time() - start_time) * 1000
-    total_phrases = sum(len(p) for p in SEMANTIC_REFERENCE_PHRASES.values())
-    logger.info(f"[SemanticSafetyModel] Pre-computed {total_phrases} reference embeddings in {elapsed:.1f}ms")
-
-
-def initialize_semantic_model() -> bool:
-    """Initialize the semantic model and pre-compute embeddings."""
-    if not _load_model():
-        return False
-    
-    _precompute_reference_embeddings()
-    return True
-
-
-# ============================================================================
-# SEMANTIC ANALYSIS
-# ============================================================================
-
-def compute_embedding(text: str) -> Optional[np.ndarray]:
-    """Compute embedding for a text string."""
-    if not _model:
-        if not _load_model():
+def _get_openai_client():
+    """Get or create the OpenAI client."""
+    global _openai_client
+    if _openai_client is None:
+        try:
+            from openai import OpenAI
+            _openai_client = OpenAI()  # Uses OPENAI_API_KEY from env
+        except Exception as e:
+            logger.error(f"[SemanticSafetyModel] Failed to create OpenAI client: {e}")
             return None
+    return _openai_client
+
+
+def _get_async_openai_client():
+    """Get async OpenAI client for async operations."""
+    try:
+        from openai import AsyncOpenAI
+        return AsyncOpenAI()  # Uses OPENAI_API_KEY from env
+    except Exception as e:
+        logger.error(f"[SemanticSafetyModel] Failed to create AsyncOpenAI client: {e}")
+        return None
+
+
+# ============================================================================
+# COSINE SIMILARITY
+# ============================================================================
+
+def cosine_similarity(a: List[float], b: List[float]) -> float:
+    """Compute cosine similarity between two embedding vectors."""
+    if not a or not b:
+        return 0.0
+    
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(x * x for x in b))
+    
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    
+    return dot / (norm_a * norm_b)
+
+
+# ============================================================================
+# EMBEDDING FUNCTIONS
+# ============================================================================
+
+def compute_embedding(text: str) -> Optional[List[float]]:
+    """Compute embedding for a text string using OpenAI API (sync)."""
+    # Check cache first
+    if text in _embedding_cache:
+        return _embedding_cache[text]
+    
+    client = _get_openai_client()
+    if not client:
+        return None
     
     try:
-        embedding = _model.encode(text, convert_to_numpy=True)
+        response = client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=text
+        )
+        embedding = response.data[0].embedding
+        # Cache the result
+        _embedding_cache[text] = embedding
         return embedding
     except Exception as e:
         logger.error(f"[SemanticSafetyModel] Embedding failed: {e}")
         return None
 
 
-def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
-    """Compute cosine similarity between two vectors."""
-    if vec1 is None or vec2 is None:
-        return 0.0
+async def compute_embedding_async(text: str) -> Optional[List[float]]:
+    """Compute embedding for a text string using OpenAI API (async)."""
+    # Check cache first
+    if text in _embedding_cache:
+        return _embedding_cache[text]
     
-    dot_product = np.dot(vec1, vec2)
-    norm1 = np.linalg.norm(vec1)
-    norm2 = np.linalg.norm(vec2)
+    client = _get_async_openai_client()
+    if not client:
+        return None
     
-    if norm1 == 0 or norm2 == 0:
-        return 0.0
-    
-    return float(dot_product / (norm1 * norm2))
+    try:
+        response = await client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=text
+        )
+        embedding = response.data[0].embedding
+        # Cache the result
+        _embedding_cache[text] = embedding
+        return embedding
+    except Exception as e:
+        logger.error(f"[SemanticSafetyModel] Async embedding failed: {e}")
+        return None
 
+
+def compute_embeddings_batch(texts: List[str]) -> List[Optional[List[float]]]:
+    """Compute embeddings for multiple texts in a single API call."""
+    client = _get_openai_client()
+    if not client:
+        return [None] * len(texts)
+    
+    # Separate cached and uncached
+    results = [None] * len(texts)
+    uncached_indices = []
+    uncached_texts = []
+    
+    for i, text in enumerate(texts):
+        if text in _embedding_cache:
+            results[i] = _embedding_cache[text]
+        else:
+            uncached_indices.append(i)
+            uncached_texts.append(text)
+    
+    if not uncached_texts:
+        return results
+    
+    try:
+        response = client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=uncached_texts
+        )
+        for j, embedding_data in enumerate(response.data):
+            idx = uncached_indices[j]
+            embedding = embedding_data.embedding
+            results[idx] = embedding
+            _embedding_cache[uncached_texts[j]] = embedding
+        return results
+    except Exception as e:
+        logger.error(f"[SemanticSafetyModel] Batch embedding failed: {e}")
+        return results
+
+
+# ============================================================================
+# MODEL INITIALIZATION
+# ============================================================================
+
+def _precompute_reference_embeddings():
+    """Pre-compute embeddings for all reference phrases."""
+    global _reference_embeddings
+    
+    import time
+    start_time = time.time()
+    
+    # Collect all phrases
+    all_phrases = []
+    phrase_map = []  # (category, index)
+    
+    for category, phrases in SEMANTIC_REFERENCE_PHRASES.items():
+        for idx, phrase in enumerate(phrases):
+            all_phrases.append(phrase)
+            phrase_map.append((category, idx))
+    
+    # Batch compute embeddings
+    embeddings = compute_embeddings_batch(all_phrases)
+    
+    # Organize by category
+    _reference_embeddings = {cat: [] for cat in SEMANTIC_REFERENCE_PHRASES.keys()}
+    
+    for i, (category, idx) in enumerate(phrase_map):
+        if embeddings[i] is not None:
+            _reference_embeddings[category].append(embeddings[i])
+        else:
+            # Use empty embedding as fallback (will give 0 similarity)
+            _reference_embeddings[category].append([0.0] * EMBEDDING_DIMENSION)
+    
+    elapsed = (time.time() - start_time) * 1000
+    total_phrases = len(all_phrases)
+    logger.info(f"[SemanticSafetyModel] Pre-computed {total_phrases} reference embeddings in {elapsed:.1f}ms")
+
+
+def initialize_semantic_model() -> bool:
+    """Initialize the semantic model and pre-compute embeddings."""
+    global _model_loaded
+    
+    if _model_loaded:
+        return True
+    
+    # Check if OpenAI API key is available
+    if not os.environ.get("OPENAI_API_KEY"):
+        logger.warning("[SemanticSafetyModel] OPENAI_API_KEY not set. Semantic analysis disabled.")
+        return False
+    
+    # Test client creation
+    client = _get_openai_client()
+    if not client:
+        return False
+    
+    # Pre-compute reference embeddings
+    try:
+        _precompute_reference_embeddings()
+        _model_loaded = True
+        logger.info("[SemanticSafetyModel] Initialized with OpenAI embeddings")
+        return True
+    except Exception as e:
+        logger.error(f"[SemanticSafetyModel] Failed to initialize: {e}")
+        return False
+
+
+# ============================================================================
+# SEMANTIC ANALYSIS
+# ============================================================================
 
 def analyze_semantic_risk(
     message: str,
@@ -221,7 +343,9 @@ def analyze_semantic_risk(
         - matched_category: category with highest match
         - semantic_matches: list of matches above threshold
     """
-    if not _model or not _reference_embeddings:
+    global _model_loaded
+    
+    if not _model_loaded:
         # Try to initialize
         if not initialize_semantic_model():
             return {
@@ -232,6 +356,7 @@ def analyze_semantic_risk(
                 "model_available": False,
             }
     
+    import time
     start_time = time.time()
     
     # Compute embedding for input message
@@ -309,19 +434,21 @@ def batch_analyze_semantic_risk(messages: List[str]) -> List[Dict[str, Any]]:
     Analyze multiple messages for semantic risk.
     More efficient than calling analyze_semantic_risk individually.
     """
-    if not _model or not _reference_embeddings:
+    global _model_loaded
+    
+    if not _model_loaded:
         if not initialize_semantic_model():
             return [{"semantic_risk_score": 0, "model_available": False} for _ in messages]
     
     # Batch encode all messages
-    try:
-        message_embeddings = _model.encode(messages, convert_to_numpy=True)
-    except Exception as e:
-        logger.error(f"[SemanticSafetyModel] Batch encoding failed: {e}")
-        return [{"semantic_risk_score": 0, "error": str(e)} for _ in messages]
+    message_embeddings = compute_embeddings_batch(messages)
     
     results = []
     for msg_idx, msg_embedding in enumerate(message_embeddings):
+        if msg_embedding is None:
+            results.append({"semantic_risk_score": 0, "error": "Failed to compute embedding"})
+            continue
+            
         highest_similarity = 0.0
         matched_category = None
         
@@ -459,9 +586,12 @@ def full_semantic_analysis(message: str) -> Dict[str, Any]:
 # INITIALIZATION
 # ============================================================================
 
-# Attempt to initialize on module load (will gracefully fail if dependencies missing)
+# Attempt to initialize on module load (will gracefully fail if API key missing)
 try:
-    initialize_semantic_model()
+    if os.environ.get("OPENAI_API_KEY"):
+        initialize_semantic_model()
+    else:
+        logger.warning("[SemanticSafetyModel] OPENAI_API_KEY not set - initialization deferred")
 except Exception as e:
     logger.warning(f"[SemanticSafetyModel] Initialization skipped: {e}")
 
