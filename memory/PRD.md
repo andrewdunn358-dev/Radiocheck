@@ -40,6 +40,17 @@ Migration of legacy JavaScript portals (admin, staff, LMS) into a unified Next.j
 - Solution: Added custom DOM event `chat_request_confirmed` dispatched from `useWebRTCPhone.tsx`
 - `staff/page.tsx` listens for event and opens chat modal (matches legacy behavior)
 
+**Safeguarding Alerts Display Fix** (Dec 20)
+- Updated interface to match backend field names (`client_ip`, `geo_city`, etc.)
+- Added conversation history expandable section
+- Added tracking info display (IP, location, ISP, timezone, coordinates)
+
+**Live Support Cards Enhancement** (Dec 20)
+- Added "🚨 Linked to Safeguarding Alert" badge with risk level (RED/AMBER)
+- Staff type badge (Counsellor/Peer Request)
+- Message count and preview
+- Red border for safeguarding-linked rooms
+
 **Security: Session Storage Fix** (Dec 20)
 - Added "Remember me" checkbox to login forms
 - Default: `sessionStorage` (clears on tab close)

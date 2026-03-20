@@ -651,11 +651,11 @@ export interface SafeguardingAlert {
   character?: string;
   character_name?: string;
   triggering_message?: string;
-  trigger_message: string;
+  trigger_message?: string;
   ai_response?: string;
   trigger_phrases?: string[];
   triggered_indicators?: string[];
-  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  risk_level: string; // GREEN, YELLOW, AMBER, RED (backend uses uppercase)
   risk_score?: number;
   status: 'active' | 'acknowledged' | 'resolved';
   acknowledged_by?: string;
@@ -665,13 +665,20 @@ export interface SafeguardingAlert {
   created_at: string;
   notes?: string;
   conversation_history?: Array<{ role: string; content: string }>;
-  // Tracking info
+  // Tracking info (matching backend field names)
   contact_captured?: boolean;
-  ip_address?: string;
-  location?: string;
+  client_ip?: string;  // Backend uses client_ip
+  ip_address?: string; // Alias
   user_agent?: string;
-  isp?: string;
-  timezone?: string;
+  // Geolocation fields (from backend)
+  geo_city?: string;
+  geo_region?: string;
+  geo_country?: string;
+  geo_isp?: string;
+  geo_timezone?: string;
+  geo_lat?: number;
+  geo_lon?: number;
+  location?: string;  // Computed field
 }
 
 export interface PanicAlert {
@@ -704,6 +711,7 @@ export interface LiveChatRoom {
   staff_name?: string;
   staff_type?: string;
   safeguarding_alert_id?: string;
+  risk_level?: string;  // From safeguarding alert (RED, AMBER, etc.)
   ai_session_id?: string;
   messages?: any[];
   created_at: string;

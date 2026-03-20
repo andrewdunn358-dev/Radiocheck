@@ -1673,18 +1673,44 @@ export default function StaffPortalPage() {
                       </div>
                     )}
                     
-                    {/* Tracking info section */}
-                    {(alert.ip_address || alert.location) && (
+                    {/* Tracking info section - matching backend field names */}
+                    {(alert.client_ip || alert.geo_city || alert.geo_country) && (
                       <div className="bg-primary-dark/30 rounded-lg p-3 mb-4 text-xs">
                         <p className="text-gray-400 font-semibold mb-2 flex items-center gap-1">
                           <Globe className="w-3 h-3" /> Tracking Info
                         </p>
                         <div className="grid grid-cols-2 gap-2 text-gray-500">
-                          {alert.ip_address && <p>IP: {alert.ip_address}</p>}
-                          {alert.location && <p>Location: {alert.location}</p>}
+                          {alert.client_ip && <p>IP: {alert.client_ip}</p>}
+                          {(alert.geo_city || alert.geo_region || alert.geo_country) && (
+                            <p>Location: {[alert.geo_city, alert.geo_region, alert.geo_country].filter(Boolean).join(', ')}</p>
+                          )}
+                          {alert.geo_isp && <p>ISP: {alert.geo_isp}</p>}
+                          {alert.geo_timezone && <p>Timezone: {alert.geo_timezone}</p>}
                           {alert.user_agent && <p className="col-span-2 truncate">Browser: {alert.user_agent}</p>}
                         </div>
+                        {/* Map placeholder - could add Leaflet map if coords available */}
+                        {alert.geo_lat && alert.geo_lon && (
+                          <p className="mt-2 text-gray-600">📍 Coordinates: {alert.geo_lat.toFixed(4)}, {alert.geo_lon.toFixed(4)}</p>
+                        )}
                       </div>
+                    )}
+
+                    {/* Conversation History - matching legacy portal */}
+                    {alert.conversation_history && alert.conversation_history.length > 0 && (
+                      <details className="bg-primary-dark/30 rounded-lg p-3 mb-4">
+                        <summary className="cursor-pointer text-sm text-gray-400 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4" /> 
+                          View Conversation History ({alert.conversation_history.length} messages)
+                        </summary>
+                        <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                          {alert.conversation_history.slice(-6).map((msg, idx) => (
+                            <div key={idx} className={`p-2 rounded text-xs ${msg.role === 'user' ? 'bg-blue-500/10 text-blue-300' : 'bg-gray-500/10 text-gray-300'}`}>
+                              <span className="font-semibold">{msg.role === 'user' ? 'User' : (alert.character === 'tommy' ? 'Tommy' : 'Rachel')}:</span>{' '}
+                              {msg.content.length > 200 ? msg.content.substring(0, 200) + '...' : msg.content}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     )}
 
                     {alert.status !== 'resolved' && (
@@ -1807,9 +1833,19 @@ export default function StaffPortalPage() {
             </div>
 
             <div className="space-y-4">
-              {liveChatRooms.filter(r => r.status !== 'ended').map((room) => (
-                <div key={room._id} className={`bg-card border rounded-xl p-6 ${room.status === 'waiting' ? 'border-yellow-500' : 'border-border'}`}>
-                  <div className="flex justify-between items-start">
+              {liveChatRooms.filter(r => r.status !== 'ended').map((room) => {
+                // Calculate message count and get last message
+                const messageCount = room.messages?.length || 0;
+                const lastMessage = room.messages && room.messages.length > 0 
+                  ? room.messages[room.messages.length - 1] 
+                  : null;
+                  
+                return (
+                <div key={room._id || room.id} className={`bg-card border rounded-xl p-6 ${
+                  room.status === 'waiting' ? 'border-yellow-500' : 
+                  room.safeguarding_alert_id ? 'border-red-500' : 'border-border'
+                }`}>
+                  <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
                         <User className="w-5 h-5 text-gray-400" />
@@ -1821,31 +1857,79 @@ export default function StaffPortalPage() {
                         }`}>
                           {room.status}
                         </span>
+                        {/* Staff type badge */}
+                        {room.staff_type && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">
+                            {room.staff_type === 'counsellor' ? 'Counsellor' : 'Peer'} Request
+                          </span>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-400">
-                        <Clock className="w-4 h-4 inline mr-1" />
-                        Waiting since: {formatTimeAgo(room.created_at)}
+                      
+                      {/* Safeguarding Alert Link - IMPORTANT */}
+                      {room.safeguarding_alert_id && (
+                        <div className="flex items-center gap-2 mb-2 text-red-400 text-sm">
+                          <Shield className="w-4 h-4" />
+                          <span className="font-semibold">🚨 Linked to Safeguarding Alert</span>
+                          {room.risk_level && (
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              room.risk_level === 'RED' ? 'bg-red-500 text-white' :
+                              room.risk_level === 'AMBER' ? 'bg-amber-500 text-white' :
+                              'bg-yellow-500 text-white'
+                            }`}>
+                              {room.risk_level}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Meta info */}
+                      <div className="flex items-center gap-4 text-sm text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          Waiting: {formatTimeAgo(room.created_at)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="w-4 h-4" />
+                          {messageCount} messages
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {room.status === 'waiting' && (
+                        <button
+                          onClick={() => handleJoinChat(room)}
+                          className="px-4 py-2 bg-secondary text-primary-dark rounded-lg hover:bg-secondary-light font-semibold"
+                        >
+                          Join Chat
+                        </button>
+                      )}
+                      {room.status === 'active' && room.staff_id === user?.id && (
+                        <button
+                          onClick={() => handleJoinChat(room)}
+                          className="px-4 py-2 bg-primary-light text-white rounded-lg hover:bg-primary"
+                        >
+                          Continue Chat
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Message preview */}
+                  {lastMessage ? (
+                    <div className="bg-primary-dark/50 rounded-lg p-3 mt-3">
+                      <p className="text-xs text-gray-500 mb-1">Latest message:</p>
+                      <p className="text-sm text-gray-300 truncate">
+                        "{lastMessage.text?.substring(0, 100)}{(lastMessage.text?.length || 0) > 100 ? '...' : ''}"
                       </p>
                     </div>
-                    {room.status === 'waiting' && (
-                      <button
-                        onClick={() => handleJoinChat(room)}
-                        className="px-4 py-2 bg-secondary text-primary-dark rounded-lg hover:bg-secondary-light font-semibold"
-                      >
-                        Join Chat
-                      </button>
-                    )}
-                    {room.status === 'active' && room.staff_id === user?.id && (
-                      <button
-                        onClick={() => handleJoinChat(room)}
-                        className="px-4 py-2 bg-primary-light text-white rounded-lg hover:bg-primary"
-                      >
-                        Continue Chat
-                      </button>
-                    )}
-                  </div>
+                  ) : (
+                    <div className="bg-primary-dark/50 rounded-lg p-3 mt-3">
+                      <p className="text-sm text-gray-500 italic">No messages yet - user just connected</p>
+                    </div>
+                  )}
                 </div>
-              ))}
+              )})}
               {liveChatRooms.filter(r => r.status !== 'ended').length === 0 && (
                 <div className="text-center py-12 text-gray-500">
                   <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
