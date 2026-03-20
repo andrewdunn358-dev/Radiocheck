@@ -5994,21 +5994,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 alert.geo_lon = geo_data.get("geo_lon")
             
             alert_id = alert.id
-            try:
-                alert_dict = alert.dict()
-                # Ensure datetime is properly formatted for MongoDB
-                if isinstance(alert_dict.get('created_at'), datetime):
-                    alert_dict['created_at'] = alert_dict['created_at']
-                if isinstance(alert_dict.get('acknowledged_at'), datetime):
-                    alert_dict['acknowledged_at'] = alert_dict['acknowledged_at']
-                if isinstance(alert_dict.get('resolved_at'), datetime):
-                    alert_dict['resolved_at'] = alert_dict['resolved_at']
-                    
-                result = await db.safeguarding_alerts.insert_one(alert_dict)
-                logging.warning(f"SAFEGUARDING ALERT CREATED [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown') if geo_data else 'Unknown'}, {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'} - MongoDB ID: {result.inserted_id}")
-            except Exception as db_err:
-                logging.error(f"FAILED TO INSERT SAFEGUARDING ALERT: {db_err} - Alert ID: {alert_id}")
-                # Don't fail the whole request if alert insert fails
+            await db.safeguarding_alerts.insert_one(alert.dict())
+            print(f"[SAFEGUARDING] ALERT CREATED IN DATABASE - ID: {alert_id}, Risk: {risk_level}, Score: {risk_data['score']}")
+            logging.warning(f"SAFEGUARDING ALERT [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown') if geo_data else 'Unknown'}, {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'}")
             
             # NOTE: We no longer emit the alert immediately here.
             # The alert will be emitted when the user chooses to call or chat,
