@@ -591,18 +591,26 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       updateStatus('ringing', `Ringing ${data.target_name || ''}...`);
     });
 
-    // WebRTC answer received
+    // WebRTC answer received - ONLY process if we're the caller (waiting for answer)
+    // If we're the callee (answered an incoming call), we should NOT receive an answer
     socket.on('webrtc_answer', async (data: { call_id: string; answer: RTCSessionDescriptionInit }) => {
       console.log('[WebRTCPhone] WebRTC answer received');
       if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
-        hasRemoteDescriptionRef.current = true;
+        // Check if connection is in the right state to receive an answer
+        const signalingState = peerConnectionRef.current.signalingState;
+        if (signalingState === 'have-local-offer') {
+          // We made an offer, waiting for answer - this is correct
+          await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+          hasRemoteDescriptionRef.current = true;
 
-        // Process any pending ICE candidates
-        for (const candidate of pendingIceCandidatesRef.current) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          // Process any pending ICE candidates
+          for (const candidate of pendingIceCandidatesRef.current) {
+            await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+          pendingIceCandidatesRef.current = [];
+        } else {
+          console.log('[WebRTCPhone] Ignoring answer - signaling state is:', signalingState);
         }
-        pendingIceCandidatesRef.current = [];
       }
     });
 
