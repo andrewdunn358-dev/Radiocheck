@@ -564,13 +564,22 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     });
 
     // Call accepted (caller receives this)
-    socket.on('call_accepted', async (data: { call_id: string; callee_name?: string }) => {
-      console.log('[WebRTCPhone] Call accepted by:', data.callee_name);
+    // NOTE: Server sends this to BOTH parties, but only the CALLER should create the offer
+    socket.on('call_accepted', async (data: { call_id: string; callee_name?: string; is_callee?: boolean }) => {
+      console.log('[WebRTCPhone] Call accepted by:', data.callee_name, 'is_callee:', data.is_callee);
       stopRingtone();
+      
+      // If we're the callee, we should NOT create an offer - wait for the caller's offer
+      if (data.is_callee) {
+        console.log('[WebRTCPhone] We are the callee - waiting for offer from caller');
+        updateStatus('connecting', 'Connecting...');
+        return;
+      }
+      
+      // We are the caller - create the WebRTC offer
       updateStatus('connected', 'Connected');
       setState(prev => ({ ...prev, hasIncomingCall: false, isInCall: true }));
       
-      // Caller creates the WebRTC offer
       try {
         const pc = await createPeerConnection();
         const offer = await pc.createOffer();
