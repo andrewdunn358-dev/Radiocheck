@@ -776,6 +776,10 @@ export default function AdminPortal() {
     end_time: '17:00',
     user_id: '',
   });
+  
+  // Rota Calendar state
+  const [rotaCalendarMonth, setRotaCalendarMonth] = useState(new Date());
+  const [selectedRotaDate, setSelectedRotaDate] = useState<string | null>(null);
 
   // Check for existing session
   useEffect(() => {
@@ -3499,97 +3503,229 @@ export default function AdminPortal() {
                 })()}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Today's Shifts */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Full Month Calendar */}
+                <div className="lg:col-span-2 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <button 
+                      onClick={() => setRotaCalendarMonth(new Date(rotaCalendarMonth.getFullYear(), rotaCalendarMonth.getMonth() - 1))}
+                      className="p-2 hover:bg-gray-700 rounded"
+                    >
+                      <ChevronDown className="w-5 h-5 rotate-90" />
+                    </button>
+                    <h3 className="font-semibold text-lg">
+                      {rotaCalendarMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                    </h3>
+                    <button 
+                      onClick={() => setRotaCalendarMonth(new Date(rotaCalendarMonth.getFullYear(), rotaCalendarMonth.getMonth() + 1))}
+                      className="p-2 hover:bg-gray-700 rounded"
+                    >
+                      <ChevronDown className="w-5 h-5 -rotate-90" />
+                    </button>
+                  </div>
+                  
+                  {/* Calendar Grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {/* Day Headers */}
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                      <div key={day} className="text-center text-xs text-gray-400 py-2 font-medium">
+                        {day}
+                      </div>
+                    ))}
+                    
+                    {/* Calendar Days */}
+                    {(() => {
+                      const year = rotaCalendarMonth.getFullYear();
+                      const month = rotaCalendarMonth.getMonth();
+                      const firstDay = new Date(year, month, 1);
+                      const lastDay = new Date(year, month + 1, 0);
+                      const daysInMonth = lastDay.getDate();
+                      
+                      // Adjust for Monday start (0 = Monday, 6 = Sunday)
+                      let startDay = firstDay.getDay() - 1;
+                      if (startDay < 0) startDay = 6;
+                      
+                      const days = [];
+                      const today = new Date().toISOString().split('T')[0];
+                      
+                      // Empty cells before first day
+                      for (let i = 0; i < startDay; i++) {
+                        days.push(<div key={`empty-${i}`} className="h-20 bg-gray-900/50 rounded" />);
+                      }
+                      
+                      // Days of the month
+                      for (let day = 1; day <= daysInMonth; day++) {
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const dayShifts = shifts.filter(s => s.date === dateStr);
+                        const isToday = dateStr === today;
+                        const isSelected = dateStr === selectedRotaDate;
+                        
+                        days.push(
+                          <div 
+                            key={day}
+                            onClick={() => setSelectedRotaDate(dateStr)}
+                            className={`h-20 p-1 rounded cursor-pointer transition-colors ${
+                              isToday ? 'bg-blue-600/30 border border-blue-500' :
+                              isSelected ? 'bg-purple-600/30 border border-purple-500' :
+                              dayShifts.length > 0 ? 'bg-green-600/20 hover:bg-green-600/30' :
+                              'bg-gray-700/50 hover:bg-gray-700'
+                            }`}
+                          >
+                            <div className="text-xs font-medium mb-1">{day}</div>
+                            {dayShifts.length > 0 && (
+                              <div className="space-y-0.5">
+                                {dayShifts.slice(0, 2).map((s, i) => (
+                                  <div key={i} className={`text-[10px] px-1 py-0.5 rounded truncate ${
+                                    staff.find((st: StaffMember) => st.id === s.user_id)?.role === 'counsellor' 
+                                      ? 'bg-green-500/40 text-green-200'
+                                      : 'bg-blue-500/40 text-blue-200'
+                                  }`}>
+                                    {s.user_name?.split(' ')[0] || 'Shift'}
+                                  </div>
+                                ))}
+                                {dayShifts.length > 2 && (
+                                  <div className="text-[10px] text-gray-400">+{dayShifts.length - 2} more</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      
+                      return days;
+                    })()}
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex gap-4 mt-4 text-xs">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-green-500/40 rounded"></div>
+                      <span className="text-gray-400">Counsellor</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-blue-500/40 rounded"></div>
+                      <span className="text-gray-400">Peer</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-blue-600/30 border border-blue-500 rounded"></div>
+                      <span className="text-gray-400">Today</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Selected Day / Today's Shifts Panel */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-blue-400" />
-                    Today&apos;s Shifts
+                    {selectedRotaDate 
+                      ? new Date(selectedRotaDate + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+                      : "Today's Shifts"}
                   </h3>
-                  {shifts.filter(s => s.date === new Date().toISOString().split('T')[0]).length === 0 ? (
-                    <p className="text-gray-400 text-center py-4">No shifts scheduled for today</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {shifts
-                        .filter(s => s.date === new Date().toISOString().split('T')[0])
-                        .map((shift) => (
-                          <div key={shift.id} className="bg-gray-700 rounded-lg p-3 flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">{shift.user_name || 'Unassigned'}</p>
-                              <p className="text-sm text-gray-400">{shift.start_time} - {shift.end_time}</p>
+                  
+                  {(() => {
+                    const dateToShow = selectedRotaDate || new Date().toISOString().split('T')[0];
+                    const dayShifts = shifts.filter(s => s.date === dateToShow);
+                    
+                    if (dayShifts.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+                          <p className="text-gray-400">No shifts scheduled</p>
+                          <button 
+                            onClick={() => {
+                              setNewShift({ ...newShift, date: dateToShow });
+                              setShowAddShiftModal(true);
+                            }}
+                            className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
+                          >
+                            Add Shift
+                          </button>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="space-y-3">
+                        {dayShifts.map((shift) => {
+                          const staffMember = staff.find((st: StaffMember) => st.id === shift.user_id);
+                          return (
+                            <div key={shift.id} className="bg-gray-700 rounded-lg p-3">
+                              <div className="flex justify-between items-start mb-2">
+                                <div>
+                                  <p className="font-medium">{shift.user_name || 'Unassigned'}</p>
+                                  <p className="text-sm text-gray-400">{shift.start_time} - {shift.end_time}</p>
+                                </div>
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  staffMember?.role === 'counsellor' 
+                                    ? 'bg-green-500/20 text-green-400' 
+                                    : 'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {staffMember?.role || 'staff'}
+                                </span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  shift.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                                }`}>
+                                  {shift.status || 'pending'}
+                                </span>
+                              </div>
                             </div>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              shift.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                            }`}>
-                              {shift.status || 'pending'}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  )}
+                          );
+                        })}
+                        
+                        <button 
+                          onClick={() => {
+                            setNewShift({ ...newShift, date: dateToShow });
+                            setShowAddShiftModal(true);
+                          }}
+                          className="w-full mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center justify-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Another Shift
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
+              </div>
 
-                {/* Pending Swap Requests */}
-                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              {/* Pending Swap Requests */}
+              {pendingSwaps.length > 0 && (
+                <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
                     <RefreshCw className="w-5 h-5 text-yellow-400" />
                     Pending Swap Requests
-                    {pendingSwaps.length > 0 && (
-                      <span className="bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-full">{pendingSwaps.length}</span>
-                    )}
+                    <span className="bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-full">{pendingSwaps.length}</span>
                   </h3>
-                  {pendingSwaps.length === 0 ? (
-                    <p className="text-gray-400 text-center py-4">No swap requests pending approval</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {pendingSwaps.map((swap) => (
-                        <div key={swap.id} className="bg-gray-700 rounded-lg p-3">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <p className="font-medium">{swap.requester_name}</p>
-                              <p className="text-sm text-gray-400">{swap.shift_date} • {swap.shift_start} - {swap.shift_end}</p>
-                            </div>
-                            <span className="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">
-                              {swap.status}
-                            </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pendingSwaps.map((swap) => (
+                      <div key={swap.id} className="bg-gray-700 rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-medium">{swap.requester_name}</p>
+                            <p className="text-sm text-gray-400">{swap.shift_date} • {swap.shift_start} - {swap.shift_end}</p>
                           </div>
-                          {swap.responder_name && (
-                            <p className="text-sm text-gray-400 mb-2">Cover: {swap.responder_name}</p>
-                          )}
-                          <div className="flex gap-2">
-                            <button className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
-                              Approve
-                            </button>
-                            <button className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">
-                              Reject
-                            </button>
-                          </div>
+                          <span className="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">
+                            {swap.status}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Week View */}
-              <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h3 className="font-semibold mb-4">Week Overview</h3>
-                <div className="grid grid-cols-7 gap-2">
-                  {[...Array(7)].map((_, i) => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + i);
-                    const dateStr = date.toISOString().split('T')[0];
-                    const dayShifts = shifts.filter(s => s.date === dateStr);
-                    return (
-                      <div key={i} className={`text-center p-3 rounded-lg ${i === 0 ? 'bg-blue-600' : 'bg-gray-700'}`}>
-                        <p className="text-xs text-gray-400">{date.toLocaleDateString('en-GB', { weekday: 'short' })}</p>
-                        <p className="font-bold">{date.getDate()}</p>
-                        <p className="text-xs mt-1">{dayShifts.length} shifts</p>
+                        {swap.responder_name && (
+                          <p className="text-sm text-gray-400 mb-2">Cover: {swap.responder_name}</p>
+                        )}
+                        <div className="flex gap-2">
+                          <button className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
+                            Approve
+                          </button>
+                          <button className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">
+                            Reject
+                          </button>
+                        </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
