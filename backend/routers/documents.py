@@ -8,10 +8,21 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response, JSONResponse
 import markdown
-from weasyprint import HTML, CSS
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
+
+# Lazy import weasyprint - only needed for PDF generation
+# This allows the server to start even if weasyprint isn't installed
+_weasyprint_available = False
+HTML = None
+CSS = None
+
+try:
+    from weasyprint import HTML, CSS
+    _weasyprint_available = True
+except ImportError:
+    logger.warning("weasyprint not available - PDF generation disabled, markdown download still works")
 
 # Path to compliance documents - use relative path from backend folder
 DOCS_PATH = Path(__file__).parent.parent / "docs" / "compliance"
@@ -221,6 +232,13 @@ async def download_document(doc_id: str, format: str = "pdf"):
                 headers={
                     "Content-Disposition": f'attachment; filename="{filename}"'
                 }
+            )
+        
+        # PDF format requested - check if weasyprint is available
+        if not _weasyprint_available:
+            raise HTTPException(
+                status_code=503, 
+                detail="PDF generation is not available. Please download as markdown format instead using ?format=md"
             )
         
         # Convert markdown to HTML
