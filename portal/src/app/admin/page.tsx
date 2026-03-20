@@ -427,19 +427,19 @@ const api = {
     api.fetch<any>('/call-logs', { token }),
   
   getChatLogs: (token: string) =>
-    api.fetch<any>('/admin/logs/chats', { token }),
+    api.fetch<any>('/live-chat/rooms', { token }),
   
   getSafeguardingLogs: (token: string) =>
-    api.fetch<any>('/admin/logs/safeguarding', { token }),
+    api.fetch<any>('/safeguarding/safeguarding-alerts', { token }),
   
   getScreeningLogs: (token: string) =>
-    api.fetch<any>('/admin/logs/screening', { token }),
+    api.fetch<any>('/safeguarding/screening-submissions', { token }),
   
   getCallbackLogs: (token: string) =>
-    api.fetch<any>('/admin/logs/callbacks', { token }),
+    api.fetch<any>('/callbacks', { token }),
   
   getPanicLogs: (token: string) =>
-    api.fetch<any>('/admin/logs/panic', { token }),
+    api.fetch<any>('/safeguarding/panic-alerts', { token }),
 
   // Screening actions
   updateScreeningStatus: (token: string, id: string, status: string) =>
@@ -4639,7 +4639,7 @@ export default function AdminPortal() {
                     onClick={async () => {
                       if (!token) return;
                       try {
-                        await api.fetch('/compliance/security/automated-review', { token, method: 'POST' });
+                        await api.fetch('/compliance/security/automated-review', { token, method: 'GET' });
                         setSuccess('Security review initiated');
                         loadCompliance();
                       } catch (err: any) {
