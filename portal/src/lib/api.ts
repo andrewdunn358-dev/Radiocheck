@@ -344,6 +344,9 @@ export const staffApi = {
           is_supervisor: profile.is_supervisor,
           specializations: profile.specialization ? [profile.specialization] : undefined,
           user_id: profile.legacy_user_id || profile.id,
+          // CRITICAL: callable_user_id is the ID that mobile apps use for WebRTC calls
+          // Staff portal MUST register with this ID for calls to work
+          callable_user_id: profile.callable_user_id || profile.legacy_user_id || profile.id,
           _source: profile._source  // Track where data came from
         } as StaffProfile;
       }

@@ -2373,6 +2373,10 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
     """
     Get the current user's staff profile from the unified collection.
     This is the NEW profile endpoint for the staff portal.
+    
+    CRITICAL: Returns callable_user_id which is the ID that mobile apps use
+    to call this staff member via WebRTC. Staff portal MUST register with
+    this ID on Socket.IO for calls to work.
     """
     # First try unified staff collection
     staff = await db.staff.find_one({"email": current_user.email})
@@ -2384,6 +2388,33 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
         # Decrypt name if encrypted
         if staff.get("name") and str(staff.get("name")).startswith("ENC:"):
             staff["name"] = decrypt_field(staff["name"])
+        
+        # CRITICAL: Find the callable_user_id from peer_supporters/counsellors profile
+        # This is the ID that mobile apps use for WebRTC calls
+        # Without this, calls will fail with "user_offline"
+        callable_user_id = staff.get("id")  # Default to staff.id
+        role = staff.get("role")
+        email = staff.get("email")
+        
+        if role == "counsellor":
+            profile = await db.counsellors.find_one({"email": email})
+            if profile and profile.get("user_id"):
+                callable_user_id = profile["user_id"]
+        elif role in ["peer", "peer_supporter"]:
+            profile = await db.peer_supporters.find_one({"email": email})
+            if profile and profile.get("user_id"):
+                callable_user_id = profile["user_id"]
+        else:
+            # Try both collections
+            profile = await db.counsellors.find_one({"email": email})
+            if profile and profile.get("user_id"):
+                callable_user_id = profile["user_id"]
+            else:
+                profile = await db.peer_supporters.find_one({"email": email})
+                if profile and profile.get("user_id"):
+                    callable_user_id = profile["user_id"]
+        
+        staff["callable_user_id"] = callable_user_id
         return staff
     
     # Fallback: Build profile from legacy collections (users + counsellors/peers)
@@ -2397,14 +2428,17 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
     
     # Try to find linked profile
     profile = None
+    callable_user_id = user_id  # Default
     if role in ["counsellor", "supervisor"]:
         profile = await db.counsellors.find_one({"user_id": user_id})
         if profile:
             profile = decrypt_document("counsellors", profile)
+            callable_user_id = profile.get("user_id") or user_id
     elif role == "peer":
         profile = await db.peer_supporters.find_one({"user_id": user_id})
         if profile:
             profile = decrypt_document("peer_supporters", profile)
+            callable_user_id = profile.get("user_id") or user_id
     
     if profile:
         # Build unified response from legacy data
@@ -2422,6 +2456,7 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
             "is_supervisor": role == "supervisor",
             "legacy_user_id": user_id,
             "legacy_profile_id": profile.get("id") or str(profile.get("_id")),
+            "callable_user_id": callable_user_id,  # The ID for WebRTC calls
             "_source": "legacy"  # Indicates this came from old collections
         }
     
@@ -2433,6 +2468,7 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
         "name": user.get("name"),
         "status": "unavailable",
         "has_profile": False,
+        "callable_user_id": user_id,
         "_source": "legacy_no_profile"
     }
 

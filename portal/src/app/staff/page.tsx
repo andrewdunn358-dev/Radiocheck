@@ -67,12 +67,15 @@ export default function StaffPortalPage() {
   const [chatConnected, setChatConnected] = useState(false);
 
   // Initialize WebRTC Phone (for peer-to-peer calls between staff)
+  // CRITICAL: We MUST use callable_user_id from the profile, NOT user.id
+  // The mobile app calls using peer_supporters.user_id, so we must register with that same ID
+  const webrtcUserId = (profile as any)?.callable_user_id || profile?.user_id || user?.id;
   const webrtcPhone = useWebRTCPhone({
     serverUrl: API_URL,
-    userId: user?.id,
+    userId: webrtcUserId,
     userType: user?.role === 'counsellor' ? 'counsellor' : 'peer',
     userName: user?.name,
-    enabled: !!token && !!user,
+    enabled: !!token && !!user && !!webrtcUserId,
   });
 
   // Initialize Twilio Phone (for browser-to-phone calls)
@@ -90,13 +93,15 @@ export default function StaffPortalPage() {
       hasProfile: !!profile,
       userId: user?.id,
       profileId: profile?.id,
+      callableUserId: (profile as any)?.callable_user_id,  // The ID for WebRTC calls
+      webrtcUserId: webrtcUserId,  // What we're actually using
       userRole: user?.role,
       userName: user?.name,
       API_URL 
     });
     console.log('[StaffPage] WebRTC status:', webrtcPhone.status, 'registered:', webrtcPhone.isRegistered);
     console.log('[StaffPage] Twilio status:', twilioPhone.status, 'ready:', twilioPhone.isReady);
-  }, [token, user, profile, webrtcPhone.status, webrtcPhone.isRegistered, twilioPhone.status, twilioPhone.isReady]);
+  }, [token, user, profile, webrtcUserId, webrtcPhone.status, webrtcPhone.isRegistered, twilioPhone.status, twilioPhone.isReady]);
 
   // Sync phone status from WebRTC hook
   useEffect(() => {
@@ -318,6 +323,54 @@ export default function StaffPortalPage() {
       window.removeEventListener('staff_offline', handleStaffOffline as EventListener);
     };
   }, [loadTeam]);
+
+  // AUTO-OPEN CHAT when pendingRequest.room_id is confirmed
+  // This handles the "chat notification comes up but no chat window appears" issue
+  useEffect(() => {
+    const openConfirmedChat = async () => {
+      // Check if we have a confirmed room_id from an accepted chat request
+      if (webrtcPhone.pendingRequest?.room_id && token && user?.id && user?.name) {
+        const roomId = webrtcPhone.pendingRequest.room_id;
+        const userId = webrtcPhone.pendingRequest.user_id;
+        const userName = webrtcPhone.pendingRequest.user_name;
+        
+        console.log('[StaffPage] Auto-opening confirmed chat room:', roomId, 'user:', userId);
+        
+        try {
+          // Join the chat room via API
+          await staffApi.joinLiveChat(token, roomId, user.id, user.name);
+          
+          // Get messages
+          const messages = await staffApi.getLiveChatMessages(token, roomId);
+          
+          // Create room object and set as active
+          const room: LiveChatRoom = {
+            id: roomId,
+            room_id: roomId,
+            user_id: userId,
+            user_name: userName || 'Veteran',
+            status: 'active',
+            staff_id: user.id,
+            staff_name: user.name,
+            created_at: new Date().toISOString(),
+          };
+          
+          setActiveChatRoom(room);
+          setChatMessages(messages);
+          setActiveTab('livechat');
+          
+          // Reload live chats to ensure list is up to date
+          loadLiveChats();
+          
+          console.log('[StaffPage] Chat room opened successfully');
+        } catch (err) {
+          console.error('[StaffPage] Failed to auto-open chat room:', err);
+        }
+      }
+    };
+    
+    openConfirmedChat();
+  }, [webrtcPhone.pendingRequest?.room_id, token, user?.id, user?.name, loadLiveChats]);
 
   // Session timeout logic
   useEffect(() => {
