@@ -2082,23 +2082,34 @@ export default function AdminPortal() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     {/* Visitors by Region */}
                     <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                      <h4 className="font-medium mb-3 text-red-400">📍 Visitors by Region (30 days)</h4>
+                      <h4 className="font-medium mb-3 text-red-400">Visitors by Region (30 days)</h4>
                       <div className="space-y-2">
                         {appUsageStats?.regions && (
                           Array.isArray(appUsageStats.regions) 
-                            ? appUsageStats.regions.map((item: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center bg-gray-700 p-2 rounded">
-                                  <span className="capitalize">{String(item.region || item.name || 'Unknown').replace('_', ' ')}</span>
-                                  <strong>{item.visits || item.unique || item.count || 0}</strong>
-                                </div>
-                              ))
-                            : Object.keys(appUsageStats.regions).length > 0 
-                              ? Object.entries(appUsageStats.regions).map(([region, data]: [string, any]) => (
-                                  <div key={region} className="flex justify-between items-center bg-gray-700 p-2 rounded">
-                                    <span className="capitalize">{region.replace('_', ' ')}</span>
-                                    <strong>{typeof data === 'object' ? (data.visits || data.unique || 0) : data}</strong>
+                            ? appUsageStats.regions.map((item: any, idx: number) => {
+                                // Handle both {region, visits, unique} and {name, count} formats
+                                const regionName = String(item.region || item.name || item.country || 'Unknown');
+                                const visitCount = Number(item.visits || item.unique || item.count || item.value || 0);
+                                return (
+                                  <div key={idx} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                                    <span className="capitalize">{regionName.replace(/_/g, ' ')}</span>
+                                    <strong>{visitCount}</strong>
                                   </div>
-                                ))
+                                );
+                              })
+                            : typeof appUsageStats.regions === 'object' && Object.keys(appUsageStats.regions).length > 0 
+                              ? Object.entries(appUsageStats.regions).map(([region, data]: [string, any]) => {
+                                  // Handle both number values and object values
+                                  const visitCount = typeof data === 'number' 
+                                    ? data 
+                                    : (typeof data === 'object' ? Number(data.visits || data.unique || data.count || 0) : 0);
+                                  return (
+                                    <div key={region} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                                      <span className="capitalize">{region.replace(/_/g, ' ')}</span>
+                                      <strong>{visitCount}</strong>
+                                    </div>
+                                  );
+                                })
                               : <p className="text-gray-500 text-sm">No region data yet</p>
                         )}
                         {!appUsageStats?.regions && <p className="text-gray-500 text-sm">No region data yet</p>}
@@ -3527,6 +3538,7 @@ export default function AdminPortal() {
                       </select>
                     </div>
                     <div style={{ height: '300px' }}>
+                      {Array.isArray(aiDailyUsage) && aiDailyUsage.length > 0 ? (
                       <Bar
                         data={{
                           labels: aiDailyUsage.map((d: any) => {
@@ -3580,6 +3592,11 @@ export default function AdminPortal() {
                           }
                         }}
                       />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-500">
+                          No daily usage data available
+                        </div>
+                      )}
                     </div>
                   </div>
 
