@@ -1,9 +1,36 @@
 // Staff Portal - Radio Check Veterans Support
 // For Counsellors and Peer Supporters
 
-// State
-let token = localStorage.getItem('staff_token');
-let currentUser = JSON.parse(localStorage.getItem('staff_user') || 'null');
+// State - Check both storages for existing session
+// Uses sessionStorage by default unless "Remember me" was checked
+function getStorage() {
+    return localStorage.getItem('staff_remember_me') === 'true' ? localStorage : sessionStorage;
+}
+
+function getAuthData(key) {
+    // Check localStorage first (for remembered sessions), then sessionStorage
+    return localStorage.getItem(key) || sessionStorage.getItem(key);
+}
+
+function setAuthData(key, value, rememberMe) {
+    if (rememberMe !== undefined) {
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem(key, value);
+        // Clear from other storage
+        const other = rememberMe ? sessionStorage : localStorage;
+        other.removeItem(key);
+    } else {
+        getStorage().setItem(key, value);
+    }
+}
+
+function clearAuthData(key) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+}
+
+let token = getAuthData('staff_token');
+let currentUser = JSON.parse(getAuthData('staff_user') || 'null');
 let myProfile = null;
 
 // Session timeout - 2 hours of inactivity
@@ -13,8 +40,8 @@ let lastActivityTime = Date.now();
 
 // Check if session has expired on page load
 function checkSessionExpiry() {
-    const lastActivity = localStorage.getItem('staff_last_activity');
-    const tokenTime = localStorage.getItem('staff_token_time');
+    const lastActivity = getAuthData('staff_last_activity');
+    const tokenTime = getAuthData('staff_token_time');
     
     if (lastActivity) {
         const timeSinceActivity = Date.now() - parseInt(lastActivity);
@@ -42,7 +69,7 @@ function checkSessionExpiry() {
 // Reset inactivity timer on user activity
 function resetInactivityTimer() {
     lastActivityTime = Date.now();
-    localStorage.setItem('staff_last_activity', lastActivityTime.toString());
+    setAuthData('staff_last_activity', lastActivityTime.toString());
     
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
@@ -241,10 +268,18 @@ async function handleLogin(e) {
         window.currentUser = currentUser;
         window.staffToken = token;
         
-        localStorage.setItem('staff_token', token);
-        localStorage.setItem('staff_user', JSON.stringify(currentUser));
-        localStorage.setItem('staff_token_time', Date.now().toString());
-        localStorage.setItem('staff_last_activity', Date.now().toString());
+        // Check if "Remember me" checkbox is checked
+        var rememberMe = document.getElementById('remember-me')?.checked || false;
+        if (rememberMe) {
+            localStorage.setItem('staff_remember_me', 'true');
+        } else {
+            localStorage.removeItem('staff_remember_me');
+        }
+        
+        setAuthData('staff_token', token, rememberMe);
+        setAuthData('staff_user', JSON.stringify(currentUser), rememberMe);
+        setAuthData('staff_token_time', Date.now().toString(), rememberMe);
+        setAuthData('staff_last_activity', Date.now().toString(), rememberMe);
         
         // Start session timer
         resetInactivityTimer();
@@ -270,10 +305,13 @@ function logout(silent) {
     token = null;
     currentUser = null;
     myProfile = null;
-    localStorage.removeItem('staff_token');
-    localStorage.removeItem('staff_user');
-    localStorage.removeItem('staff_last_activity');
-    localStorage.removeItem('staff_token_time');
+    
+    // Clear from both storages
+    clearAuthData('staff_token');
+    clearAuthData('staff_user');
+    clearAuthData('staff_last_activity');
+    clearAuthData('staff_token_time');
+    localStorage.removeItem('staff_remember_me');
     
     if (!silent) {
         showNotification('Logged out successfully', 'success');

@@ -8,7 +8,7 @@ interface StaffAuthContextType {
   profile: StaffProfile | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   updateStatus: (status: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -19,6 +19,43 @@ const StaffAuthContext = createContext<StaffAuthContextType | undefined>(undefin
 // Session timeout - 2 hours
 const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
+// Helper to get the appropriate storage based on "remember me" preference
+const getStorage = (): Storage => {
+  // Check if user chose to be remembered (stored in localStorage)
+  const rememberMe = localStorage.getItem('staff_remember_me') === 'true';
+  return rememberMe ? localStorage : sessionStorage;
+};
+
+// Helper to set auth data in the appropriate storage
+const setAuthData = (key: string, value: string, rememberMe?: boolean) => {
+  if (rememberMe !== undefined) {
+    // If explicitly setting, use the requested storage
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem(key, value);
+    // Clear from the other storage to avoid confusion
+    const otherStorage = rememberMe ? sessionStorage : localStorage;
+    otherStorage.removeItem(key);
+  } else {
+    // Otherwise use the current preference
+    getStorage().setItem(key, value);
+  }
+};
+
+// Helper to get auth data from either storage
+const getAuthData = (key: string): string | null => {
+  // Check localStorage first (for "remembered" sessions)
+  const localValue = localStorage.getItem(key);
+  if (localValue) return localValue;
+  // Then check sessionStorage
+  return sessionStorage.getItem(key);
+};
+
+// Helper to clear auth data from both storages
+const clearAuthData = (key: string) => {
+  localStorage.removeItem(key);
+  sessionStorage.removeItem(key);
+};
+
 export function StaffAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<StaffUser | null>(null);
   const [profile, setProfile] = useState<StaffProfile | null>(null);
@@ -28,7 +65,7 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
 
   // Check session expiry
   const checkSession = useCallback(() => {
-    const storedLastActivity = localStorage.getItem('staff_last_activity');
+    const storedLastActivity = getAuthData('staff_last_activity');
     if (storedLastActivity) {
       const timeSinceActivity = Date.now() - parseInt(storedLastActivity);
       if (timeSinceActivity > SESSION_TIMEOUT_MS) {
@@ -43,7 +80,7 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
   const resetActivity = useCallback(() => {
     const now = Date.now();
     setLastActivity(now);
-    localStorage.setItem('staff_last_activity', now.toString());
+    setAuthData('staff_last_activity', now.toString());
   }, []);
 
   // Setup activity listeners
@@ -71,10 +108,10 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [token, checkSession]);
 
-  // Initialize from localStorage
+  // Initialize from storage (checks both localStorage and sessionStorage)
   useEffect(() => {
-    const storedToken = localStorage.getItem('staff_token');
-    const storedUser = localStorage.getItem('staff_user');
+    const storedToken = getAuthData('staff_token');
+    const storedUser = getAuthData('staff_user');
 
     if (storedToken && storedUser && checkSession()) {
       try {
@@ -117,24 +154,37 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  // Login with optional "remember me" - defaults to session-only (no persistence)
+  const login = async (email: string, password: string, rememberMe: boolean = false) => {
     const response = await staffApi.login(email, password);
+    
+    // Store the remember me preference
+    if (rememberMe) {
+      localStorage.setItem('staff_remember_me', 'true');
+    } else {
+      localStorage.removeItem('staff_remember_me');
+    }
     
     setToken(response.token);
     setUser(response.user);
-    localStorage.setItem('staff_token', response.token);
-    localStorage.setItem('staff_user', JSON.stringify(response.user));
-    localStorage.setItem('staff_token_time', Date.now().toString());
+    
+    // Use the appropriate storage based on rememberMe
+    setAuthData('staff_token', response.token, rememberMe);
+    setAuthData('staff_user', JSON.stringify(response.user), rememberMe);
+    setAuthData('staff_token_time', Date.now().toString(), rememberMe);
     resetActivity();
     
     await loadProfile(response.token, response.user?.id);
   };
 
   const logout = () => {
-    localStorage.removeItem('staff_token');
-    localStorage.removeItem('staff_user');
-    localStorage.removeItem('staff_token_time');
-    localStorage.removeItem('staff_last_activity');
+    // Clear from both storages to ensure complete logout
+    clearAuthData('staff_token');
+    clearAuthData('staff_user');
+    clearAuthData('staff_token_time');
+    clearAuthData('staff_last_activity');
+    clearAuthData('staff_status');
+    localStorage.removeItem('staff_remember_me');
     setUser(null);
     setProfile(null);
     setToken(null);
@@ -158,7 +208,7 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
         if (staffId) {
           await staffApi.updateStatus(token, status, staffId, staffType);
           setProfile({ ...profile, status: status as StaffProfile['status'] });
-          localStorage.setItem('staff_status', status);
+          setAuthData('staff_status', status);
           console.log('Status updated to:', status);
           return;
         }
@@ -168,7 +218,7 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
     }
     
     // No profile - just save locally
-    localStorage.setItem('staff_status', status);
+    setAuthData('staff_status', status);
     console.log('Status saved locally (no profile):', status);
   };
 

@@ -31,6 +31,7 @@ export default function StaffPortalPage() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   // App state
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -476,7 +477,7 @@ export default function StaffPortalPage() {
     setLoginError('');
     setLoginLoading(true);
     try {
-      await login(loginEmail, loginPassword);
+      await login(loginEmail, loginPassword, rememberMe);
     } catch (err: any) {
       setLoginError(err.message || 'Login failed');
     } finally {
@@ -1059,6 +1060,22 @@ export default function StaffPortalPage() {
                 placeholder="Enter your password"
               />
             </div>
+            <div className="mb-6 flex items-center">
+              <input
+                type="checkbox"
+                id="remember-me"
+                data-testid="remember-me-checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 mr-2 rounded border-gray-600 bg-primary-dark text-secondary focus:ring-secondary"
+              />
+              <label htmlFor="remember-me" className="text-sm text-gray-400 cursor-pointer">
+                Remember me on this device
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              For shared computers, leave unchecked to automatically log out when you close the browser.
+            </p>
             <button
               type="submit"
               data-testid="login-submit"
