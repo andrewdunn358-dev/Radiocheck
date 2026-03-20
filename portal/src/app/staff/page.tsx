@@ -186,16 +186,22 @@ export default function StaffPortalPage() {
 
   // Load data
   const loadAlerts = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      console.log('[StaffPage] loadAlerts: No token, skipping');
+      return;
+    }
+    console.log('[StaffPage] loadAlerts: Loading safeguarding and panic alerts...');
     try {
       const [safeguarding, panic] = await Promise.all([
         staffApi.getSafeguardingAlerts(token),
         staffApi.getPanicAlerts(token),
       ]);
-      setSafeguardingAlerts(safeguarding);
-      setPanicAlerts(panic);
+      console.log('[StaffPage] loadAlerts: Received safeguarding:', safeguarding?.length || 0, 'alerts');
+      console.log('[StaffPage] loadAlerts: Received panic:', panic?.length || 0, 'alerts');
+      setSafeguardingAlerts(safeguarding || []);
+      setPanicAlerts(panic || []);
     } catch (err) {
-      console.error('Failed to load alerts:', err);
+      console.error('[StaffPage] loadAlerts: Failed to load alerts:', err);
     }
   }, [token]);
 

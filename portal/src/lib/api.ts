@@ -13,13 +13,19 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     ...options.headers,
   };
 
-  const response = await fetch(`${API_URL}/api${endpoint}`, {
+  const url = `${API_URL}/api${endpoint}`;
+  console.log(`[API] Fetching: ${url}`);
+  
+  const response = await fetch(url, {
     ...fetchOptions,
     headers,
   });
 
+  console.log(`[API] Response: ${response.status} ${response.statusText} for ${endpoint}`);
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+    console.error(`[API] Error for ${endpoint}:`, error);
     throw new Error(error.detail || `HTTP ${response.status}`);
   }
 
