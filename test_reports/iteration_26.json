@@ -27,7 +27,7 @@
       "email": "test@example.com",
       "password": "testpass123"
     },
-    "preview_url": "https://staff-webrtc.preview.emergentagent.com"
+    "preview_url": "https://unified-next.preview.emergentagent.com"
   },
   "seed_data_creation": "Test user test@example.com with password testpass123 already exists",
   "retest_needed": false,

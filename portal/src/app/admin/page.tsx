@@ -7,7 +7,7 @@ import {
   Settings, BarChart3, Clock, BookOpen, AlertTriangle,
   LogOut, Menu, X, Plus, Edit, Trash2, Search,
   Phone, MessageSquare, Bell, ChevronDown, ChevronRight,
-  Download, RefreshCw, Check, XCircle, Eye, Filter, Heart, Play, MapPin
+  Download, RefreshCw, Check, XCircle, Eye, Filter, Heart, Play, MapPin, Key
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -366,6 +366,28 @@ const api = {
       token,
       method: 'DELETE',
     }),
+  
+  updateEvent: (token: string, id: string, data: any) =>
+    api.fetch<any>(`/events/admin/${id}`, {
+      token,
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  getEventAttendance: (token: string, eventId: string) =>
+    api.fetch<any>(`/events/admin/${eventId}/attendance`, { token }),
+
+  // Admin reset password
+  adminResetPassword: (token: string, userId: string, newPassword: string) =>
+    api.fetch<any>('/auth/admin-reset-password', {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, new_password: newPassword }),
+    }),
+
+  // AI Usage Daily
+  getAIUsageDaily: (token: string, days: number = 30) =>
+    api.fetch<any[]>(`/admin/ai-usage/daily?days=${days}`, { token }),
 
   // CMS
   getCMSPages: (token: string) =>
@@ -768,6 +790,27 @@ export default function AdminPortal() {
     area: '',
   });
 
+  // Reset Password Modal state
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ id: string; name: string } | null>(null);
+  const [resetPasswordData, setResetPasswordData] = useState({ newPassword: '', confirmPassword: '' });
+  
+  // Rota Swap tabs state
+  const [swapTabView, setSwapTabView] = useState<'pending' | 'all'>('pending');
+  const [allSwapRequests, setAllSwapRequests] = useState<any[]>([]);
+  
+  // Monitoring timestamp state
+  const [monitoringLastUpdated, setMonitoringLastUpdated] = useState<Date | null>(null);
+  
+  // Event modals state
+  const [showViewAttendanceModal, setShowViewAttendanceModal] = useState(false);
+  const [eventAttendance, setEventAttendance] = useState<any[]>([]);
+  const [attendanceEventTitle, setAttendanceEventTitle] = useState('');
+  
+  // AI Usage Daily chart data
+  const [aiDailyUsage, setAiDailyUsage] = useState<any[]>([]);
+  const [aiUsagePeriod, setAiUsagePeriod] = useState(30);
+
   // Add Shift modal state
   const [showAddShiftModal, setShowAddShiftModal] = useState(false);
   const [newShift, setNewShift] = useState({
@@ -916,6 +959,17 @@ export default function AdminPortal() {
     
     loadData();
   }, [token, activeTab, activeLogSubTab, staffRoleFilter]);
+
+  // Monitoring auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!token || activeTab !== 'monitoring') return;
+    
+    const interval = setInterval(() => {
+      loadMonitoring();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [token, activeTab]);
 
   // Load functions
   const loadStaff = async () => {
@@ -1071,6 +1125,13 @@ export default function AdminPortal() {
     try {
       const data = await api.getAIUsageSummary(token);
       setAIUsage(data);
+      // Also load daily usage data
+      try {
+        const daily = await api.getAIUsageDaily(token, aiUsagePeriod);
+        setAiDailyUsage(daily || []);
+      } catch (dailyErr) {
+        console.error('Daily AI usage not available:', dailyErr);
+      }
     } catch (err: any) {
       console.error('AI Usage not available:', err);
     }
@@ -1081,6 +1142,7 @@ export default function AdminPortal() {
     try {
       const data = await api.getMonitoringStats(token);
       setMonitoringStats(data);
+      setMonitoringLastUpdated(new Date());
     } catch (err: any) {
       console.error('Monitoring stats not available:', err);
     }
@@ -1754,6 +1816,19 @@ export default function AdminPortal() {
                               >
                                 <Edit className="w-4 h-4 text-blue-400" />
                               </button>
+                              {member.role !== 'admin' && (
+                                <button
+                                  onClick={() => {
+                                    setResetPasswordUser({ id: member.id, name: member.name });
+                                    setResetPasswordData({ newPassword: '', confirmPassword: '' });
+                                    setShowResetPasswordModal(true);
+                                  }}
+                                  className="p-1 hover:bg-gray-600 rounded"
+                                  title="Reset Password"
+                                >
+                                  <Key className="w-4 h-4 text-yellow-400" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleDeleteStaff(member.id)}
                                 className="p-1 hover:bg-gray-600 rounded"
@@ -1777,9 +1852,111 @@ export default function AdminPortal() {
             <div data-testid="logs-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Logs & Analytics</h2>
-                <button onClick={loadLogs} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
-                  <RefreshCw className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  {/* Export CSV Button */}
+                  <button 
+                    onClick={() => {
+                      // Get current sub-tab data
+                      let data: any[] = [];
+                      let filename = '';
+                      const dateStr = new Date().toISOString().split('T')[0];
+                      
+                      if (activeLogSubTab === 'calls') {
+                        data = callLogs;
+                        filename = `calls-logs-${dateStr}.csv`;
+                      } else if (activeLogSubTab === 'chats') {
+                        data = chatRooms;
+                        filename = `chats-logs-${dateStr}.csv`;
+                      } else if (activeLogSubTab === 'safeguarding') {
+                        data = safeguardingAlerts;
+                        filename = `safeguarding-logs-${dateStr}.csv`;
+                      } else if (activeLogSubTab === 'screening') {
+                        data = screeningLogs;
+                        filename = `screening-logs-${dateStr}.csv`;
+                      } else if (activeLogSubTab === 'callbacks') {
+                        data = callbackLogs;
+                        filename = `callbacks-logs-${dateStr}.csv`;
+                      } else if (activeLogSubTab === 'panic') {
+                        data = panicLogs;
+                        filename = `panic-logs-${dateStr}.csv`;
+                      } else if (activeLogSubTab === 'audit') {
+                        data = adminAuditLogs;
+                        filename = `audit-logs-${dateStr}.csv`;
+                      }
+                      
+                      if (data.length === 0) {
+                        setError('No data to export');
+                        return;
+                      }
+                      
+                      // Convert to CSV
+                      const headers = Object.keys(data[0]);
+                      const csvContent = [
+                        headers.join(','),
+                        ...data.map(row => 
+                          headers.map(h => {
+                            const val = row[h];
+                            if (val === null || val === undefined) return '';
+                            if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
+                              return `"${val.replace(/"/g, '""')}"`;
+                            }
+                            return val;
+                          }).join(',')
+                        )
+                      ].join('\n');
+                      
+                      // Download
+                      const blob = new Blob([csvContent], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      setSuccess('CSV exported successfully');
+                    }}
+                    className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2 text-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export CSV
+                  </button>
+                  {/* Clear Logs Button */}
+                  <button 
+                    onClick={async () => {
+                      const logTypeMap: Record<string, string> = {
+                        'calls': 'calls',
+                        'chats': 'chats',
+                        'safeguarding': 'safeguarding',
+                        'screening': 'screening',
+                        'callbacks': 'callbacks',
+                        'panic': 'panic',
+                        'audit': 'analytics'
+                      };
+                      const logType = logTypeMap[activeLogSubTab] || activeLogSubTab;
+                      
+                      if (!confirm(`Are you sure you want to permanently delete ${activeLogSubTab} logs?\n\nThis action cannot be undone!`)) {
+                        return;
+                      }
+                      
+                      try {
+                        await api.clearLogs(token!, logType);
+                        setSuccess(`${activeLogSubTab} logs cleared successfully`);
+                        loadLogs();
+                      } catch (err: any) {
+                        setError('Failed to clear logs: ' + err.message);
+                      }
+                    }}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-2 text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Clear Logs
+                  </button>
+                  <button onClick={loadLogs} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Stats Summary Cards */}
@@ -2103,6 +2280,135 @@ export default function AdminPortal() {
                   </div>
                 </div>
               )}
+
+              {/* Activity Trend & Contact Type Charts Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-green-400" />
+                  Activity Trends
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Activity Trend Chart - Last 7 Days */}
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <h4 className="font-medium mb-4 text-blue-400">Activity Trend (Last 7 Days)</h4>
+                    <div style={{ height: '250px' }}>
+                      <Line
+                        data={{
+                          labels: (() => {
+                            const days = [];
+                            for (let i = 6; i >= 0; i--) {
+                              const d = new Date();
+                              d.setDate(d.getDate() - i);
+                              days.push(d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+                            }
+                            return days;
+                          })(),
+                          datasets: [
+                            {
+                              label: 'Calls',
+                              data: (() => {
+                                const counts = new Array(7).fill(0);
+                                callLogs.forEach((log: any) => {
+                                  const logDate = new Date(log.timestamp || log.created_at);
+                                  const daysAgo = Math.floor((Date.now() - logDate.getTime()) / (1000 * 60 * 60 * 24));
+                                  if (daysAgo >= 0 && daysAgo < 7) counts[6 - daysAgo]++;
+                                });
+                                return counts;
+                              })(),
+                              borderColor: '#22c55e',
+                              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                              tension: 0.3
+                            },
+                            {
+                              label: 'Chats',
+                              data: (() => {
+                                const counts = new Array(7).fill(0);
+                                chatRooms.forEach((room: any) => {
+                                  const roomDate = new Date(room.created_at);
+                                  const daysAgo = Math.floor((Date.now() - roomDate.getTime()) / (1000 * 60 * 60 * 24));
+                                  if (daysAgo >= 0 && daysAgo < 7) counts[6 - daysAgo]++;
+                                });
+                                return counts;
+                              })(),
+                              borderColor: '#3b82f6',
+                              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                              tension: 0.3
+                            },
+                            {
+                              label: 'Safeguarding Alerts',
+                              data: (() => {
+                                const counts = new Array(7).fill(0);
+                                safeguardingAlerts.forEach((alert: any) => {
+                                  const alertDate = new Date(alert.created_at);
+                                  const daysAgo = Math.floor((Date.now() - alertDate.getTime()) / (1000 * 60 * 60 * 24));
+                                  if (daysAgo >= 0 && daysAgo < 7) counts[6 - daysAgo]++;
+                                });
+                                return counts;
+                              })(),
+                              borderColor: '#ef4444',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              tension: 0.3
+                            }
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: { 
+                              position: 'bottom',
+                              labels: { color: '#9ca3af' }
+                            }
+                          },
+                          scales: {
+                            y: { 
+                              beginAtZero: true,
+                              grid: { color: 'rgba(255,255,255,0.1)' },
+                              ticks: { color: '#9ca3af' }
+                            },
+                            x: { 
+                              grid: { display: false },
+                              ticks: { color: '#9ca3af' }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Contact Type Doughnut Chart */}
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <h4 className="font-medium mb-4 text-purple-400">Contact Type Distribution</h4>
+                    <div style={{ height: '250px' }} className="flex justify-center">
+                      <Doughnut
+                        data={{
+                          labels: ['Counsellor', 'Peer', 'Organization', 'Crisis Line'],
+                          datasets: [{
+                            data: [
+                              callLogs.filter((l: any) => l.contact_type === 'counsellor').length,
+                              callLogs.filter((l: any) => l.contact_type === 'peer').length,
+                              callLogs.filter((l: any) => l.contact_type === 'organization').length,
+                              callLogs.filter((l: any) => l.contact_type === 'crisis_line').length
+                            ],
+                            backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444'],
+                            borderWidth: 0
+                          }]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: { 
+                              position: 'bottom',
+                              labels: { color: '#9ca3af' }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Location Map Section */}
               <div className="mb-6">
@@ -3064,18 +3370,18 @@ export default function AdminPortal() {
                             <div className="mt-3">
                               <div className="flex justify-between text-xs mb-1">
                                 <span className="text-gray-400">Budget Used</span>
-                                <span>{aiUsage.providers.openai.budget_percentage_used || 0}%</span>
+                                <span>{Number(aiUsage.providers.openai.budget_percentage_used || 0).toFixed(1)}%</span>
                               </div>
                               <div className="w-full bg-gray-700 rounded-full h-2">
                                 <div 
                                   className={`h-2 rounded-full transition-all ${
-                                    (aiUsage.providers.openai.budget_percentage_used || 0) > 80 ? 'bg-red-500' :
-                                    (aiUsage.providers.openai.budget_percentage_used || 0) > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                                    Number(aiUsage.providers.openai.budget_percentage_used || 0) > 80 ? 'bg-red-500' :
+                                    Number(aiUsage.providers.openai.budget_percentage_used || 0) > 50 ? 'bg-yellow-500' : 'bg-green-500'
                                   }`}
-                                  style={{ width: `${Math.min(aiUsage.providers.openai.budget_percentage_used || 0, 100)}%` }}
+                                  style={{ width: `${Math.min(Number(aiUsage.providers.openai.budget_percentage_used || 0), 100)}%` }}
                                 />
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">£{Number(aiUsage.providers.openai.budget_remaining_gbp || 0).toFixed(2)} remaining of £{Number(aiUsage.providers.openai.budget_limit_gbp || 0).toFixed(2)}</p>
+                              <p className="text-xs text-gray-500 mt-1">£{Number(aiUsage.providers.openai.budget_remaining_gbp || 0).toFixed(4)} remaining of £{Number(aiUsage.providers.openai.budget_limit_gbp || 0).toFixed(2)}</p>
                             </div>
                           )}
                         </div>
@@ -3107,23 +3413,107 @@ export default function AdminPortal() {
                             <div className="mt-3">
                               <div className="flex justify-between text-xs mb-1">
                                 <span className="text-gray-400">Budget Used</span>
-                                <span>{aiUsage.providers.gemini.budget_percentage_used || 0}%</span>
+                                <span>{Number(aiUsage.providers.gemini.budget_percentage_used || 0).toFixed(1)}%</span>
                               </div>
                               <div className="w-full bg-gray-700 rounded-full h-2">
                                 <div 
                                   className={`h-2 rounded-full transition-all ${
-                                    (aiUsage.providers.gemini.budget_percentage_used || 0) > 80 ? 'bg-red-500' :
-                                    (aiUsage.providers.gemini.budget_percentage_used || 0) > 50 ? 'bg-yellow-500' : 'bg-blue-500'
+                                    Number(aiUsage.providers.gemini.budget_percentage_used || 0) > 80 ? 'bg-red-500' :
+                                    Number(aiUsage.providers.gemini.budget_percentage_used || 0) > 50 ? 'bg-yellow-500' : 'bg-blue-500'
                                   }`}
-                                  style={{ width: `${Math.min(aiUsage.providers.gemini.budget_percentage_used || 0, 100)}%` }}
+                                  style={{ width: `${Math.min(Number(aiUsage.providers.gemini.budget_percentage_used || 0), 100)}%` }}
                                 />
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">£{Number(aiUsage.providers.gemini.budget_remaining_gbp || 0).toFixed(2)} remaining of £{Number(aiUsage.providers.gemini.budget_limit_gbp || 0).toFixed(2)}</p>
+                              <p className="text-xs text-gray-500 mt-1">£{Number(aiUsage.providers.gemini.budget_remaining_gbp || 0).toFixed(4)} remaining of £{Number(aiUsage.providers.gemini.budget_limit_gbp || 0).toFixed(2)}</p>
                             </div>
                           )}
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Daily Usage Chart */}
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-semibold">Daily Usage (Stacked)</h3>
+                      <select
+                        value={aiUsagePeriod}
+                        onChange={async (e) => {
+                          const days = Number(e.target.value);
+                          setAiUsagePeriod(days);
+                          if (token) {
+                            try {
+                              const daily = await api.getAIUsageDaily(token, days);
+                              setAiDailyUsage(daily || []);
+                            } catch (err) {
+                              console.error('Failed to load daily AI usage');
+                            }
+                          }
+                        }}
+                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      >
+                        <option value={7}>Last 7 days</option>
+                        <option value={14}>Last 14 days</option>
+                        <option value={30}>Last 30 days</option>
+                        <option value={60}>Last 60 days</option>
+                        <option value={90}>Last 90 days</option>
+                      </select>
+                    </div>
+                    <div style={{ height: '300px' }}>
+                      <Bar
+                        data={{
+                          labels: aiDailyUsage.map((d: any) => {
+                            const date = new Date(d.date || d._id);
+                            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                          }),
+                          datasets: [
+                            {
+                              label: 'OpenAI',
+                              data: aiDailyUsage.map((d: any) => Number(d.openai_cost || d.openai || 0)),
+                              backgroundColor: '#10a37f',
+                              stack: 'stack1'
+                            },
+                            {
+                              label: 'Gemini',
+                              data: aiDailyUsage.map((d: any) => Number(d.gemini_cost || d.gemini || 0)),
+                              backgroundColor: '#4285f4',
+                              stack: 'stack1'
+                            }
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: { 
+                              position: 'bottom',
+                              labels: { color: '#9ca3af' }
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: £${Number(ctx.raw).toFixed(4)}`
+                              }
+                            }
+                          },
+                          scales: {
+                            y: { 
+                              stacked: true,
+                              beginAtZero: true,
+                              grid: { color: 'rgba(255,255,255,0.1)' },
+                              ticks: { 
+                                color: '#9ca3af',
+                                callback: (value) => `£${Number(value).toFixed(4)}`
+                              }
+                            },
+                            x: { 
+                              stacked: true,
+                              grid: { display: false },
+                              ticks: { color: '#9ca3af' }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* Character Usage */}
@@ -3255,6 +3645,12 @@ export default function AdminPortal() {
                         </div>
                       </div>
                     </div>
+                    {/* Last Updated Timestamp */}
+                    {monitoringLastUpdated && (
+                      <p className="text-sm text-gray-500 mt-4 pt-4 border-t border-gray-700">
+                        Last updated: {monitoringLastUpdated.toLocaleTimeString()}
+                      </p>
+                    )}
                   </div>
                 </>
               ) : (
@@ -3690,42 +4086,177 @@ export default function AdminPortal() {
                 </div>
               </div>
 
-              {/* Pending Swap Requests */}
-              {pendingSwaps.length > 0 && (
-                <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+              {/* Swap Requests with Pending/All Tabs */}
+              <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold flex items-center gap-2">
                     <RefreshCw className="w-5 h-5 text-yellow-400" />
-                    Pending Swap Requests
-                    <span className="bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-full">{pendingSwaps.length}</span>
+                    Swap Requests
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pendingSwaps.map((swap) => (
-                      <div key={swap.id} className="bg-gray-700 rounded-lg p-3">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-medium">{swap.requester_name}</p>
-                            <p className="text-sm text-gray-400">{swap.shift_date} • {swap.shift_start} - {swap.shift_end}</p>
-                          </div>
-                          <span className="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">
-                            {swap.status}
-                          </span>
-                        </div>
-                        {swap.responder_name && (
-                          <p className="text-sm text-gray-400 mb-2">Cover: {swap.responder_name}</p>
-                        )}
-                        <div className="flex gap-2">
-                          <button className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
-                            Approve
-                          </button>
-                          <button className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        setSwapTabView('pending');
+                        if (token) {
+                          try {
+                            const pending = await api.getPendingSwaps(token);
+                            setPendingSwaps(pending || []);
+                          } catch (err) {
+                            console.error('Failed to load pending swaps');
+                          }
+                        }
+                      }}
+                      className={`px-3 py-1 rounded text-sm transition-colors ${
+                        swapTabView === 'pending' 
+                          ? 'bg-yellow-600 text-white' 
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      Pending ({pendingSwaps.length})
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setSwapTabView('all');
+                        if (token) {
+                          try {
+                            const all = await api.getSwapRequests(token);
+                            setAllSwapRequests(all || []);
+                          } catch (err) {
+                            console.error('Failed to load all swaps');
+                          }
+                        }
+                      }}
+                      className={`px-3 py-1 rounded text-sm transition-colors ${
+                        swapTabView === 'all' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      All
+                    </button>
                   </div>
                 </div>
-              )}
+                
+                {/* Pending Swaps Tab */}
+                {swapTabView === 'pending' && (
+                  pendingSwaps.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No pending swap requests</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {pendingSwaps.map((swap) => (
+                        <div key={swap.id} className="bg-gray-700 rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-medium">{swap.requester_name}</p>
+                              <p className="text-sm text-gray-400">{swap.shift_date} • {swap.shift_start} - {swap.shift_end}</p>
+                            </div>
+                            <span className="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">
+                              {swap.status}
+                            </span>
+                          </div>
+                          {swap.responder_name && (
+                            <p className="text-sm text-gray-400 mb-2">Cover: {swap.responder_name}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  await api.approveSwap(token!, swap.id, true);
+                                  setSuccess('Swap request approved');
+                                  loadRota();
+                                } catch (err: any) {
+                                  setError('Failed to approve: ' + err.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                            >
+                              Approve
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  await api.approveSwap(token!, swap.id, false);
+                                  setSuccess('Swap request rejected');
+                                  loadRota();
+                                } catch (err: any) {
+                                  setError('Failed to reject: ' + err.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+                
+                {/* All Swaps Tab */}
+                {swapTabView === 'all' && (
+                  allSwapRequests.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">No swap requests found</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {allSwapRequests.map((swap) => (
+                        <div key={swap.id} className="bg-gray-700 rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-medium">{swap.requester_name}</p>
+                              <p className="text-sm text-gray-400">{swap.shift_date} • {swap.shift_start} - {swap.shift_end}</p>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              swap.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                              swap.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                              'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {swap.status}
+                            </span>
+                          </div>
+                          {swap.responder_name && (
+                            <p className="text-sm text-gray-400 mb-2">Cover: {swap.responder_name}</p>
+                          )}
+                          {swap.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    await api.approveSwap(token!, swap.id, true);
+                                    setSuccess('Swap request approved');
+                                    const all = await api.getSwapRequests(token!);
+                                    setAllSwapRequests(all || []);
+                                  } catch (err: any) {
+                                    setError('Failed to approve: ' + err.message);
+                                  }
+                                }}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                              >
+                                Approve
+                              </button>
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    await api.approveSwap(token!, swap.id, false);
+                                    setSuccess('Swap request rejected');
+                                    const all = await api.getSwapRequests(token!);
+                                    setAllSwapRequests(all || []);
+                                  } catch (err: any) {
+                                    setError('Failed to reject: ' + err.message);
+                                  }
+                                }}
+                                className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
             </div>
           )}
 
@@ -4159,6 +4690,64 @@ export default function AdminPortal() {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Policy Documents Download Section */}
+              <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                  Policy Documents
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <a 
+                    href="/documents/safeguarding-policy.pdf" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    <Download className="w-5 h-5 text-green-400" />
+                    <div>
+                      <p className="font-medium">Safeguarding Policy</p>
+                      <p className="text-xs text-gray-400">PDF Document</p>
+                    </div>
+                  </a>
+                  <a 
+                    href="/documents/gdpr-policy.pdf" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    <Download className="w-5 h-5 text-blue-400" />
+                    <div>
+                      <p className="font-medium">GDPR Policy</p>
+                      <p className="text-xs text-gray-400">PDF Document</p>
+                    </div>
+                  </a>
+                  <a 
+                    href="/documents/staff-code-of-conduct.pdf" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    <Download className="w-5 h-5 text-purple-400" />
+                    <div>
+                      <p className="font-medium">Staff Code of Conduct</p>
+                      <p className="text-xs text-gray-400">PDF Document</p>
+                    </div>
+                  </a>
+                  <a 
+                    href="/documents/complaints-procedure.pdf" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    <Download className="w-5 h-5 text-yellow-400" />
+                    <div>
+                      <p className="font-medium">Complaints Procedure</p>
+                      <p className="text-xs text-gray-400">PDF Document</p>
+                    </div>
+                  </a>
                 </div>
               </div>
             </div>
@@ -4977,13 +5566,19 @@ export default function AdminPortal() {
                           host_name: newEvent.host_name,
                           max_participants: newEvent.max_participants,
                         };
-                        await api.createEvent(token, eventData);
-                        setSuccess('Event created successfully');
+                        if (editingEvent) {
+                          await api.updateEvent(token, editingEvent.id, eventData);
+                          setSuccess('Event updated successfully');
+                        } else {
+                          await api.createEvent(token, eventData);
+                          setSuccess('Event created successfully');
+                        }
                         setShowEventModal(false);
+                        setEditingEvent(null);
                         setNewEvent({ title: '', description: '', event_date: new Date().toISOString().split('T')[0], event_time: '14:00', duration_minutes: 60, host_name: '', max_participants: 20 });
                         loadEvents();
                       } catch (err: any) {
-                        setError('Failed to create event: ' + err.message);
+                        setError('Failed to ' + (editingEvent ? 'update' : 'create') + ' event: ' + err.message);
                       }
                     }}>
                       <div className="space-y-4">
@@ -5106,6 +5701,41 @@ export default function AdminPortal() {
                             </div>
                             <div className="flex gap-2 mt-2">
                               <button 
+                                onClick={() => {
+                                  const eventDate = new Date(event.scheduled_for || event.event_date);
+                                  setNewEvent({
+                                    title: event.title || '',
+                                    description: event.description || '',
+                                    event_date: eventDate.toISOString().split('T')[0],
+                                    event_time: eventDate.toTimeString().slice(0, 5),
+                                    duration_minutes: event.duration_minutes || 60,
+                                    host_name: event.host_name || '',
+                                    max_participants: event.max_participants || 20,
+                                  });
+                                  setEditingEvent(event);
+                                  setShowEventModal(true);
+                                }}
+                                className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded text-xs"
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={async () => {
+                                  if (!token) return;
+                                  try {
+                                    const attendance = await api.getEventAttendance(token, event.id);
+                                    setEventAttendance(attendance || []);
+                                    setAttendanceEventTitle(event.title);
+                                    setShowViewAttendanceModal(true);
+                                  } catch (err: any) {
+                                    setError('Failed to load attendance: ' + err.message);
+                                  }
+                                }}
+                                className="px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded text-xs"
+                              >
+                                Attendance
+                              </button>
+                              <button 
                                 onClick={async () => {
                                   if (!token || !confirm('Cancel this event?')) return;
                                   try {
@@ -5156,6 +5786,57 @@ export default function AdminPortal() {
                   )}
                 </div>
               </div>
+
+              {/* View Attendance Modal */}
+              {showViewAttendanceModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg border border-gray-700">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold">Attendance: {attendanceEventTitle}</h3>
+                      <button 
+                        onClick={() => { setShowViewAttendanceModal(false); setEventAttendance([]); setAttendanceEventTitle(''); }} 
+                        className="p-1 hover:bg-gray-700 rounded"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    {eventAttendance.length === 0 ? (
+                      <p className="text-gray-400 text-center py-8">No attendees registered yet</p>
+                    ) : (
+                      <div className="max-h-96 overflow-y-auto">
+                        <table className="w-full">
+                          <thead className="sticky top-0 bg-gray-800">
+                            <tr className="text-left text-sm text-gray-400 border-b border-gray-700">
+                              <th className="py-2 px-3">Name</th>
+                              <th className="py-2 px-3">Email</th>
+                              <th className="py-2 px-3">Registered</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {eventAttendance.map((attendee: any, idx: number) => (
+                              <tr key={idx} className="border-b border-gray-700 text-sm">
+                                <td className="py-2 px-3">{attendee.name || attendee.user_name || 'Anonymous'}</td>
+                                <td className="py-2 px-3 text-gray-400">{attendee.email || '-'}</td>
+                                <td className="py-2 px-3 text-gray-400">
+                                  {attendee.registered_at ? new Date(attendee.registered_at).toLocaleDateString() : '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    <div className="flex justify-end mt-4">
+                      <button 
+                        onClick={() => { setShowViewAttendanceModal(false); setEventAttendance([]); setAttendanceEventTitle(''); }}
+                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -6070,6 +6751,91 @@ export default function AdminPortal() {
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetPasswordModal && resetPasswordUser && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Reset Password for {resetPasswordUser.name}</h2>
+              <button onClick={() => setShowResetPasswordModal(false)} className="p-1 hover:bg-gray-700 rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (resetPasswordData.newPassword.length < 8) {
+                setError('Password must be at least 8 characters');
+                return;
+              }
+              if (resetPasswordData.newPassword !== resetPasswordData.confirmPassword) {
+                setError('Passwords do not match');
+                return;
+              }
+              try {
+                await api.adminResetPassword(token!, resetPasswordUser.id, resetPasswordData.newPassword);
+                setSuccess('Password reset successfully');
+                setShowResetPasswordModal(false);
+                setResetPasswordUser(null);
+                setResetPasswordData({ newPassword: '', confirmPassword: '' });
+              } catch (err: any) {
+                setError('Failed to reset password: ' + err.message);
+              }
+            }}>
+              <p className="text-sm text-gray-400 mb-4">
+                Password must be at least 8 characters and cannot match any of the last 3 passwords used.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">New Password *</label>
+                  <input
+                    type="password"
+                    value={resetPasswordData.newPassword}
+                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    placeholder="Minimum 8 characters"
+                    minLength={8}
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Confirm Password *</label>
+                  <input
+                    type="password"
+                    value={resetPasswordData.confirmPassword}
+                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, confirmPassword: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    placeholder="Re-enter password"
+                    minLength={8}
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetPasswordModal(false);
+                    setResetPasswordUser(null);
+                    setResetPasswordData({ newPassword: '', confirmPassword: '' });
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
+                >
+                  Reset Password
                 </button>
               </div>
             </form>
