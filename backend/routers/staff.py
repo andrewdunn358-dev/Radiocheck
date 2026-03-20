@@ -83,6 +83,35 @@ async def update_counsellor(counsellor_id: str, updates: dict):
     return await get_counsellor(counsellor_id)
 
 
+# Unified status endpoint that works for both counsellors and peer supporters
+@router.patch("/{staff_id}/status")
+async def update_staff_status_unified(staff_id: str, status_update: CounsellorStatusUpdate):
+    """Update staff status - works for both counsellors and peer supporters"""
+    db = get_database()
+    update_data = {k: v for k, v in status_update.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.utcnow()
+    
+    # Try counsellors first
+    result = await db.counsellors.update_one(
+        {"$or": [{"id": staff_id}, {"user_id": staff_id}]},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count > 0:
+        return {"success": True, "type": "counsellor"}
+    
+    # Try peer supporters
+    result = await db.peer_supporters.update_one(
+        {"$or": [{"id": staff_id}, {"user_id": staff_id}]},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count > 0:
+        return {"success": True, "type": "peer"}
+    
+    raise HTTPException(status_code=404, detail="Staff member not found")
+
+
 @router.patch("/counsellors/{counsellor_id}/status")
 async def update_counsellor_status(counsellor_id: str, status_update: CounsellorStatusUpdate):
     """Update counsellor status"""
@@ -90,8 +119,9 @@ async def update_counsellor_status(counsellor_id: str, status_update: Counsellor
     update_data = {k: v for k, v in status_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
     
+    # Query by id or user_id to handle different ID formats
     result = await db.counsellors.update_one(
-        {"$or": [{"id": counsellor_id}, {"_id": counsellor_id}]},
+        {"$or": [{"id": counsellor_id}, {"user_id": counsellor_id}]},
         {"$set": update_data}
     )
     
@@ -188,8 +218,9 @@ async def update_peer_supporter_status(peer_id: str, status_update: PeerSupporte
     update_data = {k: v for k, v in status_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
     
+    # Query by id, _id, or user_id to handle different ID formats
     result = await db.peer_supporters.update_one(
-        {"$or": [{"id": peer_id}, {"_id": peer_id}]},
+        {"$or": [{"id": peer_id}, {"user_id": peer_id}]},
         {"$set": update_data}
     )
     
