@@ -405,22 +405,12 @@ export const staffApi = {
   
   // Status update - now also supports unified staff endpoint
   updateStatus: async (token: string, status: string, staffId: string, staffType: 'counsellor' | 'peer' | 'staff') => {
-    // Try unified endpoint first
-    try {
-      return await fetchAPI<ActionResponse>(`/staff/${staffId}/status`, {
-        token,
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      });
-    } catch (e) {
-      // Fallback to legacy endpoints
-      console.log('[API] Unified status update failed, trying legacy endpoint...');
-      return fetchAPI<ActionResponse>(`/${staffType === 'counsellor' ? 'counsellors' : 'peer-supporters'}/${staffId}/status`, {
-        token,
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      });
-    }
+    // Use unified endpoint with user_id
+    return fetchAPI<ActionResponse>(`/staff/${staffId}/status`, {
+      token,
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
   },
 
   // Safeguarding Alerts

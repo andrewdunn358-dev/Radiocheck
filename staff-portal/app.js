@@ -524,22 +524,17 @@ function updateStatusUI(status) {
 // Update My Status
 async function updateMyStatus(newStatus) {
     try {
-        if (!myProfile) {
-            showNotification('Profile not found', 'error');
-            return;
-        }
-        
-        var role = currentUser.role;
-        var endpoint = role === 'counsellor' 
-            ? '/counsellors/' + myProfile.id + '/status'
-            : '/peer-supporters/' + myProfile.id + '/status';
+        // Use the unified staff status endpoint with auth user ID
+        var endpoint = '/staff/' + currentUser.id + '/status';
         
         await apiCall(endpoint, {
             method: 'PATCH',
             body: JSON.stringify({ status: newStatus })
         });
         
-        myProfile.status = newStatus;
+        if (myProfile) {
+            myProfile.status = newStatus;
+        }
         updateStatusUI(newStatus);
         
         // Also update Socket.IO status so chat requests work
