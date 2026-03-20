@@ -2204,7 +2204,7 @@ export default function StaffPortalPage() {
                   return c.status === 'completed';
                 })
                 .map((callback) => (
-                <div key={callback._id} className={`bg-card border rounded-xl p-6 ${
+                <div key={callback.id || callback._id} className={`bg-card border rounded-xl p-6 ${
                   callback.status === 'pending' && callback.priority === 'urgent' ? 'border-red-500' : 'border-border'
                 }`}>
                   <div className="flex justify-between items-start">
@@ -2255,7 +2255,7 @@ export default function StaffPortalPage() {
                     <div className="flex gap-2">
                       {callback.status === 'pending' && (
                         <button
-                          onClick={() => handleTakeCallback(callback._id)}
+                          onClick={() => handleTakeCallback(callback.id || callback._id || '')}
                           className="px-4 py-2 bg-secondary text-primary-dark rounded-lg hover:bg-secondary-light"
                         >
                           Take
@@ -2264,13 +2264,13 @@ export default function StaffPortalPage() {
                       {callback.status === 'taken' && callback.taken_by === user?.id && (
                         <>
                           <button
-                            onClick={() => handleReleaseCallback(callback._id)}
+                            onClick={() => handleReleaseCallback(callback.id || callback._id || '')}
                             className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
                           >
                             Release
                           </button>
                           <button
-                            onClick={() => handleCompleteCallback(callback._id)}
+                            onClick={() => handleCompleteCallback(callback.id || callback._id || '')}
                             className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                           >
                             Complete

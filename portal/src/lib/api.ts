@@ -797,17 +797,25 @@ export interface CreateCaseData {
 }
 
 export interface Callback {
-  _id: string;
+  id: string;  // Primary ID field (not _id)
+  _id?: string;  // Optional MongoDB _id
   user_id?: string;
   user_name: string;
+  name?: string;  // Legacy field name
   phone: string;
   reason?: string;
+  message?: string;  // Legacy field name
   priority: 'low' | 'normal' | 'high' | 'urgent';
-  status: 'pending' | 'taken' | 'completed';
+  status: 'pending' | 'taken' | 'completed' | 'in_progress' | 'released';
   request_type?: 'peer' | 'counsellor';
   taken_by?: string;
   taken_by_name?: string;
+  assigned_to?: string;  // Legacy field
+  assigned_name?: string;  // Legacy field
+  is_urgent?: boolean;
+  safeguarding_alert_id?: string;
   created_at: string;
+  updated_at?: string;
   completed_at?: string;
 }
 
