@@ -50,7 +50,8 @@ async def get_available_counsellors():
         "id": str(c.get("_id", c.get("id", ""))),
         "name": c.get("name", ""),
         "specialization": c.get("specialization", ""),
-        "status": c.get("status", "offline")
+        "status": c.get("status", "offline"),
+        "user_id": c.get("user_id", "")  # For WebRTC calling - links to auth user
     } for c in counsellors]
 
 
@@ -147,7 +148,8 @@ async def get_available_peer_supporters():
         "name": p.get("name", ""),
         "service_branch": p.get("service_branch", ""),
         "regiment": p.get("regiment", ""),
-        "status": p.get("status", "offline")
+        "status": p.get("status", "offline"),
+        "user_id": p.get("user_id", "")  # For WebRTC calling - links to auth user
     } for p in peers]
 
 
