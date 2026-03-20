@@ -324,7 +324,8 @@ async def login(credentials: UserLogin):
         # If staff has a valid password hash, verify it
         if password_hash and password_hash.strip():
             if verify_password(credentials.password, password_hash):
-                staff_id = staff.get("id")
+                # Use user_id if available (links to peer_supporters/counsellors), otherwise fall back to id
+                staff_id = staff.get("user_id") or staff.get("id")
                 
                 # Update last_login
                 await db.staff.update_one(
@@ -355,7 +356,8 @@ async def login(credentials: UserLogin):
                         {"$set": {"password_hash": legacy_hash, "last_login": datetime.utcnow()}}
                     )
                     
-                    staff_id = staff.get("id")
+                    # Use user_id if available, otherwise fall back to id
+                    staff_id = staff.get("user_id") or staff.get("id")
                     token = create_access_token({"sub": staff_id})
                     redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
                     
