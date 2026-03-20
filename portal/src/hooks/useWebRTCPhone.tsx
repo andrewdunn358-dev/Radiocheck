@@ -533,18 +533,24 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     }) => {
       console.log('[WebRTCPhone] *** INCOMING CHAT REQUEST ***', data);
       playRingtone();
+      
+      const requestData = {
+        request_id: data.request_id,
+        user_id: data.user_id,
+        user_name: data.user_name || 'Veteran',
+        session_id: data.session_id,
+        risk_level: data.risk_level,
+        type: 'chat' as const,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Store in window for access in chat_request_confirmed handler
+      (window as any).__webrtc_pending_request = requestData;
+      
       setState(prev => ({
         ...prev,
         hasIncomingChatRequest: true,
-        pendingRequest: {
-          request_id: data.request_id,
-          user_id: data.user_id,
-          user_name: data.user_name || 'Veteran',
-          session_id: data.session_id,
-          risk_level: data.risk_level,
-          type: 'chat',
-          timestamp: new Date().toISOString(),
-        }
+        pendingRequest: requestData
       }));
     });
 
@@ -577,10 +583,29 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     socket.on('chat_request_confirmed', (data: { room_id: string; user_id: string }) => {
       console.log('[WebRTCPhone] Chat request confirmed, room:', data.room_id);
       stopRingtone();
+      
+      // Get the current pending request info before clearing (from window global)
+      const currentRequest = (window as any).__webrtc_pending_request as {
+        user_name?: string;
+        session_id?: string;
+      } | undefined;
+      
+      // Update state and keep room_id
       setState(prev => ({
         ...prev,
         hasIncomingChatRequest: false,
         pendingRequest: prev.pendingRequest ? { ...prev.pendingRequest, room_id: data.room_id } : undefined,
+      }));
+      
+      // CRITICAL: Dispatch custom event to open chat immediately (like legacy portal)
+      // This ensures the chat window opens even if React's dependency tracking misses the change
+      window.dispatchEvent(new CustomEvent('chat_request_confirmed', { 
+        detail: { 
+          room_id: data.room_id, 
+          user_id: data.user_id,
+          user_name: currentRequest?.user_name || 'Veteran',
+          session_id: currentRequest?.session_id
+        } 
       }));
     });
 

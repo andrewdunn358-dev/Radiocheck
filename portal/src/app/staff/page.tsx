@@ -325,53 +325,67 @@ export default function StaffPortalPage() {
     };
   }, [loadTeam]);
 
-  // AUTO-OPEN CHAT when pendingRequest.room_id is confirmed
-  // This handles the "chat notification comes up but no chat window appears" issue
+  // AUTO-OPEN CHAT when chat_request_confirmed event is dispatched
+  // This is the RELIABLE way to open chat - listens for custom event from WebRTC hook
+  // This matches the legacy portal behavior (webrtc-phone.js calling showLiveChatModal directly)
   useEffect(() => {
-    const openConfirmedChat = async () => {
-      // Check if we have a confirmed room_id from an accepted chat request
-      if (webrtcPhone.pendingRequest?.room_id && token && user?.id && user?.name) {
-        const roomId = webrtcPhone.pendingRequest.room_id;
-        const userId = webrtcPhone.pendingRequest.user_id;
-        const userName = webrtcPhone.pendingRequest.user_name;
+    const handleChatConfirmed = async (event: Event) => {
+      const customEvent = event as CustomEvent<{ 
+        room_id: string; 
+        user_id: string; 
+        user_name?: string; 
+        session_id?: string;
+      }>;
+      const { room_id: roomId, user_id: userId, user_name: userName } = customEvent.detail;
+      
+      if (!roomId || !token || !user?.id || !user?.name) {
+        console.log('[StaffPage] Cannot open chat - missing data:', { roomId, hasToken: !!token, userId: user?.id });
+        return;
+      }
+      
+      console.log('[StaffPage] *** CHAT CONFIRMED EVENT RECEIVED ***');
+      console.log('[StaffPage] Opening chat room:', roomId, 'for user:', userId, userName);
+      
+      try {
+        // Join the chat room via API (like legacy joinLiveChat)
+        await staffApi.joinLiveChat(token, roomId, user.id, user.name);
         
-        console.log('[StaffPage] Auto-opening confirmed chat room:', roomId, 'user:', userId);
+        // Get existing messages
+        const messages = await staffApi.getLiveChatMessages(token, roomId);
         
-        try {
-          // Join the chat room via API
-          await staffApi.joinLiveChat(token, roomId, user.id, user.name);
-          
-          // Get messages
-          const messages = await staffApi.getLiveChatMessages(token, roomId);
-          
-          // Create room object and set as active
-          const room: LiveChatRoom = {
-            id: roomId,
-            room_id: roomId,
-            user_id: userId,
-            user_name: userName || 'Veteran',
-            status: 'active',
-            staff_id: user.id,
-            staff_name: user.name,
-            created_at: new Date().toISOString(),
-          };
-          
-          setActiveChatRoom(room);
-          setChatMessages(messages);
-          setActiveTab('livechat');
-          
-          // Reload live chats to ensure list is up to date
-          loadLiveChats();
-          
-          console.log('[StaffPage] Chat room opened successfully');
-        } catch (err) {
-          console.error('[StaffPage] Failed to auto-open chat room:', err);
-        }
+        // Create room object and set as active
+        const room: LiveChatRoom = {
+          id: roomId,
+          room_id: roomId,
+          user_id: userId,
+          user_name: userName || 'Veteran',
+          status: 'active',
+          staff_id: user.id,
+          staff_name: user.name,
+          created_at: new Date().toISOString(),
+        };
+        
+        // Open the chat modal
+        setActiveChatRoom(room);
+        setChatMessages(messages);
+        setActiveTab('livechat');
+        
+        // Reload live chats to ensure list is up to date
+        loadLiveChats();
+        
+        console.log('[StaffPage] Chat room opened successfully via event handler');
+      } catch (err) {
+        console.error('[StaffPage] Failed to open chat room:', err);
       }
     };
     
-    openConfirmedChat();
-  }, [webrtcPhone.pendingRequest?.room_id, token, user?.id, user?.name, loadLiveChats]);
+    // Listen for custom event dispatched by useWebRTCPhone
+    window.addEventListener('chat_request_confirmed', handleChatConfirmed);
+    
+    return () => {
+      window.removeEventListener('chat_request_confirmed', handleChatConfirmed);
+    };
+  }, [token, user?.id, user?.name, loadLiveChats]);
 
   // Session timeout logic
   useEffect(() => {

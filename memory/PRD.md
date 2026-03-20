@@ -1,257 +1,122 @@
-# Radio Check Portal Migration - Product Requirements Document
-
-## Project Overview
-Migration of legacy vanilla JavaScript portals (`admin-site`, `staff-portal`, `lms-admin`, `lms-learner`) into a single, unified Next.js 14 application at `/app/portal/`.
+# Radio Check Veterans Support - Product Requirements Document
 
 ## Original Problem Statement
-The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goal is to achieve 100% feature parity with modern, modular React components while improving the codebase structure and developer experience.
+Migration of legacy JavaScript portals (admin, staff, LMS) into a unified Next.js/Expo application. Primary goals:
+1. **(P0) Feature Parity**: New React portals must replicate all functionality of legacy vanilla JS portals
+2. **(P0) Production Stability**: Application must build and run on Render without crashes
+3. **(P0) Unified Codebase**: All portals consolidated within `/app/portal/`
+4. **(P1) Improved Maintainability**: Modular, well-structured codebase
 
-## Tech Stack
-- **Frontend**: Next.js 14, React, TypeScript, TailwindCSS
-- **Backend**: FastAPI, Python, MongoDB
-- **Real-time**: Socket.IO for WebRTC signaling and live chat
-- **Voice**: Twilio for browser-to-phone calling
-- **Deployment**: Vercel (portal), existing backend API
-
-## Current Architecture
+## Architecture
 ```
-/app/portal/
-├── src/
-│   ├── app/
-│   │   ├── admin/         # Admin portal (COMPLETE - March 20, 2026)
-│   │   ├── learning/      # LMS Learner portal (COMPLETE)
-│   │   ├── lms-admin/     # LMS Admin portal (COMPLETE)
-│   │   └── staff/         # Staff portal (COMPLETE - needs verification)
-│   ├── hooks/
-│   │   ├── useStaffAuth.tsx
-│   │   ├── useWebRTCPhone.tsx  # NEW - WebRTC peer-to-peer calling
-│   │   └── useTwilioPhone.tsx  # NEW - Twilio browser-to-phone
-│   └── lib/
-│       └── api.ts         # Centralized API client
+/app
+├── backend/           # FastAPI backend
+│   ├── routers/       # API route handlers
+│   └── server.py      # Main server with Socket.IO
+├── portal/            # Next.js unified portal (admin, staff, LMS)
+│   └── src/
+│       ├── app/       # Pages (staff/, admin/, lms-admin/, lms-learner/)
+│       ├── hooks/     # React hooks (useWebRTCPhone, useStaffAuth, etc.)
+│       └── lib/       # API client, utilities
+├── frontend/          # Expo mobile app
+│   └── hooks/         # Mobile WebRTC hooks
+├── staff-portal/      # Legacy staff portal (vanilla JS) - TO BE REMOVED
+├── admin-site/        # Legacy admin site - TO BE REMOVED
+├── lms-admin/         # Legacy LMS admin - TO BE REMOVED
+└── lms-learner/       # Legacy LMS learner - TO BE REMOVED
 ```
 
 ## What's Been Implemented
 
-### March 20, 2026 - Admin Portal Final Comparison Pass ✅
-**Task**: Complete STEP 2 gap fixes and STEP 3 fresh audit
+### December 2024
 
-**STEP 2 Fixes Applied (18 items)**:
-1. ✅ Staff Tab - Reset password modal (POST /auth/admin-reset-password)
-2. ✅ Logs Tab - Activity trend chart (Chart.js line - Calls/Chats/Alerts over 7 days)
-3. ✅ Logs Tab - Contact type chart (Chart.js doughnut - counsellor/peer/org/crisis_line)
-4. ✅ Logs Tab - Export CSV button (client-side, exports current sub-tab)
-5. ✅ Logs Tab - Clear logs button (POST /admin/clear-logs with confirmation)
-6. ✅ AI Usage Tab - Daily usage chart (Chart.js stacked bar with period selector)
-7. ✅ AI Usage Tab - Budget progress bars (color-coded: green<50%, amber 50-80%, red>80%)
-8. ✅ Rota Tab - Swap request Pending/All tab switcher with functional Approve/Reject
-9. ✅ Events Tab - Edit event modal (PUT /events/admin/{id})
-10. ✅ Events Tab - View attendance modal (GET /events/admin/{id}/attendance)
-11. ✅ Compliance Tab - Document download links (4 policy PDFs)
-12. ✅ Monitoring Tab - Last updated timestamp
-13. ✅ Monitoring Tab - Auto-refresh every 30 seconds with cleanup
-14. ✅ Fixed react-leaflet version conflict (4.2.1 for React 18)
+**WebRTC Call Connection Fix** (Dec 20)
+- Fixed `user_offline` error by updating `/api/staff/me` to return correct `callable_user_id`
+- Fixed `InvalidStateError` with `signalingState` check before setting remote description
+- Fixed offer/answer race condition - only caller creates WebRTC offer
 
-**STEP 3 Fresh Audit Fixes (4 items)**:
-15. ✅ Header - Real-time alert counter badge (polls every 30s, pulses when pending > 0)
-16. ✅ Staff Tab - Profile link indicator ("Linked to profile" / "No profile linked")
-17. ✅ Time Tracking Tab - Month picker with prev/next buttons and native input
-18. ✅ App Usage Stats - Fixed regions rendering to handle array format
-   - `/api/admin/migration-status` for migration dashboard
-   - `/api/shifts/` for rota shifts
-   - `/api/shift-swaps/needs-approval` for pending swap requests
-   - `/api/cms/pages` for CMS page list
-   - `/api/compliance/dashboard`, `/api/compliance/incidents`, `/api/compliance/complaints`
-   - `/api/governance/hazards` for clinical safety hazard log
+**Chat Window Auto-Open Fix** (Dec 20)
+- Problem: Staff portal showed chat request banner but no chat window when accepted
+- Solution: Added custom DOM event `chat_request_confirmed` dispatched from `useWebRTCPhone.tsx`
+- `staff/page.tsx` listens for event and opens chat modal (matches legacy behavior)
 
-3. **Testing Status**: 100% pass rate - all 15 tabs verified working (iterations 30 & 31)
+**Security: Session Storage Fix** (Dec 20)
+- Added "Remember me" checkbox to login forms
+- Default: `sessionStorage` (clears on tab close)
+- With "Remember me": `localStorage` (persists)
+- Applied to both new and legacy staff portals
 
-### March 19, 2026 - Staff Portal Fixes (Previous)
-1. **CRITICAL: Unified Staff Data Model**
-   - Created new `staff` collection that combines `users` + `counsellors` + `peer_supporters`
-   - Single document per person with all their data
-   - No more orphaned profiles or user/profile mismatch
-   - New endpoints: `POST/GET/PATCH/DELETE /api/staff`, `GET /api/staff/me`
-   - Migration endpoint: `POST /api/admin/migrate-to-unified-staff`
-   - See `/app/memory/MIGRATION_NOTES.md` for full details
+**Ringtone Fix** (Dec 20)
+- Replaced missing `/ringtone.mp3` with Web Audio API-generated UK-style double ring
+- Uses 400Hz + 450Hz oscillators with burst pattern
 
-2. **CRITICAL: Multi-Device Socket Support**
-   - Changed `user_to_socket` from `Dict[str, str]` to `user_to_sockets: Dict[str, set]`
-   - A user can now have multiple tabs/devices connected simultaneously
-   - When a call comes in, ALL of a user's devices ring
-   - When answered on one device, other devices stop ringing via `call_answered_elsewhere` event
-   - Fixes the root cause of "old portal steals calls from new portal"
+## Pending Issues (P0)
 
-3. **Profile Loading Security Fix**
-   - Fixed profile loading to verify `user_id` matches logged-in user
-   - Prevents showing wrong user's profile (e.g., "Sarah M" bug)
-   - Added `user_id` field preservation in API response
+### WebRTC Calls - No Audio & Disconnect Issues
+- **Status**: IN PROGRESS
+- **Symptom**: Calls connect but have no sound. When staff hangs up, call remains active on mobile app
+- **Console shows**: `stream.active: false`, `Call ended: ended_by_peer`
+- **Next step**: Audit mobile app's WebRTC hook at `/app/frontend/hooks/useWebRTCCall.ts`
 
-4. **UI Improvements**
-   - Status buttons now disabled with tooltip when no profile is linked
-   - Added "No Staff Profile Linked" warning banner
-   - Added "Socket Connection Error" warning banner with refresh option
-   - Added `data-testid` attributes for automated testing
+### Staff Portal Audit - Missing Features
+- **Status**: PENDING
+- Compare new portal features against legacy `staff-portal/app.js`
 
-5. **AI Characters Sort Order Fix**
-   - Fallback characters now sorted by `order` field
-   - Added Frankie to character order list (order: 0)
+### Chat Window Fix
+- **Status**: FIX DEPLOYED - NEEDS USER VERIFICATION
+- Deploy to production and test with safeguarding flow
 
-## Prioritized Backlog
+## Pending Issues (P1)
 
-### P0 - Critical (COMPLETED)
-- [x] Admin Portal migration - ALL 15 tabs fully functional (March 19, 2026)
-- [x] Profile loading security - verifies user_id match (March 19, 2026)
-- [x] Status buttons disabled when no profile linked (March 19, 2026)
-- [x] AI Characters sort order fix (March 19, 2026)
-- [x] WebRTC socket connection working (March 19, 2026)
-- [x] Twilio phone registration working (March 19, 2026)
+### Admin Portal Fresh Audit (STEP 3)
+- Compare new admin portal against legacy `admin-site/`
 
-### March 19, 2026 - Staff Portal Fixes IMPLEMENTED ✅
-Implemented critical fixes based on the comprehensive audit:
+### Admin Settings Toggles Non-functional
+- User reported toggles don't work
 
-1. **Session Timeout** (Security)
-   - 2-hour inactivity timeout with activity tracking (mouse, key, scroll, touch)
-   - 24-hour absolute session timeout
-   - Warning modal 5 minutes before auto-logout
-   - Sound preference persisted to localStorage
+## In Progress Tasks
 
-2. **Sound Alerts** (Web Audio API)
-   - 3 ascending beeps (800Hz, 1000Hz, 1200Hz)
-   - Plays on new safeguarding alerts, panic alerts, and live chats
-   - Sound toggle in sidebar with localStorage persistence
+### LMS Portal Audit
+- Comparing legacy `lms-admin/`, `lms-learner/`, `training-portal/` with new implementations
+- Document all feature gaps
 
-3. **Alerts Tab Overhaul**
-   - Added Safeguarding / Panic Alerts sub-tabs
-   - Panic alert trigger button for peers (big red PANIC button)
-   - Panic alert acknowledge/resolve actions
-   - Role-based visibility (peers can't see panic alerts - they trigger them)
-   - Contact captured indicator on safeguarding alerts
-   - Session ID display
-   - Tracking info section (IP, location, user agent)
+## Upcoming Tasks
 
-4. **Callbacks Tab Overhaul**
-   - Pending / Active (Taken) / Completed sub-tabs with badge counts
-   - Release callback button
-   - Request type badge (peer/counsellor)
-   - Call Now button (Twilio integration)
-   - Taken by name display
+1. Complete LMS portal audit
+2. Complete Admin Portal audit (STEP 3)
+3. Remove legacy code directories after feature parity confirmed
 
-5. **TypeScript Interface Updates**
-   - SafeguardingAlert: Added contact_captured, ip_address, location, user_agent, isp, timezone
-   - PanicAlert: Added id, triggered_by_name, triggered_by_role, message, phone
-   - Callback: Added request_type
-   - Case: Added description, session_count, safety_plan
+## Future/Backlog (P2)
 
-6. **Case Management** (NEW)
-   - Filter dropdowns (status, risk_level)
-   - Session count display (X/6)
-   - View button opens Case Detail Modal
-   - Case Detail Modal with: case info, description, safety plan, session notes
-   - Add Session Note modal
-   - Sessions list display
+- Full CMS visual editor with drag-and-drop
+- Discussion Forums
+- Mood Tracker Journal
+- Appointment Booking
+- Welsh Language Support
 
-7. **WebRTC Multi-Session Fix** (Backend)
-   - Updated `/app/backend/webrtc_signaling.py` to use `answered_by_sid` for proper session routing
-   - Fixed webrtc_offer, webrtc_answer, and webrtc_ice_candidate handlers
+## Key Technical Decisions
 
-8. **Chart.js Analytics** (Admin Portal)
-   - Installed chart.js and react-chartjs-2
-   - Added 4 charts to Logs tab: Daily Visitors Line, Device Distribution Doughnut, Activity Summary Bar, Browser Distribution Doughnut
+### WebRTC ID Resolution
+- Mobile app calls using `peer_supporters.user_id`
+- Staff portal must register with same ID
+- Solution: `/api/staff/me` returns `legacy_user_id` as `callable_user_id`
 
-**Files Modified:**
-- `/app/portal/src/app/staff/page.tsx` (now ~2400 lines)
-- `/app/portal/src/app/admin/page.tsx` (charts added)
-- `/app/portal/src/lib/api.ts` (TypeScript interfaces + getCaseSessions)
-- `/app/backend/webrtc_signaling.py` (multi-session fix)
+### Chat Window Opening
+- Legacy: Direct function call `showLiveChatModal()` from socket handler
+- New: Custom DOM event `chat_request_confirmed` → React event listener → open modal
 
-### March 19, 2026 - Staff Portal Audit COMPLETE ✅
-- **Full audit document created**: `/app/memory/STAFF_PORTAL_COMPARISON.md`
-- **React Portal Completion**: ~35% compared to legacy
-- **Key gaps identified**:
-  - ❌ WebRTC backend broken (multi-session issue)
-  - ❌ No sound alerts for new safeguarding/chats
-  - ❌ No session timeout (security issue)
-  - ❌ Panic alerts not functional (no actions, no trigger button for peers)
-  - ❌ Case management incomplete (no sessions, safety plans, referrals)
-  - ❌ Create escalation missing
-- **Avatar/Image Fix Applied**:
-  - Added `/images` mount in backend to serve `/app/website/images/`
-  - AI character avatars now accessible at `/images/tommy.png`, etc.
-
-### P0 - Critical (REMAINING - For Production Testing)
-- [ ] Deploy to Vercel and verify all fixes work ON PRODUCTION
-- [ ] User should test with OLD PORTAL CLOSED (socket conflict)
-- [ ] User `kev@radiocheck.me` needs staff profile created in admin
-- [ ] Redeploy backend to Render with latest code
-- [x] **Fix WebRTC** - Refactored `/app/backend/webrtc_signaling.py` for multi-session support (DONE - March 19, 2026)
-
-### P1 - High Priority
-- [ ] Staff status auto-reset after call/chat ends
-- [ ] Run the unified staff migration on production database
-- [ ] Create Events API endpoint (returns 404)
-- [ ] Fix Governance summary-report 500 error
-
-### P2 - Medium Priority
-- [ ] Delete legacy directories (`/admin-site`, `/staff-portal`) after full migration approval
-- [ ] Jitsi video chat for events (BLOCKED - waiting on user)
-
-### P3 - Future
-- [ ] Native mobile app (iOS/Android)
-- [ ] Discussion Forums
-- [ ] Mood Tracker Journal
-- [ ] Appointment Booking
-- [ ] Welsh Language Support
-
-## Key API Endpoints
-- `POST /api/auth/login` - Staff login
-- `GET /api/admin/unified-staff` - Combined staff view (users + counsellors + peers)
-- `GET /api/counsellors` - List counsellors
-- `GET /api/peer-supporters` - List peer supporters
-- `PATCH /api/counsellors/{id}/status` - Update counsellor status
-- `GET /api/safeguarding-alerts` - List safeguarding alerts
-- `PATCH /api/safeguarding-alerts/{id}/acknowledge` - Acknowledge alert
-- `GET /api/call-logs?days=30` - Call history
-- `GET /api/live-chat/rooms` - List active chat rooms
-- `GET /api/ai-characters/admin/all` - All AI characters for admin
-- `GET /api/admin/system-stats` - Monitoring dashboard stats
-- `GET /api/admin/ai-usage/summary?days=30` - AI usage statistics
-- `GET /api/admin/migration-status` - Migration dashboard stats
-- Socket.IO: `/api/socket.io` - WebRTC signaling
+### Browser Storage Strategy
+- `sessionStorage`: Default for security on shared computers
+- `localStorage`: Opt-in with "Remember me" checkbox
 
 ## Test Credentials
+- Staff: `kev@radiocheck.me` / `AS90155mm` (may need verification)
 
-### Admin (Production) - USE FOR ALL ADMIN TASKS
-- **Email**: `admin@veteran.dbty.co.uk`
-- **Password**: `AS90155mm`
-- **API**: `https://veterans-support-api.onrender.com`
-
-### Staff Test User (Local)
-- Email: `test@staff.com`
-- Password: `test123`
-- Role: Counsellor with supervisor access
-
-### Other Test User
-- Email: `kev@radiocheck.me`
-- Password: `AS90155mm`
-- Note: This user has NO staff profile linked (will be fixed after migration)
-
-## Known Issues
-1. ~~Some counsellor profiles missing `specialization`/`phone` fields cause 500 errors~~ (FIXED)
-2. Jitsi video chat blocked on user's side
-3. Staff status doesn't auto-reset after calls (needs implementation)
-4. ~~User sees wrong profile when profile loading fails~~ (FIXED - March 19, 2026)
-5. **SOCKET CONFLICT**: Old and new portals fight for the same socket - close old portal when testing new one
-6. ~~AI Persona avatar images return 404~~ (FIXED - March 19, 2026 - added /images mount and resolveAvatarUrl helper)
-7. ~~Events, Learning tabs returning 404 errors~~ (FIXED - March 19, 2026 - corrected API endpoints)
-8. **WebRTC Multi-Session**: Backend doesn't support multiple sessions per user - causes call failures
-
-## Critical Notes for Production Testing
-1. **CLOSE OLD PORTAL** when testing the new one (socket conflict issue)
-2. User `kev@radiocheck.me` needs a staff profile created in admin before status updates work
-3. Backend changes need redeployment on Render.com to take effect
-4. Frontend changes need Vercel to complete build before they're live
-
-## Deployment
-- Portal: Vercel project with root directory `/portal`
-- Backend: Existing API at `veterans-support-api.onrender.com`
-- Subdomains: `staff.radiocheck.me`, `training.radiocheck.me`, `admin.radiocheck.me`, etc.
+## 3rd Party Integrations
+- Socket.IO for real-time communication
+- WebRTC for peer-to-peer calls
+- Twilio for phone calls
+- OpenAI for text embeddings (safety module)
+- Jitsi Meet for video
+- Leaflet.js for maps
+- Chart.js for analytics

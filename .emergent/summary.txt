@@ -12,140 +12,153 @@ The user has recently reported several high-priority bugs on the production envi
 **User's preferred language**: English
 
 **what currently exists?**
-A unified Next.js/Expo application at  with a FastAPI backend at . The agent has recently implemented numerous fixes for API endpoints in the Admin Portal () and added significant functionality to the Staff Portal (), including case creation/escalation, real-time status synchronization via WebSockets, and handlers for incoming call/chat requests. However, critical functionality, particularly WebRTC calling, remains broken on the user's production environment.
+A unified Next.js/Expo application at  with a FastAPI backend at . The agent has implemented numerous fixes to address a critical WebRTC calling bug, which previously failed with a  error. The ID mismatch issue has been resolved, and calls now connect. However, new issues have emerged: calls have no audio and do not disconnect properly.
+
+Fixes have also been implemented for the chat window not opening automatically, a missing call ringtone, and a security issue with persistent logins. These fixes have been deployed by the user but require final verification.
+
+The agent has just begun an audit of the legacy Learning Management System (LMS) portals as requested by the user.
 
 **Last working item**:
-- **Last item agent was working**: The agent was debugging a critical WebRTC calling issue where calls from the mobile app to the staff portal consistently fail with a  error. The agent identified that the staff login process was returning an incorrect ID ( from the  collection) instead of the required  (from the  or  collection). A fix was attempted in  to return  instead.
-- **Status**: USER VERIFICATION PENDING
+- **Last item agent was working**: The agent was performing a hard audit on the legacy and new LMS/learning portals (, , ) to identify differences and feature gaps, as requested by the user. The agent has identified the relevant legacy directories and started analyzing the files.
+- **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: This requires end-to-end testing on the user's production environment, as it involves the mobile app, the backend, and the staff portal. The user must test this flow. The next agent should guide the user to have a staff member log out and log back in (to get a new token with the corrected user ID) and then attempt a call from the mobile app.
-- **User Testing Done**: Y (The user's last message indicates the  error is still occurring, meaning the last fix was not sufficient or not deployed correctly).
+- **Which testing method agent to use?**: Manual audit by comparing legacy files (, , etc.) with the new Next.js pages (, etc.).
+- **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: WebRTC calls are failing on production (P0, HIGHEST)**
--   **Issue 2: Staff Portal Audit - Missing Features (P0)**
--   **Issue 3: Final Admin Portal Fresh Audit (STEP 3) is incomplete (P1)**
--   **Issue 4: Admin Settings toggles are reported as non-functional (P1, from previous handoff)**
+-   **Issue 1: WebRTC calls have no audio and disconnect improperly (P0, HIGHEST)**
+-   **Issue 2: Call ringtone is not heard on the staff portal (P0)**
+-   **Issue 3: Chat window does not appear automatically on new staff portal (P0)**
+-   **Issue 4: Auto-login on shared PCs is a security risk (P1)**
+-   **Issue 5: Staff Portal Audit - Missing Features (P0)**
+-   **Issue 6: Final Admin Portal Fresh Audit (STEP 3) is incomplete (P1)**
+-   **Issue 7: Admin Settings toggles are reported as non-functional (P1)**
 
 **Issues Detail**:
-- **Issue 1: WebRTC calls are failing on production**
-    - **Description**: When a user on the mobile app tries to call a staff member (e.g., Kev), the call fails with a  error. This happens even though the staff member's status is 'available' in the database and UI. The root cause is a mismatch between the ID the mobile app is trying to call and the ID the staff portal is registering with the WebRTC signaling server.
+- **Issue 1: WebRTC calls have no audio and disconnect improperly**
+    - **Description**: While the  error is resolved and calls connect, two new problems have appeared: 1) There is no audio during the call. 2) When the staff member hangs up, the call remains active on the mobile app. The console shows the stream is attached but , and a  message, suggesting the mobile app is ending the call prematurely or isn't handling the disconnect signal from the staff portal correctly.
     - **Attempted fixes**:
-        1.  Added  to the  API response.
-        2.  Updated the staff login endpoint () to return  from the  collection, assuming it was the correct ID. This fix failed, as the user reported the issue persists.
+        1.  Fixed the root user ID mismatch by ensuring  returns the correct  as .
+        2.  Fixed an  by adding a  check in .
+        3.  Fixed a race condition where both caller and callee created WebRTC offers.
     - **Next debug checklist**:
-        1.  The last fix was insufficient. The  collection's  may not be the correct, callable ID.
-        2.  **Hypothesis**: The login logic in  is flawed. It should not trust the  from the  collection. Instead, it should use the  record to find the corresponding  or  profile and return the  from *that* profile, making it the source of truth.
-        3.  **Action**: Modify the login logic in  (lines 317-345). After finding the  record, perform a second query to find the associated  or  record using the staff's email or another common field. Then, extract and return the  from that profile record in the JWT  claim.
-    - **Why fix this issue and what will be achieved with the fix?**: This is a critical P0 bug blocking a core feature of the application. Fixing it will enable real-time communication between users and staff.
+        1.  **Hypothesis**: The mobile app's WebRTC logic in  is flawed. It either times out too quickly, fails to process the connection state changes correctly leading to no audio, or lacks a proper listener for  /  events from the staff side.
+        2.  **Action**: Perform a detailed audit of the mobile app's WebRTC hook (). Pay close attention to its state machine, how it handles incoming media tracks ( event), and its listeners for disconnect events.
     - **Status**: IN PROGRESS
     - **Is recurring issue?**: Y
-    - **Should Test frontend/backend/both after fix?**: Backend fix, but requires user to test the E2E flow.
-    - **Blocked on other issue**: None. This is the main blocker.
+    - **Should Test frontend/backend/both after fix?**: Both (mobile app frontend and staff portal frontend).
+    - **Blocked on other issue**: None. This is the main blocker for communication features.
 
-- **Issue 2: Staff Portal Audit - Missing Features**
-    - **Description**: An audit of the legacy staff portal revealed many missing features in the new implementation. The user has requested these be fixed in order.
-    - **Attempted fixes**: The agent implemented several high-priority items: Panic Button, Call from Chat, AI Feedback Modal, Case Creation/Escalation, and Real-time Status Sync.
-    - **Next debug checklist**:
-        1.  Resume work based on the audit findings in message #106.
-        2.  Implement the next features on the list, starting with Medium Priority items like Morning Review Queue and Safety Plan Editor.
-    - **Why fix this issue and what will be achieved with the fix?**: To achieve full feature parity, allowing the legacy staff portal to be decommissioned.
-    - **Status**: IN PROGRESS
+- **Issue 2: Call ringtone is not heard on the staff portal**
+    - **Description**: User reported no audible ring for incoming calls. The code was trying to play a non-existent  file.
+    - **Attempted fixes**: The agent replaced the MP3 file dependency with a Web Audio API implementation (copied from the legacy portal) that programmatically generates a UK-style double-ring tone. The fix is in .
+    - **Status**: USER VERIFICATION PENDING
     - **Is recurring issue?**: N
-    - **Should Test frontend/backend/both after fix?**: Both
-    - **Blocked on other issue**: Blocked by Issue 1 (WebRTC calls failing).
+    - **Should Test frontend/backend/both after fix?**: Frontend (Staff Portal).
+
+- **Issue 3: Chat window does not appear automatically on new staff portal**
+    - **Description**: When a staff member accepts a chat request, the UI switches to the correct tab but does not automatically open the chat window for that specific user.
+    - **Attempted fixes**: Added a  hook to  that listens for changes to . Once the  is set, it updates the  state, which should trigger the chat modal to open.
+    - **Status**: USER VERIFICATION PENDING
+    - **Is recurring issue?**: N
+    - **Should Test frontend/backend/both after fix?**: Frontend (Staff Portal).
+
+- **Issue 4: Auto-login on shared PCs is a security risk**
+    - **Description**: User identified that tokens stored in  create a security risk by not logging users out when the browser is closed.
+    - **Attempted fixes**:
+        - Implemented a Remember me checkbox on the login forms of both the new () and legacy () portals.
+        - Changed the default storage mechanism to  (clears on tab close).  is now only used if Remember me is checked.
+        - Updated the auth hooks () and legacy JS () to support this new logic.
+    - **Status**: USER VERIFICATION PENDING
+    - **Is recurring issue?**: N
+    - **Should Test frontend/backend/both after fix?**: Frontend (Both new and legacy staff portals).
+
+- **Issue 5, 6, 7**: These are pending from the previous handoff and have not been addressed in this session.
 
 **In progress Task List**:
--   **Task 1: Complete Staff Portal Feature Parity Implementation**
-    -   **Where to resume**: Continue implementing the missing features identified in the audit (message #106), focusing on the Medium Priority list next.
-    -   **What will be achieved with this?**: The new staff portal will have all the functionality of the legacy one.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on something**: Issue 1 (WebRTC calls failing).
+- **Task 1: Complete Legacy Portal Audits and Feature Parity (P0)**
+    - **Where to resume**: Continue the audit of the LMS/Learning portals (, ). Compare the features, UI, and logic of the legacy files (, ) with the new Next.js implementations. Document all identified feature gaps.
+    - **What will be achieved with this?**: A comprehensive list of missing features required to reach parity with the legacy LMS, which will form the backlog for the next development phase.
+    - **Status**: IN PROGRESS
+    - **Should Test frontend/backend/both after fix?**: N/A (Audit task)
+    - **Blocked on something**: No.
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
     *   **(P1)** Complete the STEP 3 - Fresh Audit of the Admin Portal to find any remaining feature gaps.
-    *   **(P1)** Plan and execute the removal of all legacy code directories (, ).
+    *   **(P1)** Plan and execute the removal of all legacy code directories (, , , , ) once feature parity is confirmed.
 *   **Future Tasks**:
     *   **(P2)** Implement a full CMS visual editor with drag-and-drop.
     *   **(P2)** Implement Discussion Forums, Mood Tracker Journal, and Appointment Booking.
-    *   **(P2)** Add Welsh Language Support.
+    - **(P2)** Add Welsh Language Support.
 
 **Completed work in this session**
--   **API Bug Fixes**:
-    -   Fixed  by correcting data handling in .
-    -   Fixed numerous 404/405 errors in the Admin Portal by correcting API paths and HTTP methods ().
-    -   Fixed 500 errors on safeguarding endpoints by ensuring MongoDB  fields are not returned in API responses ().
-    -   Fixed 404 error on PDF downloads by correcting URLs to use the proper API endpoint ().
--   **Staff Portal - Cases**:
-    -   Added a new backend endpoint  to allow case creation without a pre-existing alert ().
-    -   Implemented UI for case creation and escalation in .
--   **Staff Portal - Status Sync & Calling**:
-    -   Unified staff status updates via a single  endpoint.
-    -   Implemented real-time status synchronization across all portals using WebSockets (, , , ).
-    -   Attempted to fix WebRTC call failures by correcting the  returned on login.
+- **WebRTC Call Connection Fix**: Resolved the  error.
+  - Modified  () to return  as , ensuring ID consistency.
+  - Updated  to use this  for WebRTC registration.
+- **WebRTC Stability Fixes**:
+  - Prevented an  crash by adding a  check before setting the remote description in .
+  - Fixed a race condition where both caller and callee were incorrectly creating WebRTC offers.
+- **Chat Window Auto-Open Fix**: Implemented logic in  to automatically open the chat window upon request acceptance.
+- **Auto-Login Security Fix**: Implemented a Remember me checkbox and switched default token storage to  in both new and legacy staff portals.
+- **Missing Ringtone Fix**: Replaced a missing MP3 file with a Web Audio API-generated ringtone in .
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-*   **WebRTC Signaling**: Using Socket.IO for call setup. The core issue is a persistent user ID mismatch between different parts of the system (mobile app caller vs. staff portal callee).
-*   **API Identity Management**: The central bug revolves around which ID to use (, , ). The system is being refactored to consistently use the auth .
-*   **Real-time UI Synchronization**: Using a FastAPI backend with Socket.IO to  events from a REST endpoint to all connected clients, forcing them to update their state.
-*   **MongoDB  Serialization**: A recurring bug where returning raw MongoDB documents with  causes 500 errors. Fix is using projections ().
+*   **WebRTC Signaling & State Management**: The core of this session was debugging the WebRTC call flow. Key concepts include managing the  (, ), handling ICE candidates, and fixing offer/answer race conditions between caller and callee.
+*   **Dynamic ID Resolution**: The  bug was solved not by changing database data, but by fixing the backend logic at runtime () to find and return the correct callable ID () from existing records.
+*   **Web Audio API**: Used to programmatically generate a ringtone to replace a missing audio file, making the application more self-contained.
+*   **Browser Storage ( vs. )**: Implemented a security fix by switching the default token storage to  (clears on tab close) and making persistent  an opt-in feature via a Remember me checkbox.
 
 **key DB schema**
--   The relationship between the , , , and  collections is critical. The  field is intended to be the foreign key linking them, but inconsistencies are causing bugs.
+-   The relationship between , , , and  is complex and was the source of the original ID bug. The key fields are:
+    - : The primary ID for the unified staff collection.
+    - : The field that correctly maps to the callable ID in . **This is now the source of truth for the callable ID.**
+    - : The ID the mobile app uses to initiate calls. The goal is to make  match this.
 
 **All files of reference**
--   **/app/backend/routers/auth.py**: Contains the flawed login logic that is the likely root cause of the WebRTC call failure.
--   **/app/portal/src/app/staff/page.tsx**: The main new staff portal file where most new features (cases, status) were added.
--   **/app/backend/webrtc_signaling.py**: The signaling server logic, modified for status sync.
--   **/app/backend/routers/staff.py**: Modified to add a unified status update endpoint and emit socket events.
--   **/app/backend/case_router.py**: Modified to add a new case creation endpoint.
--   **/app/staff-portal/app.js**: Legacy staff portal, modified to use the new unified status endpoint.
--   **/app/portal/src/hooks/useWebRTCPhone.tsx**: Modified to listen for real-time status updates.
--   **/app/portal/src/app/admin/page.tsx**: Heavily modified to fix API endpoint errors.
-
-**Areas that need refactoring**
-*    and  are monolithic and should be broken down into smaller components.
-*   The backend login logic in  has multiple fallbacks and should be simplified to a single, unified flow once migration is complete.
+-   **/app/portal/src/hooks/useWebRTCPhone.tsx**: The heart of the WebRTC logic for the staff portal. Contains fixes for signaling state, offer creation, and the new Web Audio ringtone.
+-   **/app/backend/server.py**: Contains the  endpoint, which was modified to return the correct .
+-   **/app/portal/src/app/staff/page.tsx**: The main UI for the staff portal. Contains the Remember me checkbox and the auto-opening chat window logic.
+-   **/app/portal/src/hooks/useStaffAuth.tsx**: Manages staff authentication and now contains the / logic.
+-   **/app/frontend/hooks/useWebRTCCall.ts**: The mobile app's WebRTC hook. **This is the next file to investigate** for the no audio and disconnect sync bugs.
+-   **/app/staff-portal/app.js** & **index.html**: Legacy files modified to add the Remember me security fix.
 
 **key api endpoints**
-*   : The new, unified endpoint for updating staff status.
-*   : The new endpoint for creating a case without a linked alert.
-*   : Modified to include .
-*   : The login endpoint with the flawed ID logic.
+*   : Crucial endpoint modified to return the , which resolved the initial connection failure.
+*   Socket.IO events: , , , , , , , . The interaction between these events is critical to the call flow.
 
 **Critical Info for New Agent**
-*   **The main blocker is the WebRTC call failure ().** The user has confirmed the last fix did not work. Your top priority is to fix the login logic in  to ensure it returns the correct  from the  or  profile, not from the  collection.
-*   **You are working against a live production environment.** The user's bug reports and console logs are from . Do not trust the local preview database for data; use  against the production API to investigate data states if needed.
-*   **Staff must log out and log back in to test the fix.** Any fix to the login logic will only apply to new sessions/tokens. Remind the user of this when the fix is ready.
-*   The previous agent started on a feature-parity audit for the staff portal but was sidetracked by bugs. Once the calling issue is resolved, work should continue on the missing features from that audit (message #106).
+*   **The main blocker has shifted.** The original  error is **FIXED**. The new P0 issue is that connected calls have **no audio**, and disconnects are not synced correctly (the mobile app ends the call prematurely).
+*   **The bug is likely in the mobile app.** The staff portal seems to be behaving correctly now. The next area of investigation is the mobile app's WebRTC hook: .
+*   **Deployment Cycle**: The user's production environment on Render is separate from this one. Changes must be saved to GitHub via the Save to Github feature, which then triggers a deployment on Render. The user has sometimes forgotten this step, leading to confusion. Always confirm with the user that both frontend and backend services have been redeployed and that they have performed a hard refresh (Ctrl+Shift+R) before testing.
+*   **Verification Pending**: Several fixes (chat window, ringtone, auto-login) were implemented and deployed but haven't been explicitly confirmed as working by the user. You may need to ask for verification on these items.
 
 **documents and test reports created in this job**
 None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **PENDING**: User reports calls are still failing with  error, providing a new console log. (Message #609)
-9.  Agent confirms the fix for login ID mismatch and explains the new unified ID architecture. (Message #520, #522)
-8.  User asks if they need to update the legacy portals. (Message #521)
-7.  User reports that staff status is not syncing quickly enough between portals. (Message #523)
-6.  Agent provides a summary of the unified status system and declares it ready for deployment. (Message #328)
-5.  User asks to double-check the client-initiated call/chat flow. (Message #317)
-4.  User confirms the plan to make status names common between peer/counsellor. (Message #315)
-3.  User reports that staff members should only see their own cases and that case creation/escalation is not working. (Message #329)
-2.  User reports  is not working. (Message #445)
-1.  User reports a  error when creating a case. (Message #449)
+10. User confirms the call connects, but disappears from the screen and has no audio. Asks for a hard audit. (Presents new P0 bug)
+9.  User provides console logs after deploying and testing, showing the  still occurring, indicating the frontend fix had not deployed yet.
+8.  User provides Kev's password for testing.
+7.  User asks if resetting user IDs is necessary. Agent explains why it is not.
+6.  User reports auto-login is a security risk on shared PCs. (Presents new P1 bug)
+5.  User provides new console logs showing calls still failing and chat window not appearing. (Confirms multiple bugs still exist)
+4.  User responds to the agent's initial plan and asks for an audit of why calling is broken.
+3.  User asks to check why the chat window isn't appearing.
+2.  User reports calls are still failing with .
+1.  **PENDING**: User asked for a hard audit on the learning and LMS legacy portals. This task was started but is not complete.
 
 **Project Health Check:**
 *   **Broken**:
-    *   WebRTC calling is critically broken on production ( error).
+    *   WebRTC calling is still critically broken on production (connects but no audio, improper disconnect).
 *   **Needs User Verification**:
-    *   Case creation and escalation functionality in the staff portal.
-    *   Real-time status synchronization between legacy and new portals.
-    *   All fixes for Admin Portal API endpoints (404s, 405s, PDF downloads).
+    *   Ringtone functionality on incoming calls.
+    - Chat window automatically opening on request acceptance.
+    - Remember me login functionality and  default on both new and legacy portals.
+    - All WebRTC fixes (ID mismatch, state machine) require a final successful E2E call test.
 
 **3rd Party Integrations**
 *   Next.js 14, FastAPI, MongoDB, Socket.IO, Twilio, Jitsi Meet, Leaflet.js, Chart.js
@@ -156,10 +169,10 @@ None.
 -   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: []
--   **Known regressions**: WebRTC calling was working at some point and is now broken.
+-   **Known regressions**: None in this session; functionality was improved from a non-working state.
 
 **Credentials to test flow:**
-Admin portal credentials should be requested from the user if needed. Testing the call flow requires coordination with the user on their production environment.
+User provided credentials for 'kev' as:  / . However, API login with these credentials failed. Testing the call flow requires coordination with the user on their production environment.
 
 **What agent forgot to execute**
-The agent's fix for the login ID mismatch in  was not robust enough. It assumed the  collection would have the correct , which appears to be false. The agent should have implemented a more defensive fix that cross-references with the / collections to find the definitive .</analysis>
+The agent has just begun the hard audit of the LMS/learning portals as requested by the user. This task is the last active item and needs to be continued.</analysis>
