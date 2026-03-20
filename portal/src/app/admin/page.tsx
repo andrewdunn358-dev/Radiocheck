@@ -424,7 +424,7 @@ const api = {
 
   // Logs - All sub-tabs
   getCallLogs: (token: string) =>
-    api.fetch<any>('/admin/logs/calls', { token }),
+    api.fetch<any>('/call-logs', { token }),
   
   getChatLogs: (token: string) =>
     api.fetch<any>('/admin/logs/chats', { token }),
