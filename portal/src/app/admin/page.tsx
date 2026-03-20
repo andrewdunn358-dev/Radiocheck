@@ -752,6 +752,9 @@ export default function AdminPortal() {
   const [timeTrackingEntries, setTimeTrackingEntries] = useState<any[]>([]);
   const [timeTrackingCategories, setTimeTrackingCategories] = useState<string[]>([]);
   const [showAddTimeEntryModal, setShowAddTimeEntryModal] = useState(false);
+  const [selectedTimeTrackingMonth, setSelectedTimeTrackingMonth] = useState<string>(
+    new Date().toISOString().slice(0, 7) // Format: YYYY-MM
+  );
   const [newTimeEntry, setNewTimeEntry] = useState({
     date: new Date().toISOString().split('T')[0],
     hours: 0,
@@ -810,6 +813,9 @@ export default function AdminPortal() {
   // AI Usage Daily chart data
   const [aiDailyUsage, setAiDailyUsage] = useState<any[]>([]);
   const [aiUsagePeriod, setAiUsagePeriod] = useState(30);
+
+  // Real-time alert counter state
+  const [pendingAlertCount, setPendingAlertCount] = useState(0);
 
   // Add Shift modal state
   const [showAddShiftModal, setShowAddShiftModal] = useState(false);
@@ -970,6 +976,31 @@ export default function AdminPortal() {
     
     return () => clearInterval(interval);
   }, [token, activeTab]);
+
+  // Real-time alert counter - polls every 30 seconds
+  useEffect(() => {
+    if (!token) return;
+    
+    const updateAlertCount = async () => {
+      try {
+        const alerts = await api.getSafeguardingAlerts(token);
+        const pending = Array.isArray(alerts) 
+          ? alerts.filter((a: any) => !a.acknowledged && a.status === 'pending').length
+          : 0;
+        setPendingAlertCount(pending);
+      } catch (err) {
+        console.log('Error updating alert counter');
+      }
+    };
+    
+    // Initial fetch
+    updateAlertCount();
+    
+    // Poll every 30 seconds
+    const interval = setInterval(updateAlertCount, 30000);
+    
+    return () => clearInterval(interval);
+  }, [token]);
 
   // Load functions
   const loadStaff = async () => {
@@ -1307,16 +1338,22 @@ export default function AdminPortal() {
     }
   };
   
-  const loadTimeTracking = async () => {
+  const loadTimeTracking = async (month?: string) => {
     if (!token) return;
+    const monthToUse = month || selectedTimeTrackingMonth;
     try {
       const [summaryData, entriesData, categoriesData] = await Promise.all([
-        api.getTimeTrackingSummary(token).catch(() => null),
-        api.getTimeTrackingEntries(token, 20).catch(() => ({ entries: [] })),
+        api.getTimeTrackingSummary(token, monthToUse).catch(() => null),
+        api.getTimeTrackingEntries(token, 50).catch(() => ({ entries: [] })),
         api.getTimeTrackingCategories(token).catch(() => ({ categories: [] })),
       ]);
       setTimeTrackingSummary(summaryData);
-      setTimeTrackingEntries(entriesData?.entries || []);
+      // Filter entries by selected month
+      const filteredEntries = entriesData?.entries?.filter((entry: any) => {
+        if (!entry.date) return true;
+        return entry.date.startsWith(monthToUse);
+      }) || [];
+      setTimeTrackingEntries(filteredEntries);
       setTimeTrackingCategories(categoriesData?.categories || []);
     } catch (err: any) {
       console.error('Time tracking data not available:', err);
@@ -1597,8 +1634,20 @@ export default function AdminPortal() {
       {/* Main content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}
-        <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold">{TABS.find(t => t.id === activeTab)?.label}</h1>
+          {/* Real-time Alert Badge */}
+          {pendingAlertCount > 0 && (
+            <button
+              onClick={() => setActiveTab('logs')}
+              className="relative flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg transition-colors animate-pulse"
+              title={`${pendingAlertCount} pending safeguarding alert${pendingAlertCount > 1 ? 's' : ''}`}
+            >
+              <Bell className="w-4 h-4" />
+              <span className="font-semibold">{pendingAlertCount > 99 ? '99+' : pendingAlertCount}</span>
+              <span className="hidden sm:inline text-sm">Alert{pendingAlertCount > 1 ? 's' : ''}</span>
+            </button>
+          )}
         </header>
 
         {/* Notifications */}
@@ -1677,10 +1726,20 @@ export default function AdminPortal() {
                       filteredStaff.map((member) => (
                         <tr key={member.id} className="hover:bg-gray-700/50" data-testid={`staff-row-${member.id}`}>
                           <td className="px-4 py-3">
-                            <span className="font-medium">{member.name}</span>
-                            {member._source && (
-                              <span className="ml-2 text-xs text-gray-500">({member._source})</span>
-                            )}
+                            <div>
+                              <span className="font-medium">{member.name}</span>
+                              {member._source && (
+                                <span className="ml-2 text-xs text-gray-500">({member._source})</span>
+                              )}
+                              {/* Profile link indicator */}
+                              {member.role !== 'admin' && (
+                                member.has_profile ? (
+                                  <p className="text-xs text-green-500 mt-1">Linked to profile</p>
+                                ) : (
+                                  <p className="text-xs text-gray-500 mt-1">No profile linked</p>
+                                )
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-gray-400">{member.email}</td>
                           <td className="px-4 py-3">
@@ -2025,16 +2084,24 @@ export default function AdminPortal() {
                     <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
                       <h4 className="font-medium mb-3 text-red-400">📍 Visitors by Region (30 days)</h4>
                       <div className="space-y-2">
-                        {appUsageStats?.regions && Object.keys(appUsageStats.regions).length > 0 ? (
-                          Object.entries(appUsageStats.regions).map(([region, data]: [string, any]) => (
-                            <div key={region} className="flex justify-between items-center bg-gray-700 p-2 rounded">
-                              <span className="capitalize">{region.replace('_', ' ')}</span>
-                              <strong>{typeof data === 'object' ? (data.visits || data.unique || 0) : data}</strong>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-gray-500 text-sm">No region data yet</p>
+                        {appUsageStats?.regions && (
+                          Array.isArray(appUsageStats.regions) 
+                            ? appUsageStats.regions.map((item: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                                  <span className="capitalize">{String(item.region || item.name || 'Unknown').replace('_', ' ')}</span>
+                                  <strong>{item.visits || item.unique || item.count || 0}</strong>
+                                </div>
+                              ))
+                            : Object.keys(appUsageStats.regions).length > 0 
+                              ? Object.entries(appUsageStats.regions).map(([region, data]: [string, any]) => (
+                                  <div key={region} className="flex justify-between items-center bg-gray-700 p-2 rounded">
+                                    <span className="capitalize">{region.replace('_', ' ')}</span>
+                                    <strong>{typeof data === 'object' ? (data.visits || data.unique || 0) : data}</strong>
+                                  </div>
+                                ))
+                              : <p className="text-gray-500 text-sm">No region data yet</p>
                         )}
+                        {!appUsageStats?.regions && <p className="text-gray-500 text-sm">No region data yet</p>}
                       </div>
                     </div>
 
@@ -6163,8 +6230,44 @@ export default function AdminPortal() {
             <div data-testid="timetracking-tab">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Time Tracking</h2>
-                <div className="flex gap-2">
-                  <button onClick={loadTimeTracking} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                <div className="flex gap-2 items-center">
+                  {/* Month Picker */}
+                  <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
+                    <button
+                      onClick={() => {
+                        const d = new Date(selectedTimeTrackingMonth + '-01');
+                        d.setMonth(d.getMonth() - 1);
+                        const newMonth = d.toISOString().slice(0, 7);
+                        setSelectedTimeTrackingMonth(newMonth);
+                        loadTimeTracking(newMonth);
+                      }}
+                      className="p-1 hover:bg-gray-600 rounded"
+                    >
+                      <ChevronDown className="w-4 h-4 rotate-90" />
+                    </button>
+                    <input
+                      type="month"
+                      value={selectedTimeTrackingMonth}
+                      onChange={(e) => {
+                        setSelectedTimeTrackingMonth(e.target.value);
+                        loadTimeTracking(e.target.value);
+                      }}
+                      className="bg-transparent text-white text-sm focus:outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        const d = new Date(selectedTimeTrackingMonth + '-01');
+                        d.setMonth(d.getMonth() + 1);
+                        const newMonth = d.toISOString().slice(0, 7);
+                        setSelectedTimeTrackingMonth(newMonth);
+                        loadTimeTracking(newMonth);
+                      }}
+                      className="p-1 hover:bg-gray-600 rounded"
+                    >
+                      <ChevronDown className="w-4 h-4 -rotate-90" />
+                    </button>
+                  </div>
+                  <button onClick={() => loadTimeTracking()} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
                     <RefreshCw className="w-5 h-5" />
                   </button>
                   <button className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
@@ -6183,7 +6286,7 @@ export default function AdminPortal() {
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                  <p className="text-gray-400 text-sm">This Month Total</p>
+                  <p className="text-gray-400 text-sm">{new Date(selectedTimeTrackingMonth + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })} Total</p>
                   <p className="text-2xl font-bold">{timeTrackingSummary?.total?.hours || 0}h {timeTrackingSummary?.total?.minutes || 0}m</p>
                 </div>
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">

@@ -18,10 +18,10 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 /app/portal/
 ├── src/
 │   ├── app/
-│   │   ├── admin/         # Admin portal (COMPLETE - March 19, 2026)
+│   │   ├── admin/         # Admin portal (COMPLETE - March 20, 2026)
 │   │   ├── learning/      # LMS Learner portal (COMPLETE)
 │   │   ├── lms-admin/     # LMS Admin portal (COMPLETE)
-│   │   └── staff/         # Staff portal (IN PROGRESS)
+│   │   └── staff/         # Staff portal (COMPLETE - needs verification)
 │   ├── hooks/
 │   │   ├── useStaffAuth.tsx
 │   │   ├── useWebRTCPhone.tsx  # NEW - WebRTC peer-to-peer calling
@@ -32,52 +32,30 @@ The legacy `app.js` files (over 8,400 lines each) became unmaintainable. The goa
 
 ## What's Been Implemented
 
-### March 19, 2026 - Admin Portal Production Fixes ✅
-**Root Cause**: Previous agent tested on local preview environment, not production. API endpoints didn't match production backend.
+### March 20, 2026 - Admin Portal Final Comparison Pass ✅
+**Task**: Complete STEP 2 gap fixes and STEP 3 fresh audit
 
-**Fixes Applied**:
-1. **Events API** - Changed `/events/` to `/events/admin/all?include_past=true` (was returning 404)
-2. **AI Avatar URLs** - Added `resolveAvatarUrl()` helper to prepend API URL for relative paths like `/images/tommy.png`
-3. **AI Personas Tab** - Now properly displays avatars with fallback on error
-4. **Learning Endpoints** - Changed:
-   - `/learning/safety-patterns` → `/learning/patterns?is_active=true`
-   - `/ai-feedback/moderation/queue` → `/learning/queue?status=pending` (was 404)
-5. **Learning Stats Display** - Fixed to read correct nested structure: `patterns.active`, `learnings.pending`, `learnings.approved`, `feedback.pending`
+**STEP 2 Fixes Applied (18 items)**:
+1. ✅ Staff Tab - Reset password modal (POST /auth/admin-reset-password)
+2. ✅ Logs Tab - Activity trend chart (Chart.js line - Calls/Chats/Alerts over 7 days)
+3. ✅ Logs Tab - Contact type chart (Chart.js doughnut - counsellor/peer/org/crisis_line)
+4. ✅ Logs Tab - Export CSV button (client-side, exports current sub-tab)
+5. ✅ Logs Tab - Clear logs button (POST /admin/clear-logs with confirmation)
+6. ✅ AI Usage Tab - Daily usage chart (Chart.js stacked bar with period selector)
+7. ✅ AI Usage Tab - Budget progress bars (color-coded: green<50%, amber 50-80%, red>80%)
+8. ✅ Rota Tab - Swap request Pending/All tab switcher with functional Approve/Reject
+9. ✅ Events Tab - Edit event modal (PUT /events/admin/{id})
+10. ✅ Events Tab - View attendance modal (GET /events/admin/{id}/attendance)
+11. ✅ Compliance Tab - Document download links (4 policy PDFs)
+12. ✅ Monitoring Tab - Last updated timestamp
+13. ✅ Monitoring Tab - Auto-refresh every 30 seconds with cleanup
+14. ✅ Fixed react-leaflet version conflict (4.2.1 for React 18)
 
-**Verified on Production** (veterans-support-api.onrender.com):
-- ✅ Events: Returns 4 events
-- ✅ AI Characters: Returns 9 characters with avatars
-- ✅ Learning Stats: Returns 31 active patterns
-- ✅ Governance Summary: Returns report with KPIs
-- ✅ CMS Pages: Returns 6 pages
-- ✅ Shifts: Returns 25 shifts
-- ✅ Compliance Dashboard: Accessible
-
-### March 19, 2026 - Admin Portal COMPLETE ✅
-1. **Admin Portal Migration Complete** (`/app/portal/src/app/admin/page.tsx`)
-   - **All 15 tabs fully implemented with real API data**:
-     - Staff Management (unified-staff data display) ✅
-     - Rota (Today's Shifts, Pending Swap Requests, Week Overview) ✅
-     - CMS (6 pages from backend, page preview area) ✅
-     - AI Personas (12 characters with avatars, descriptions, order) ✅
-     - Beta Testing (placeholder)
-     - Compliance (GDPR metrics, Security Incidents, Open Complaints) ✅
-     - Logs (Call Logs, Chat Logs, Safeguarding - all with live data) ✅
-     - Monitoring (system stats: active calls, chats, staff online) ✅
-     - Governance (Clinical Safety Hazard Log) ✅
-     - Events (Upcoming/Recent Events, Create Event button) ✅
-     - AI Learning (Stats grid, Moderation Queue) ✅
-     - Time Tracking (placeholder)
-     - AI Usage (token counts, costs, provider breakdown) ✅
-     - Migration (legacy vs unified counts, action buttons) ✅
-     - Settings (placeholder)
-   
-2. **Fixed API Endpoints**:
-   - `/api/ai-characters/admin/all` (was `/api/ai-characters/admin`)
-   - `/api/admin/system-stats` (was `/api/monitoring/stats`)
-   - `/api/admin/unified-staff` for combined staff view
-   - `/api/call-logs?days=30` with proper response handling
-   - `/api/admin/ai-usage/summary?days=30` for AI usage stats
+**STEP 3 Fresh Audit Fixes (4 items)**:
+15. ✅ Header - Real-time alert counter badge (polls every 30s, pulses when pending > 0)
+16. ✅ Staff Tab - Profile link indicator ("Linked to profile" / "No profile linked")
+17. ✅ Time Tracking Tab - Month picker with prev/next buttons and native input
+18. ✅ App Usage Stats - Fixed regions rendering to handle array format
    - `/api/admin/migration-status` for migration dashboard
    - `/api/shifts/` for rota shifts
    - `/api/shift-swaps/needs-approval` for pending swap requests

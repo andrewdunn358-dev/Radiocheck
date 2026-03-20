@@ -1,6 +1,6 @@
 # ADMIN PORTAL COMPARISON: Legacy vs React
 
-## PROGRESS UPDATE - March 2026 (Session 2)
+## PROGRESS UPDATE - March 2026 (Session 2 - Fresh Audit)
 
 ### NEWLY COMPLETED FIXES (This Session):
 1. ✅ Staff - Reset password modal (POST /auth/admin-reset-password)
@@ -17,6 +17,12 @@
 12. ✅ Monitoring - Last updated timestamp
 13. ✅ Monitoring - Auto-refresh every 30 seconds with cleanup on unmount
 14. ✅ Fixed react-leaflet version conflict (downgraded to 4.2.1 for React 18 compatibility)
+
+### FRESH AUDIT FIXES (STEP 3):
+15. ✅ Header - Real-time alert counter badge (polls every 30s, pulses when pending > 0, caps at 99+)
+16. ✅ Staff - Profile link indicator (shows "Linked to profile" or "No profile linked" for non-admins)
+17. ✅ Time Tracking - Month picker with prev/next buttons and native input
+18. ✅ App Usage Stats - Fixed regions rendering to handle array format (object with keys error)
 
 ### PREVIOUSLY COMPLETED FIXES:
 1. ✅ Staff - Status toggle buttons (Available/Busy/Off for counsellors, Available/Limited/Unavailable for peers)
