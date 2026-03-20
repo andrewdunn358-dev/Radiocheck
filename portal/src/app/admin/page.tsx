@@ -430,16 +430,16 @@ const api = {
     api.fetch<any>('/live-chat/rooms', { token }),
   
   getSafeguardingLogs: (token: string) =>
-    api.fetch<any>('/safeguarding/safeguarding-alerts', { token }),
+    api.fetch<any>('/safeguarding-alerts', { token }),
   
   getScreeningLogs: (token: string) =>
-    api.fetch<any>('/safeguarding/screening-submissions', { token }),
+    api.fetch<any>('/screening-submissions', { token }),
   
   getCallbackLogs: (token: string) =>
     api.fetch<any>('/callbacks', { token }),
   
   getPanicLogs: (token: string) =>
-    api.fetch<any>('/safeguarding/panic-alerts', { token }),
+    api.fetch<any>('/panic-alerts', { token }),
 
   // Screening actions
   updateScreeningStatus: (token: string, id: string, status: string) =>
