@@ -4171,28 +4171,23 @@ async def get_safeguarding_alerts(
     current_user: User = Depends(get_current_user)
 ):
     """Get safeguarding alerts - all staff can view"""
-    logging.info(f"get_safeguarding_alerts: user={current_user.email}, role='{current_user.role}'")
-    
-    # Normalize role check - handle variations like "Peer", "COUNSELLOR", etc.
-    user_role = (current_user.role or "").lower().strip()
-    allowed_roles = ["admin", "supervisor", "counsellor", "peer", "peer_supporter", "user"]  # Added 'user' as fallback
-    
-    logging.info(f"get_safeguarding_alerts: Checking role '{user_role}' against allowed: {allowed_roles}")
-    
-    # Allow all authenticated staff to view safeguarding alerts
-    # This matches the legacy portal behavior where all staff roles can see alerts
-    if not user_role or user_role == "":
-        logging.warning(f"get_safeguarding_alerts: User {current_user.email} has empty/no role, allowing access for now")
+    print(f"[SAFEGUARDING] get_safeguarding_alerts called by user={current_user.email}, role='{current_user.role}'")
     
     try:
         query = {}
         if status:
             query["status"] = status
         
+        # Get total count first for debugging
+        total_count = await db.safeguarding_alerts.count_documents({})
+        print(f"[SAFEGUARDING] Total alerts in database: {total_count}")
+        
         alerts = await db.safeguarding_alerts.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
-        logging.info(f"get_safeguarding_alerts: Returning {len(alerts)} alerts to user {current_user.email}")
+        print(f"[SAFEGUARDING] Returning {len(alerts)} alerts (query: {query})")
+        
         return alerts
     except Exception as e:
+        print(f"[SAFEGUARDING] ERROR: {str(e)}")
         logging.error(f"Error fetching safeguarding alerts: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch safeguarding alerts")
 
@@ -4470,6 +4465,69 @@ async def test_safeguarding_phrase(
         "would_create_alert": result["risk_level"] in ["AMBER", "RED"],
         "note": "This is a test - no alert was created"
     }
+
+@api_router.post("/safeguarding/test-create-alert")
+async def test_create_safeguarding_alert(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Debug endpoint: Create a test safeguarding alert to verify database writes.
+    Admin only.
+    """
+    if current_user.role not in ["admin", "supervisor"]:
+        raise HTTPException(status_code=403, detail="Admin/Supervisor only")
+    
+    try:
+        test_alert = SafeguardingAlert(
+            session_id=f"test_session_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            character="bob",
+            triggering_message="TEST: This is a test alert to verify database writes",
+            ai_response="TEST: AI response for test alert",
+            risk_level="AMBER",
+            risk_score=75,
+            triggered_indicators=["test_indicator"],
+            client_ip="127.0.0.1",
+            user_agent="Test User Agent",
+            geo_city="Test City",
+            geo_country="Test Country",
+            conversation_history=[
+                {"role": "user", "content": "Test message 1"},
+                {"role": "assistant", "content": "Test response 1"}
+            ]
+        )
+        
+        alert_dict = test_alert.dict()
+        result = await db.safeguarding_alerts.insert_one(alert_dict)
+        
+        # Verify it was inserted
+        verify = await db.safeguarding_alerts.find_one({"id": test_alert.id}, {"_id": 0})
+        
+        return {
+            "success": True,
+            "alert_id": test_alert.id,
+            "mongodb_id": str(result.inserted_id),
+            "verified": verify is not None,
+            "alert_data": verify
+        }
+    except Exception as e:
+        logging.error(f"Test alert creation failed: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@api_router.get("/safeguarding/debug-count")
+async def debug_safeguarding_count():
+    """Debug: Count safeguarding alerts in database"""
+    try:
+        count = await db.safeguarding_alerts.count_documents({})
+        latest = await db.safeguarding_alerts.find_one({}, {"_id": 0}, sort=[("created_at", -1)])
+        return {
+            "total_alerts": count,
+            "latest_alert": latest
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 # ============ STAFF NOTES ENDPOINTS ============
 
@@ -5933,8 +5991,21 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 alert.geo_lon = geo_data.get("geo_lon")
             
             alert_id = alert.id
-            await db.safeguarding_alerts.insert_one(alert.dict())
-            logging.warning(f"SAFEGUARDING ALERT [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown')}, {geo_data.get('geo_country', 'Unknown')}")
+            try:
+                alert_dict = alert.dict()
+                # Ensure datetime is properly formatted for MongoDB
+                if isinstance(alert_dict.get('created_at'), datetime):
+                    alert_dict['created_at'] = alert_dict['created_at']
+                if isinstance(alert_dict.get('acknowledged_at'), datetime):
+                    alert_dict['acknowledged_at'] = alert_dict['acknowledged_at']
+                if isinstance(alert_dict.get('resolved_at'), datetime):
+                    alert_dict['resolved_at'] = alert_dict['resolved_at']
+                    
+                result = await db.safeguarding_alerts.insert_one(alert_dict)
+                logging.warning(f"SAFEGUARDING ALERT CREATED [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown') if geo_data else 'Unknown'}, {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'} - MongoDB ID: {result.inserted_id}")
+            except Exception as db_err:
+                logging.error(f"FAILED TO INSERT SAFEGUARDING ALERT: {db_err} - Alert ID: {alert_id}")
+                # Don't fail the whole request if alert insert fails
             
             # NOTE: We no longer emit the alert immediately here.
             # The alert will be emitted when the user chooses to call or chat,
