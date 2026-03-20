@@ -2705,7 +2705,8 @@ export default function StaffPortalPage() {
                 <p className="text-sm text-gray-400">Room: {activeChatRoom.room_id}</p>
               </div>
               <div className="flex gap-2">
-                {/* Call User Button */}
+                {/* Call User Button - DISABLED: WebRTC calling not working yet */}
+                {/* TODO: Re-enable once WebRTC call flow is fixed
                 <button
                   data-testid="call-from-chat-btn"
                   onClick={() => {
@@ -2719,6 +2720,7 @@ export default function StaffPortalPage() {
                   <Phone className="w-4 h-4" />
                   Call User
                 </button>
+                */}
                 <button
                   onClick={handleEndChat}
                   className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
