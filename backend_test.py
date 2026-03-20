@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://unified-next.preview.emergentagent.com/api"
+BACKEND_URL = "https://production-stabilize-6.preview.emergentagent.com/api"
 
 # Test data
 TEST_EMAILS = [

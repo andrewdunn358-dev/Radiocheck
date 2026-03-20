@@ -1,73 +1,75 @@
 <analysis>**original_problem_statement:**
-The user is migrating four legacy vanilla JavaScript portals into a single Next.js application at . After previous frustrations with incomplete work, the user has instituted a strict Audit First, Identify, Recreate Faithfully workflow.
+The user is migrating four legacy vanilla JavaScript portals into a single Next.js application at . After previous frustrations, the user has instituted a strict Audit First, Identify, Recreate Faithfully workflow. The current task is a final, exhaustive comparison pass to find and fix every remaining feature gap between the legacy Admin Portal () and the new React implementation ().
 
-The agent has completed a major overhaul of the Admin Portal, implemented significant features in the Staff Portal, and fixed several backend issues. However, the user is still not satisfied and has initiated a final comparison pass to find and fix every remaining gap between the legacy Admin Portal () and the new React implementation (). The user has provided an extremely detailed, multi-step checklist for this final pass.
+The user has also reported several critical bugs related to backend dependencies on the production deployment environment (Render) and frontend rendering errors on the live site ().
 
 **PRODUCT REQUIREMENTS:**
-1.  **(P0) Feature Parity:** The new React portals must replicate all functionality of the old vanilla JS portals.
-2.  **(P0) Unified Codebase:** All portals must be consolidated within the single Next.js project at .
-3.  **(P0) WebRTC Functionality:** The core calling feature of the Staff Portal must be reliable.
-4.  **(P1) Improved Maintainability:** The new codebase should be modular, with shared components, hooks, and a centralized API client.
+1.  **(P0) Feature Parity:** The new React admin portal must replicate all functionality of the old vanilla JS portal.
+2.  **(P0) Production Stability:** The application must build and run successfully on the Render deployment environment without crashing.
+3.  **(P0) Unified Codebase:** All portals must be consolidated within the single Next.js project at .
+4.  **(P1) Improved Maintainability:** The new codebase should be modular and well-structured.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A unified Next.js application () with a FastAPI backend (). The agent has performed extensive work on multiple fronts:
-*   **Staff Portal ():** Implemented session timeout, sound alerts, panic/safeguarding alert tabs, callback sub-tabs, and a full case management system with modals for viewing case details and adding sessions.
-*   **Admin Portal ():** Fixed the Time Tracking tab to load real data and completely overhauled the Rota tab to include a full, interactive monthly calendar. It also added the Chart.js analytics charts to the Logs tab.
-*   **Backend ():** Fixed the multi-session issue for WebRTC calls in  and fixed an issue preventing AI persona avatar images from being served by adding a new static file mount in .
+A unified Next.js application () with a FastAPI backend (). The agent has completed a massive number of fixes and feature additions to  as per the user's explicit STEP 2 checklist. This includes adding a password reset modal, numerous charts, CSV export, log clearing functions, event modals, and much more.
 
-The agent was just beginning the user's latest, highly detailed instructions for a final audit and fix pass on the Admin Portal.
+Additionally, the agent performed a major overhaul of the backend dependencies to resolve deployment issues on Render. This involved:
+*   Removing  and  to eliminate CUDA/GPU requirements.
+*   Rewriting the semantic safety module () to use the OpenAI embeddings API instead of a local model.
+*   Replacing  with  to enable pure-Python PDF generation without system-level dependencies.
+*   Cleaning and organizing .
+
+Despite these fixes, the user is still reporting critical frontend rendering bugs on the live production site.
 
 **Last working item**:
-*   **Last item agent was working**: Following the user's STEP 1 directive for a final Admin Portal audit. The agent had begun reading the legacy source file () and the existing comparison document () to gather full context before proceeding to fix all remaining feature gaps.
-*   **Status**: IN PROGRESS
-*   **Agent Testing Done**: N (for the audit task itself)
-*   **Which testing method agent to use?**: manual testing by curl/ python -c. After all fixes are implemented as per the user's detailed list, a full  run will be necessary to verify the entire Admin Portal.
-*   **User Testing Done**: N
+- **Last item agent was working**: The user reported two recurring frontend bugs on the production site: a  on the AI Usage tab and a  (rendering an object) on the Logs tab. The agent identified the probable causes and implemented fixes in , but these fixes have not been deployed.
+- **Status**: IN PROGRESS
+- **Agent Testing Done**: N
+- **Which testing method agent to use?**: The agent should first ensure the application builds successfully (yarn run v1.22.22
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command. in ). Then, it must use the  to log into the admin portal and verify that the Logs and AI Usage tabs render correctly without any console errors.
+- **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-*   **Issue 1**: Final Admin Portal Gap Fixes (P0, HIGHEST). The user has provided an exhaustive list of features to fix/implement across all tabs of the Admin Portal.
-*   **Issue 2**: WebRTC calling fix is not verified (P0).
-*   **Issue 3**: Admin Settings toggles are reported as non-functional (P1). The agent was unable to identify the specific broken toggles, but this should be addressed as part of the final audit.
-*   **Issue 4**: Login for user  is still failing on the deployed environment (P1, Recurring).
+-   **Issue 1: Recurring Frontend Rendering Bugs on Production (P0, HIGHEST)**
+-   **Issue 2: Final Admin Portal Fresh Audit (STEP 3) is incomplete (P0)**
+-   **Issue 3: WebRTC calling fix is not verified (P1)**
+-   **Issue 4: Login for user  is still failing (P1, Recurring)**
+-   **Issue 5: Admin Settings toggles are reported as non-functional (P1)**
 
 **Issues Detail**:
-*   **Issue 1: Final Admin Portal Gap Fixes**
-    *   **Attempted fixes**: The agent was at the very beginning of the process, reading the source files.
-    *   **Next debug checklist**:
-        1.  Complete reading all files as per user's STEP 1: , , , and all imported components.
-        2.  Systematically work through the STEP 2 checklist provided by the user (in message #402), fixing each gap one by one.
-        3.  Perform the STEP 3 fresh audit to catch any remaining discrepancies.
-        4.  Verify data types as per STEP 4.
-    *   **Why fix this issue and what will be achieved with the fix?**: This is a direct, explicit, and highly detailed instruction from the user to achieve full feature parity for the Admin Portal and regain their trust.
-    *   **Status**: NOT STARTED
-    *   **Is recurring issue?**: Y
-    *   **Should Test frontend/backend/both after fix?**: Both
-    *   **Blocked on other issue**: None
+- **Issue 1: Recurring Frontend Rendering Bugs on Production**
+    - **Description**: The user is seeing two errors on the deployed  site:
+        1.   on the AI Usage tab.
+        2.   on the Logs tab.
+    - **Attempted fixes**: The agent implemented fixes by adding  checks and ensuring object properties are accessed before rendering. However, these fixes are in the local workspace and **have not been deployed**, which is why the user still sees the errors. The fix for the  404 error was also implemented but not deployed.
+    - **Next debug checklist**:
+        1.  The fixes are already implemented in . The primary action is to ensure the code is deployed.
+        2.  Before finishing, the agent MUST verify these fixes locally by building the portal and using the  to check the console logs on the relevant tabs.
+    - **Why fix this issue and what will be achieved with the fix?**: This is a critical, user-reported bug breaking core functionality on the live production site.
+    - **Status**: IN PROGRESS
+    - **Is recurring issue?**: Y
+    - **Should Test frontend/backend/both after fix?**: Frontend
+    - **Blocked on other issue**: None
 
-*   **Issue 2: WebRTC calls not working in the Staff Portal**
-    *   **Attempted fixes**: The agent refactored  to support multi-session connections by correctly using .
-    *   **Next debug checklist**:
-        1.  This fix needs to be tested end-to-end.
-        2.  Use the testing agent or manual steps to simulate a call between two staff users to confirm the connection is established.
-    *   **Why fix this issue and what will be achieved with the fix?**: This is a core P0 feature for the Staff Portal.
-    *   **Status**: TESTING PENDING
-    *   **Is recurring issue?**: Y
-    *   **Should Test frontend/backend/both after fix?**: Both
-    *   **Blocked on other issue**: None
+- **Issue 2: Final Admin Portal Fresh Audit (STEP 3) is incomplete**
+    - **Description**: The agent completed the user's STEP 2 list of known gaps but has not systematically completed the STEP 3 fresh audit. The user has already found additional gaps (e.g., Time Tracking month picker) that the agent missed, proving the necessity of this audit.
+    - **Attempted fixes**: The agent has been fixing gaps as they are found, but not in the structured, side-by-side comparison the user requested.
+    - **Next debug checklist**:
+        1.  Once the critical production bugs are verified as fixed and ready for deployment, the agent must resume the STEP 3 audit from the user's instructions (message #5).
+        2.  Go through every tab listed under STEP 3, comparing the legacy  with the current .
+        3.  Identify and fix any remaining discrepancies.
+    - **Why fix this issue and what will be achieved with the fix?**: To achieve full feature parity and finally satisfy the user's primary requirement for the Admin Portal.
+    - **Status**: NOT STARTED
+    - **Is recurring issue?**: Y
+    - **Should Test frontend/backend/both after fix?**: Frontend
+    - **Blocked on other issue**: Blocked by Recurring Frontend Rendering Bugs on Production.
 
-**In progress Task List**:
-*   **Task 1: Final Admin Portal Audit and Fix Pass (P0)**
-    *   **Where to resume**: The agent has started reading  (up to line 2500/8588) and . It needs to finish reading the legacy file, then read the current React implementation () and its components before starting the fixes listed by the user.
-    *   **What will be achieved with this?**: The Admin Portal will have full feature parity with the legacy version, satisfying the user's primary requirement.
-    *   **Status**: IN PROGRESS
-    *   **Should Test frontend/backend/both after fix?**: Both
-    *   **Blocked on something**: None
+**In progress Task List**: None. The main work is issue-driven.
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
-    *   **(P0)** Deploy and verify all recent fixes (WebRTC, Staff Portal features, Admin Rota/Time Tracking/Charts) on the production environment.
+    *   **(P0)** Deploy and verify all recent fixes on the production environment.
     *   **(P1)** Plan and execute the removal of all legacy code directories (, ).
 *   **Future Tasks**:
     *   **(P2)** Implement a full CMS visual editor with drag-and-drop.
@@ -76,110 +78,130 @@ The agent was just beginning the user's latest, highly detailed instructions for
     *   **(P2)** Create a native mobile app.
 
 **Completed work in this session**
-- **Admin Portal - Rota Calendar**: Replaced the basic list with a full, interactive monthly calendar view in .
-- **Admin Portal - Time Tracking Data**: Fixed the Time Tracking tab to load and display real data from the backend.
-- **Admin Portal - Logs Charts**: Installed  and added Daily Trend and Device/Browser charts to the Logs tab.
-- **Staff Portal - Case Management**: Implemented a full case management feature, including a case details modal with sub-tabs and a modal to add new session notes in .
-- **Staff Portal - P0 Feature Implementation**: Added session timeout, sound alerts, and overhauled the Alerts and Callbacks tabs with proper sub-tabs and functionality.
-- **Backend - WebRTC Fix**: Refactored  to correctly handle multiple sessions per user, fixing a P0 blocker.
-- **Backend - Avatar Image Fix**: Added a static file mount in  to correctly serve persona images.
-- **Auditing & Documentation**: Performed a detailed audit of the legacy Staff Portal and updated  and .
-
-**Earlier issues found/mentioned but not fixed**
-*   **Issue 1: Login for **
-    *   **Debug checklist**: Investigate the production database for this user's record to understand why their login fails specifically on the deployed environment.
-    *   **Why to solve this issue and what will be achieved with this?**: Resolves a specific user-reported issue and ensures all test users can access the system.
-    *   **Should Test frontend/backend/both after fix**: Backend
-    *   **Is recurring issue?**: Y
-*   **Issue 2: Admin Settings Toggles Not Working**
-    *   **Debug checklist**: The user reported this, but the agent could not find any non-functional toggles in the Settings tab. This needs to be re-evaluated during the STEP 3 - FRESH AUDIT part of the user's final instructions. Check the Beta and AI Personas tabs for toggles.
-    *   **Why to solve this issue and what will be achieved with this?**: Fixes a user-reported bug and ensures all admin controls are functional.
-    *   **Should Test frontend/backend/both after fix**: Frontend
+- **Admin Portal - STEP 2 Known Gaps**: Completed the user's entire checklist of 18 items, including password reset modal, various charts (Activity Trend, Contact Type, AI Daily Usage), CSV export, functional log clearing, Rota swap tabs, and Event modals.
+- **Admin Portal - STEP 3 Audit Fixes**: Added a real-time alert counter, a Linked to profile indicator, and a month picker for the Time Tracking tab based on audit findings.
+- **Frontend Bug Fixes**:
+  - Implemented a fix for  in the AI Usage tab.
+  - Implemented a fix for React error #31 (rendering a region object) in the Logs tab.
+  - Corrected the API endpoint for  from  to .
+- **Backend - Dependency Overhaul for Production**:
+  - Replaced / with OpenAI embeddings in  to remove CUDA dependency.
+  - Calibrated similarity thresholds for the new OpenAI model.
+  - Replaced  with  to fix PDF generation on Render's read-only filesystem.
+  - Cleaned, organized, and corrected  to ensure a successful build.
+- **Time Tracking**: Logged 7 hours of work for the session directly to the production database via API calls as requested by the user.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-*   **Final Comparison Pass Workflow**: The user's current mandate. A strict, multi-step process to read legacy and new code side-by-side, fix a known list of gaps, and then perform a fresh audit to catch anything missed.
-*   **Monolithic Components**: The Admin and Staff portal pages (, ) have both become extremely large and complex (now ~6000 and ~2800 lines respectively), increasing fragility.
-*   **Client-Side Data Aggregation**: The agent is using data already loaded into the frontend state (, ) to generate charts, avoiding unnecessary API calls.
-*   **Dynamic Imports**: Used for the Leaflet map component to prevent SSR-related errors in Next.js.
+*   **Production Deployment Troubleshooting**: The agent had to resolve multiple issues preventing the backend from deploying on Render, including CUDA dependencies and read-only filesystem limitations.
+*   **Replacing Local ML with APIs**: The  was refactored to use OpenAI's  API instead of a local  model, demonstrating a shift from on-premise to cloud-based ML.
+*   **Pure Python Alternatives**: When  failed due to system dependencies, the agent found and implemented , a pure Python library, to solve the problem.
+*   **Monolithic Frontend Component**: The  file has grown to ~7000 lines, making it extremely difficult to manage and debug.
 
 **key DB schema**
-*   **time_tracking_sessions**: 
-*   **cases**: Now includes , , and  fields.
+- **time_tracking_sessions**: 
 
 **All files of reference**
-*   **/app/admin-site/app.js**: The legacy source of truth for the final admin portal audit.
-*   **/app/portal/src/app/admin/page.tsx**: The React component to be fixed. It has been heavily modified to add Rota, Time Tracking, and Chart features.
-*   **/app/portal/src/app/staff/page.tsx**: The React component for the staff portal, which received major feature updates.
-*   **/app/backend/webrtc_signaling.py**: The backend file that was refactored to fix WebRTC calls.
-*   **/app/backend/server.py**: Modified to serve static images.
-*   **/app/portal/src/lib/api.ts**: Updated with new interfaces and API client methods for Staff Portal features.
-*   **/app/memory/ADMIN_PORTAL_COMPARISON.md**: The gap-tracking document provided by the user.
-*   **/app/memory/PRD.md**: The product requirements document, updated with recent progress.
-*   **/app/portal/package.json**: Updated with  and .
+*   **/app/portal/src/app/admin/page.tsx**: The primary file worked on, now ~7000 lines, containing dozens of new features and bug fixes.
+*   **/app/backend/requirements.txt**: Completely overhauled to be production-ready for a non-GPU environment.
+*   **/app/backend/safety/semantic_model.py**: Completely rewritten to use the OpenAI embeddings API.
+*   **/app/backend/routers/documents.py**: Rewritten to use  for PDF generation.
+*   **/app/admin-site/app.js**: The legacy source of truth for the ongoing STEP 3 audit.
+*   **/app/memory/ADMIN_PORTAL_COMPARISON.md**: Updated with all completed fixes.
+*   **/app/memory/PRD.md**: Updated to reflect completed work.
 
 **Areas that need refactoring**:
-*    (now ~6000 lines) and  (now ~2800 lines) are dangerously large. After the user's immediate priorities are met, proposing a refactor to break these down into smaller components per tab/feature is critical for future maintainability.
+*    is dangerously large at ~7000 lines. It urgently needs to be broken down into smaller, manageable components (e.g., one component per tab) after the user's final audit is complete. The current state is a significant technical debt.
 
 **key api endpoints**
-*   : GET summary stats for the time tracking tab.
-*   : GET a list of all time tracking entries.
-*   : GET and POST session notes for a specific case.
-*   : GET and PUT global site settings.
-*   : GET and POST the beta feature flag status.
+*   : **(Fixed)** The correct endpoint for fetching call logs.
+*   : Used for the new reset password modal.
+*   : Used for the new AI daily usage chart.
+*   : Used for the new view attendance modal.
+*   : Now uses  to generate PDFs.
+*   : Used to log the agent's own work hours.
 
 **Critical Info for New Agent**
-*   **IMMEDIATE PRIORITY**: Your only task is to follow the user's Final Comparison Pass instructions from message #402. Do not deviate. Start with STEP 1 - READ BOTH FILES IN FULL and proceed methodically.
-*   **USER TRUST IS PARAMOUNT**: The user is micro-managing because of past issues. Follow their instructions exactly as written, using the specified output format for each fix. This is a critical step to regain their confidence.
-*   **VERIFY FIXES**: After implementing fixes, manually verify them. For example, after fixing charts, take a screenshot. After fixing the password reset modal, test it.
-*   **DO NOT REFACTOR**: The user has explicitly said Do NOT refactor working code. Stick to fixing the identified gaps. Any proposals for major refactoring (like breaking down the large components) should wait until this entire final pass task is complete and verified.
+*   **Your fixes are not live yet!** The user is reporting bugs from the production site (). The fixes you see in the codebase (for React error #31,  error, and the  endpoint) have been implemented locally but not deployed. Do not get confused and re-implement them. The next step is to verify them locally and then inform the user they need to deploy.
+*   **Finish the audit.** After addressing the production bugs, your main task is to resume and complete the STEP 3 - Fresh Audit from the user's detailed instructions (message #5). Be meticulous.
+*   **The backend is fixed.** The dependency hell with  and  is resolved. The  is clean. The user needs to ensure their Render build command is simply . Do not re-introduce complex dependencies.
+*   **The Admin page is a monolith.** Be extremely careful when editing . It is over 7000 lines long and very fragile.
 
 **documents and test reports created in this job**
-*   /app/memory/STAFF_PORTAL_COMPARISON.md (updated)
+*   /app/memory/ADMIN_PORTAL_COMPARISON.md (updated)
 *   /app/memory/PRD.md (updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-10.  User requests that the Time Tracking tab load real data. (COMPLETED)
-9.   User complains that the Staff portal migration is not complete, reiterates their instructions to audit *and* fix, not just document. (AGENT CORRECTED COURSE)
-8.   User requests that the Admin Rota page show a proper calendar. (COMPLETED)
-7.   Agent finishes a large batch of work and incorrectly suggests moving to WebRTC fix next. (USER CORRECTED)
-6.   User corrects the agent's plan, providing a prioritized list: 1. Fix WebRTC, 2. Implement Case Management, 3. Add Admin Charts. Also mentions settings toggles don't work. (AGENT CORRECTED COURSE)
-5.   User is frustrated that the agent listed Complete Staff Portal as a backlog item and tells the agent to do as instructed. (AGENT CORRECTED COURSE)
-4.   User is frustrated that the agent listed Complete Staff Portal as a backlog item and tells the agent to do as instructed. (AGENT CORRECTED COURSE)
-3.   User instructs the agent to continue with the Staff Portal audit and also to locate the AI avatar images. (COMPLETED)
-2.   User asks the agent to confirm its plan via . (COMPLETED)
-1.  **PENDING**:  The user provides extremely detailed, multi-step instructions for a final comparison pass to find and fix every remaining gap in the Admin Portal. This is the current, active task.
+10. The user asks if the time entries are in production. (Answered: No, they are local).
+9.  The user instructs the agent to add the time entries to production. (COMPLETED).
+8.  The user reports that the  on the logs page is still happening on production. (PENDING - fix is local, not deployed).
+7.  The user corrects the agent's proposed Render build command, pointing out the missing  prefix. (AGENT CORRECTED).
+6.  The user provides Render deployment logs showing a build failure due to apt 2.6.1 (arm64)
+Usage: apt-get [options] command
+       apt-get [options] install|remove pkg1 [pkg2 ...]
+       apt-get [options] source pkg1 [pkg2 ...]
+
+apt-get is a command line interface for retrieval of packages
+and information about them from authenticated sources and
+for installation, upgrade and removal of packages together
+with their dependencies.
+
+Most used commands:
+  update - Retrieve new lists of packages
+  upgrade - Perform an upgrade
+  install - Install new packages (pkg is libc6 not libc6.deb)
+  reinstall - Reinstall packages (pkg is libc6 not libc6.deb)
+  remove - Remove packages
+  purge - Remove packages and config files
+  autoremove - Remove automatically all unused packages
+  dist-upgrade - Distribution upgrade, see apt-get(8)
+  dselect-upgrade - Follow dselect selections
+  build-dep - Configure build-dependencies for source packages
+  satisfy - Satisfy dependency strings
+  clean - Erase downloaded archive files
+  autoclean - Erase old downloaded archive files
+  check - Verify that there are no broken dependencies
+  source - Download source archives
+  download - Download the binary package into the current directory
+  changelog - Download and display the changelog for the given package
+
+See apt-get(8) for more information about the available commands.
+Configuration options and syntax is detailed in apt.conf(5).
+Information about how to configure sources can be found in sources.list(5).
+Package and version choices can be expressed via apt_preferences(5).
+Security details are available in apt-secure(8).
+                                        This APT has Super Cow Powers. on a read-only filesystem. (AGENT CORRECTED COURSE).
+5.  The user confirms to add  to requirements and provides instructions for the Render build command. (AGENT ATTEMPTED).
+4.  The user reports the backend is crashing due to a missing  module and instructs the agent to systematically find all missing dependencies. (COMPLETED).
+3.  The user asks about the damage done to the safeguarding system by removing the local ML model. (Answered).
+2.  The user confirms the plan to test and recalibrate the new OpenAI-based safeguarding model. (COMPLETED).
+1.  **PENDING:** The user reports the same  again, emphasizing it's still broken on the logs page. This is the current, active issue to resolve.
 
 **Project Health Check:**
 *   **Broken**:
-    *   Admin Settings toggles are reported as non-functional (specifics unclear).
-*   **Mocked**:
-    *   Many parts of the Admin and Staff portals were displaying static or zero-value data before the recent fixes. Time Tracking and Rota are now fixed. Others may still exist.
+    *   The **deployed production site** is broken on the Logs and AI Usage tabs due to frontend rendering errors and incorrect API paths. The local codebase contains fixes, but they are not live.
+*   **Mocked**: None.
 *   **Needs User Verification**:
+    *   The entire suite of STEP 2 and STEP 3 fixes for the Admin portal.
+    *   The new -based PDF generation.
+    *   The OpenAI-based semantic safety model.
     *   WebRTC multi-session fix.
-    *   The entire set of Staff Portal features (Session Timeout, Sound Alerts, Panic/Callback tabs, Case Management).
-    *   Admin Portal Rota Calendar.
-    *   Admin Portal Time Tracking data.
-    *   Admin Portal Logs charts.
 
 **3rd Party Integrations**
-*   **Next.js 14**
-*   **FastAPI**
-*   **MongoDB**
-*   **Socket.IO**
-*   **Twilio**
-*   **Jitsi Meet**
-*   **Leaflet.js**
-*   **Chart.js @ 4.5.1** (newly added)
-*   **react-chartjs-2 @ 5.3.1** (newly added)
+*   Next.js 14, FastAPI, MongoDB, Socket.IO, Twilio, Jitsi Meet, Leaflet.js, Chart.js
+*   **OpenAI API**: Now used for text embeddings in the safety module.
+*   **fpdf2**: New dependency for pure-Python PDF generation.
 
 **Testing status**
 *   **Testing agent used after significant changes**: NO
 *   **Troubleshoot agent used after agent stuck in loop**: NO
 *   **Test files created**: []
-*   **Known regressions**: The user reported Admin settings toggles are not working after the massive Admin Portal overhaul.
+*   **Known regressions**: The frontend rendering bugs (, ) are regressions from previous states, now recurring on production.
+
+**Credentials to test flow:**
+*   Admin portal credentials should be requested from the user if not available in .
 
 **What agent forgot to execute**
-The agent consistently needed user correction to stay on track with the highest priority items. It initially treated the Staff Portal task as a documentation-only audit before being corrected. It also has not yet identified which specific settings toggles the user is referring to, despite the user mentioning it twice. The user's latest, most detailed set of instructions (message #402) is a direct result of the agent's inability to fully complete the portal migration to the user's satisfaction on its own.</analysis>
+The agent repeatedly failed to understand that the user was reporting bugs on a separate, deployed environment. This led to confusion where the agent would fix an issue locally and consider it resolved, while the user continued to see the bug on the live site. The agent must differentiate between the local preview environment and the user's production deployment.</analysis>
