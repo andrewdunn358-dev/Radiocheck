@@ -338,17 +338,23 @@ export default function StaffPortalPage() {
       }>;
       const { room_id: roomId, user_id: userId, user_name: userName } = customEvent.detail;
       
-      if (!roomId || !token || !user?.id || !user?.name) {
-        console.log('[StaffPage] Cannot open chat - missing data:', { roomId, hasToken: !!token, userId: user?.id });
+      // CRITICAL: Use webrtcUserId (callable_user_id) for joining chat, NOT user.id
+      // The chat room was created with the Socket.IO user_id which is callable_user_id
+      const staffIdForChat = webrtcUserId || user?.id;
+      
+      if (!roomId || !token || !staffIdForChat || !user?.name) {
+        console.log('[StaffPage] Cannot open chat - missing data:', { roomId, hasToken: !!token, staffIdForChat, userName: user?.name });
         return;
       }
       
       console.log('[StaffPage] *** CHAT CONFIRMED EVENT RECEIVED ***');
       console.log('[StaffPage] Opening chat room:', roomId, 'for user:', userId, userName);
+      console.log('[StaffPage] Using staff ID for join:', staffIdForChat, '(webrtcUserId:', webrtcUserId, ', user.id:', user?.id, ')');
       
       try {
         // Join the chat room via API (like legacy joinLiveChat)
-        await staffApi.joinLiveChat(token, roomId, user.id, user.name);
+        // MUST use webrtcUserId (same as Socket.IO registration) to match room's staff_id
+        await staffApi.joinLiveChat(token, roomId, staffIdForChat, user.name);
         
         // Get existing messages
         const messages = await staffApi.getLiveChatMessages(token, roomId);
@@ -360,7 +366,7 @@ export default function StaffPortalPage() {
           user_id: userId,
           user_name: userName || 'Veteran',
           status: 'active',
-          staff_id: user.id,
+          staff_id: staffIdForChat,
           staff_name: user.name,
           created_at: new Date().toISOString(),
         };
@@ -385,7 +391,7 @@ export default function StaffPortalPage() {
     return () => {
       window.removeEventListener('chat_request_confirmed', handleChatConfirmed);
     };
-  }, [token, user?.id, user?.name, loadLiveChats]);
+  }, [token, user?.id, user?.name, webrtcUserId, loadLiveChats]);
 
   // Session timeout logic
   useEffect(() => {

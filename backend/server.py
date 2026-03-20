@@ -4171,8 +4171,15 @@ async def get_safeguarding_alerts(
     current_user: User = Depends(get_current_user)
 ):
     """Get safeguarding alerts - all staff can view"""
-    if current_user.role not in ["admin", "supervisor", "counsellor", "peer"]:
-        raise HTTPException(status_code=403, detail="Only staff can view safeguarding alerts")
+    logging.info(f"get_safeguarding_alerts: user={current_user.email}, role={current_user.role}")
+    
+    # Normalize role check - handle variations like "Peer", "COUNSELLOR", etc.
+    user_role = (current_user.role or "").lower()
+    allowed_roles = ["admin", "supervisor", "counsellor", "peer", "peer_supporter"]
+    
+    if user_role not in allowed_roles:
+        logging.warning(f"get_safeguarding_alerts: Access denied for role '{current_user.role}' (normalized: '{user_role}')")
+        raise HTTPException(status_code=403, detail=f"Only staff can view safeguarding alerts (your role: {current_user.role})")
     
     try:
         query = {}
@@ -4180,6 +4187,7 @@ async def get_safeguarding_alerts(
             query["status"] = status
         
         alerts = await db.safeguarding_alerts.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+        logging.info(f"get_safeguarding_alerts: Returning {len(alerts)} alerts")
         return alerts
     except Exception as e:
         logging.error(f"Error fetching safeguarding alerts: {str(e)}")
@@ -6724,25 +6732,31 @@ class StaffJoinChat(BaseModel):
 @api_router.post("/live-chat/rooms/{room_id}/join")
 async def staff_join_live_chat(room_id: str, join_data: StaffJoinChat, current_user: User = Depends(get_current_user)):
     """Staff member joins a live chat room"""
-    logging.info(f"staff_join_live_chat: room_id={room_id}, staff_id={join_data.staff_id}")
+    logging.info(f"staff_join_live_chat: room_id={room_id}, staff_id={join_data.staff_id}, user_role={current_user.role}")
     
-    if current_user.role not in ["admin", "supervisor", "counsellor", "peer"]:
-        raise HTTPException(status_code=403, detail="Only staff can join chat rooms")
+    # Normalize role check - handle variations
+    user_role = (current_user.role or "").lower()
+    allowed_roles = ["admin", "supervisor", "counsellor", "peer", "peer_supporter"]
+    
+    if user_role not in allowed_roles:
+        raise HTTPException(status_code=403, detail=f"Only staff can join chat rooms (your role: {current_user.role})")
     
     # Check in-memory first
     if room_id in live_chat_rooms:
         room = live_chat_rooms[room_id]
-        logging.info(f"staff_join_live_chat: Found room in memory")
-        if room["staff_id"] and room["staff_id"] != join_data.staff_id:
-            raise HTTPException(status_code=400, detail="Chat room already has a staff member assigned")
+        logging.info(f"staff_join_live_chat: Found room in memory, current staff_id={room.get('staff_id')}")
+        # Allow if: no staff assigned, OR same staff re-joining, OR staff is the one who accepted
+        if room.get("staff_id") and room["staff_id"] != join_data.staff_id:
+            raise HTTPException(status_code=400, detail="Chat room already has a different staff member assigned")
         
         room["staff_id"] = join_data.staff_id
         room["staff_name"] = join_data.staff_name
+        room["status"] = "active"  # Ensure status is active when staff joins
     
-    # Update in database
+    # Update in database - use simpler query, in-memory check already validates staff
     result = await db.live_chat_rooms.update_one(
         {"id": room_id},
-        {"$set": {"staff_id": join_data.staff_id, "staff_name": join_data.staff_name}}
+        {"$set": {"staff_id": join_data.staff_id, "staff_name": join_data.staff_name, "status": "active"}}
     )
     
     logging.info(f"staff_join_live_chat: DB update result - matched_count={result.matched_count}")
@@ -6756,6 +6770,7 @@ async def staff_join_live_chat(room_id: str, join_data: StaffJoinChat, current_u
             room_doc = live_chat_rooms[room_id].copy()
             room_doc["staff_id"] = join_data.staff_id
             room_doc["staff_name"] = join_data.staff_name
+            room_doc["status"] = "active"
             await db.live_chat_rooms.insert_one(room_doc)
         else:
             raise HTTPException(status_code=404, detail="Chat room not found")
