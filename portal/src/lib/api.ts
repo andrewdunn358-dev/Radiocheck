@@ -738,7 +738,7 @@ export interface Case {
   case_number: string;
   user_id?: string;
   user_name?: string;
-  status: 'open' | 'in_progress' | 'escalated' | 'closed';
+  status: 'open' | 'active' | 'in_progress' | 'escalated' | 'closed';
   risk_level: 'low' | 'medium' | 'high' | 'critical';
   assigned_to?: string;
   assigned_to_name?: string;

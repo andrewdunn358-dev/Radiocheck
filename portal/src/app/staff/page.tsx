@@ -11,7 +11,7 @@ import {
   Calendar, Users, FileText, Shield, LogOut, Bell, Volume2, VolumeX,
   CheckCircle, Clock, User, ChevronRight, RefreshCw, X, Send,
   Plus, Edit, Trash2, ChevronLeft, ArrowLeftRight, Eye, PhoneCall, Wifi, WifiOff,
-  PhoneIncoming, PhoneOff, Mic, MicOff, MapPin, Globe, Info, AlertOctagon
+  PhoneIncoming, PhoneOff, Mic, MicOff, MapPin, Globe, Info, AlertOctagon, ArrowUp
 } from 'lucide-react';
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
@@ -164,6 +164,19 @@ export default function StaffPortalPage() {
   const [aiFeedbackData, setAiFeedbackData] = useState<{ messageId: string; message: string; response: string } | null>(null);
   const [aiFeedbackRating, setAiFeedbackRating] = useState<'good' | 'needs_improvement' | 'inappropriate' | 'missed_risk' | null>(null);
   const [aiFeedbackComment, setAiFeedbackComment] = useState('');
+
+  // Case management state
+  const [showCreateCaseModal, setShowCreateCaseModal] = useState(false);
+  const [showEscalateModal, setShowEscalateModal] = useState(false);
+  const [escalateCaseId, setEscalateCaseId] = useState<string | null>(null);
+  const [escalateTo, setEscalateTo] = useState('');
+  const [escalateReason, setEscalateReason] = useState('');
+  const [escalateNotes, setEscalateNotes] = useState('');
+  const [newCaseUserId, setNewCaseUserId] = useState('');
+  const [newCaseUserName, setNewCaseUserName] = useState('');
+  const [newCaseNotes, setNewCaseNotes] = useState('');
+  const [newCaseRiskLevel, setNewCaseRiskLevel] = useState('medium');
+  const [availableCounsellors, setAvailableCounsellors] = useState<any[]>([]);
 
   // Load data
   const loadAlerts = useCallback(async () => {
@@ -537,22 +550,6 @@ export default function StaffPortalPage() {
     }
   };
   
-  // Case management handlers
-  const handleViewCase = async (caseItem: Case) => {
-    setSelectedCase(caseItem);
-    // Load sessions for this case
-    if (token && caseItem._id) {
-      try {
-        const sessions = await staffApi.getCaseSessions(token, caseItem._id);
-        setCaseSessions(sessions);
-      } catch (err) {
-        console.error('Failed to load case sessions:', err);
-        setCaseSessions([]);
-      }
-    }
-    setShowCaseModal(true);
-  };
-  
   const handleAddSessionNote = async () => {
     if (!token || !selectedCase?._id || !newSessionNote.trim()) return;
     try {
@@ -803,6 +800,123 @@ export default function StaffPortalPage() {
       alert('Feedback submitted. Thank you!');
     } catch (err) {
       console.error('Failed to submit AI feedback:', err);
+    }
+  };
+
+  // Load available counsellors for escalation
+  const loadAvailableCounsellors = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/counsellors/available`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setAvailableCounsellors(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load counsellors:', err);
+    }
+  };
+
+  // Create a new case
+  const handleCreateCase = async () => {
+    if (!token || !newCaseUserName) return;
+    try {
+      const res = await fetch(`${API_URL}/api/cases`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user_name: newCaseUserName,
+          user_id: newCaseUserId || undefined,
+          initial_notes: newCaseNotes,
+          risk_level: newCaseRiskLevel,
+        })
+      });
+      if (!res.ok) throw new Error('Failed to create case');
+      setShowCreateCaseModal(false);
+      setNewCaseUserName('');
+      setNewCaseUserId('');
+      setNewCaseNotes('');
+      setNewCaseRiskLevel('medium');
+      loadCases();
+      alert('Case created successfully');
+    } catch (err) {
+      console.error('Failed to create case:', err);
+      alert('Failed to create case. Please try again.');
+    }
+  };
+
+  // View case details
+  const handleViewCase = async (caseItem: Case) => {
+    if (!token) return;
+    const caseId = caseItem._id || (caseItem as any).id;
+    try {
+      const res = await fetch(`${API_URL}/api/cases/${caseId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch case details');
+      const data = await res.json();
+      setSelectedCase(data);
+      setShowCaseModal(true);
+    } catch (err) {
+      console.error('Failed to load case details:', err);
+      // Still show what we have
+      setSelectedCase(caseItem);
+      setShowCaseModal(true);
+    }
+  };
+
+  // Open escalation modal
+  const handleOpenEscalate = (caseId: string) => {
+    setEscalateCaseId(caseId);
+    setEscalateTo('');
+    setEscalateReason('');
+    setEscalateNotes('');
+    loadAvailableCounsellors();
+    setShowEscalateModal(true);
+  };
+
+  // Escalate case to counsellor/supervisor
+  const handleEscalateCase = async () => {
+    if (!token || !escalateCaseId || !escalateTo || !escalateReason) return;
+    try {
+      // Share case with the counsellor
+      await fetch(`${API_URL}/api/cases/${escalateCaseId}/share`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          counsellor_id: escalateTo
+        })
+      });
+      
+      // Add escalation session note
+      await fetch(`${API_URL}/api/cases/${escalateCaseId}/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          presenting_issue: `Case escalated. Reason: ${escalateReason}${escalateNotes ? '. Notes: ' + escalateNotes : ''}`,
+          risk_level: 'high',
+          outcome: 'escalate_to_counsellor',
+          actions_taken: ['Escalated to counsellor/supervisor']
+        })
+      });
+
+      setShowEscalateModal(false);
+      setShowCaseModal(false);
+      setEscalateCaseId(null);
+      loadCases();
+      alert('Case escalated successfully. The counsellor has been notified.');
+    } catch (err) {
+      console.error('Failed to escalate case:', err);
+      alert('Failed to escalate case. Please try again.');
     }
   };
 
@@ -1632,9 +1746,17 @@ export default function StaffPortalPage() {
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Briefcase className="w-6 h-6 text-secondary" />
-                Cases
+                My Cases
               </h1>
               <div className="flex gap-2">
+                <button
+                  data-testid="create-case-btn"
+                  onClick={() => setShowCreateCaseModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-secondary text-black rounded-lg hover:bg-secondary/90"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Case
+                </button>
                 <select
                   value={caseStatusFilter}
                   onChange={(e) => setCaseStatusFilter(e.target.value)}
@@ -1642,6 +1764,7 @@ export default function StaffPortalPage() {
                 >
                   <option value="">All Status</option>
                   <option value="open">Open</option>
+                  <option value="active">Active</option>
                   <option value="in_progress">In Progress</option>
                   <option value="escalated">Escalated</option>
                   <option value="closed">Closed</option>
@@ -1703,12 +1826,24 @@ export default function StaffPortalPage() {
                       <td className="px-6 py-4">{c.assigned_to_name || '-'}</td>
                       <td className="px-6 py-4 text-gray-400">{formatTimeAgo(c.updated_at)}</td>
                       <td className="px-6 py-4">
-                        <button 
-                          onClick={() => handleViewCase(c)}
-                          className="text-secondary hover:underline text-sm flex items-center gap-1"
-                        >
-                          <Eye className="w-4 h-4" /> View
-                        </button>
+                        <div className="flex gap-2">
+                          <button 
+                            data-testid={`view-case-${c._id}`}
+                            onClick={() => handleViewCase(c)}
+                            className="text-secondary hover:underline text-sm flex items-center gap-1"
+                          >
+                            <Eye className="w-4 h-4" /> View
+                          </button>
+                          {(c.status === 'open' || c.status === 'active' || c.status === 'in_progress') && (
+                            <button 
+                              data-testid={`escalate-case-${c._id}`}
+                              onClick={() => handleOpenEscalate(c._id)}
+                              className="text-amber-400 hover:underline text-sm flex items-center gap-1"
+                            >
+                              <ArrowUp className="w-4 h-4" /> Escalate
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -2781,6 +2916,294 @@ export default function StaffPortalPage() {
               >
                 Submit Feedback
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Case Modal */}
+      {showCreateCaseModal && (
+        <div data-testid="create-case-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-secondary" />
+              Create New Case
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">User Name *</label>
+                <input
+                  data-testid="case-user-name"
+                  type="text"
+                  value={newCaseUserName}
+                  onChange={(e) => setNewCaseUserName(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                  placeholder="Enter the user's name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">User ID (optional)</label>
+                <input
+                  data-testid="case-user-id"
+                  type="text"
+                  value={newCaseUserId}
+                  onChange={(e) => setNewCaseUserId(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                  placeholder="If known"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Risk Level</label>
+                <select
+                  data-testid="case-risk-level"
+                  value={newCaseRiskLevel}
+                  onChange={(e) => setNewCaseRiskLevel(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Initial Notes</label>
+                <textarea
+                  data-testid="case-notes"
+                  value={newCaseNotes}
+                  onChange={(e) => setNewCaseNotes(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                  placeholder="Describe the presenting issue..."
+                  rows={4}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreateCaseModal(false);
+                  setNewCaseUserName('');
+                  setNewCaseUserId('');
+                  setNewCaseNotes('');
+                  setNewCaseRiskLevel('medium');
+                }}
+                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="submit-create-case"
+                onClick={handleCreateCase}
+                disabled={!newCaseUserName}
+                className="flex-1 px-4 py-3 rounded-lg bg-secondary text-black hover:bg-secondary/90 transition disabled:opacity-50"
+              >
+                Create Case
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Escalate Case Modal */}
+      {showEscalateModal && (
+        <div data-testid="escalate-case-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <ArrowUp className="w-5 h-5 text-amber-400" />
+              Escalate Case
+            </h2>
+            
+            <p className="text-gray-400 mb-4">
+              Select a counsellor or supervisor to escalate this case to. They will receive access and a notification.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Escalate To *</label>
+                <select
+                  data-testid="escalate-to"
+                  value={escalateTo}
+                  onChange={(e) => setEscalateTo(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                >
+                  <option value="">Select counsellor/supervisor...</option>
+                  {availableCounsellors.map((c) => (
+                    <option key={c.id || c.user_id} value={c.user_id || c.id}>
+                      {c.name} {c.status === 'available' ? '(Available)' : ''}
+                    </option>
+                  ))}
+                  {/* Also include team members who are supervisors/counsellors */}
+                  {teamMembers.filter(m => m.role === 'supervisor' || m.role === 'counsellor').map((m) => (
+                    <option key={m.id || m.user_id} value={m.user_id || m.id}>
+                      {m.name} ({m.role}) {m.status === 'available' ? '(Available)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Reason for Escalation *</label>
+                <select
+                  data-testid="escalate-reason"
+                  value={escalateReason}
+                  onChange={(e) => setEscalateReason(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                >
+                  <option value="">Select reason...</option>
+                  <option value="high_risk">High Risk - Needs Immediate Attention</option>
+                  <option value="complex_case">Complex Case - Beyond My Scope</option>
+                  <option value="clinical_input">Needs Clinical Input</option>
+                  <option value="safeguarding">Safeguarding Concern</option>
+                  <option value="supervision_guidance">Need Supervision Guidance</option>
+                  <option value="handover">Handover to Another Counsellor</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Additional Notes</label>
+                <textarea
+                  data-testid="escalate-notes"
+                  value={escalateNotes}
+                  onChange={(e) => setEscalateNotes(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
+                  placeholder="Any additional information..."
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={() => {
+                  setShowEscalateModal(false);
+                  setEscalateCaseId(null);
+                  setEscalateTo('');
+                  setEscalateReason('');
+                  setEscalateNotes('');
+                }}
+                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="submit-escalate"
+                onClick={handleEscalateCase}
+                disabled={!escalateTo || !escalateReason}
+                className="flex-1 px-4 py-3 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
+              >
+                Escalate Case
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Case Detail Modal */}
+      {showCaseModal && selectedCase && (
+        <div data-testid="case-detail-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-card rounded-2xl p-6 max-w-2xl w-full mx-4 my-8">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-secondary" />
+                  Case: {selectedCase.user_name || 'Unknown'}
+                </h2>
+                <p className="text-sm text-gray-400">Case #{selectedCase.case_number || selectedCase._id}</p>
+              </div>
+              <button
+                onClick={() => { setShowCaseModal(false); setSelectedCase(null); }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-primary-dark rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Status</p>
+                <p className={`font-semibold ${
+                  selectedCase.status === 'active' ? 'text-blue-400' :
+                  selectedCase.status === 'escalated' ? 'text-amber-400' :
+                  selectedCase.status === 'closed' ? 'text-green-400' :
+                  'text-gray-400'
+                }`}>
+                  {selectedCase.status?.replace('_', ' ') || 'Active'}
+                </p>
+              </div>
+              <div className="bg-primary-dark rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Risk Level</p>
+                <p className={`font-semibold ${
+                  selectedCase.risk_level === 'critical' ? 'text-red-500' :
+                  selectedCase.risk_level === 'high' ? 'text-amber-400' :
+                  selectedCase.risk_level === 'medium' ? 'text-yellow-400' :
+                  'text-green-400'
+                }`}>
+                  {selectedCase.risk_level || 'Medium'}
+                </p>
+              </div>
+              <div className="bg-primary-dark rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Sessions</p>
+                <p className="font-semibold">{selectedCase.session_count || 0} / 6</p>
+              </div>
+              <div className="bg-primary-dark rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Assigned To</p>
+                <p className="font-semibold">{selectedCase.assigned_to_name || 'You'}</p>
+              </div>
+            </div>
+
+            {/* Sessions/Notes */}
+            {(selectedCase as any).sessions && (selectedCase as any).sessions.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold mb-3">Session Notes</h3>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {(selectedCase as any).sessions.map((session: any, i: number) => (
+                    <div key={i} className="bg-primary-dark rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs text-gray-500">
+                          {new Date(session.date || session.created_at).toLocaleDateString()}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          session.risk_level === 'high' || session.risk_level === 'critical' ? 'bg-red-500/20 text-red-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {session.risk_level}
+                        </span>
+                      </div>
+                      <p className="text-sm">{session.presenting_issue || session.notes}</p>
+                      {session.outcome && (
+                        <p className="text-xs text-gray-500 mt-2">Outcome: {session.outcome.replace('_', ' ')}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => { setShowCaseModal(false); setSelectedCase(null); }}
+                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
+              >
+                Close
+              </button>
+              {(selectedCase.status === 'active' || selectedCase.status === 'open' || selectedCase.status === 'in_progress') && (
+                <button
+                  onClick={() => {
+                    setShowCaseModal(false);
+                    handleOpenEscalate(selectedCase._id);
+                  }}
+                  className="flex-1 px-4 py-3 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition flex items-center justify-center gap-2"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                  Escalate
+                </button>
+              )}
             </div>
           </div>
         </div>
