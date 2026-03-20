@@ -60,8 +60,8 @@ async def get_screening_submissions(status: Optional[str] = None, severity: Opti
     if severity:
         query["severity"] = severity
     
-    submissions = await db.screening_submissions.find(query).sort("created_at", -1).to_list(200)
-    return [{**s, "_id": None} for s in submissions]
+    submissions = await db.screening_submissions.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return submissions
 
 
 @router.get("/screening-submissions/{submission_id}")
@@ -69,11 +69,10 @@ async def get_screening_submission(submission_id: str):
     """Get a single screening submission"""
     db = get_database()
     
-    submission = await db.screening_submissions.find_one({"$or": [{"id": submission_id}, {"_id": submission_id}]})
+    submission = await db.screening_submissions.find_one({"$or": [{"id": submission_id}, {"_id": submission_id}]}, {"_id": 0})
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     
-    submission["_id"] = None
     return submission
 
 
@@ -160,7 +159,9 @@ async def create_panic_alert(alert: PanicAlertCreate):
     # TODO: Send notifications to staff
     # await notify_staff_of_panic_alert(alert_data)
     
-    return {**alert_data, "_id": None}
+    # Remove _id before returning
+    alert_data.pop("_id", None)
+    return alert_data
 
 
 @router.get("/panic-alerts")
@@ -172,8 +173,8 @@ async def get_panic_alerts(status: Optional[str] = None):
     if status:
         query["status"] = status
     
-    alerts = await db.panic_alerts.find(query).sort("created_at", -1).to_list(200)
-    return [{**a, "id": str(a.get("_id", a.get("id", "")))} for a in alerts]
+    alerts = await db.panic_alerts.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return alerts
 
 
 @router.patch("/panic-alerts/{alert_id}/acknowledge")
@@ -233,8 +234,8 @@ async def get_safeguarding_alerts(status: Optional[str] = None, risk_level: Opti
     if risk_level:
         query["risk_level"] = risk_level
     
-    alerts = await db.safeguarding_alerts.find(query).sort("created_at", -1).to_list(200)
-    return [{**a, "id": str(a.get("_id", a.get("id", "")))} for a in alerts]
+    alerts = await db.safeguarding_alerts.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return alerts
 
 
 @router.get("/safeguarding-alerts/{alert_id}")
@@ -242,11 +243,10 @@ async def get_safeguarding_alert(alert_id: str):
     """Get a single safeguarding alert with full details"""
     db = get_database()
     
-    alert = await db.safeguarding_alerts.find_one({"$or": [{"id": alert_id}, {"_id": alert_id}]})
+    alert = await db.safeguarding_alerts.find_one({"$or": [{"id": alert_id}, {"_id": alert_id}]}, {"_id": 0})
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
-    alert["id"] = str(alert.get("_id", alert.get("id", "")))
     return alert
 
 
