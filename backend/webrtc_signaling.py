@@ -16,6 +16,7 @@ import logging
 import asyncio
 from datetime import datetime
 from typing import Dict, Optional
+from services.database import get_database
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -51,6 +52,43 @@ pending_disconnects: Dict[str, asyncio.Task] = {}
 
 # Grace period in seconds before notifying about disconnect
 DISCONNECT_GRACE_PERIOD = 10
+
+# Standardized status values used across the system
+# 'available' - Ready to take calls/chats
+# 'limited' - Busy but can be interrupted (shown as "Busy" in UI)
+# 'unavailable' - Not taking calls/chats (shown as "Off Duty" in UI)
+# 'offline' - Disconnected/logged out
+VALID_STATUSES = ['available', 'limited', 'unavailable', 'offline']
+
+
+async def update_staff_status_in_db(user_id: str, user_type: str, new_status: str):
+    """
+    Update staff status in the database.
+    Works for both counsellors and peer_supporters.
+    """
+    try:
+        db = get_database()
+        update_data = {
+            "status": new_status,
+            "updated_at": datetime.utcnow()
+        }
+        
+        if user_type == 'counsellor':
+            result = await db.counsellors.update_one(
+                {"user_id": user_id},
+                {"$set": update_data}
+            )
+            logger.info(f"Updated counsellor {user_id} status to {new_status}: {result.modified_count} modified")
+        elif user_type == 'peer':
+            result = await db.peer_supporters.update_one(
+                {"user_id": user_id},
+                {"$set": update_data}
+            )
+            logger.info(f"Updated peer supporter {user_id} status to {new_status}: {result.modified_count} modified")
+        else:
+            logger.info(f"User {user_id} is type {user_type} - no database update needed")
+    except Exception as e:
+        logger.error(f"Failed to update status in database for {user_id}: {e}")
 
 
 @sio.event
@@ -153,6 +191,8 @@ async def disconnect(sid):
                         'user_id': user_id,
                         'name': user_name
                     })
+                    # Update status in database to 'offline'
+                    await update_staff_status_in_db(user_id, user_type, 'offline')
                 
             except asyncio.CancelledError:
                 logger.info(f"Disconnect notification cancelled for {user_id} (user reconnected)")
@@ -172,6 +212,8 @@ async def disconnect(sid):
                 'user_id': user_id,
                 'name': user_name
             })
+            # Update status in database to 'offline'
+            await update_staff_status_in_db(user_id, user_type, 'offline')
 
 
 @sio.event
@@ -213,7 +255,7 @@ async def register(sid, data):
         'user_type': user_type
     }, to=sid)
     
-    # If staff, notify others
+    # If staff, notify others and update database status
     if user_type in ['counsellor', 'peer']:
         await sio.emit('staff_online', {
             'user_id': user_id,
@@ -221,6 +263,8 @@ async def register(sid, data):
             'name': name,
             'status': status
         })
+        # Update status in database to 'available' (or whatever status they registered with)
+        await update_staff_status_in_db(user_id, user_type, status)
 
 
 @sio.event
@@ -229,12 +273,20 @@ async def update_status(sid, data):
     if sid in connected_users:
         new_status = data.get('status', 'available')
         old_status = connected_users[sid].get('status')
+        user_id = connected_users[sid].get('user_id')
+        user_type = connected_users[sid].get('user_type')
+        
         connected_users[sid]['status'] = new_status
         logger.info(f"Status updated for {sid}: {old_status} -> {new_status}")
+        
         await sio.emit('staff_status_changed', {
-            'user_id': connected_users[sid]['user_id'],
+            'user_id': user_id,
             'status': new_status
         })
+        
+        # Update status in database
+        if user_type in ['counsellor', 'peer']:
+            await update_staff_status_in_db(user_id, user_type, new_status)
 
 
 @sio.event

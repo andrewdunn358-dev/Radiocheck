@@ -729,8 +729,10 @@ export default function StaffPortalPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available': return 'bg-green-500';
-      case 'busy': return 'bg-yellow-500';
-      case 'offline': return 'bg-gray-500';
+      case 'busy': 
+      case 'limited': return 'bg-yellow-500';
+      case 'offline': 
+      case 'unavailable': return 'bg-gray-500';
       default: return 'bg-gray-500';
     }
   };
@@ -2025,10 +2027,10 @@ export default function StaffPortalPage() {
                     <div key={member._id || member.id} className="flex items-center gap-3 p-3 bg-primary-dark/50 rounded-lg">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
                         member.status === 'available' ? 'bg-green-500' :
-                        member.status === 'busy' ? 'bg-yellow-500' :
+                        (member.status === 'busy' || member.status === 'limited') ? 'bg-yellow-500' :
                         'bg-gray-500'
                       }`}>
-                        {member.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        {member.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold">{member.name}</p>
@@ -2046,7 +2048,7 @@ export default function StaffPortalPage() {
                       )}
                       <div className={`w-3 h-3 rounded-full ${
                         member.status === 'available' ? 'bg-green-500' :
-                        member.status === 'busy' ? 'bg-yellow-500' :
+                        (member.status === 'busy' || member.status === 'limited') ? 'bg-yellow-500' :
                         'bg-gray-500'
                       }`} />
                     </div>
@@ -2070,13 +2072,13 @@ export default function StaffPortalPage() {
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-yellow-400">
-                        {teamMembers.filter(m => m.status === 'busy').length}
+                        {teamMembers.filter(m => m.status === 'busy' || m.status === 'limited').length}
                       </div>
                       <div className="text-xs text-gray-400">Busy</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-gray-400">
-                        {teamMembers.filter(m => m.status === 'offline').length}
+                        {teamMembers.filter(m => m.status === 'offline' || m.status === 'unavailable').length}
                       </div>
                       <div className="text-xs text-gray-400">Offline</div>
                     </div>
