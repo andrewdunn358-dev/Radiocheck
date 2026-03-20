@@ -90,11 +90,51 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
   const callStartTimeRef = useRef<Date | null>(null);
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const hasRemoteDescriptionRef = useRef(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Ringtone state using Web Audio API (no file needed)
+  const ringtoneRef = useRef<{
+    context: AudioContext | null;
+    isPlaying: boolean;
+    intervalId: NodeJS.Timeout | null;
+    isEnabled: boolean;
+  }>({
+    context: null,
+    isPlaying: false,
+    intervalId: null,
+    isEnabled: false
+  });
 
   // Update status helper
   const updateStatus = useCallback((status: WebRTCPhoneStatus, text: string) => {
     setState(prev => ({ ...prev, status, statusText: text }));
+  }, []);
+
+  // Enable audio context on first user interaction (required by browsers)
+  useEffect(() => {
+    const enableAudio = () => {
+      if (!ringtoneRef.current.isEnabled) {
+        try {
+          ringtoneRef.current.context = new (window.AudioContext || (window as any).webkitAudioContext)();
+          if (ringtoneRef.current.context.state === 'suspended') {
+            ringtoneRef.current.context.resume();
+          }
+          ringtoneRef.current.isEnabled = true;
+          console.log('[WebRTCPhone] Audio context enabled');
+        } catch (e) {
+          console.log('[WebRTCPhone] Could not enable audio context:', e);
+        }
+      }
+    };
+
+    document.addEventListener('click', enableAudio, { once: true });
+    document.addEventListener('keydown', enableAudio, { once: true });
+    document.addEventListener('touchstart', enableAudio, { once: true });
+
+    return () => {
+      document.removeEventListener('click', enableAudio);
+      document.removeEventListener('keydown', enableAudio);
+      document.removeEventListener('touchstart', enableAudio);
+    };
   }, []);
 
   // Start call timer
@@ -118,24 +158,73 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     setState(prev => ({ ...prev, callDuration: 0 }));
   }, []);
 
-  // Play ringtone
+  // Play ringtone using Web Audio API (UK-style double ring)
   const playRingtone = useCallback(() => {
+    if (ringtoneRef.current.isPlaying) return;
+    ringtoneRef.current.isPlaying = true;
+    console.log('[WebRTCPhone] Playing ringtone');
+
     try {
-      if (!audioRef.current) {
-        audioRef.current = new Audio('/ringtone.mp3');
-        audioRef.current.loop = true;
+      // Create audio context if not exists
+      if (!ringtoneRef.current.context) {
+        ringtoneRef.current.context = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
-      audioRef.current.play().catch(() => {});
+
+      // Resume if suspended
+      if (ringtoneRef.current.context.state === 'suspended') {
+        ringtoneRef.current.context.resume();
+      }
+
+      // UK-style double ring pattern
+      const playRing = () => {
+        if (!ringtoneRef.current.isPlaying || !ringtoneRef.current.context) return;
+
+        const ctx = ringtoneRef.current.context;
+        const now = ctx.currentTime;
+
+        // Create two oscillators for UK ring tone (400Hz + 450Hz)
+        const playBurst = (startTime: number, duration: number) => {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.frequency.value = 400;
+          osc2.frequency.value = 450;
+          osc1.type = 'sine';
+          osc2.type = 'sine';
+          gain.gain.value = 0.15; // Volume
+
+          osc1.start(startTime);
+          osc2.start(startTime);
+          osc1.stop(startTime + duration);
+          osc2.stop(startTime + duration);
+        };
+
+        // Double ring: burst, gap, burst
+        playBurst(now, 0.4);
+        playBurst(now + 0.6, 0.4);
+      };
+
+      // Play immediately and repeat every 2 seconds
+      playRing();
+      ringtoneRef.current.intervalId = setInterval(playRing, 2000);
+
     } catch (e) {
-      console.log('Could not play ringtone');
+      console.log('[WebRTCPhone] Could not play ringtone:', e);
     }
   }, []);
 
   // Stop ringtone
   const stopRingtone = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    console.log('[WebRTCPhone] Stopping ringtone');
+    ringtoneRef.current.isPlaying = false;
+    if (ringtoneRef.current.intervalId) {
+      clearInterval(ringtoneRef.current.intervalId);
+      ringtoneRef.current.intervalId = null;
     }
   }, []);
 
