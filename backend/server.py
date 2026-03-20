@@ -2389,30 +2389,37 @@ async def get_my_staff_profile(current_user: User = Depends(get_current_user)):
         if staff.get("name") and str(staff.get("name")).startswith("ENC:"):
             staff["name"] = decrypt_field(staff["name"])
         
-        # CRITICAL: Find the callable_user_id from peer_supporters/counsellors profile
-        # This is the ID that mobile apps use for WebRTC calls
-        # Without this, calls will fail with "user_offline"
-        callable_user_id = staff.get("id")  # Default to staff.id
-        role = staff.get("role")
-        email = staff.get("email")
+        # CRITICAL: Find the callable_user_id - the ID that mobile apps use for WebRTC calls
+        # Without this correct ID, calls will fail with "user_offline"
+        # 
+        # Priority order:
+        # 1. legacy_user_id (already stored in staff record, links to peer_supporters.user_id)
+        # 2. Look up peer_supporters/counsellors by legacy_profile_id
+        # 3. Fall back to staff.id
         
-        if role == "counsellor":
-            profile = await db.counsellors.find_one({"email": email})
-            if profile and profile.get("user_id"):
-                callable_user_id = profile["user_id"]
-        elif role in ["peer", "peer_supporter"]:
-            profile = await db.peer_supporters.find_one({"email": email})
-            if profile and profile.get("user_id"):
-                callable_user_id = profile["user_id"]
-        else:
-            # Try both collections
-            profile = await db.counsellors.find_one({"email": email})
-            if profile and profile.get("user_id"):
-                callable_user_id = profile["user_id"]
-            else:
-                profile = await db.peer_supporters.find_one({"email": email})
+        callable_user_id = None
+        
+        # FIRST: Check if legacy_user_id exists - this is the most reliable
+        if staff.get("legacy_user_id"):
+            callable_user_id = staff["legacy_user_id"]
+        
+        # SECOND: If no legacy_user_id, try to look up the profile by legacy_profile_id
+        if not callable_user_id and staff.get("legacy_profile_id"):
+            profile_id = staff["legacy_profile_id"]
+            role = staff.get("role")
+            
+            if role == "counsellor":
+                profile = await db.counsellors.find_one({"id": profile_id})
                 if profile and profile.get("user_id"):
                     callable_user_id = profile["user_id"]
+            elif role in ["peer", "peer_supporter"]:
+                profile = await db.peer_supporters.find_one({"id": profile_id})
+                if profile and profile.get("user_id"):
+                    callable_user_id = profile["user_id"]
+        
+        # THIRD: Fall back to staff.id if nothing else found
+        if not callable_user_id:
+            callable_user_id = staff.get("id")
         
         staff["callable_user_id"] = callable_user_id
         return staff
