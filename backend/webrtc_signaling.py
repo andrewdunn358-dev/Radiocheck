@@ -1012,12 +1012,17 @@ async def request_human_call(sid, data):
     session_id = data.get('session_id', '')  # Original AI chat session ID
     alert_id = data.get('alert_id', '')  # Associated safeguarding alert ID
     
+    print(f"[CALL_REQUEST] === REQUEST_HUMAN_CALL EVENT ===")
+    print(f"[CALL_REQUEST] From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
+    print(f"[CALL_REQUEST] Total connected users: {len(connected_users)}")
+    
     logger.info("=== REQUEST_HUMAN_CALL EVENT ===")
     logger.info(f"From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
     logger.info(f"Total connected users: {len(connected_users)}")
     
     # Log all connected users for debugging
     for socket_id, user in connected_users.items():
+        print(f"[CALL_REQUEST]   Connected: {user.get('name')} ({user.get('user_id')}) - type: {user.get('user_type')}, status: {user.get('status')}")
         logger.info(f"  Connected: {user.get('name')} ({user.get('user_id')}) - type: {user.get('user_type')}, status: {user.get('status')}")
     
     # Find available staff (also reset any stuck statuses)
@@ -1049,9 +1054,11 @@ async def request_human_call(sid, data):
                 })
     
     logger.info(f"Available staff count: {len(available_staff)}")
+    print(f"[CALL_REQUEST] Available staff count: {len(available_staff)}")
     
     if not available_staff:
         # No staff available
+        print(f"[CALL_REQUEST] No available staff found! Sending human_call_unavailable to user {sid}")
         logger.warning(f"No available staff found! Sending human_call_unavailable to user {sid}")
         await sio.emit('human_call_unavailable', {
             'message': 'No staff members are currently available. Please try again later.',
@@ -1062,10 +1069,12 @@ async def request_human_call(sid, data):
     # Create a call request that goes to available staff
     request_id = f"callreq_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{sid[:8]}"
     
+    print(f"[CALL_REQUEST] Created request_id: {request_id}")
     logger.info(f"Human call request from {user_name} ({user_id}), session: {session_id}, {len(available_staff)} staff available")
     
     # Notify all available staff about the call request
     for staff in available_staff:
+        print(f"[CALL_REQUEST] Emitting incoming_call_request to staff: {staff['name']} ({staff['user_id']}) socket: {staff['socket_id']}")
         await sio.emit('incoming_call_request', {
             'request_id': request_id,
             'user_id': user_id,
