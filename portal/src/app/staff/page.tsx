@@ -290,6 +290,35 @@ export default function StaffPortalPage() {
     }
   }, [token, loadAlerts, loadLiveChats, loadCases, loadCallbacks, loadShifts, loadTeam, loadNotes, loadEscalations, user?.is_supervisor]);
 
+  // Listen for real-time status sync from other portals
+  useEffect(() => {
+    const handleStatusSync = (event: CustomEvent) => {
+      console.log('[StaffPage] Status synced from another session:', event.detail);
+      // Refresh team members to get updated statuses
+      loadTeam();
+    };
+
+    const handleStaffOnline = (event: CustomEvent) => {
+      console.log('[StaffPage] Staff came online:', event.detail);
+      loadTeam();
+    };
+
+    const handleStaffOffline = (event: CustomEvent) => {
+      console.log('[StaffPage] Staff went offline:', event.detail);
+      loadTeam();
+    };
+
+    window.addEventListener('staff_status_sync', handleStatusSync as EventListener);
+    window.addEventListener('staff_online', handleStaffOnline as EventListener);
+    window.addEventListener('staff_offline', handleStaffOffline as EventListener);
+
+    return () => {
+      window.removeEventListener('staff_status_sync', handleStatusSync as EventListener);
+      window.removeEventListener('staff_online', handleStaffOnline as EventListener);
+      window.removeEventListener('staff_offline', handleStaffOffline as EventListener);
+    };
+  }, [loadTeam]);
+
   // Session timeout logic
   useEffect(() => {
     if (!token) return;

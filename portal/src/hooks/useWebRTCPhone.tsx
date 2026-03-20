@@ -411,6 +411,29 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       console.log('[WebRTCPhone] Online staff list:', data.staff);
     });
 
+    // Staff status changed - sync across all portals
+    socket.on('staff_status_changed', (data: { user_id: string; status: string }) => {
+      console.log('[WebRTCPhone] Staff status changed:', data);
+      // If this is our own status change, update local state
+      if (data.user_id === userId) {
+        console.log('[WebRTCPhone] Own status synced to:', data.status);
+        // Dispatch a custom event so the page can react
+        window.dispatchEvent(new CustomEvent('staff_status_sync', { detail: data }));
+      }
+    });
+
+    // Staff went online
+    socket.on('staff_online', (data: { user_id: string; name: string; status: string }) => {
+      console.log('[WebRTCPhone] Staff online:', data);
+      window.dispatchEvent(new CustomEvent('staff_online', { detail: data }));
+    });
+
+    // Staff went offline
+    socket.on('staff_offline', (data: { user_id: string; name: string }) => {
+      console.log('[WebRTCPhone] Staff offline:', data);
+      window.dispatchEvent(new CustomEvent('staff_offline', { detail: data }));
+    });
+
     // Incoming CHAT request from user (mobile app user wants to chat with staff)
     socket.on('incoming_chat_request', (data: { 
       request_id: string; 

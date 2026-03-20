@@ -285,6 +285,47 @@ function setupSocketHandlers() {
         }
     });
     
+    // Staff status changed - sync across all portals (NEW)
+    socket.on('staff_status_changed', (data) => {
+        console.log('[WebRTC] Staff status changed:', data);
+        // If this is our own status, update the UI
+        var currentUserId = window.currentUser ? window.currentUser.id : null;
+        if (data.user_id === currentUserId) {
+            console.log('[WebRTC] Own status synced from another session:', data.status);
+            // Update myProfile
+            if (window.myProfile) {
+                window.myProfile.status = data.status;
+            }
+            // Update the UI
+            if (typeof updateStatusUI === 'function') {
+                updateStatusUI(data.status);
+            }
+            if (typeof showNotification === 'function') {
+                showNotification('Status synced: ' + data.status, 'info');
+            }
+        }
+        // Refresh team list to show updated statuses
+        if (typeof loadTeamMembers === 'function') {
+            loadTeamMembers();
+        }
+    });
+
+    // Staff online notification
+    socket.on('staff_online', (data) => {
+        console.log('[WebRTC] Staff came online:', data);
+        if (typeof loadTeamMembers === 'function') {
+            loadTeamMembers();
+        }
+    });
+
+    // Staff offline notification
+    socket.on('staff_offline', (data) => {
+        console.log('[WebRTC] Staff went offline:', data);
+        if (typeof loadTeamMembers === 'function') {
+            loadTeamMembers();
+        }
+    });
+    
     // Incoming call
     socket.on('incoming_call', async (data) => {
         console.log('Incoming call:', data);

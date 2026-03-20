@@ -13,6 +13,13 @@ from models.schemas import (
     PeerSupporterCreate, PeerSupporter, PeerSupporterStatusUpdate, PeerSupporterPublic
 )
 
+# Import socket.io for real-time status sync
+try:
+    from webrtc_signaling import sio
+    HAS_SOCKETIO = True
+except ImportError:
+    HAS_SOCKETIO = False
+
 router = APIRouter(tags=["staff"])
 
 
@@ -91,6 +98,8 @@ async def update_staff_status_unified(staff_id: str, status_update: CounsellorSt
     update_data = {k: v for k, v in status_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
     
+    staff_type = None
+    
     # Try counsellors first
     result = await db.counsellors.update_one(
         {"$or": [{"id": staff_id}, {"user_id": staff_id}]},
@@ -98,18 +107,32 @@ async def update_staff_status_unified(staff_id: str, status_update: CounsellorSt
     )
     
     if result.modified_count > 0:
-        return {"success": True, "type": "counsellor"}
+        staff_type = "counsellor"
+    else:
+        # Try peer supporters
+        result = await db.peer_supporters.update_one(
+            {"$or": [{"id": staff_id}, {"user_id": staff_id}]},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count > 0:
+            staff_type = "peer"
     
-    # Try peer supporters
-    result = await db.peer_supporters.update_one(
-        {"$or": [{"id": staff_id}, {"user_id": staff_id}]},
-        {"$set": update_data}
-    )
+    if not staff_type:
+        raise HTTPException(status_code=404, detail="Staff member not found")
     
-    if result.modified_count > 0:
-        return {"success": True, "type": "peer"}
+    # Emit socket event for real-time sync across all portals
+    if HAS_SOCKETIO and status_update.status:
+        try:
+            import asyncio
+            asyncio.create_task(sio.emit('staff_status_changed', {
+                'user_id': staff_id,
+                'status': status_update.status
+            }))
+        except Exception as e:
+            print(f"[Staff] Failed to emit status change: {e}")
     
-    raise HTTPException(status_code=404, detail="Staff member not found")
+    return {"success": True, "type": staff_type}
 
 
 @router.patch("/counsellors/{counsellor_id}/status")
