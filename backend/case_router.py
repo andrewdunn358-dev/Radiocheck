@@ -47,6 +47,13 @@ class CreateCaseRequest(BaseModel):
     initial_notes: Optional[str] = None
     user_name: Optional[str] = None
 
+class CreateCaseDirectRequest(BaseModel):
+    """Request to create a case directly without a safeguarding alert"""
+    user_name: str
+    user_id: Optional[str] = None
+    initial_notes: Optional[str] = None
+    risk_level: Optional[str] = "medium"
+
 class AddSessionRequest(BaseModel):
     """Request to add a triage session note"""
     presenting_issue: str
@@ -357,6 +364,80 @@ async def create_case(
         raise
     except Exception as e:
         logging.error(f"Error creating case: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create case")
+
+
+@case_router.post("/direct")
+async def create_case_direct(
+    request: CreateCaseDirectRequest,
+    user: dict = Depends(get_user_with_role_check)
+):
+    """Create a new case directly without a safeguarding alert (for staff-initiated cases)"""
+    try:
+        user_id = user.get("id") or user.get("user_id")
+        user_name = user.get("name", "Unknown")
+        
+        # Map risk level 
+        risk_map = {"low": "low", "medium": "moderate", "moderate": "moderate", "high": "high", "critical": "imminent"}
+        risk_level = risk_map.get(request.risk_level, "moderate")
+        
+        case = CaseRecord(
+            session_id=f"manual_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            user_name=request.user_name,
+            assigned_to=user_id,
+            assigned_to_name=user_name,
+            current_risk=RiskLevel(risk_level),
+            ai_conversation=[]
+        )
+        
+        # Set user_id if provided
+        if request.user_id:
+            case.user_id = request.user_id
+        
+        # Add initial risk to history
+        case.risk_history.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": request.risk_level.upper() if request.risk_level else "MEDIUM",
+            "source": "staff_created",
+            "score": 0
+        })
+        
+        # Add timeline entry
+        case.timeline.append(create_timeline_entry(
+            entry_type="case_created",
+            title="Case Created Manually",
+            description=request.initial_notes or "Case created by staff member",
+            actor_id=user_id,
+            actor_name=user_name
+        ))
+        
+        # Add initial session if notes provided
+        if request.initial_notes:
+            case.sessions.append({
+                "id": f"session_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+                "session_number": 1,
+                "date": datetime.now(timezone.utc).isoformat(),
+                "presenting_issue": request.initial_notes,
+                "risk_level": request.risk_level or "medium",
+                "protective_factors": [],
+                "warning_signs": [],
+                "outcome": "continue_monitoring",
+                "actions_taken": ["Case opened for monitoring"],
+                "counsellor_id": user_id,
+                "counsellor_name": user_name,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            case.session_count = 1
+        
+        # Save to database
+        case_dict = case.dict()
+        await db.cases.insert_one(case_dict)
+        
+        case_dict.pop("_id", None)
+        return case_dict
+        
+    except Exception as e:
+        logging.error(f"Error creating case directly: {e}")
         raise HTTPException(status_code=500, detail="Failed to create case")
 
 

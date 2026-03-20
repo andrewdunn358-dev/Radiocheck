@@ -821,7 +821,7 @@ export default function StaffPortalPage() {
   const handleCreateCase = async () => {
     if (!token || !newCaseUserName) return;
     try {
-      const res = await fetch(`${API_URL}/api/cases`, {
+      const res = await fetch(`${API_URL}/api/cases/direct`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -834,7 +834,10 @@ export default function StaffPortalPage() {
           risk_level: newCaseRiskLevel,
         })
       });
-      if (!res.ok) throw new Error('Failed to create case');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to create case');
+      }
       setShowCreateCaseModal(false);
       setNewCaseUserName('');
       setNewCaseUserId('');
@@ -842,9 +845,9 @@ export default function StaffPortalPage() {
       setNewCaseRiskLevel('medium');
       loadCases();
       alert('Case created successfully');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create case:', err);
-      alert('Failed to create case. Please try again.');
+      alert(err.message || 'Failed to create case. Please try again.');
     }
   };
 
