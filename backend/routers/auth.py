@@ -314,6 +314,49 @@ async def login(credentials: UserLogin):
     """Login and get JWT token - checks unified staff collection first, then legacy users"""
     db = get_database()
     
+    # Helper function to resolve the correct user_id from peer_supporters/counsellors profile
+    # This ensures the ID we return matches what the mobile app uses for WebRTC calls
+    async def resolve_staff_user_id(staff_record: dict) -> str:
+        """
+        Find the correct user_id that links staff login to their peer_supporters/counsellors profile.
+        The mobile app calls using profile.user_id, so staff must register with the same ID.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        email = staff_record.get("email")
+        role = staff_record.get("role")
+        staff_original_id = staff_record.get("user_id") or staff_record.get("id")
+        
+        logger.info(f"[LOGIN DEBUG] Resolving user_id for {email}, role={role}, staff_record has user_id={staff_record.get('user_id')}, id={staff_record.get('id')}")
+        
+        # First, try to find profile by email (most reliable)
+        if role == "counsellor":
+            profile = await db.counsellors.find_one({"email": email})
+            if profile and profile.get("user_id"):
+                logger.info(f"[LOGIN DEBUG] Found counsellor profile with user_id={profile['user_id']}")
+                return profile["user_id"]
+        elif role in ["peer", "peer_supporter"]:
+            profile = await db.peer_supporters.find_one({"email": email})
+            if profile and profile.get("user_id"):
+                logger.info(f"[LOGIN DEBUG] Found peer_supporter profile with user_id={profile['user_id']}")
+                return profile["user_id"]
+        
+        # Fallback: Try both collections if role doesn't match
+        profile = await db.counsellors.find_one({"email": email})
+        if profile and profile.get("user_id"):
+            logger.info(f"[LOGIN DEBUG] Fallback found counsellor profile with user_id={profile['user_id']}")
+            return profile["user_id"]
+        
+        profile = await db.peer_supporters.find_one({"email": email})
+        if profile and profile.get("user_id"):
+            logger.info(f"[LOGIN DEBUG] Fallback found peer_supporter profile with user_id={profile['user_id']}")
+            return profile["user_id"]
+        
+        # Last resort: use staff record's user_id or id
+        logger.warning(f"[LOGIN DEBUG] No profile found for {email}, using fallback id={staff_original_id}")
+        return staff_original_id
+    
     # FIRST: Check unified staff collection (new system)
     staff = await db.staff.find_one({"email": credentials.email})
     
@@ -324,8 +367,9 @@ async def login(credentials: UserLogin):
         # If staff has a valid password hash, verify it
         if password_hash and password_hash.strip():
             if verify_password(credentials.password, password_hash):
-                # Use user_id if available (links to peer_supporters/counsellors), otherwise fall back to id
-                staff_id = staff.get("user_id") or staff.get("id")
+                # CRITICAL: Resolve the correct user_id from the profile collections
+                # This ensures WebRTC registration matches what mobile app uses for calling
+                staff_id = await resolve_staff_user_id(staff)
                 
                 # Update last_login
                 await db.staff.update_one(
@@ -356,8 +400,8 @@ async def login(credentials: UserLogin):
                         {"$set": {"password_hash": legacy_hash, "last_login": datetime.utcnow()}}
                     )
                     
-                    # Use user_id if available, otherwise fall back to id
-                    staff_id = staff.get("user_id") or staff.get("id")
+                    # CRITICAL: Resolve the correct user_id from the profile collections
+                    staff_id = await resolve_staff_user_id(staff)
                     token = create_access_token({"sub": staff_id})
                     redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
                     

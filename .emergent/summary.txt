@@ -1,10 +1,10 @@
 <analysis>**original_problem_statement:**
-The user is migrating four legacy vanilla JavaScript portals into a single Next.js application at . After previous frustrations, the user has instituted a strict Audit First, Identify, Recreate Faithfully workflow. The current task is a final, exhaustive comparison pass to find and fix every remaining feature gap between the legacy Admin Portal () and the new React implementation ().
+The user is migrating legacy JavaScript portals into a single Next.js/Expo application. The primary goals are to achieve feature parity with the old portals, fix critical production bugs, and unify the codebase.
 
-The user has also reported several critical bugs related to backend dependencies on the production deployment environment (Render) and frontend rendering errors on the live site ().
+The user has recently reported several high-priority bugs on the production environment related to API endpoints (404, 405, 422, CORS) and core functionality in the new Staff Portal, including WebRTC calling, status synchronization, and case management.
 
 **PRODUCT REQUIREMENTS:**
-1.  **(P0) Feature Parity:** The new React admin portal must replicate all functionality of the old vanilla JS portal.
+1.  **(P0) Feature Parity:** The new React admin and staff portals must replicate all functionality of the old vanilla JS portals.
 2.  **(P0) Production Stability:** The application must build and run successfully on the Render deployment environment without crashing.
 3.  **(P0) Unified Codebase:** All portals must be consolidated within the single Next.js project at .
 4.  **(P1) Improved Maintainability:** The new codebase should be modular and well-structured.
@@ -12,196 +12,154 @@ The user has also reported several critical bugs related to backend dependencies
 **User's preferred language**: English
 
 **what currently exists?**
-A unified Next.js application () with a FastAPI backend (). The agent has completed a massive number of fixes and feature additions to  as per the user's explicit STEP 2 checklist. This includes adding a password reset modal, numerous charts, CSV export, log clearing functions, event modals, and much more.
-
-Additionally, the agent performed a major overhaul of the backend dependencies to resolve deployment issues on Render. This involved:
-*   Removing  and  to eliminate CUDA/GPU requirements.
-*   Rewriting the semantic safety module () to use the OpenAI embeddings API instead of a local model.
-*   Replacing  with  to enable pure-Python PDF generation without system-level dependencies.
-*   Cleaning and organizing .
-
-Despite these fixes, the user is still reporting critical frontend rendering bugs on the live production site.
+A unified Next.js/Expo application at  with a FastAPI backend at . The agent has recently implemented numerous fixes for API endpoints in the Admin Portal () and added significant functionality to the Staff Portal (), including case creation/escalation, real-time status synchronization via WebSockets, and handlers for incoming call/chat requests. However, critical functionality, particularly WebRTC calling, remains broken on the user's production environment.
 
 **Last working item**:
-- **Last item agent was working**: The user reported two recurring frontend bugs on the production site: a  on the AI Usage tab and a  (rendering an object) on the Logs tab. The agent identified the probable causes and implemented fixes in , but these fixes have not been deployed.
-- **Status**: IN PROGRESS
+- **Last item agent was working**: The agent was debugging a critical WebRTC calling issue where calls from the mobile app to the staff portal consistently fail with a  error. The agent identified that the staff login process was returning an incorrect ID ( from the  collection) instead of the required  (from the  or  collection). A fix was attempted in  to return  instead.
+- **Status**: USER VERIFICATION PENDING
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: The agent should first ensure the application builds successfully (yarn run v1.22.22
-info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command. in ). Then, it must use the  to log into the admin portal and verify that the Logs and AI Usage tabs render correctly without any console errors.
-- **User Testing Done**: N
+- **Which testing method agent to use?**: This requires end-to-end testing on the user's production environment, as it involves the mobile app, the backend, and the staff portal. The user must test this flow. The next agent should guide the user to have a staff member log out and log back in (to get a new token with the corrected user ID) and then attempt a call from the mobile app.
+- **User Testing Done**: Y (The user's last message indicates the  error is still occurring, meaning the last fix was not sufficient or not deployed correctly).
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Recurring Frontend Rendering Bugs on Production (P0, HIGHEST)**
--   **Issue 2: Final Admin Portal Fresh Audit (STEP 3) is incomplete (P0)**
--   **Issue 3: WebRTC calling fix is not verified (P1)**
--   **Issue 4: Login for user  is still failing (P1, Recurring)**
--   **Issue 5: Admin Settings toggles are reported as non-functional (P1)**
+-   **Issue 1: WebRTC calls are failing on production (P0, HIGHEST)**
+-   **Issue 2: Staff Portal Audit - Missing Features (P0)**
+-   **Issue 3: Final Admin Portal Fresh Audit (STEP 3) is incomplete (P1)**
+-   **Issue 4: Admin Settings toggles are reported as non-functional (P1, from previous handoff)**
 
 **Issues Detail**:
-- **Issue 1: Recurring Frontend Rendering Bugs on Production**
-    - **Description**: The user is seeing two errors on the deployed  site:
-        1.   on the AI Usage tab.
-        2.   on the Logs tab.
-    - **Attempted fixes**: The agent implemented fixes by adding  checks and ensuring object properties are accessed before rendering. However, these fixes are in the local workspace and **have not been deployed**, which is why the user still sees the errors. The fix for the  404 error was also implemented but not deployed.
+- **Issue 1: WebRTC calls are failing on production**
+    - **Description**: When a user on the mobile app tries to call a staff member (e.g., Kev), the call fails with a  error. This happens even though the staff member's status is 'available' in the database and UI. The root cause is a mismatch between the ID the mobile app is trying to call and the ID the staff portal is registering with the WebRTC signaling server.
+    - **Attempted fixes**:
+        1.  Added  to the  API response.
+        2.  Updated the staff login endpoint () to return  from the  collection, assuming it was the correct ID. This fix failed, as the user reported the issue persists.
     - **Next debug checklist**:
-        1.  The fixes are already implemented in . The primary action is to ensure the code is deployed.
-        2.  Before finishing, the agent MUST verify these fixes locally by building the portal and using the  to check the console logs on the relevant tabs.
-    - **Why fix this issue and what will be achieved with the fix?**: This is a critical, user-reported bug breaking core functionality on the live production site.
+        1.  The last fix was insufficient. The  collection's  may not be the correct, callable ID.
+        2.  **Hypothesis**: The login logic in  is flawed. It should not trust the  from the  collection. Instead, it should use the  record to find the corresponding  or  profile and return the  from *that* profile, making it the source of truth.
+        3.  **Action**: Modify the login logic in  (lines 317-345). After finding the  record, perform a second query to find the associated  or  record using the staff's email or another common field. Then, extract and return the  from that profile record in the JWT  claim.
+    - **Why fix this issue and what will be achieved with the fix?**: This is a critical P0 bug blocking a core feature of the application. Fixing it will enable real-time communication between users and staff.
     - **Status**: IN PROGRESS
     - **Is recurring issue?**: Y
-    - **Should Test frontend/backend/both after fix?**: Frontend
-    - **Blocked on other issue**: None
+    - **Should Test frontend/backend/both after fix?**: Backend fix, but requires user to test the E2E flow.
+    - **Blocked on other issue**: None. This is the main blocker.
 
-- **Issue 2: Final Admin Portal Fresh Audit (STEP 3) is incomplete**
-    - **Description**: The agent completed the user's STEP 2 list of known gaps but has not systematically completed the STEP 3 fresh audit. The user has already found additional gaps (e.g., Time Tracking month picker) that the agent missed, proving the necessity of this audit.
-    - **Attempted fixes**: The agent has been fixing gaps as they are found, but not in the structured, side-by-side comparison the user requested.
+- **Issue 2: Staff Portal Audit - Missing Features**
+    - **Description**: An audit of the legacy staff portal revealed many missing features in the new implementation. The user has requested these be fixed in order.
+    - **Attempted fixes**: The agent implemented several high-priority items: Panic Button, Call from Chat, AI Feedback Modal, Case Creation/Escalation, and Real-time Status Sync.
     - **Next debug checklist**:
-        1.  Once the critical production bugs are verified as fixed and ready for deployment, the agent must resume the STEP 3 audit from the user's instructions (message #5).
-        2.  Go through every tab listed under STEP 3, comparing the legacy  with the current .
-        3.  Identify and fix any remaining discrepancies.
-    - **Why fix this issue and what will be achieved with the fix?**: To achieve full feature parity and finally satisfy the user's primary requirement for the Admin Portal.
-    - **Status**: NOT STARTED
-    - **Is recurring issue?**: Y
-    - **Should Test frontend/backend/both after fix?**: Frontend
-    - **Blocked on other issue**: Blocked by Recurring Frontend Rendering Bugs on Production.
+        1.  Resume work based on the audit findings in message #106.
+        2.  Implement the next features on the list, starting with Medium Priority items like Morning Review Queue and Safety Plan Editor.
+    - **Why fix this issue and what will be achieved with the fix?**: To achieve full feature parity, allowing the legacy staff portal to be decommissioned.
+    - **Status**: IN PROGRESS
+    - **Is recurring issue?**: N
+    - **Should Test frontend/backend/both after fix?**: Both
+    - **Blocked on other issue**: Blocked by Issue 1 (WebRTC calls failing).
 
-**In progress Task List**: None. The main work is issue-driven.
+**In progress Task List**:
+-   **Task 1: Complete Staff Portal Feature Parity Implementation**
+    -   **Where to resume**: Continue implementing the missing features identified in the audit (message #106), focusing on the Medium Priority list next.
+    -   **What will be achieved with this?**: The new staff portal will have all the functionality of the legacy one.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on something**: Issue 1 (WebRTC calls failing).
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
-    *   **(P0)** Deploy and verify all recent fixes on the production environment.
+    *   **(P1)** Complete the STEP 3 - Fresh Audit of the Admin Portal to find any remaining feature gaps.
     *   **(P1)** Plan and execute the removal of all legacy code directories (, ).
 *   **Future Tasks**:
     *   **(P2)** Implement a full CMS visual editor with drag-and-drop.
     *   **(P2)** Implement Discussion Forums, Mood Tracker Journal, and Appointment Booking.
     *   **(P2)** Add Welsh Language Support.
-    *   **(P2)** Create a native mobile app.
 
 **Completed work in this session**
-- **Admin Portal - STEP 2 Known Gaps**: Completed the user's entire checklist of 18 items, including password reset modal, various charts (Activity Trend, Contact Type, AI Daily Usage), CSV export, functional log clearing, Rota swap tabs, and Event modals.
-- **Admin Portal - STEP 3 Audit Fixes**: Added a real-time alert counter, a Linked to profile indicator, and a month picker for the Time Tracking tab based on audit findings.
-- **Frontend Bug Fixes**:
-  - Implemented a fix for  in the AI Usage tab.
-  - Implemented a fix for React error #31 (rendering a region object) in the Logs tab.
-  - Corrected the API endpoint for  from  to .
-- **Backend - Dependency Overhaul for Production**:
-  - Replaced / with OpenAI embeddings in  to remove CUDA dependency.
-  - Calibrated similarity thresholds for the new OpenAI model.
-  - Replaced  with  to fix PDF generation on Render's read-only filesystem.
-  - Cleaned, organized, and corrected  to ensure a successful build.
-- **Time Tracking**: Logged 7 hours of work for the session directly to the production database via API calls as requested by the user.
+-   **API Bug Fixes**:
+    -   Fixed  by correcting data handling in .
+    -   Fixed numerous 404/405 errors in the Admin Portal by correcting API paths and HTTP methods ().
+    -   Fixed 500 errors on safeguarding endpoints by ensuring MongoDB  fields are not returned in API responses ().
+    -   Fixed 404 error on PDF downloads by correcting URLs to use the proper API endpoint ().
+-   **Staff Portal - Cases**:
+    -   Added a new backend endpoint  to allow case creation without a pre-existing alert ().
+    -   Implemented UI for case creation and escalation in .
+-   **Staff Portal - Status Sync & Calling**:
+    -   Unified staff status updates via a single  endpoint.
+    -   Implemented real-time status synchronization across all portals using WebSockets (, , , ).
+    -   Attempted to fix WebRTC call failures by correcting the  returned on login.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-*   **Production Deployment Troubleshooting**: The agent had to resolve multiple issues preventing the backend from deploying on Render, including CUDA dependencies and read-only filesystem limitations.
-*   **Replacing Local ML with APIs**: The  was refactored to use OpenAI's  API instead of a local  model, demonstrating a shift from on-premise to cloud-based ML.
-*   **Pure Python Alternatives**: When  failed due to system dependencies, the agent found and implemented , a pure Python library, to solve the problem.
-*   **Monolithic Frontend Component**: The  file has grown to ~7000 lines, making it extremely difficult to manage and debug.
+*   **WebRTC Signaling**: Using Socket.IO for call setup. The core issue is a persistent user ID mismatch between different parts of the system (mobile app caller vs. staff portal callee).
+*   **API Identity Management**: The central bug revolves around which ID to use (, , ). The system is being refactored to consistently use the auth .
+*   **Real-time UI Synchronization**: Using a FastAPI backend with Socket.IO to  events from a REST endpoint to all connected clients, forcing them to update their state.
+*   **MongoDB  Serialization**: A recurring bug where returning raw MongoDB documents with  causes 500 errors. Fix is using projections ().
 
 **key DB schema**
-- **time_tracking_sessions**: 
+-   The relationship between the , , , and  collections is critical. The  field is intended to be the foreign key linking them, but inconsistencies are causing bugs.
 
 **All files of reference**
-*   **/app/portal/src/app/admin/page.tsx**: The primary file worked on, now ~7000 lines, containing dozens of new features and bug fixes.
-*   **/app/backend/requirements.txt**: Completely overhauled to be production-ready for a non-GPU environment.
-*   **/app/backend/safety/semantic_model.py**: Completely rewritten to use the OpenAI embeddings API.
-*   **/app/backend/routers/documents.py**: Rewritten to use  for PDF generation.
-*   **/app/admin-site/app.js**: The legacy source of truth for the ongoing STEP 3 audit.
-*   **/app/memory/ADMIN_PORTAL_COMPARISON.md**: Updated with all completed fixes.
-*   **/app/memory/PRD.md**: Updated to reflect completed work.
+-   **/app/backend/routers/auth.py**: Contains the flawed login logic that is the likely root cause of the WebRTC call failure.
+-   **/app/portal/src/app/staff/page.tsx**: The main new staff portal file where most new features (cases, status) were added.
+-   **/app/backend/webrtc_signaling.py**: The signaling server logic, modified for status sync.
+-   **/app/backend/routers/staff.py**: Modified to add a unified status update endpoint and emit socket events.
+-   **/app/backend/case_router.py**: Modified to add a new case creation endpoint.
+-   **/app/staff-portal/app.js**: Legacy staff portal, modified to use the new unified status endpoint.
+-   **/app/portal/src/hooks/useWebRTCPhone.tsx**: Modified to listen for real-time status updates.
+-   **/app/portal/src/app/admin/page.tsx**: Heavily modified to fix API endpoint errors.
 
-**Areas that need refactoring**:
-*    is dangerously large at ~7000 lines. It urgently needs to be broken down into smaller, manageable components (e.g., one component per tab) after the user's final audit is complete. The current state is a significant technical debt.
+**Areas that need refactoring**
+*    and  are monolithic and should be broken down into smaller components.
+*   The backend login logic in  has multiple fallbacks and should be simplified to a single, unified flow once migration is complete.
 
 **key api endpoints**
-*   : **(Fixed)** The correct endpoint for fetching call logs.
-*   : Used for the new reset password modal.
-*   : Used for the new AI daily usage chart.
-*   : Used for the new view attendance modal.
-*   : Now uses  to generate PDFs.
-*   : Used to log the agent's own work hours.
+*   : The new, unified endpoint for updating staff status.
+*   : The new endpoint for creating a case without a linked alert.
+*   : Modified to include .
+*   : The login endpoint with the flawed ID logic.
 
 **Critical Info for New Agent**
-*   **Your fixes are not live yet!** The user is reporting bugs from the production site (). The fixes you see in the codebase (for React error #31,  error, and the  endpoint) have been implemented locally but not deployed. Do not get confused and re-implement them. The next step is to verify them locally and then inform the user they need to deploy.
-*   **Finish the audit.** After addressing the production bugs, your main task is to resume and complete the STEP 3 - Fresh Audit from the user's detailed instructions (message #5). Be meticulous.
-*   **The backend is fixed.** The dependency hell with  and  is resolved. The  is clean. The user needs to ensure their Render build command is simply . Do not re-introduce complex dependencies.
-*   **The Admin page is a monolith.** Be extremely careful when editing . It is over 7000 lines long and very fragile.
+*   **The main blocker is the WebRTC call failure ().** The user has confirmed the last fix did not work. Your top priority is to fix the login logic in  to ensure it returns the correct  from the  or  profile, not from the  collection.
+*   **You are working against a live production environment.** The user's bug reports and console logs are from . Do not trust the local preview database for data; use  against the production API to investigate data states if needed.
+*   **Staff must log out and log back in to test the fix.** Any fix to the login logic will only apply to new sessions/tokens. Remind the user of this when the fix is ready.
+*   The previous agent started on a feature-parity audit for the staff portal but was sidetracked by bugs. Once the calling issue is resolved, work should continue on the missing features from that audit (message #106).
 
 **documents and test reports created in this job**
-*   /app/memory/ADMIN_PORTAL_COMPARISON.md (updated)
-*   /app/memory/PRD.md (updated)
+None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. The user asks if the time entries are in production. (Answered: No, they are local).
-9.  The user instructs the agent to add the time entries to production. (COMPLETED).
-8.  The user reports that the  on the logs page is still happening on production. (PENDING - fix is local, not deployed).
-7.  The user corrects the agent's proposed Render build command, pointing out the missing  prefix. (AGENT CORRECTED).
-6.  The user provides Render deployment logs showing a build failure due to apt 2.6.1 (arm64)
-Usage: apt-get [options] command
-       apt-get [options] install|remove pkg1 [pkg2 ...]
-       apt-get [options] source pkg1 [pkg2 ...]
-
-apt-get is a command line interface for retrieval of packages
-and information about them from authenticated sources and
-for installation, upgrade and removal of packages together
-with their dependencies.
-
-Most used commands:
-  update - Retrieve new lists of packages
-  upgrade - Perform an upgrade
-  install - Install new packages (pkg is libc6 not libc6.deb)
-  reinstall - Reinstall packages (pkg is libc6 not libc6.deb)
-  remove - Remove packages
-  purge - Remove packages and config files
-  autoremove - Remove automatically all unused packages
-  dist-upgrade - Distribution upgrade, see apt-get(8)
-  dselect-upgrade - Follow dselect selections
-  build-dep - Configure build-dependencies for source packages
-  satisfy - Satisfy dependency strings
-  clean - Erase downloaded archive files
-  autoclean - Erase old downloaded archive files
-  check - Verify that there are no broken dependencies
-  source - Download source archives
-  download - Download the binary package into the current directory
-  changelog - Download and display the changelog for the given package
-
-See apt-get(8) for more information about the available commands.
-Configuration options and syntax is detailed in apt.conf(5).
-Information about how to configure sources can be found in sources.list(5).
-Package and version choices can be expressed via apt_preferences(5).
-Security details are available in apt-secure(8).
-                                        This APT has Super Cow Powers. on a read-only filesystem. (AGENT CORRECTED COURSE).
-5.  The user confirms to add  to requirements and provides instructions for the Render build command. (AGENT ATTEMPTED).
-4.  The user reports the backend is crashing due to a missing  module and instructs the agent to systematically find all missing dependencies. (COMPLETED).
-3.  The user asks about the damage done to the safeguarding system by removing the local ML model. (Answered).
-2.  The user confirms the plan to test and recalibrate the new OpenAI-based safeguarding model. (COMPLETED).
-1.  **PENDING:** The user reports the same  again, emphasizing it's still broken on the logs page. This is the current, active issue to resolve.
+10. **PENDING**: User reports calls are still failing with  error, providing a new console log. (Message #609)
+9.  Agent confirms the fix for login ID mismatch and explains the new unified ID architecture. (Message #520, #522)
+8.  User asks if they need to update the legacy portals. (Message #521)
+7.  User reports that staff status is not syncing quickly enough between portals. (Message #523)
+6.  Agent provides a summary of the unified status system and declares it ready for deployment. (Message #328)
+5.  User asks to double-check the client-initiated call/chat flow. (Message #317)
+4.  User confirms the plan to make status names common between peer/counsellor. (Message #315)
+3.  User reports that staff members should only see their own cases and that case creation/escalation is not working. (Message #329)
+2.  User reports  is not working. (Message #445)
+1.  User reports a  error when creating a case. (Message #449)
 
 **Project Health Check:**
 *   **Broken**:
-    *   The **deployed production site** is broken on the Logs and AI Usage tabs due to frontend rendering errors and incorrect API paths. The local codebase contains fixes, but they are not live.
-*   **Mocked**: None.
+    *   WebRTC calling is critically broken on production ( error).
 *   **Needs User Verification**:
-    *   The entire suite of STEP 2 and STEP 3 fixes for the Admin portal.
-    *   The new -based PDF generation.
-    *   The OpenAI-based semantic safety model.
-    *   WebRTC multi-session fix.
+    *   Case creation and escalation functionality in the staff portal.
+    *   Real-time status synchronization between legacy and new portals.
+    *   All fixes for Admin Portal API endpoints (404s, 405s, PDF downloads).
 
 **3rd Party Integrations**
 *   Next.js 14, FastAPI, MongoDB, Socket.IO, Twilio, Jitsi Meet, Leaflet.js, Chart.js
-*   **OpenAI API**: Now used for text embeddings in the safety module.
-*   **fpdf2**: New dependency for pure-Python PDF generation.
+*   **OpenAI API**: Used for text embeddings in the safety module.
+*   **fpdf2**: Used for pure-Python PDF generation.
 
 **Testing status**
-*   **Testing agent used after significant changes**: NO
-*   **Troubleshoot agent used after agent stuck in loop**: NO
-*   **Test files created**: []
-*   **Known regressions**: The frontend rendering bugs (, ) are regressions from previous states, now recurring on production.
+-   **Testing agent used after significant changes**: NO
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: []
+-   **Known regressions**: WebRTC calling was working at some point and is now broken.
 
 **Credentials to test flow:**
-*   Admin portal credentials should be requested from the user if not available in .
+Admin portal credentials should be requested from the user if needed. Testing the call flow requires coordination with the user on their production environment.
 
 **What agent forgot to execute**
-The agent repeatedly failed to understand that the user was reporting bugs on a separate, deployed environment. This led to confusion where the agent would fix an issue locally and consider it resolved, while the user continued to see the bug on the live site. The agent must differentiate between the local preview environment and the user's production deployment.</analysis>
+The agent's fix for the login ID mismatch in  was not robust enough. It assumed the  collection would have the correct , which appears to be false. The agent should have implemented a more defensive fix that cross-references with the / collections to find the definitive .</analysis>
