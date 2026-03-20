@@ -5764,6 +5764,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         alert_id = None
         risk_level = risk_data["risk_level"]
         
+        print(f"[SAFEGUARDING CHECK] Session: {request.sessionId[:20]}, Character: {character}, Message: {request.message[:50]}...")
+        print(f"[SAFEGUARDING CHECK] Score: {risk_data['score']}, Level: {risk_level}, Should Escalate: {should_escalate}")
         logging.info(f"Safeguarding check - Session: {request.sessionId[:12]}, Score: {risk_data['score']}, Level: {risk_level}")
         
         # === UNIFIED SAFETY SYSTEM (Conversation Trajectory + Semantic + Pattern Detection) ===
@@ -5962,6 +5964,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         
         # If safeguarding triggered (RED or AMBER), create alert and send notification
         if should_escalate:
+            print(f"[SAFEGUARDING ESCALATE] Creating alert - Session: {request.sessionId[:20]}, Risk: {risk_level}, Score: {risk_data['score']}")
             # Get conversation history for context (last 10 exchanges)
             # Capture FULL conversation history for case management and handoff
             conversation_history = session.get("history", [])
