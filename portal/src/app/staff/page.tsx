@@ -1630,6 +1630,35 @@ export default function StaffPortalPage() {
           </div>
         )}
 
+        {/* Active Call Floating Indicator */}
+        {twilioPhone.isInCall && (
+          <div className="fixed bottom-6 right-6 z-50 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-4 animate-pulse">
+            <div className="flex items-center gap-2">
+              <PhoneCall className="w-5 h-5" />
+              <div>
+                <p className="font-semibold text-sm">Call in Progress</p>
+                <p className="text-xs opacity-80">{twilioPhone.currentCallNumber || 'Unknown'} • {twilioPhone.formattedDuration}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 border-l border-white/30 pl-4">
+              <button 
+                onClick={twilioPhone.toggleMute}
+                className={`p-2 rounded-lg ${twilioPhone.isMuted ? 'bg-yellow-500' : 'bg-white/20 hover:bg-white/30'}`}
+                title={twilioPhone.isMuted ? 'Unmute' : 'Mute'}
+              >
+                {twilioPhone.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+              <button 
+                onClick={twilioPhone.hangUp}
+                className="p-2 rounded-lg bg-red-500 hover:bg-red-600"
+                title="Hang Up"
+              >
+                <PhoneOff className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Socket Conflict Warning - shown when calls fail repeatedly */}
         {phoneStatus === 'error' && (
           <div data-testid="socket-error-warning" className="mb-6 p-4 rounded-xl border border-red-500 bg-red-500/10">
@@ -1966,12 +1995,35 @@ export default function StaffPortalPage() {
                       <div className="flex items-center gap-2 mb-4">
                         <Phone className="w-4 h-4 text-green-400" />
                         <span className="font-mono">{alert.phone}</span>
-                        <button 
-                          className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                          onClick={() => alert.phone && twilioPhone.makeCall(alert.phone)}
-                        >
-                          Call Now
-                        </button>
+                        {!twilioPhone.isInCall && (
+                          <button 
+                            className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                            onClick={() => alert.phone && twilioPhone.makeCall(alert.phone)}
+                          >
+                            Call Now
+                          </button>
+                        )}
+                        {twilioPhone.isInCall && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-green-400 animate-pulse flex items-center gap-1">
+                              <PhoneCall className="w-3 h-3" />
+                              {twilioPhone.formattedDuration}
+                            </span>
+                            <button 
+                              onClick={twilioPhone.toggleMute}
+                              className={`px-2 py-1 rounded text-xs ${twilioPhone.isMuted ? 'bg-yellow-500' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
+                            >
+                              {twilioPhone.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                            </button>
+                            <button 
+                              onClick={twilioPhone.hangUp}
+                              className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 flex items-center gap-1"
+                            >
+                              <PhoneOff className="w-3 h-3" />
+                              Hang Up
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2339,7 +2391,7 @@ export default function StaffPortalPage() {
                         <Phone className="w-4 h-4 text-green-400" />
                         <span className="text-secondary font-mono">{callback.phone}</span>
                         {/* Call Now button using Twilio */}
-                        {callback.phone && twilioPhone.isReady && callback.status === 'taken' && callback.taken_by === user?.id && (
+                        {callback.phone && twilioPhone.isReady && callback.status === 'taken' && callback.taken_by === user?.id && !twilioPhone.isInCall && (
                           <button 
                             onClick={() => twilioPhone.makeCall(callback.phone)}
                             className="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 flex items-center gap-1"
@@ -2347,6 +2399,29 @@ export default function StaffPortalPage() {
                             <PhoneCall className="w-3 h-3" />
                             Call Now
                           </button>
+                        )}
+                        {/* Active Call Controls - Hang Up, Mute, Duration */}
+                        {twilioPhone.isInCall && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-green-400 animate-pulse flex items-center gap-1">
+                              <PhoneCall className="w-3 h-3" />
+                              {twilioPhone.formattedDuration}
+                            </span>
+                            <button 
+                              onClick={twilioPhone.toggleMute}
+                              className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${twilioPhone.isMuted ? 'bg-yellow-500 text-white' : 'bg-gray-600 text-white hover:bg-gray-500'}`}
+                              title={twilioPhone.isMuted ? 'Unmute' : 'Mute'}
+                            >
+                              {twilioPhone.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                            </button>
+                            <button 
+                              onClick={twilioPhone.hangUp}
+                              className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 flex items-center gap-1"
+                            >
+                              <PhoneOff className="w-3 h-3" />
+                              Hang Up
+                            </button>
+                          </div>
                         )}
                       </div>
                       {callback.reason && <p className="text-sm text-gray-400 mt-1">{callback.reason}</p>}
