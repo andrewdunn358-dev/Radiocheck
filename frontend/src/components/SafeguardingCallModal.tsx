@@ -7,7 +7,7 @@
  * 3. If no staff/timeout → show callback form + crisis lines
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -68,7 +68,7 @@ export default function SafeguardingCallModal({
   const [callbackPhone, setCallbackPhone] = useState('');
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
   
-  // Refs
+  // Refs - these persist across renders and don't cause re-renders
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -76,68 +76,13 @@ export default function SafeguardingCallModal({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const callIdRef = useRef<string>('');
-  const hasRequestedRef = useRef(false);
+  const isInitializedRef = useRef(false);
+  const propsRef = useRef({ alertId, sessionId, userId, userName, onClose, onCallEnded });
 
-  // Get anonymous user ID
-  const getAnonymousUserId = useCallback(() => {
-    return userId || `anon_${sessionId}`;
-  }, [userId, sessionId]);
-
-  // Cleanup everything
-  const cleanup = useCallback(() => {
-    console.log('[SafeguardingCallModal] Cleaning up...');
-    
-    // Clear timers
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    if (callTimerRef.current) {
-      clearInterval(callTimerRef.current);
-      callTimerRef.current = null;
-    }
-    
-    // Stop local audio tracks
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        track.stop();
-        console.log('[SafeguardingCallModal] Stopped local track:', track.kind);
-      });
-      localStreamRef.current = null;
-    }
-    
-    // Close peer connection
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-      console.log('[SafeguardingCallModal] Closed peer connection');
-    }
-    
-    // Stop remote audio
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.pause();
-      remoteAudioRef.current.srcObject = null;
-      remoteAudioRef.current = null;
-    }
-    
-    // Disconnect socket
-    if (socketRef.current) {
-      socketRef.current.removeAllListeners();
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-    
-    hasRequestedRef.current = false;
-    callIdRef.current = '';
-    setCallDuration(0);
-  }, []);
-
-  // Start call duration timer
-  const startCallTimer = useCallback(() => {
-    callTimerRef.current = setInterval(() => {
-      setCallDuration(prev => prev + 1);
-    }, 1000);
-  }, []);
+  // Update props ref when they change
+  useEffect(() => {
+    propsRef.current = { alertId, sessionId, userId, userName, onClose, onCallEnded };
+  }, [alertId, sessionId, userId, userName, onClose, onCallEnded]);
 
   // Format duration as MM:SS
   const formatDuration = (seconds: number): string => {
@@ -146,193 +91,26 @@ export default function SafeguardingCallModal({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Setup WebRTC peer connection
-  const setupWebRTC = useCallback(async () => {
-    console.log('[SafeguardingCallModal] Setting up WebRTC...');
-    
-    try {
-      // Get user's microphone
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      localStreamRef.current = stream;
-      console.log('[SafeguardingCallModal] Got local audio stream');
-      
-      // Create peer connection
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      pcRef.current = pc;
-      
-      // Add local tracks to connection
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream);
-        console.log('[SafeguardingCallModal] Added local track:', track.kind);
-      });
-      
-      // Handle ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate && socketRef.current) {
-          console.log('[SafeguardingCallModal] Sending ICE candidate');
-          socketRef.current.emit('webrtc_ice_candidate', {
-            call_id: callIdRef.current,
-            candidate: event.candidate,
-            user_id: getAnonymousUserId(),
-          });
-        }
-      };
-      
-      // Handle connection state changes
-      pc.onconnectionstatechange = () => {
-        console.log('[SafeguardingCallModal] Connection state:', pc.connectionState);
-        if (pc.connectionState === 'connected') {
-          setModalState('connected');
-          startCallTimer();
-        } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          console.log('[SafeguardingCallModal] Connection failed/disconnected');
-          setErrorMessage('Call connection lost');
-          setModalState('error');
-        }
-      };
-      
-      // Handle incoming remote track (staff's audio)
-      pc.ontrack = (event) => {
-        console.log('[SafeguardingCallModal] Received remote track:', event.track.kind);
-        if (event.streams && event.streams[0]) {
-          // Create audio element for playback (works on web)
-          if (Platform.OS === 'web') {
-            const audio = new Audio();
-            audio.srcObject = event.streams[0];
-            audio.autoplay = true;
-            audio.play().catch(err => console.error('Audio play error:', err));
-            remoteAudioRef.current = audio;
-          }
-          // Note: For native mobile, you'd use expo-av or react-native-webrtc
-        }
-      };
-      
-      return pc;
-    } catch (err: any) {
-      console.error('[SafeguardingCallModal] WebRTC setup error:', err);
-      setErrorMessage('Could not access microphone');
-      setModalState('error');
-      return null;
-    }
-  }, [getAnonymousUserId, startCallTimer]);
-
-  // Handle WebRTC offer from server
-  const handleWebRTCOffer = useCallback(async (offer: RTCSessionDescriptionInit) => {
-    console.log('[SafeguardingCallModal] Received WebRTC offer');
-    
-    if (!pcRef.current) {
-      console.error('[SafeguardingCallModal] No peer connection');
-      return;
-    }
-    
-    try {
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-      console.log('[SafeguardingCallModal] Set remote description');
-      
-      const answer = await pcRef.current.createAnswer();
-      await pcRef.current.setLocalDescription(answer);
-      console.log('[SafeguardingCallModal] Created and set local answer');
-      
-      // Send answer back to server
-      if (socketRef.current) {
-        socketRef.current.emit('webrtc_answer', {
-          call_id: callIdRef.current,
-          answer: answer,
-          user_id: getAnonymousUserId(),
-        });
-      }
-    } catch (err) {
-      console.error('[SafeguardingCallModal] Error handling offer:', err);
-      setErrorMessage('Failed to connect call');
-      setModalState('error');
-    }
-  }, [getAnonymousUserId]);
-
-  // Handle ICE candidate from server
-  const handleICECandidate = useCallback(async (candidate: RTCIceCandidateInit) => {
-    console.log('[SafeguardingCallModal] Received ICE candidate');
-    
-    if (!pcRef.current) {
-      console.error('[SafeguardingCallModal] No peer connection for ICE');
-      return;
-    }
-    
-    try {
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch (err) {
-      console.error('[SafeguardingCallModal] Error adding ICE candidate:', err);
-    }
-  }, []);
-
-  // End the call
-  const endCall = useCallback(() => {
-    console.log('[SafeguardingCallModal] Ending call...');
-    
-    // Notify server
-    if (socketRef.current && callIdRef.current) {
-      socketRef.current.emit('call_end', {
-        call_id: callIdRef.current,
-        user_id: getAnonymousUserId(),
-      });
-    }
-    
-    cleanup();
-    onCallEnded?.();
-    onClose();
-  }, [cleanup, getAnonymousUserId, onCallEnded, onClose]);
-
-  // Submit callback request
-  const submitCallbackRequest = useCallback(async () => {
-    if (!callbackName.trim() || !callbackPhone.trim()) {
-      return;
-    }
-    
-    setIsSubmittingCallback(true);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/callbacks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: callbackName.trim(),
-          phone: callbackPhone.trim(),
-          is_urgent: true,
-          reason: 'Safeguarding - Requested call when no staff available',
-          session_id: sessionId,
-          alert_id: alertId,
-        }),
-      });
-      
-      if (response.ok) {
-        setModalState('callback_sent');
-      } else {
-        setErrorMessage('Failed to submit callback request');
-      }
-    } catch (err) {
-      console.error('[SafeguardingCallModal] Callback submit error:', err);
-      setErrorMessage('Failed to submit callback request');
-    } finally {
-      setIsSubmittingCallback(false);
-    }
-  }, [callbackName, callbackPhone, sessionId, alertId]);
-
-  // Main effect - connect and request call when modal opens
+  // Main effect - ONLY depends on `visible`
   useEffect(() => {
+    // Don't do anything if not visible
     if (!visible) {
-      cleanup();
-      setModalState('finding');
-      setCallbackName(userName || '');
-      setCallbackPhone('');
       return;
     }
 
-    // Prevent duplicate requests
-    if (hasRequestedRef.current) {
+    // Prevent double initialization
+    if (isInitializedRef.current) {
       return;
     }
-    hasRequestedRef.current = true;
+    isInitializedRef.current = true;
 
-    console.log('[SafeguardingCallModal] Modal opened, connecting...');
+    const { alertId, sessionId, userId, userName } = propsRef.current;
+    const anonymousUserId = userId || `anon_${sessionId}`;
+
+    console.log('[SafeguardingCallModal] Modal opened, connecting to Socket.IO...');
+    console.log('[SafeguardingCallModal] API_URL:', API_URL);
+    console.log('[SafeguardingCallModal] Session:', sessionId, 'Alert:', alertId);
+
     setModalState('finding');
     setErrorMessage('');
 
@@ -350,23 +128,21 @@ export default function SafeguardingCallModal({
     socket.on('connect', () => {
       console.log('[SafeguardingCallModal] Socket connected:', socket.id);
       
-      const anonUserId = getAnonymousUserId();
-      
       // Register user
       socket.emit('register', {
-        user_id: anonUserId,
+        user_id: anonymousUserId,
         user_type: 'user',
         name: userName,
         status: 'available',
       });
 
-      // Request human call
+      // Request human call after a short delay
       setTimeout(() => {
         console.log('[SafeguardingCallModal] Emitting request_human_call');
         socket.emit('request_human_call', {
           session_id: sessionId,
           alert_id: alertId || '',
-          user_id: anonUserId,
+          user_id: anonymousUserId,
           user_name: userName,
           request_type: 'call',
         });
@@ -398,8 +174,66 @@ export default function SafeguardingCallModal({
       callIdRef.current = data?.call_id || '';
       setModalState('connecting');
       
-      // Setup WebRTC immediately - no user interaction needed
-      await setupWebRTC();
+      // Setup WebRTC - get user's microphone ready
+      try {
+        console.log('[SafeguardingCallModal] Setting up WebRTC...');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        localStreamRef.current = stream;
+        console.log('[SafeguardingCallModal] Got local audio stream');
+        
+        // Create peer connection
+        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        pcRef.current = pc;
+        
+        // Add local tracks
+        stream.getTracks().forEach(track => {
+          pc.addTrack(track, stream);
+        });
+        
+        // Handle ICE candidates
+        pc.onicecandidate = (event) => {
+          if (event.candidate && socketRef.current) {
+            console.log('[SafeguardingCallModal] Sending ICE candidate');
+            socketRef.current.emit('webrtc_ice_candidate', {
+              call_id: callIdRef.current,
+              candidate: event.candidate,
+              user_id: anonymousUserId,
+            });
+          }
+        };
+        
+        // Handle connection state
+        pc.onconnectionstatechange = () => {
+          console.log('[SafeguardingCallModal] Connection state:', pc.connectionState);
+          if (pc.connectionState === 'connected') {
+            setModalState('connected');
+            // Start call timer
+            callTimerRef.current = setInterval(() => {
+              setCallDuration(prev => prev + 1);
+            }, 1000);
+          } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            setErrorMessage('Call connection lost');
+            setModalState('error');
+          }
+        };
+        
+        // Handle incoming audio
+        pc.ontrack = (event) => {
+          console.log('[SafeguardingCallModal] Received remote track');
+          if (event.streams && event.streams[0] && Platform.OS === 'web') {
+            const audio = new Audio();
+            audio.srcObject = event.streams[0];
+            audio.autoplay = true;
+            audio.play().catch(err => console.error('Audio play error:', err));
+            remoteAudioRef.current = audio;
+          }
+        };
+        
+      } catch (err: any) {
+        console.error('[SafeguardingCallModal] WebRTC setup error:', err);
+        setErrorMessage('Could not access microphone');
+        setModalState('error');
+      }
     });
 
     // No staff available
@@ -413,17 +247,41 @@ export default function SafeguardingCallModal({
     });
 
     // WebRTC offer from staff
-    socket.on('webrtc_offer', (data: any) => {
+    socket.on('webrtc_offer', async (data: any) => {
       console.log('[SafeguardingCallModal] Received WebRTC offer');
-      if (data?.offer) {
-        handleWebRTCOffer(data.offer);
+      if (!data?.offer || !pcRef.current) {
+        console.error('[SafeguardingCallModal] No offer or no peer connection');
+        return;
+      }
+      
+      try {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+        console.log('[SafeguardingCallModal] Set remote description');
+        
+        const answer = await pcRef.current.createAnswer();
+        await pcRef.current.setLocalDescription(answer);
+        console.log('[SafeguardingCallModal] Created answer');
+        
+        socket.emit('webrtc_answer', {
+          call_id: callIdRef.current,
+          answer: answer,
+          user_id: anonymousUserId,
+        });
+      } catch (err) {
+        console.error('[SafeguardingCallModal] Error handling offer:', err);
+        setErrorMessage('Failed to connect call');
+        setModalState('error');
       }
     });
 
     // ICE candidate from staff
-    socket.on('webrtc_ice_candidate', (data: any) => {
-      if (data?.candidate) {
-        handleICECandidate(data.candidate);
+    socket.on('webrtc_ice_candidate', async (data: any) => {
+      if (data?.candidate && pcRef.current) {
+        try {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } catch (err) {
+          console.error('[SafeguardingCallModal] Error adding ICE candidate:', err);
+        }
       }
     });
 
@@ -431,30 +289,124 @@ export default function SafeguardingCallModal({
     socket.on('call_ended', () => {
       console.log('[SafeguardingCallModal] Call ended by staff');
       cleanup();
-      onCallEnded?.();
-      onClose();
+      propsRef.current.onCallEnded?.();
+      propsRef.current.onClose();
     });
 
-    return cleanup;
-  }, [visible, sessionId, alertId, userId, userName, cleanup, getAnonymousUserId, setupWebRTC, handleWebRTCOffer, handleICECandidate, onCallEnded, onClose]);
+    // Cleanup function
+    function cleanup() {
+      console.log('[SafeguardingCallModal] Cleaning up...');
+      
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+        callTimerRef.current = null;
+      }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+      }
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.pause();
+        remoteAudioRef.current.srcObject = null;
+        remoteAudioRef.current = null;
+      }
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      
+      callIdRef.current = '';
+      setCallDuration(0);
+    }
+
+    // Cleanup on unmount or when modal closes
+    return () => {
+      isInitializedRef.current = false;
+      cleanup();
+    };
+  }, [visible]); // ONLY depend on visible!
+
+  // Reset state when modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      setModalState('finding');
+      setCallbackName(userName || '');
+      setCallbackPhone('');
+      setCallDuration(0);
+      setStaffName('');
+      setErrorMessage('');
+    }
+  }, [visible, userName]);
+
+  // End the call
+  const endCall = () => {
+    console.log('[SafeguardingCallModal] User ending call...');
+    
+    if (socketRef.current && callIdRef.current) {
+      socketRef.current.emit('call_end', {
+        call_id: callIdRef.current,
+        user_id: userId || `anon_${sessionId}`,
+      });
+    }
+    
+    // Cleanup will be handled by the useEffect return
+    onCallEnded?.();
+    onClose();
+  };
+
+  // Submit callback request
+  const submitCallbackRequest = async () => {
+    if (!callbackName.trim() || !callbackPhone.trim()) return;
+    
+    setIsSubmittingCallback(true);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/callbacks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: callbackName.trim(),
+          phone: callbackPhone.trim(),
+          is_urgent: true,
+          reason: 'Safeguarding - Requested call when no staff available',
+          session_id: sessionId,
+          alert_id: alertId,
+        }),
+      });
+      
+      if (response.ok) {
+        setModalState('callback_sent');
+      } else {
+        setErrorMessage('Failed to submit callback request');
+      }
+    } catch (err) {
+      console.error('[SafeguardingCallModal] Callback submit error:', err);
+      setErrorMessage('Failed to submit callback request');
+    } finally {
+      setIsSubmittingCallback(false);
+    }
+  };
 
   // Crisis line handlers
   const callNHS = () => Linking.openURL('tel:111');
   const callSamaritans = () => Linking.openURL('tel:116123');
   const callEmergency = () => Linking.openURL('tel:999');
 
-  // Handle close
-  const handleClose = () => {
-    cleanup();
-    onClose();
-  };
-
   return (
     <Modal 
       visible={visible} 
       transparent 
       animationType="fade"
-      onRequestClose={handleClose}
+      onRequestClose={onClose}
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
@@ -469,7 +421,7 @@ export default function SafeguardingCallModal({
               <Text style={styles.message}>
                 Please hold on while we connect you with an available supporter.
               </Text>
-              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+              <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -525,7 +477,6 @@ export default function SafeguardingCallModal({
               </Text>
 
               <View style={styles.fallbackOptions}>
-                {/* Request Callback */}
                 <TouchableOpacity 
                   style={[styles.fallbackButton, { backgroundColor: '#3b82f6' }]}
                   onPress={() => setModalState('callback_form')}
@@ -535,7 +486,6 @@ export default function SafeguardingCallModal({
                   <Text style={styles.fallbackButtonText}>Request a Callback</Text>
                 </TouchableOpacity>
 
-                {/* NHS 111 */}
                 <TouchableOpacity 
                   style={[styles.fallbackButton, { backgroundColor: '#0ea5e9' }]}
                   onPress={callNHS}
@@ -548,7 +498,6 @@ export default function SafeguardingCallModal({
                   </View>
                 </TouchableOpacity>
 
-                {/* Samaritans */}
                 <TouchableOpacity 
                   style={[styles.fallbackButton, { backgroundColor: '#16a34a' }]}
                   onPress={callSamaritans}
@@ -561,7 +510,6 @@ export default function SafeguardingCallModal({
                   </View>
                 </TouchableOpacity>
 
-                {/* Emergency */}
                 <TouchableOpacity 
                   style={[styles.fallbackButton, { backgroundColor: '#dc2626' }]}
                   onPress={callEmergency}
@@ -575,7 +523,7 @@ export default function SafeguardingCallModal({
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+              <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
                 <Text style={styles.cancelText}>Close</Text>
               </TouchableOpacity>
             </View>
@@ -655,7 +603,7 @@ export default function SafeguardingCallModal({
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                 <Text style={styles.closeButtonText}>Close</Text>
               </TouchableOpacity>
             </View>
@@ -690,7 +638,7 @@ export default function SafeguardingCallModal({
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+              <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
                 <Text style={styles.cancelText}>Close</Text>
               </TouchableOpacity>
             </View>
