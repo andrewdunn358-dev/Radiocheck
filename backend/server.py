@@ -6275,6 +6275,55 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
             logging.warning(f"HARD FAILSAFE TRIGGERED - Session: {request.sessionId[:12]} - Reason: {failsafe_reason}")
             
+            # ===== CREATE SAFEGUARDING ALERT FOR FAILSAFE =====
+            # This is critical - we MUST create the alert before returning
+            print(f"[SAFEGUARDING FAILSAFE] Creating RED alert - Session: {request.sessionId[:20]}, Reason: {failsafe_reason}")
+            
+            conversation_history = session.get("history", [])
+            alert = SafeguardingAlert(
+                session_id=request.sessionId,
+                character=character,
+                triggering_message=request.message,
+                ai_response="[FAILSAFE TRIGGERED - Crisis response sent]",
+                risk_level="RED",
+                risk_score=unified_safety.get("risk_score", 999),
+                triggered_indicators=[failsafe_reason],
+                client_ip=client_ip,
+                user_agent=user_agent,
+                conversation_history=conversation_history
+            )
+            
+            # Lookup geolocation for IP address
+            geo_data = await lookup_ip_geolocation(client_ip)
+            if geo_data:
+                alert.geo_city = geo_data.get("geo_city")
+                alert.geo_region = geo_data.get("geo_region")
+                alert.geo_country = geo_data.get("geo_country")
+                alert.geo_isp = geo_data.get("geo_isp")
+                alert.geo_timezone = geo_data.get("geo_timezone")
+                alert.geo_lat = geo_data.get("geo_lat")
+                alert.geo_lon = geo_data.get("geo_lon")
+            
+            failsafe_alert_id = alert.id
+            await db.safeguarding_alerts.insert_one(alert.dict())
+            print(f"[SAFEGUARDING] FAILSAFE ALERT CREATED - ID: {failsafe_alert_id}, Reason: {failsafe_reason}")
+            logging.warning(f"SAFEGUARDING FAILSAFE ALERT [RED] - Alert: {failsafe_alert_id} - Session: {request.sessionId} - Reason: {failsafe_reason}")
+            
+            # Audit log
+            await audit_safeguarding_alert(
+                db,
+                session_id=request.sessionId,
+                risk_level="RED",
+                score=unified_safety.get("risk_score", 999),
+                triggered_indicators=[failsafe_reason]
+            )
+            
+            # Send email notification for failsafe (always - these are critical)
+            try:
+                await send_safeguarding_email_notification(alert, {"score": 999, "failsafe": True})
+            except Exception as email_err:
+                logging.error(f"Failed to send failsafe email: {email_err}")
+            
             # Get safety wrapper for crisis response message
             safety_wrapper = unified_safety.get("safety_wrapper", {})
             crisis_response = (
@@ -6285,7 +6334,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             if safety_wrapper and safety_wrapper.get("prepend_message"):
                 crisis_response = safety_wrapper.get("prepend_message") + safety_wrapper.get("append_message", "")
             
-            # Return immediate safety response - block normal AI response
+            # Return immediate safety response with the alert ID
             return BuddyChatResponse(
                 reply=crisis_response,
                 sessionId=request.sessionId,
@@ -6293,7 +6342,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 characterName=char_config["name"],
                 characterAvatar=char_config["avatar"],
                 safeguardingTriggered=True,
-                safeguardingAlertId=None,
+                safeguardingAlertId=failsafe_alert_id,
                 riskLevel="RED",
                 riskScore=unified_safety.get("risk_score", 999)
             )

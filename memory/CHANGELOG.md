@@ -31,8 +31,25 @@ Quick reference for tracking development changes.
 - **Result: 11/11 PASSED (100%)**
 - Reports saved to `/app/test_reports/safeguarding_test_report.md`
 
-### BUG IDENTIFIED: Call Request Claimed Not Reaching Other Staff (P0)
-**Status:** IN PROGRESS - needs production deployment
+### BUG FIXED: Safeguarding Alerts Not Being Created (CRITICAL)
+**Status:** ✅ FIXED
+
+**Root Cause:** When the "hard failsafe" was triggered (explicit suicide plans, method requests), the code in `server.py` returned EARLY at line ~6289 **without creating the alert** in the database. This meant the MOST SEVERE crisis messages were NOT being logged!
+
+**Impact:** 
+- Staff portal showed 0 alerts for 12+ hours
+- The most critical messages (suicide plans with methods) were never recorded
+- Email notifications were also skipped for these cases
+
+**Fix Applied:**
+- Added full alert creation logic inside the failsafe block (lines 6273-6340)
+- Now creates alert, logs to audit, and sends email BEFORE returning crisis response
+- Alert ID is now returned in the API response
+
+**Files Changed:**
+- `/app/backend/server.py` - Added alert creation in failsafe block
+
+**Verified:** Test message "I want to end my life tonight. I have pills ready." now creates alert ID `7e89d2b8-f01e-4632-8a4d-30d03974f85e` in database
 
 **Symptoms:**
 - When Kev (peer) accepts a call, Sarah's browser keeps ringing
