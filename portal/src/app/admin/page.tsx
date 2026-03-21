@@ -663,6 +663,7 @@ export default function AdminPortal() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   
   // Data state
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -830,14 +831,19 @@ export default function AdminPortal() {
   const [rotaCalendarMonth, setRotaCalendarMonth] = useState(new Date());
   const [selectedRotaDate, setSelectedRotaDate] = useState<string | null>(null);
 
-  // Check for existing session
+  // Check for saved credentials (NOT session - session requires fresh login)
   useEffect(() => {
-    const savedToken = localStorage.getItem('admin_token');
-    const savedUser = localStorage.getItem('admin_user');
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+    // Load saved credentials if "Remember me" was previously checked
+    const savedEmail = localStorage.getItem('admin_saved_email');
+    const savedPassword = localStorage.getItem('admin_saved_password');
+    if (savedEmail) {
+      setLoginEmail(savedEmail);
+      setRememberMe(true);
     }
+    if (savedPassword) {
+      setLoginPassword(savedPassword);
+    }
+    // No token persistence - user must login each time they open the page
     setIsLoading(false);
     
     // Strip sensitive params from URL
@@ -851,49 +857,26 @@ export default function AdminPortal() {
     }
   }, []);
 
-  // Session timeout management (2hr inactivity, 24hr absolute)
+  // Session timeout management (2hr inactivity) - session only lasts while page is open
   useEffect(() => {
     if (!token) return;
     
-    const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
-    const ABSOLUTE_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+    const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours inactivity timeout
     
-    // Check token age on load
-    const tokenTime = localStorage.getItem('admin_token_time');
-    if (tokenTime) {
-      const tokenAge = Date.now() - parseInt(tokenTime);
-      if (tokenAge > ABSOLUTE_TIMEOUT) {
-        handleLogout();
-        return;
-      }
-    }
-    
-    // Activity tracking
+    // Activity tracking (in-memory only)
     let lastActivity = Date.now();
-    localStorage.setItem('admin_last_activity', lastActivity.toString());
     
     const resetActivity = () => {
       lastActivity = Date.now();
-      localStorage.setItem('admin_last_activity', lastActivity.toString());
     };
     
     // Check for timeout every minute
     const timeoutChecker = setInterval(() => {
       const now = Date.now();
-      const storedLastActivity = localStorage.getItem('admin_last_activity');
-      const inactiveTime = now - (storedLastActivity ? parseInt(storedLastActivity) : lastActivity);
+      const inactiveTime = now - lastActivity;
       
       if (inactiveTime > SESSION_TIMEOUT) {
         handleLogout();
-      }
-      
-      // Also check absolute timeout
-      const tokenTime = localStorage.getItem('admin_token_time');
-      if (tokenTime) {
-        const tokenAge = now - parseInt(tokenTime);
-        if (tokenAge > ABSOLUTE_TIMEOUT) {
-          handleLogout();
-        }
       }
     }, 60000); // Check every minute
     
@@ -1407,10 +1390,15 @@ export default function AdminPortal() {
       
       setToken(response.token);
       setUser(response.user);
-      localStorage.setItem('admin_token', response.token);
-      localStorage.setItem('admin_user', JSON.stringify(response.user));
-      localStorage.setItem('admin_token_time', Date.now().toString());
-      localStorage.setItem('admin_last_activity', Date.now().toString());
+      
+      // Save credentials if "Remember me" is checked (NOT the session token)
+      if (rememberMe) {
+        localStorage.setItem('admin_saved_email', loginEmail);
+        localStorage.setItem('admin_saved_password', loginPassword);
+      } else {
+        localStorage.removeItem('admin_saved_email');
+        localStorage.removeItem('admin_saved_password');
+      }
     } catch (err: any) {
       setLoginError(err.message || 'Login failed');
     } finally {
@@ -1422,10 +1410,7 @@ export default function AdminPortal() {
   const handleLogout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    localStorage.removeItem('admin_token_time');
-    localStorage.removeItem('admin_last_activity');
+    // Don't clear saved credentials on logout - only clear the session
   };
 
   // Staff CRUD handlers
@@ -1567,6 +1552,19 @@ export default function AdminPortal() {
                 autoComplete="current-password"
                 required
               />
+            </div>
+            <div className="mb-6 flex items-center">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                data-testid="admin-remember-me"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-400 cursor-pointer">
+                Remember my credentials
+              </label>
             </div>
             <button
               type="submit"
