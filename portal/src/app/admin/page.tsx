@@ -6710,6 +6710,195 @@ export default function AdminPortal() {
                   </div>
                 </div>
               </div>
+
+              {/* Feature Toggles Section */}
+              <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-purple-400" />
+                  Feature Toggles
+                </h3>
+                <div className="space-y-4">
+                  {/* Safeguarding Alerts Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                      <p className="font-medium">Safeguarding Alerts</p>
+                      <p className="text-sm text-gray-400">Enable real-time safeguarding alerts from AI chats</p>
+                    </div>
+                    <button
+                      data-testid="toggle-safeguarding-alerts"
+                      onClick={async () => {
+                        try {
+                          const newValue = !systemSettings.safeguarding_alerts_enabled;
+                          await api.updateSettings(token!, { safeguarding_alerts_enabled: newValue });
+                          setSystemSettings({ ...systemSettings, safeguarding_alerts_enabled: newValue });
+                          setSuccess('Setting updated');
+                        } catch (err: any) {
+                          setError('Failed to update setting: ' + err.message);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        systemSettings.safeguarding_alerts_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          systemSettings.safeguarding_alerts_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* AI Chat Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                      <p className="font-medium">AI Chat Buddies</p>
+                      <p className="text-sm text-gray-400">Enable AI companion chat feature for users</p>
+                    </div>
+                    <button
+                      data-testid="toggle-ai-chat"
+                      onClick={async () => {
+                        try {
+                          const newValue = !systemSettings.ai_chat_enabled;
+                          await api.updateSettings(token!, { ai_chat_enabled: newValue });
+                          setSystemSettings({ ...systemSettings, ai_chat_enabled: newValue });
+                          setSuccess('Setting updated');
+                        } catch (err: any) {
+                          setError('Failed to update setting: ' + err.message);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        systemSettings.ai_chat_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          systemSettings.ai_chat_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Live Chat Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                      <p className="font-medium">Live Chat</p>
+                      <p className="text-sm text-gray-400">Enable live chat with support staff</p>
+                    </div>
+                    <button
+                      data-testid="toggle-live-chat"
+                      onClick={async () => {
+                        try {
+                          const newValue = !systemSettings.live_chat_enabled;
+                          await api.updateSettings(token!, { live_chat_enabled: newValue });
+                          setSystemSettings({ ...systemSettings, live_chat_enabled: newValue });
+                          setSuccess('Setting updated');
+                        } catch (err: any) {
+                          setError('Failed to update setting: ' + err.message);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        systemSettings.live_chat_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          systemSettings.live_chat_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Callback Requests Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                      <p className="font-medium">Callback Requests</p>
+                      <p className="text-sm text-gray-400">Allow users to request phone callbacks</p>
+                    </div>
+                    <button
+                      data-testid="toggle-callbacks"
+                      onClick={async () => {
+                        try {
+                          const newValue = !systemSettings.callbacks_enabled;
+                          await api.updateSettings(token!, { callbacks_enabled: newValue });
+                          setSystemSettings({ ...systemSettings, callbacks_enabled: newValue });
+                          setSuccess('Setting updated');
+                        } catch (err: any) {
+                          setError('Failed to update setting: ' + err.message);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        systemSettings.callbacks_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          systemSettings.callbacks_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Events Feature Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                      <p className="font-medium">Events</p>
+                      <p className="text-sm text-gray-400">Enable community events feature</p>
+                    </div>
+                    <button
+                      data-testid="toggle-events"
+                      onClick={async () => {
+                        try {
+                          const newValue = !systemSettings.events_enabled;
+                          await api.updateSettings(token!, { events_enabled: newValue });
+                          setSystemSettings({ ...systemSettings, events_enabled: newValue });
+                          setSuccess('Setting updated');
+                        } catch (err: any) {
+                          setError('Failed to update setting: ' + err.message);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        systemSettings.events_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          systemSettings.events_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Panic Button Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                      <p className="font-medium">Panic Button</p>
+                      <p className="text-sm text-gray-400">Enable emergency panic button for users</p>
+                    </div>
+                    <button
+                      data-testid="toggle-panic"
+                      onClick={async () => {
+                        try {
+                          const newValue = !systemSettings.panic_button_enabled;
+                          await api.updateSettings(token!, { panic_button_enabled: newValue });
+                          setSystemSettings({ ...systemSettings, panic_button_enabled: newValue });
+                          setSuccess('Setting updated');
+                        } catch (err: any) {
+                          setError('Failed to update setting: ' + err.message);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        systemSettings.panic_button_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          systemSettings.panic_button_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
