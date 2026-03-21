@@ -46,6 +46,14 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - December 2025
 
+### Logo Update on Login Screens
+**Status**: ✅ COMPLETE
+
+**What was implemented**:
+- Replaced Shield icon with Radiocheck logo on Staff Portal login screen (`/portal/src/app/staff/page.tsx`)
+- Replaced Shield icon with Radiocheck logo on Admin Portal login screen (`/portal/src/app/admin/page.tsx`)
+- Logo URL: `https://customer-assets.emergentagent.com/job_b298e80e-e613-4114-bd36-44dba2b1f918/artifacts/hcklvnmw_logo.png`
+
 ### P0 - Audit Logging Implementation
 **Status**: ✅ COMPLETE
 

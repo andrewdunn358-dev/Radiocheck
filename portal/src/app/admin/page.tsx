@@ -1518,7 +1518,11 @@ export default function AdminPortal() {
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
         <div className="bg-gray-800 rounded-2xl p-8 w-full max-w-md border border-gray-700">
           <div className="text-center mb-8">
-            <Shield className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+            <img 
+              src="https://customer-assets.emergentagent.com/job_b298e80e-e613-4114-bd36-44dba2b1f918/artifacts/hcklvnmw_logo.png" 
+              alt="Radio Check" 
+              className="w-20 h-20 mx-auto mb-4"
+            />
             <h1 className="text-2xl font-bold text-white">Admin Portal</h1>
             <p className="text-gray-400 mt-2">Radio Check Management System</p>
           </div>

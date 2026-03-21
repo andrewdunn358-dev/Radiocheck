@@ -1119,7 +1119,11 @@ export default function StaffPortalPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-dark via-primary to-primary-dark p-4">
         <div className="bg-card border border-border rounded-xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <Shield className="w-16 h-16 text-secondary mx-auto mb-4" />
+            <img 
+              src="https://customer-assets.emergentagent.com/job_b298e80e-e613-4114-bd36-44dba2b1f918/artifacts/hcklvnmw_logo.png" 
+              alt="Radio Check" 
+              className="w-20 h-20 mx-auto mb-4"
+            />
             <h2 className="text-2xl font-bold">Staff Portal</h2>
             <p className="text-gray-400 text-sm mt-1">Sign in to access the staff dashboard</p>
           </div>
