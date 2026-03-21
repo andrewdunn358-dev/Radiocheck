@@ -51,13 +51,15 @@ Quick reference for tracking development changes.
 
 **Verified:** Test message "I want to end my life tonight. I have pills ready." now creates alert ID `7e89d2b8-f01e-4632-8a4d-30d03974f85e` in database
 
-**Symptoms:**
-- When Kev (peer) accepts a call, Sarah's browser keeps ringing
-- The `call_request_claimed` event is NOT reaching Sarah's console
-- Sarah only sees `[WebRTCPhone] Dismissing request` when manually dismissed
+### BUG FIXED: Call Request Claimed Not Reaching Other Staff (P0)
+**Status:** ✅ FIXED
 
-**Root Cause Investigation:**
-- Backend loop at line 1226 may not be finding Sarah's socket
+**Root Cause:** In `accept_call_request`, the code checked if the mobile user was still connected BEFORE broadcasting `call_request_claimed`. If the user had disconnected (closed app, network issue), it would `return` early and **never notify other staff**.
+
+**Fix:** Moved the `call_request_claimed` broadcast to happen FIRST, before checking if the user is still connected. Now other staff always get notified, even if the call fails to connect.
+
+**Files Changed:**
+- `/app/backend/webrtc_signaling.py` - Reordered logic in `accept_call_request`
 - Possible user_type mismatch
 - Added detailed logging to backend to trace the issue
 

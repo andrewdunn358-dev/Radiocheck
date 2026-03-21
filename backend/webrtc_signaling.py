@@ -1196,25 +1196,11 @@ async def accept_call_request(sid, data):
     logger.info("=== ACCEPT CALL REQUEST ===")
     logger.info(f"Staff {staff_name} ({staff_id}) accepting call request {request_id} from user {requester_user_id}")
     
-    # Find the user's socket
-    user_socket_id = None
-    for socket_id, user in connected_users.items():
-        if user['user_id'] == requester_user_id:
-            user_socket_id = socket_id
-            break
-    
-    if not user_socket_id:
-        logger.warning(f"User {requester_user_id} not found in connected users")
-        await sio.emit('call_request_error', {
-            'request_id': request_id,
-            'error': 'User is no longer connected'
-        }, to=sid)
-        return
-    
-    # Generate a call ID
+    # Generate a call ID early (needed for claimed notification)
     call_id = f"call_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{staff_id[:8] if staff_id else 'staff'}"
     
-    # Mark this request as claimed so other staff see it's taken
+    # Mark this request as claimed FIRST so other staff see it's taken
+    # This happens BEFORE checking if user is still connected
     claimed_call_requests[request_id] = {
         'claimed_by': staff_id,
         'claimed_by_name': staff_name,
@@ -1223,6 +1209,7 @@ async def accept_call_request(sid, data):
     }
     
     # Notify ALL other staff that this call request has been claimed
+    # This happens BEFORE checking if user is still connected
     logger.info(f"=== BROADCASTING call_request_claimed to other staff ===")
     logger.info(f"Total connected_users: {len(connected_users)}")
     notified_count = 0
@@ -1247,6 +1234,21 @@ async def accept_call_request(sid, data):
             logger.info(f"Skipping non-staff user: {user_name_log} (type: {user_type})")
     
     logger.info(f"Notified {notified_count} other staff that request {request_id} was claimed by {staff_name}")
+    
+    # NOW find the user's socket
+    user_socket_id = None
+    for socket_id, user in connected_users.items():
+        if user['user_id'] == requester_user_id:
+            user_socket_id = socket_id
+            break
+    
+    if not user_socket_id:
+        logger.warning(f"User {requester_user_id} not found in connected users - they may have disconnected")
+        await sio.emit('call_request_error', {
+            'request_id': request_id,
+            'error': 'User is no longer connected. They may have closed the app.'
+        }, to=sid)
+        return
     
     # Add call to active_calls so webrtc_offer can find it
     active_calls[call_id] = {
