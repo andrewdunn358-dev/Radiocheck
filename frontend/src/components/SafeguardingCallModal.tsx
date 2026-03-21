@@ -36,9 +36,17 @@ type ModalState =
   | 'connecting'      // Initial state - connecting to socket
   | 'waiting'         // Request sent, waiting for staff
   | 'supporter_found' // Staff accepted the call request
+  | 'incoming_call'   // WebRTC call incoming from staff
+  | 'in_call'         // Active call in progress
   | 'no_staff'        // No staff available
   | 'timeout'         // Request timed out
   | 'error';          // Connection error
+
+interface IncomingCallData {
+  callId: string;
+  callerName: string;
+  callType: string;
+}
 
 const TIMEOUT_SECONDS = 30;
 
@@ -54,6 +62,8 @@ export default function SafeguardingCallModal({
   const [modalState, setModalState] = useState<ModalState>('connecting');
   const [staffName, setStaffName] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [incomingCallData, setIncomingCallData] = useState<IncomingCallData | null>(null);
+  const [callId, setCallId] = useState<string>('');
   
   const socketRef = useRef<Socket | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -189,7 +199,44 @@ export default function SafeguardingCallModal({
       }
       
       setStaffName(data?.staff_name || data?.acceptor_name || 'Support Staff');
+      setCallId(data?.call_id || '');
       setModalState('supporter_found');
+      
+      // Staff will now initiate the WebRTC call - wait for incoming_call event
+      // Set a shorter timeout for the actual call to come through
+      timeoutRef.current = setTimeout(() => {
+        console.log('[SafeguardingCallModal] Waiting for incoming call timed out');
+        // Don't change state - staff might still be connecting
+      }, 15000);
+    });
+
+    // Listen for incoming WebRTC call from staff
+    socket.on('incoming_call', (data: any) => {
+      console.log('[SafeguardingCallModal] Incoming call:', data);
+      
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      setIncomingCallData({
+        callId: data.call_id,
+        callerName: data.caller_name || staffName || 'Support Staff',
+        callType: data.call_type || 'audio',
+      });
+      setModalState('incoming_call');
+    });
+
+    // Listen for call ended
+    socket.on('call_ended', (data: any) => {
+      console.log('[SafeguardingCallModal] Call ended:', data);
+      handleCallEnded();
+    });
+
+    // Listen for call cancelled
+    socket.on('call_cancelled', (data: any) => {
+      console.log('[SafeguardingCallModal] Call cancelled:', data);
+      setModalState('no_staff');
     });
 
     // Listen for no staff available
@@ -372,33 +419,124 @@ export default function SafeguardingCallModal({
             </View>
           )}
 
-          {/* Supporter Found State */}
+          {/* Supporter Found State - Staff is about to call */}
           {modalState === 'supporter_found' && (
             <View style={styles.content}>
-              <View style={styles.iconContainer}>
+              <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseAnim }] }]}>
                 <View style={[styles.iconOuter, { borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
-                  <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
+                  <Ionicons name="call" size={40} color="#22c55e" />
                 </View>
-              </View>
+              </Animated.View>
               
               <Text style={styles.title}>Supporter Found!</Text>
               <Text style={styles.staffName}>{staffName}</Text>
               <Text style={styles.message}>
-                A supporter is ready to talk with you. They will call you shortly.
+                {staffName} is connecting to you now...
               </Text>
               
-              <View style={styles.successNote}>
-                <FontAwesome5 name="info-circle" size={16} color="#22c55e" />
-                <Text style={styles.successNoteText}>
-                  Keep your phone nearby - you'll receive an incoming call.
-                </Text>
+              <View style={styles.steps}>
+                <View style={styles.step}>
+                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                  <Text style={styles.stepText}>Request accepted</Text>
+                </View>
+                <View style={styles.step}>
+                  <ActivityIndicator size="small" color="#22c55e" />
+                  <Text style={styles.stepText}>Connecting call...</Text>
+                </View>
               </View>
               
+              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Incoming Call State - WebRTC call ready to answer */}
+          {modalState === 'incoming_call' && incomingCallData && (
+            <View style={styles.content}>
+              <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseAnim }] }]}>
+                <View style={[styles.iconOuter, { borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
+                  <Ionicons name="call" size={48} color="#22c55e" />
+                </View>
+              </Animated.View>
+              
+              <Text style={styles.title}>Incoming Call</Text>
+              <Text style={styles.staffName}>{incomingCallData.callerName}</Text>
+              <Text style={styles.message}>
+                A supporter is calling you now
+              </Text>
+              
+              <View style={styles.callButtons}>
+                <TouchableOpacity 
+                  style={[styles.answerButton]}
+                  onPress={() => {
+                    // Accept the call - emit accept event
+                    if (socketRef.current && incomingCallData) {
+                      socketRef.current.emit('accept_call', {
+                        call_id: incomingCallData.callId,
+                        user_id: userId || `anon_${sessionId}`,
+                      });
+                      setModalState('in_call');
+                    }
+                  }}
+                  data-testid="answer-call-btn"
+                >
+                  <Ionicons name="call" size={28} color="#fff" />
+                  <Text style={styles.answerButtonText}>Answer</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.declineButton]}
+                  onPress={() => {
+                    // Decline the call
+                    if (socketRef.current && incomingCallData) {
+                      socketRef.current.emit('decline_call', {
+                        call_id: incomingCallData.callId,
+                        user_id: userId || `anon_${sessionId}`,
+                      });
+                    }
+                    handleClose();
+                  }}
+                  data-testid="decline-call-btn"
+                >
+                  <Ionicons name="call" size={28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+                  <Text style={styles.declineButtonText}>Decline</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* In Call State */}
+          {modalState === 'in_call' && (
+            <View style={styles.content}>
+              <View style={styles.iconContainer}>
+                <View style={[styles.iconOuter, { borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
+                  <Ionicons name="call" size={40} color="#22c55e" />
+                </View>
+              </View>
+              
+              <Text style={styles.title}>Connected</Text>
+              <Text style={styles.staffName}>{incomingCallData?.callerName || staffName}</Text>
+              <Text style={styles.message}>
+                You're now connected with a supporter
+              </Text>
+              
               <TouchableOpacity 
-                style={[styles.closeButton, { backgroundColor: '#22c55e' }]} 
-                onPress={handleCallEnded}
+                style={[styles.endCallButton]}
+                onPress={() => {
+                  // End the call
+                  if (socketRef.current) {
+                    socketRef.current.emit('end_call', {
+                      call_id: incomingCallData?.callId || callId,
+                      user_id: userId || `anon_${sessionId}`,
+                    });
+                  }
+                  handleCallEnded();
+                }}
+                data-testid="end-call-btn"
               >
-                <Text style={styles.closeButtonText}>Got it</Text>
+                <Ionicons name="call" size={24} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+                <Text style={styles.endCallButtonText}>End Call</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -573,5 +711,55 @@ const styles = StyleSheet.create({
   crisisButtonNumber: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  callButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginTop: 24,
+  },
+  answerButton: {
+    backgroundColor: '#22c55e',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  answerButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  declineButton: {
+    backgroundColor: '#dc2626',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  declineButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  endCallButton: {
+    backgroundColor: '#dc2626',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 40,
+    gap: 12,
+    marginTop: 24,
+  },
+  endCallButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
