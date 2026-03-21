@@ -351,7 +351,7 @@ async def get_online_staff(sid, data):
     """Get list of online staff members"""
     online_staff = []
     for socket_id, user in connected_users.items():
-        if user['user_type'] in ['counsellor', 'peer'] and user['status'] == 'available':
+        if user['user_type'] in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor'] and user['status'] == 'available':
             online_staff.append({
                 'user_id': user['user_id'],
                 'user_type': user['user_type'],
@@ -740,7 +740,7 @@ def get_online_staff_list():
     """Get list of online staff (for REST API)"""
     online = []
     for sid, user in connected_users.items():
-        if user['user_type'] in ['counsellor', 'peer']:
+        if user['user_type'] in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor']:
             online.append({
                 'user_id': user['user_id'],
                 'user_type': user['user_type'],
@@ -938,7 +938,7 @@ async def request_human_chat(sid, data):
     # Find available staff (also reset any stuck statuses)
     available_staff = []
     for socket_id, user in connected_users.items():
-        if user['user_type'] in ['counsellor', 'peer']:
+        if user['user_type'] in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor']:
             user_status = user.get('status', 'offline')
             
             # Skip staff who have explicitly set themselves as unavailable or limited
@@ -1043,7 +1043,7 @@ async def request_human_call(sid, data):
     # Find available staff (also reset any stuck statuses)
     available_staff = []
     for socket_id, user in connected_users.items():
-        if user['user_type'] in ['counsellor', 'peer']:
+        if user['user_type'] in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor']:
             user_status = user.get('status', 'offline')
             
             # Check if status is stuck (not in a real active call)
