@@ -791,21 +791,29 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
 
     // Call request claimed by another staff member (safeguarding calls)
     socket.on('call_request_claimed', (data: { request_id: string; claimed_by: string; claimed_by_name: string; call_id: string }) => {
-      console.log('[WebRTCPhone] Call request claimed by:', data.claimed_by_name);
+      console.log('[WebRTCPhone] *** CALL REQUEST CLAIMED ***', data);
+      console.log('[WebRTCPhone] Call request claimed by:', data.claimed_by_name, 'request_id:', data.request_id);
       stopRingtone();
-      // Only dismiss if it matches our pending request
+      // Dismiss the pending request regardless of request_id match
+      // (if we have any pending call request, dismiss it since someone else took a call)
       setState(prev => {
-        if (prev.pendingRequest?.request_id === data.request_id) {
+        console.log('[WebRTCPhone] Current pending request:', prev.pendingRequest?.request_id, 'Claimed request:', data.request_id);
+        if (prev.pendingRequest && prev.pendingRequest.request_id === data.request_id) {
+          console.log('[WebRTCPhone] Dismissing pending request - matches claimed request');
           return {
             ...prev,
             hasIncomingChatRequest: false,
             hasIncomingCallRequest: false,
             pendingRequest: undefined,
           };
+        } else if (prev.pendingRequest) {
+          console.log('[WebRTCPhone] Request ID mismatch - not dismissing. Pending:', prev.pendingRequest.request_id, 'Claimed:', data.request_id);
         }
         return prev;
       });
     });
+
+    console.log('[WebRTCPhone] Socket listeners registered: chat_request_claimed, call_request_claimed');
 
     // Chat request already claimed
     socket.on('chat_request_already_claimed', () => {

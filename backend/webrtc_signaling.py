@@ -1223,15 +1223,30 @@ async def accept_call_request(sid, data):
     }
     
     # Notify ALL other staff that this call request has been claimed
-    for socket_id, user in connected_users.items():
-        if user['user_type'] in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor'] and socket_id != sid:
+    logger.info(f"=== BROADCASTING call_request_claimed to other staff ===")
+    logger.info(f"Total connected_users: {len(connected_users)}")
+    notified_count = 0
+    for socket_id, user in list(connected_users.items()):  # Use list() to avoid iteration issues
+        user_type = user.get('user_type', 'unknown')
+        user_name_log = user.get('name', 'Unknown')
+        logger.info(f"Checking user: {user_name_log}, type: {user_type}, socket: {socket_id}, is_self: {socket_id == sid}")
+        
+        # Check if this is a staff member (not the one who accepted)
+        if user_type in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor', 'admin'] and socket_id != sid:
+            logger.info(f">>> SENDING call_request_claimed to {user_name_log} ({user_type}) at socket {socket_id}")
             await sio.emit('call_request_claimed', {
                 'request_id': request_id,
                 'claimed_by': staff_id,
                 'claimed_by_name': staff_name,
                 'call_id': call_id
             }, to=socket_id)
-    logger.info(f"Notified other staff that request {request_id} was claimed by {staff_name}")
+            notified_count += 1
+        elif socket_id == sid:
+            logger.info(f"Skipping self: {user_name_log}")
+        else:
+            logger.info(f"Skipping non-staff user: {user_name_log} (type: {user_type})")
+    
+    logger.info(f"Notified {notified_count} other staff that request {request_id} was claimed by {staff_name}")
     
     # Add call to active_calls so webrtc_offer can find it
     active_calls[call_id] = {

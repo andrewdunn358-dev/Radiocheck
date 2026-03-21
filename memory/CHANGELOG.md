@@ -26,6 +26,33 @@ Quick reference for tracking development changes.
 
 **Testing:** 12/12 unit tests passed
 
+### Safeguarding AI Tests (11 scenarios)
+- Ran full TOMMY Stress & Safety test suite
+- **Result: 11/11 PASSED (100%)**
+- Reports saved to `/app/test_reports/safeguarding_test_report.md`
+
+### BUG IDENTIFIED: Call Request Claimed Not Reaching Other Staff (P0)
+**Status:** IN PROGRESS - needs production deployment
+
+**Symptoms:**
+- When Kev (peer) accepts a call, Sarah's browser keeps ringing
+- The `call_request_claimed` event is NOT reaching Sarah's console
+- Sarah only sees `[WebRTCPhone] Dismissing request` when manually dismissed
+
+**Root Cause Investigation:**
+- Backend loop at line 1226 may not be finding Sarah's socket
+- Possible user_type mismatch
+- Added detailed logging to backend to trace the issue
+
+**Changes Made:**
+1. Backend (`webrtc_signaling.py`): Added detailed logging to show who receives `call_request_claimed`
+2. Frontend (`useWebRTCPhone.tsx`): Added more console logs and confirmed handler registration
+
+**To Test:**
+- Deploy changes to Render (backend) and Vercel (portal)
+- Check backend logs when Kev accepts - should show Sarah being notified
+- Check Sarah's console for `[WebRTCPhone] *** CALL REQUEST CLAIMED ***`
+
 ---
 
 ## Previous Sessions Summary
