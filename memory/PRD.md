@@ -159,6 +159,24 @@ The Radiocheck project is a complex mix of:
 - Added `heartbeat` event handler in `/backend/webrtc_signaling.py`
 - Better disconnect reason handling
 
+### P0 - WebRTC Call Lifecycle Fixes
+**Status**: ✅ COMPLETE (December 2025)
+
+**Issue 1: Call alert not disappearing for other staff when one accepts**
+- Backend already emitted `call_request_claimed` event in `accept_call_request` handler
+- Added new `call_request_claimed` socket listener in `/portal/src/hooks/useWebRTCPhone.tsx`
+- Listener checks if `request_id` matches the pending request before dismissing
+- This ensures call alerts disappear for all staff when any staff member accepts
+
+**Issue 2: Call not ending on client when staff hangs up**
+- Root cause: Staff portal emitted `webrtc_end_call` event but backend had no handler
+- Added `webrtc_end_call` socket event handler in `/backend/webrtc_signaling.py`
+- Handler properly emits `call_ended` to the other party (mobile app user)
+- Resets all user statuses to 'available' and removes call from active_calls
+- Mobile app's `call_ended` listener in `SafeguardingCallModal.tsx` triggers cleanup
+
+**Bug Fix**: Added missing `claimed_call_requests: Dict[str, dict] = {}` dictionary
+
 ## Backend API
 - **Production URL**: `https://veterans-support-api.onrender.com`
 - **Socket.IO Path**: `/api/socket.io`
