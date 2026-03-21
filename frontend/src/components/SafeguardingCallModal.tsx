@@ -443,16 +443,18 @@ export default function SafeguardingCallModal({
         body: JSON.stringify({
           name: callbackName.trim(),
           phone: callbackPhone.trim(),
+          message: 'Safeguarding - Requested call when no staff available',
+          request_type: 'counsellor', // Default to counsellor for safeguarding callbacks
           is_urgent: true,
-          reason: 'Safeguarding - Requested call when no staff available',
-          session_id: sessionId,
-          alert_id: alertId,
+          safeguarding_alert_id: alertId,
         }),
       });
       
       if (response.ok) {
         setModalState('callback_sent');
       } else {
+        const errorData = await response.json().catch(() => null);
+        console.error('[SafeguardingCallModal] Callback error:', errorData);
         setErrorMessage('Failed to submit callback request');
       }
     } catch (err) {
