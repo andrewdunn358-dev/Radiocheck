@@ -1196,6 +1196,18 @@ async def accept_call_request(sid, data):
     logger.info("=== ACCEPT CALL REQUEST ===")
     logger.info(f"Staff {staff_name} ({staff_id}) accepting call request {request_id} from user {requester_user_id}")
     
+    # *** CHECK IF ALREADY CLAIMED - MUST BE FIRST ***
+    if request_id in claimed_call_requests:
+        claimed_info = claimed_call_requests[request_id]
+        logger.warning(f"Call request {request_id} already claimed by {claimed_info.get('claimed_by_name')}")
+        await sio.emit('call_request_already_claimed', {
+            'request_id': request_id,
+            'claimed_by': claimed_info.get('claimed_by'),
+            'claimed_by_name': claimed_info.get('claimed_by_name'),
+            'message': f"This call has already been taken by {claimed_info.get('claimed_by_name')}"
+        }, to=sid)
+        return
+    
     # Generate a call ID early (needed for claimed notification)
     call_id = f"call_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{staff_id[:8] if staff_id else 'staff'}"
     

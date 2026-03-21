@@ -827,6 +827,22 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       }));
     });
 
+    // Call request already claimed (when you try to accept but someone else got it first)
+    socket.on('call_request_already_claimed', (data: { request_id: string; claimed_by_name: string; message: string }) => {
+      console.log('[WebRTCPhone] *** CALL REQUEST ALREADY CLAIMED ***', data);
+      stopRingtone();
+      updateStatus('online', `Call taken by ${data.claimed_by_name}`);
+      setState(prev => ({
+        ...prev,
+        hasIncomingChatRequest: false,
+        hasIncomingCallRequest: false,
+        pendingRequest: undefined,
+        isInCall: false,
+      }));
+      // Show a brief notification that someone else got the call
+      alert(`This call has already been taken by ${data.claimed_by_name}`);
+    });
+
     // Incoming call (from backend)
     socket.on('incoming_call', async (data: { call_id: string; caller_id: string; caller_name: string; call_type: string }) => {
       console.log('[WebRTCPhone] *** INCOMING CALL ***', data);

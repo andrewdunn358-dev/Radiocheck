@@ -54,12 +54,21 @@ Quick reference for tracking development changes.
 ### BUG FIXED: Call Request Claimed Not Reaching Other Staff (P0)
 **Status:** ✅ FIXED
 
-**Root Cause:** In `accept_call_request`, the code checked if the mobile user was still connected BEFORE broadcasting `call_request_claimed`. If the user had disconnected (closed app, network issue), it would `return` early and **never notify other staff**.
+**Root Cause:** TWO issues found:
 
-**Fix:** Moved the `call_request_claimed` broadcast to happen FIRST, before checking if the user is still connected. Now other staff always get notified, even if the call fails to connect.
+1. **No duplicate accept prevention**: When staff clicked accept, there was no check to see if another staff member had ALREADY claimed the request. Both staff could accept the same request, causing TWO WebRTC offers to the mobile app - the second one would connect, the first would hang in "connecting" state.
+
+2. **Order of operations**: The `call_request_claimed` broadcast happened AFTER checking if the user was connected. If the user disconnected, the broadcast was skipped.
+
+**Fixes Applied:**
+1. Added check at START of `accept_call_request` to see if request already in `claimed_call_requests`
+2. If already claimed, emit `call_request_already_claimed` event and return early
+3. Moved `call_request_claimed` broadcast to happen FIRST before other operations
+4. Added `call_request_already_claimed` handler in frontend with alert message
 
 **Files Changed:**
-- `/app/backend/webrtc_signaling.py` - Reordered logic in `accept_call_request`
+- `/app/backend/webrtc_signaling.py` - Added duplicate prevention check, reordered logic
+- `/app/portal/src/hooks/useWebRTCPhone.tsx` - Added `call_request_already_claimed` handler
 - Possible user_type mismatch
 - Added detailed logging to backend to trace the issue
 
