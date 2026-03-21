@@ -789,6 +789,24 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       }));
     });
 
+    // Call request claimed by another staff member (safeguarding calls)
+    socket.on('call_request_claimed', (data: { request_id: string; claimed_by: string; claimed_by_name: string; call_id: string }) => {
+      console.log('[WebRTCPhone] Call request claimed by:', data.claimed_by_name);
+      stopRingtone();
+      // Only dismiss if it matches our pending request
+      setState(prev => {
+        if (prev.pendingRequest?.request_id === data.request_id) {
+          return {
+            ...prev,
+            hasIncomingChatRequest: false,
+            hasIncomingCallRequest: false,
+            pendingRequest: undefined,
+          };
+        }
+        return prev;
+      });
+    });
+
     // Chat request already claimed
     socket.on('chat_request_already_claimed', () => {
       console.log('[WebRTCPhone] Chat request already claimed');

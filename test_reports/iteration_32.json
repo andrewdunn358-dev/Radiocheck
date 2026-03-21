@@ -1,0 +1,70 @@
+{
+  "summary": "Verified WebRTC call flow fixes for two critical issues: (1) call_request_claimed broadcast to dismiss alerts for other staff, (2) webrtc_end_call handler to end calls on mobile app. All 12 tests PASSED. Fixed a bug: missing `claimed_call_requests` dictionary in webrtc_signaling.py.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_webrtc_call_flow.py",
+    "/app/test_reports/pytest/pytest_webrtc_call_flow.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "FIXED: Missing `claimed_call_requests` dictionary in webrtc_signaling.py (line 47-50) - was causing NameError when staff accepted call requests"
+  ],
+  "updated_files": [
+    "/app/backend/webrtc_signaling.py"
+  ],
+  "success_rate": {
+    "backend": "100% - All 12 WebRTC call flow tests passed",
+    "frontend": "N/A - Code structure verification only (Socket.IO event handlers)"
+  },
+  "test_credentials": "N/A - Socket.IO event testing",
+  "seed_data_creation": "N/A - Unit tests with mocked data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "WebRTC call flow fixes verified. The two critical issues are now addressed: (1) Backend emits `call_request_claimed` to all other staff when one accepts a call request (lines 1222-1233 in webrtc_signaling.py). (2) Backend has `webrtc_end_call` handler (lines 620-685) that emits `call_ended` to the other party. Portal has `call_request_claimed` listener (lines 793-808 in useWebRTCPhone.tsx) that dismisses pending requests. Mobile app has `call_ended` listener (lines 355-361 in SafeguardingCallModal.tsx) that triggers cleanup and closes modal.",
+  "features_tested": {
+    "webrtc_end_call_handler": {
+      "status": "PASS",
+      "details": "Backend handler exists at line 620, properly emits call_ended to other party, removes call from active_calls, resets statuses to available"
+    },
+    "call_request_claimed_broadcast": {
+      "status": "PASS",
+      "details": "Backend broadcasts call_request_claimed to ALL other staff (not the accepting staff) when one staff accepts a call request"
+    },
+    "portal_call_request_claimed_listener": {
+      "status": "PASS",
+      "details": "Portal has socket.on('call_request_claimed') handler that stops ringtone and clears pending request state (only if request_id matches)"
+    },
+    "mobile_app_call_ended_listener": {
+      "status": "PASS",
+      "details": "Mobile app has socket.on('call_ended') handler that calls cleanup() to stop streams, close peer connection, disconnect socket, and close modal"
+    }
+  },
+  "bug_fixed": {
+    "issue": "NameError: name 'claimed_call_requests' is not defined",
+    "location": "/app/backend/webrtc_signaling.py line 1214",
+    "fix": "Added missing `claimed_call_requests: Dict[str, dict] = {}` dictionary at line 50",
+    "impact": "Without this fix, accept_call_request would crash when staff tried to accept a call request"
+  },
+  "tests_executed": [
+    "test_webrtc_end_call_handler_exists - PASS",
+    "test_webrtc_end_call_emits_call_ended_to_other_party - PASS",
+    "test_webrtc_end_call_removes_from_active_calls - PASS",
+    "test_webrtc_end_call_resets_statuses - PASS",
+    "test_accept_call_request_broadcasts_claimed_to_other_staff - PASS",
+    "test_accept_call_request_notifies_user - PASS",
+    "test_portal_has_call_request_claimed_handler - PASS",
+    "test_portal_handler_checks_request_id - PASS",
+    "test_mobile_app_has_call_ended_handler - PASS",
+    "test_mobile_app_cleanup_function_exists - PASS",
+    "test_webrtc_end_call_is_registered_as_event - PASS",
+    "test_accept_call_request_is_registered_as_event - PASS"
+  ]
+}

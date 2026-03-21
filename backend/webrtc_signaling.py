@@ -46,6 +46,10 @@ user_to_sockets: Dict[str, set] = {}
 # Track claimed chat requests to prevent multiple staff accepting same request
 claimed_chat_requests: set = set()
 
+# Track claimed call requests to prevent multiple staff accepting same call request
+# Format: {request_id: {claimed_by, claimed_by_name, claimed_at, call_id}}
+claimed_call_requests: Dict[str, dict] = {}
+
 # Track pending disconnect notifications (for grace period)
 # Format: {user_id: asyncio.Task}
 pending_disconnects: Dict[str, asyncio.Task] = {}
@@ -616,6 +620,71 @@ async def call_end(sid, data):
     del active_calls[call_id]
 
 
+@sio.event
+async def webrtc_end_call(sid, data):
+    """
+    Handle WebRTC call end event from staff portal.
+    This is emitted when staff clicks "End Call" button.
+    """
+    call_id = data.get('call_id')
+    
+    logger.info(f"=== WEBRTC END CALL ===")
+    logger.info(f"webrtc_end_call: sid={sid}, call_id={call_id}")
+    
+    if not call_id:
+        logger.warning("webrtc_end_call: No call_id provided")
+        return
+    
+    if call_id not in active_calls:
+        logger.warning(f"webrtc_end_call: Call {call_id} not found in active_calls")
+        # Still emit call_ended to ensure cleanup on sender's side
+        await sio.emit('call_ended', {
+            'call_id': call_id,
+            'reason': 'call_not_found'
+        }, to=sid)
+        return
+    
+    call = active_calls[call_id]
+    callee_sids = call.get('callee_sids', set())
+    answered_sid = call.get('answered_by_sid')
+    caller_sid = call.get('caller_sid')
+    
+    logger.info(f"webrtc_end_call: caller_sid={caller_sid}, callee_sids={callee_sids}, answered_sid={answered_sid}")
+    
+    # Determine who is ending and who needs to be notified
+    if caller_sid == sid:
+        # Staff (caller) is ending - notify user (callee)
+        other_sids = [answered_sid] if answered_sid else list(callee_sids)
+    else:
+        # User (callee) is ending - notify staff (caller)
+        other_sids = [caller_sid] if caller_sid else []
+    
+    logger.info(f"webrtc_end_call: Notifying other party sids: {other_sids}")
+    
+    # Reset statuses
+    if caller_sid and caller_sid in connected_users:
+        connected_users[caller_sid]['status'] = 'available'
+        logger.info(f"webrtc_end_call: Reset caller {caller_sid} status to available")
+    
+    for cs in callee_sids:
+        if cs in connected_users:
+            connected_users[cs]['status'] = 'available'
+            logger.info(f"webrtc_end_call: Reset callee {cs} status to available")
+    
+    # Notify all other parties
+    for other_sid in other_sids:
+        if other_sid and other_sid in connected_users:
+            logger.info(f"webrtc_end_call: Sending call_ended to {other_sid}")
+            await sio.emit('call_ended', {
+                'call_id': call_id,
+                'reason': 'ended_by_peer'
+            }, to=other_sid)
+    
+    # Remove from active calls
+    del active_calls[call_id]
+    logger.info(f"webrtc_end_call: Call {call_id} removed from active_calls")
+
+
 # ============ WebRTC Signaling ============
 
 @sio.event
@@ -1144,6 +1213,25 @@ async def accept_call_request(sid, data):
     
     # Generate a call ID
     call_id = f"call_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{staff_id[:8] if staff_id else 'staff'}"
+    
+    # Mark this request as claimed so other staff see it's taken
+    claimed_call_requests[request_id] = {
+        'claimed_by': staff_id,
+        'claimed_by_name': staff_name,
+        'claimed_at': datetime.utcnow().isoformat(),
+        'call_id': call_id
+    }
+    
+    # Notify ALL other staff that this call request has been claimed
+    for socket_id, user in connected_users.items():
+        if user['user_type'] in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor'] and socket_id != sid:
+            await sio.emit('call_request_claimed', {
+                'request_id': request_id,
+                'claimed_by': staff_id,
+                'claimed_by_name': staff_name,
+                'call_id': call_id
+            }, to=socket_id)
+    logger.info(f"Notified other staff that request {request_id} was claimed by {staff_name}")
     
     # Add call to active_calls so webrtc_offer can find it
     active_calls[call_id] = {
