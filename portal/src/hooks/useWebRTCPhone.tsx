@@ -391,7 +391,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
   }, [state.isMuted]);
 
   // Accept chat request from user
-  const acceptChatRequest = useCallback(() => {
+  const acceptChatRequest = useCallback(async () => {
     if (!socketRef.current || !state.pendingRequest) return;
     
     console.log('[WebRTCPhone] Accepting chat request:', state.pendingRequest.request_id);
@@ -404,8 +404,26 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       staff_name: userName,
     });
     
+    // Auto-set status to busy
+    try {
+      const token = localStorage.getItem('staff_token');
+      if (token && userId) {
+        await fetch(`${serverUrl}/api/staff/${userId}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: 'busy' })
+        });
+        console.log('[WebRTCPhone] Auto-set status to busy');
+      }
+    } catch (err) {
+      console.error('[WebRTCPhone] Failed to auto-set busy status:', err);
+    }
+    
     // The chat_request_confirmed event will update the state with room_id
-  }, [state.pendingRequest, userId, userName, stopRingtone]);
+  }, [state.pendingRequest, userId, userName, stopRingtone, serverUrl]);
 
   // Dismiss chat/call request
   const dismissRequest = useCallback(() => {
@@ -420,7 +438,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
   }, [stopRingtone]);
 
   // Accept call request from user (safeguarding)
-  const acceptCallRequest = useCallback(() => {
+  const acceptCallRequest = useCallback(async () => {
     if (!socketRef.current || !state.pendingRequest) return;
     
     console.log('[WebRTCPhone] Accepting call request:', state.pendingRequest.request_id);
@@ -433,11 +451,29 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       staff_name: userName,
     });
     
+    // Auto-set status to busy
+    try {
+      const token = localStorage.getItem('staff_token');
+      if (token && userId) {
+        await fetch(`${serverUrl}/api/staff/${userId}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: 'busy' })
+        });
+        console.log('[WebRTCPhone] Auto-set status to busy');
+      }
+    } catch (err) {
+      console.error('[WebRTCPhone] Failed to auto-set busy status:', err);
+    }
+    
     setState(prev => ({
       ...prev,
       hasIncomingCallRequest: false,
     }));
-  }, [state.pendingRequest, userId, userName, stopRingtone]);
+  }, [state.pendingRequest, userId, userName, stopRingtone, serverUrl]);
 
   // Initialize socket connection
   useEffect(() => {

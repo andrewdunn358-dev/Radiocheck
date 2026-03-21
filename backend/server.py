@@ -4529,6 +4529,29 @@ async def debug_safeguarding_count():
     except Exception as e:
         return {"error": str(e)}
 
+
+# ============ SCREENING SUBMISSIONS ENDPOINTS ============
+
+@api_router.get("/screening-submissions")
+async def get_screening_submissions(
+    current_user: User = Depends(get_current_user),
+    limit: int = 100
+):
+    """Get screening submissions (admin only)"""
+    if current_user.role not in ["admin", "supervisor"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        submissions = await db.screening_submissions.find(
+            {},
+            {"_id": 0}
+        ).sort("created_at", -1).limit(limit).to_list(limit)
+        return submissions
+    except Exception as e:
+        logging.error(f"Error fetching screening submissions: {str(e)}")
+        return []
+
+
 # ============ STAFF NOTES ENDPOINTS ============
 
 @api_router.post("/notes")

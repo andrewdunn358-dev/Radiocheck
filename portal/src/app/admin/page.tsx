@@ -1751,118 +1751,57 @@ export default function AdminPortal() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {/* Status buttons - different options for counsellors vs peers */}
-                            {member.role === 'counsellor' ? (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await api.updateStaffStatus(token!, member.id, 'available');
-                                      setSuccess('Status updated');
-                                      loadStaff();
-                                    } catch (err: any) { setError(err.message); }
-                                  }}
-                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                    member.status === 'available' 
-                                      ? 'bg-green-500 text-white' 
-                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Available
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await api.updateStaffStatus(token!, member.id, 'busy');
-                                      setSuccess('Status updated');
-                                      loadStaff();
-                                    } catch (err: any) { setError(err.message); }
-                                  }}
-                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                    member.status === 'busy' 
-                                      ? 'bg-yellow-500 text-white' 
-                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Busy
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await api.updateStaffStatus(token!, member.id, 'off');
-                                      setSuccess('Status updated');
-                                      loadStaff();
-                                    } catch (err: any) { setError(err.message); }
-                                  }}
-                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                    member.status === 'off' 
-                                      ? 'bg-gray-500 text-white' 
-                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Off
-                                </button>
-                              </div>
-                            ) : member.role === 'peer' ? (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await api.updateStaffStatus(token!, member.id, 'available');
-                                      setSuccess('Status updated');
-                                      loadStaff();
-                                    } catch (err: any) { setError(err.message); }
-                                  }}
-                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                    member.status === 'available' 
-                                      ? 'bg-green-500 text-white' 
-                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Available
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await api.updateStaffStatus(token!, member.id, 'limited');
-                                      setSuccess('Status updated');
-                                      loadStaff();
-                                    } catch (err: any) { setError(err.message); }
-                                  }}
-                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                    member.status === 'limited' 
-                                      ? 'bg-yellow-500 text-white' 
-                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Limited
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await api.updateStaffStatus(token!, member.id, 'unavailable');
-                                      setSuccess('Status updated');
-                                      loadStaff();
-                                    } catch (err: any) { setError(err.message); }
-                                  }}
-                                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                    member.status === 'unavailable' 
-                                      ? 'bg-gray-500 text-white' 
-                                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Unavailable
-                                </button>
-                              </div>
-                            ) : (
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                member.status === 'available' ? 'bg-green-500/20 text-green-400' :
-                                member.status === 'busy' || member.status === 'limited' ? 'bg-yellow-500/20 text-yellow-400' :
-                                'bg-gray-500/20 text-gray-400'
-                              }`}>
-                                {member.status || 'offline'}
-                              </span>
-                            )}
+                            {/* Status buttons - unified for all staff: Available, Busy, Unavailable */}
+                            <div className="flex gap-1">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api.updateStaffStatus(token!, member.id, 'available');
+                                    setSuccess('Status updated');
+                                    loadStaff();
+                                  } catch (err: any) { setError(err.message); }
+                                }}
+                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                  member.status === 'available' 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                }`}
+                              >
+                                Available
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api.updateStaffStatus(token!, member.id, 'busy');
+                                    setSuccess('Status updated');
+                                    loadStaff();
+                                  } catch (err: any) { setError(err.message); }
+                                }}
+                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                  member.status === 'busy' 
+                                    ? 'bg-yellow-500 text-white' 
+                                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                }`}
+                              >
+                                Busy
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api.updateStaffStatus(token!, member.id, 'unavailable');
+                                    setSuccess('Status updated');
+                                    loadStaff();
+                                  } catch (err: any) { setError(err.message); }
+                                }}
+                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                  member.status === 'unavailable' || member.status === 'off'
+                                    ? 'bg-gray-500 text-white' 
+                                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                }`}
+                              >
+                                Unavailable
+                              </button>
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
