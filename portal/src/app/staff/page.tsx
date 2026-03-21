@@ -2566,13 +2566,13 @@ export default function StaffPortalPage() {
 
             {/* Notes Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {notes
+              {(notes || [])
                 .filter(note => notesTab === 'my' ? !note.is_shared : note.is_shared)
                 .map(note => (
-                  <div key={note._id} className="bg-card border border-border rounded-xl p-6">
+                  <div key={note.id || note._id} className="bg-card border border-border rounded-xl p-6">
                     <div className="flex justify-between items-start mb-3">
                       <h3 className="font-semibold">{note.title}</h3>
-                      <button onClick={() => handleDeleteNote(note._id)} className="p-1 hover:bg-red-500/20 rounded text-red-400">
+                      <button onClick={() => handleDeleteNote(note.id || note._id)} className="p-1 hover:bg-red-500/20 rounded text-red-400">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -2583,7 +2583,7 @@ export default function StaffPortalPage() {
                     </div>
                   </div>
                 ))}
-              {notes.filter(note => notesTab === 'my' ? !note.is_shared : note.is_shared).length === 0 && (
+              {(notes || []).filter(note => notesTab === 'my' ? !note.is_shared : note.is_shared).length === 0 && (
                 <div className="col-span-full text-center py-12 text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No notes yet</p>
