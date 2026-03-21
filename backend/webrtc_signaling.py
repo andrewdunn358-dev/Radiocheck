@@ -278,6 +278,21 @@ async def update_status(sid, data):
         
         connected_users[sid]['status'] = new_status
         logger.info(f"Status updated for {sid}: {old_status} -> {new_status}")
+
+
+@sio.event
+async def heartbeat(sid, data):
+    """Handle heartbeat from clients to maintain connection health"""
+    if sid in connected_users:
+        user_id = data.get('user_id')
+        connected_users[sid]['last_heartbeat'] = datetime.utcnow().isoformat()
+        # Update connected_at to track activity
+        connected_users[sid]['last_activity'] = datetime.utcnow().isoformat()
+        # Emit heartbeat acknowledgment
+        await sio.emit('heartbeat_ack', {
+            'timestamp': datetime.utcnow().isoformat(),
+            'user_id': user_id
+        }, to=sid)
         
         await sio.emit('staff_status_changed', {
             'user_id': user_id,

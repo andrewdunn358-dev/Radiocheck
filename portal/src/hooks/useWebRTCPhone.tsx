@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-// WebRTC Configuration
+// WebRTC Configuration with enhanced audio quality
 const WEBRTC_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
     // Free TURN servers for NAT traversal (cross-network calls)
     {
       urls: 'turn:openrelay.metered.ca:80',
@@ -26,6 +28,15 @@ const WEBRTC_CONFIG: RTCConfiguration = {
     },
   ],
   iceCandidatePoolSize: 10,
+};
+
+// Audio constraints for better call quality
+const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  sampleRate: 48000,
+  channelCount: 1,
 };
 
 export type WebRTCPhoneStatus = 'offline' | 'connecting' | 'online' | 'ringing' | 'incoming' | 'connected' | 'error';
@@ -234,27 +245,31 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     }
   }, []);
 
-  // Create peer connection
+  // Create peer connection with enhanced audio
   const createPeerConnection = useCallback(async () => {
     const pc = new RTCPeerConnection(WEBRTC_CONFIG);
 
-    // Get local media stream
+    // Get local media stream with audio quality constraints
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: AUDIO_CONSTRAINTS 
+      });
       localStreamRef.current = stream;
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      console.log('[WebRTCPhone] Got local audio stream with noise suppression');
     } catch (error) {
-      console.error('Failed to get microphone access:', error);
+      console.error('[WebRTCPhone] Failed to get microphone access:', error);
       throw new Error('Microphone access denied');
     }
 
-    // Handle remote stream
+    // Handle remote stream with proper audio element management
     pc.ontrack = (event) => {
-      console.log('Received remote track');
+      console.log('[WebRTCPhone] Received remote track:', event.track.kind);
       const remoteAudio = document.getElementById('remote-audio') as HTMLAudioElement;
       if (remoteAudio && event.streams[0]) {
         remoteAudio.srcObject = event.streams[0];
-        remoteAudio.play().catch(console.error);
+        remoteAudio.volume = 1.0;
+        remoteAudio.play().catch(err => console.error('[WebRTCPhone] Audio play error:', err));
       }
     };
 
@@ -266,6 +281,20 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
           candidate: event.candidate.toJSON()
         });
       }
+    };
+    
+    // ICE connection state monitoring for better debugging
+    pc.oniceconnectionstatechange = () => {
+      console.log('[WebRTCPhone] ICE connection state:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        console.log('[WebRTCPhone] ICE connection failed, attempting restart...');
+        pc.restartIce();
+      }
+    };
+    
+    // ICE gathering state monitoring
+    pc.onicegatheringstatechange = () => {
+      console.log('[WebRTCPhone] ICE gathering state:', pc.iceGatheringState);
     };
 
     // Handle connection state changes
@@ -475,7 +504,7 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     }));
   }, [state.pendingRequest, userId, userName, stopRingtone, serverUrl]);
 
-  // Initialize socket connection
+  // Initialize socket connection with enhanced stability
   useEffect(() => {
     console.log('[WebRTCPhone] Init check:', { serverUrl, userId, userType, userName, enabled });
     
@@ -487,19 +516,26 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     console.log('[WebRTCPhone] Starting Socket.IO connection to:', serverUrl);
     updateStatus('connecting', 'Connecting...');
 
+    // Enhanced socket configuration for stability
     const socket = io(serverUrl, {
       path: '/api/socket.io',
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity, // Keep trying forever
       reconnectionDelay: 1000,
-      timeout: 10000
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      forceNew: false, // Reuse existing connection if available
     });
 
     socketRef.current = socket;
+    
+    // Track reconnection attempts
+    let reconnectAttempts = 0;
 
     socket.on('connect', () => {
       console.log('[WebRTCPhone] Socket connected! Registering...');
+      reconnectAttempts = 0; // Reset on successful connect
       socket.emit('register', {
         user_id: userId,
         user_type: userType,
@@ -516,8 +552,46 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
 
     socket.on('connect_error', (error) => {
       console.error('[WebRTCPhone] Connection error:', error.message);
-      updateStatus('error', 'Connection Failed');
+      reconnectAttempts++;
+      if (reconnectAttempts > 5) {
+        updateStatus('error', 'Connection Issues - Retrying...');
+      } else {
+        updateStatus('connecting', 'Reconnecting...');
+      }
     });
+    
+    // Handle disconnection
+    socket.on('disconnect', (reason) => {
+      console.log('[WebRTCPhone] Socket disconnected:', reason);
+      setState(prev => ({ ...prev, isRegistered: false }));
+      
+      if (reason === 'io server disconnect') {
+        // Server forced disconnect - reconnect manually
+        console.log('[WebRTCPhone] Server disconnected - reconnecting...');
+        socket.connect();
+      } else if (reason === 'transport close' || reason === 'transport error') {
+        updateStatus('connecting', 'Connection lost - reconnecting...');
+      }
+    });
+    
+    // Handle successful reconnection
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('[WebRTCPhone] Reconnected after', attemptNumber, 'attempts');
+      // Re-register after reconnection
+      socket.emit('register', {
+        user_id: userId,
+        user_type: userType,
+        name: userName,
+        status: 'available'
+      });
+    });
+    
+    // Ping/pong heartbeat check
+    const heartbeatInterval = setInterval(() => {
+      if (socket.connected) {
+        socket.emit('heartbeat', { user_id: userId, timestamp: Date.now() });
+      }
+    }, 30000); // Every 30 seconds
 
     socket.on('online_users', (users: OnlineUser[]) => {
       console.log('[WebRTCPhone] Online users:', users);
@@ -901,12 +975,12 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     });
 
     socket.on('disconnect', () => {
-      console.log('[WebRTCPhone] Socket disconnected');
-      updateStatus('offline', 'Disconnected');
-      setState(prev => ({ ...prev, isRegistered: false }));
+      console.log('[WebRTCPhone] Socket disconnected (in cleanup handler)');
+      // Main disconnect handling is done above in the enhanced handler
     });
 
     return () => {
+      clearInterval(heartbeatInterval);
       socket.disconnect();
       socketRef.current = null;
       endCall();

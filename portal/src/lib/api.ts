@@ -552,16 +552,23 @@ export const staffApi = {
     fetchAPI<TeamMember[]>('/staff-users', { token }),
 
   // Notes
-  getNotes: (token: string) =>
-    fetchAPI<StaffNote[]>('/notes?include_shared=true', { token }),
+  getNotes: (token: string, relatedTo?: string, relatedType?: string) => {
+    const params = new URLSearchParams();
+    params.append('include_shared', 'true');
+    if (relatedTo) params.append('related_to', relatedTo);
+    if (relatedType) params.append('related_type', relatedType);
+    return fetchAPI<{notes: StaffNote[], count: number}>(`/notes?${params.toString()}`, { token });
+  },
   getNote: (token: string, id: string) =>
     fetchAPI<StaffNote>(`/notes/${id}`, { token }),
   createNote: (token: string, data: CreateNoteData) =>
-    fetchAPI<ActionResponse>('/notes', { token, method: 'POST', body: JSON.stringify(data) }),
+    fetchAPI<{message: string, id: string, note: StaffNote}>('/notes', { token, method: 'POST', body: JSON.stringify(data) }),
   updateNote: (token: string, id: string, data: Partial<CreateNoteData>) =>
     fetchAPI<ActionResponse>(`/notes/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
   deleteNote: (token: string, id: string) =>
     fetchAPI<ActionResponse>(`/notes/${id}`, { token, method: 'DELETE' }),
+  shareNote: (token: string, id: string, shareWith: string[]) =>
+    fetchAPI<ActionResponse>(`/notes/${id}/share`, { token, method: 'POST', body: JSON.stringify({ share_with: shareWith }) }),
 
   // Supervision (supervisors only)
   getEscalations: (token: string) =>
@@ -861,13 +868,21 @@ export interface TeamMember {
 }
 
 export interface StaffNote {
-  _id: string;
+  _id?: string;
+  id: string;
   title: string;
   content: string;
+  author_id: string;
+  author_name: string;
+  author_role?: string;
+  related_to?: string;
+  related_type?: 'callback' | 'alert' | 'case' | 'session' | 'general';
   is_shared: boolean;
-  shared_with?: string[];
-  created_by: string;
-  created_by_name?: string;
+  share_with?: string[];
+  shared_with?: string[];  // Alias for backwards compatibility
+  tags?: string[];
+  created_by?: string;  // Legacy field
+  created_by_name?: string;  // Legacy field
   created_at: string;
   updated_at: string;
 }
@@ -875,8 +890,11 @@ export interface StaffNote {
 export interface CreateNoteData {
   title: string;
   content: string;
+  related_to?: string;
+  related_type?: 'callback' | 'alert' | 'case' | 'session' | 'general';
   is_shared?: boolean;
-  shared_with?: string[];
+  share_with?: string[];
+  tags?: string[];
 }
 
 export interface Escalation {

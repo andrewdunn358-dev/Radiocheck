@@ -768,6 +768,41 @@ class CallbackRequest(BaseModel):
 class CallbackStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(pending|in_progress|completed|released)$")
 
+# Interaction Notes Models
+class InteractionNoteCreate(BaseModel):
+    """Create a new interaction note"""
+    title: str
+    content: str
+    related_to: Optional[str] = None  # ID of callback, alert, case, etc.
+    related_type: Optional[str] = None  # 'callback', 'alert', 'case', 'session', 'general'
+    is_shared: bool = False  # If true, visible to team members
+    share_with: Optional[List[str]] = None  # List of user IDs to share with
+    tags: Optional[List[str]] = None  # e.g., ['safeguarding', 'follow-up', 'supervisor-review']
+
+class InteractionNote(BaseModel):
+    """Interaction note stored in database"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    author_id: str
+    author_name: str
+    author_role: str
+    title: str
+    content: str
+    related_to: Optional[str] = None
+    related_type: Optional[str] = None
+    is_shared: bool = False
+    share_with: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class InteractionNoteUpdate(BaseModel):
+    """Update an existing note"""
+    title: Optional[str] = None
+    content: Optional[str] = None
+    is_shared: Optional[bool] = None
+    share_with: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+
 # Panic Alert Models
 class PanicAlertCreate(BaseModel):
     user_name: Optional[str] = None
@@ -3954,27 +3989,40 @@ async def take_callback_control(
             raise HTTPException(status_code=404, detail="Callback request not found")
         
         # Check if already assigned
-        if callback.get("status") == "in_progress":
+        if callback.get("status") in ["in_progress", "taken"]:
             raise HTTPException(status_code=400, detail="This callback is already being handled")
         
         # Check user has right role for this callback type
         if current_user.role != "admin":
             if callback["request_type"] == "counsellor" and current_user.role != "counsellor":
                 raise HTTPException(status_code=403, detail="Only counsellors can handle counsellor callbacks")
-            if callback["request_type"] == "peer" and current_user.role != "peer":
+            if callback["request_type"] == "peer" and current_user.role not in ["peer", "peer_supporter"]:
                 raise HTTPException(status_code=403, detail="Only peers can handle peer callbacks")
         
         await db.callback_requests.update_one(
             {"id": callback_id},
             {"$set": {
-                "status": "in_progress",
-                "assigned_to": current_user.id,
+                "status": "taken",  # Use "taken" to match frontend expectations
+                "taken_by": current_user.id,
+                "taken_by_name": current_user.name,
+                "assigned_to": current_user.id,  # Keep both for backwards compatibility
                 "assigned_name": current_user.name,
+                "taken_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }}
         )
         
-        return {"message": f"Callback assigned to {current_user.name}"}
+        # Audit log: staff took callback
+        await audit_admin_action(
+            db,
+            user_id=current_user.id,
+            email=current_user.email,
+            action="callback_taken",
+            details={"callback_id": callback_id, "user_phone": callback.get("phone", "unknown")}
+        )
+        
+        logging.info(f"Callback {callback_id} taken by {current_user.name} ({current_user.id})")
+        return {"message": f"Callback assigned to {current_user.name}", "status": "taken"}
     except HTTPException:
         raise
     except Exception as e:
@@ -3993,20 +4041,33 @@ async def release_callback(
             raise HTTPException(status_code=404, detail="Callback request not found")
         
         # Only assigned user or admin can release
-        if current_user.role != "admin" and callback.get("assigned_to") != current_user.id:
+        taken_by = callback.get("taken_by") or callback.get("assigned_to")
+        if current_user.role != "admin" and taken_by != current_user.id:
             raise HTTPException(status_code=403, detail="You can only release callbacks assigned to you")
         
         await db.callback_requests.update_one(
             {"id": callback_id},
             {"$set": {
                 "status": "pending",
+                "taken_by": None,
+                "taken_by_name": None,
                 "assigned_to": None,
                 "assigned_name": None,
                 "updated_at": datetime.utcnow()
             }}
         )
         
-        return {"message": "Callback released back to pool"}
+        # Audit log: staff released callback
+        await audit_admin_action(
+            db,
+            user_id=current_user.id,
+            email=current_user.email,
+            action="callback_released",
+            details={"callback_id": callback_id}
+        )
+        
+        logging.info(f"Callback {callback_id} released by {current_user.name}")
+        return {"message": "Callback released back to pool", "status": "pending"}
     except HTTPException:
         raise
     except Exception as e:
@@ -4016,6 +4077,7 @@ async def release_callback(
 @api_router.patch("/callbacks/{callback_id}/complete")
 async def complete_callback(
     callback_id: str,
+    notes: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
     """Mark a callback as completed"""
@@ -4025,23 +4087,251 @@ async def complete_callback(
             raise HTTPException(status_code=404, detail="Callback request not found")
         
         # Only assigned user or admin can complete
-        if current_user.role != "admin" and callback.get("assigned_to") != current_user.id:
+        taken_by = callback.get("taken_by") or callback.get("assigned_to")
+        if current_user.role != "admin" and taken_by != current_user.id:
             raise HTTPException(status_code=403, detail="You can only complete callbacks assigned to you")
+        
+        update_data = {
+            "status": "completed",
+            "completed_at": datetime.utcnow(),
+            "completed_by": current_user.id,
+            "completed_by_name": current_user.name,
+            "updated_at": datetime.utcnow()
+        }
+        if notes:
+            update_data["completion_notes"] = notes
         
         await db.callback_requests.update_one(
             {"id": callback_id},
-            {"$set": {
-                "status": "completed",
-                "updated_at": datetime.utcnow()
-            }}
+            {"$set": update_data}
         )
         
-        return {"message": "Callback marked as completed"}
+        # Audit log: staff completed callback
+        await audit_admin_action(
+            db,
+            user_id=current_user.id,
+            email=current_user.email,
+            action="callback_completed",
+            details={"callback_id": callback_id, "had_notes": bool(notes)}
+        )
+        
+        logging.info(f"Callback {callback_id} completed by {current_user.name}")
+        return {"message": "Callback marked as completed", "status": "completed"}
     except HTTPException:
         raise
     except Exception as e:
         logging.error(f"Error completing callback: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to complete callback")
+
+
+# ============ INTERACTION NOTES ENDPOINTS ============
+
+@api_router.post("/notes")
+async def create_interaction_note(
+    note_data: InteractionNoteCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new interaction note"""
+    try:
+        note = InteractionNote(
+            author_id=current_user.id,
+            author_name=current_user.name,
+            author_role=current_user.role,
+            **note_data.dict()
+        )
+        
+        await db.interaction_notes.insert_one(note.dict())
+        
+        # Audit log if shared with supervisor
+        if note_data.is_shared or (note_data.tags and 'supervisor-review' in note_data.tags):
+            await audit_admin_action(
+                db,
+                user_id=current_user.id,
+                email=current_user.email,
+                action="note_shared",
+                details={"note_id": note.id, "related_to": note_data.related_to, "tags": note_data.tags}
+            )
+        
+        logging.info(f"Interaction note created: {note.id} by {current_user.name}")
+        return {"message": "Note created successfully", "id": note.id, "note": note.dict()}
+    except Exception as e:
+        logging.error(f"Error creating interaction note: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create note")
+
+@api_router.get("/notes")
+async def get_interaction_notes(
+    related_to: Optional[str] = None,
+    related_type: Optional[str] = None,
+    include_shared: bool = True,
+    current_user: User = Depends(get_current_user)
+):
+    """Get interaction notes - own notes + shared notes"""
+    try:
+        # Build query - user's own notes OR notes shared with them OR notes they can see
+        query_conditions = [
+            {"author_id": current_user.id}  # Own notes
+        ]
+        
+        if include_shared:
+            # Notes explicitly shared with this user
+            query_conditions.append({"share_with": current_user.id})
+            # Notes shared publicly with team
+            query_conditions.append({"is_shared": True})
+        
+        # Supervisors/admins can see notes tagged for supervisor review
+        if current_user.role in ["supervisor", "admin"]:
+            query_conditions.append({"tags": "supervisor-review"})
+        
+        query = {"$or": query_conditions}
+        
+        # Filter by related entity if specified
+        if related_to:
+            query["related_to"] = related_to
+        if related_type:
+            query["related_type"] = related_type
+        
+        notes = await db.interaction_notes.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+        
+        return {"notes": notes, "count": len(notes)}
+    except Exception as e:
+        logging.error(f"Error fetching interaction notes: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch notes")
+
+@api_router.get("/notes/{note_id}")
+async def get_interaction_note(
+    note_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get a specific interaction note"""
+    try:
+        note = await db.interaction_notes.find_one({"id": note_id}, {"_id": 0})
+        if not note:
+            raise HTTPException(status_code=404, detail="Note not found")
+        
+        # Check access
+        is_author = note["author_id"] == current_user.id
+        is_shared_with = current_user.id in (note.get("share_with") or [])
+        is_public_shared = note.get("is_shared", False)
+        is_supervisor_note = "supervisor-review" in (note.get("tags") or []) and current_user.role in ["supervisor", "admin"]
+        
+        if not (is_author or is_shared_with or is_public_shared or is_supervisor_note):
+            raise HTTPException(status_code=403, detail="You don't have access to this note")
+        
+        return note
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error fetching interaction note: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch note")
+
+@api_router.put("/notes/{note_id}")
+async def update_interaction_note(
+    note_id: str,
+    update_data: InteractionNoteUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update an interaction note (only author can update)"""
+    try:
+        note = await db.interaction_notes.find_one({"id": note_id})
+        if not note:
+            raise HTTPException(status_code=404, detail="Note not found")
+        
+        # Only author can update
+        if note["author_id"] != current_user.id:
+            raise HTTPException(status_code=403, detail="Only the author can update this note")
+        
+        update_doc = {"updated_at": datetime.utcnow()}
+        for field, value in update_data.dict(exclude_unset=True).items():
+            if value is not None:
+                update_doc[field] = value
+        
+        await db.interaction_notes.update_one({"id": note_id}, {"$set": update_doc})
+        
+        # Audit if sharing status changed
+        if update_data.is_shared or update_data.share_with or (update_data.tags and 'supervisor-review' in update_data.tags):
+            await audit_admin_action(
+                db,
+                user_id=current_user.id,
+                email=current_user.email,
+                action="note_updated",
+                details={"note_id": note_id, "sharing_changed": True}
+            )
+        
+        return {"message": "Note updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error updating interaction note: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update note")
+
+@api_router.delete("/notes/{note_id}")
+async def delete_interaction_note(
+    note_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete an interaction note (only author or admin can delete)"""
+    try:
+        note = await db.interaction_notes.find_one({"id": note_id})
+        if not note:
+            raise HTTPException(status_code=404, detail="Note not found")
+        
+        # Only author or admin can delete
+        if note["author_id"] != current_user.id and current_user.role != "admin":
+            raise HTTPException(status_code=403, detail="Only the author or admin can delete this note")
+        
+        await db.interaction_notes.delete_one({"id": note_id})
+        
+        return {"message": "Note deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error deleting interaction note: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete note")
+
+@api_router.post("/notes/{note_id}/share")
+async def share_interaction_note(
+    note_id: str,
+    share_with: List[str],
+    current_user: User = Depends(get_current_user)
+):
+    """Share a note with specific staff members"""
+    try:
+        note = await db.interaction_notes.find_one({"id": note_id})
+        if not note:
+            raise HTTPException(status_code=404, detail="Note not found")
+        
+        if note["author_id"] != current_user.id:
+            raise HTTPException(status_code=403, detail="Only the author can share this note")
+        
+        # Add to share_with list (avoid duplicates)
+        existing_shares = set(note.get("share_with") or [])
+        existing_shares.update(share_with)
+        
+        await db.interaction_notes.update_one(
+            {"id": note_id},
+            {"$set": {
+                "share_with": list(existing_shares),
+                "is_shared": True,
+                "updated_at": datetime.utcnow()
+            }}
+        )
+        
+        # Audit log
+        await audit_admin_action(
+            db,
+            user_id=current_user.id,
+            email=current_user.email,
+            action="note_shared",
+            details={"note_id": note_id, "shared_with": share_with}
+        )
+        
+        return {"message": f"Note shared with {len(share_with)} staff member(s)"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error sharing interaction note: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to share note")
+
 
 # ============ PANIC ALERT ENDPOINTS ============
 

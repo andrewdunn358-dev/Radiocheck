@@ -1,6 +1,6 @@
 # Radiocheck Veterans Support Platform - PRD
 
-## 🚨 CRITICAL RULE - CHECK EVERY TIME BEFORE SAVING 🚨
+## CRITICAL RULE - CHECK EVERY TIME BEFORE SAVING
 
 **NEVER change these production URLs to preview URLs:**
 
@@ -17,8 +17,6 @@ grep -r "preview.emergentagent.com" /app/frontend/.env /app/portal/.env* 2>/dev/
 ```
 If this returns ANY results, FIX THEM before saving.
 
-The preview environment (`safeguard-call.preview.emergentagent.com`) is for testing code only. Production apps connect to Render (`veterans-support-api.onrender.com`).
-
 ---
 
 ## Original Problem Statement
@@ -27,93 +25,131 @@ The Radiocheck project is a complex mix of:
 - **Next.js web portal** (`/portal/`) - the unified portal replacing legacy vanilla JS portals
 - **Expo mobile app** (`/frontend/`) - React Native mobile app
 
-The agent was tasked with fixing three specific issues after a refactoring broke several things.
-
 ## Architecture
 ```
 /app
-├── backend/                  # FastAPI + Socket.IO (deployed on Render, DO NOT TOUCH)
+├── backend/                  # FastAPI + Socket.IO (deployed on Render)
+│   ├── server.py            # Main API with audit logging
+│   ├── webrtc_signaling.py  # Socket.IO signaling with heartbeat
+│   └── audit_logger.py      # Audit logging functions
 ├── frontend/                 # Expo React Native mobile app
 │   └── src/components/
-│       └── SafeguardingCallModal.tsx  # FIXED - Socket.IO call request modal
-└── portal/                   # Next.js unified portal (TARGET FOR FIXES)
+│       └── SafeguardingCallModal.tsx  # WebRTC with audio quality enhancements
+└── portal/                   # Next.js unified portal
     ├── src/app/
-    │   ├── admin/page.tsx    # FIXED - Added feature toggles
-    │   └── staff/page.tsx    # Staff portal
-    └── .env.local            # Points to Render production API
+    │   ├── admin/page.tsx    # Admin portal with staff profile editing
+    │   └── staff/page.tsx    # Staff portal with callbacks
+    ├── src/hooks/
+    │   └── useWebRTCPhone.tsx  # WebRTC hook with Socket.IO stability
+    └── src/lib/api.ts        # API functions with notes support
 ```
 
-## Completed Work - March 21, 2026
+## Completed Work - December 2025
 
-### Issue 1: SafeguardingCallModal.tsx (P0 - CRITICAL)
-**Status**: ✅ FIXED
+### P0 - Audit Logging Implementation
+**Status**: ✅ COMPLETE
 
-**What was done**:
-- Completely rewrote `/frontend/src/components/SafeguardingCallModal.tsx`
-- Changed from WebRTC-based approach to simpler Socket.IO-only implementation
-- Implemented proper Socket.IO connection with `/api/socket.io` path
-- Added `register` event emission for user registration
-- Added `request_human_call` event emission to request calls
-- Implemented listeners for `call_request_accepted` and `no_staff_available`
-- Added 30-second timeout with automatic crisis line fallback
-- Implemented multiple UI states: connecting, waiting, supporter_found, no_staff, timeout, error
-- Added crisis line buttons (Samaritans 116 123, NHS 111, Emergency 999)
+**What was implemented**:
+- Added `audit_login()` calls in `/backend/routers/auth.py`:
+  - Successful login (staff and legacy users)
+  - Failed login (wrong password, user not found)
+  - Includes IP address tracking
+- Added `audit_safeguarding_alert()` call when alerts are created
+- Added `audit_admin_action()` calls for:
+  - Settings changes
+  - Staff member creation/deletion
+  - Callback taken/released/completed
 
-**Socket.IO Events**:
-- Emits: `register`, `request_human_call`
-- Listens: `call_request_accepted`, `no_staff_available`, `incoming_call`
+### P1 - Staff Profile Editing for Admins
+**Status**: ✅ COMPLETE
 
-### Issue 2: Admin Settings Toggles (P1)
-**Status**: ✅ FIXED
+**What was implemented**:
+- Enhanced Edit Staff Modal in `/portal/src/app/admin/page.tsx`:
+  - Basic info (name, email, role, status)
+  - Contact info (phone, SMS, WhatsApp)
+  - Role-specific fields (specialization, area, years_served, background)
+  - Supervisor privileges toggle
+- Updated `StaffUpdate` model to include `status` field
+- Updated `StaffMember` interface to include new fields
 
-**What was done**:
-- Added new "Feature Toggles" section to `/portal/src/app/admin/page.tsx`
-- Implemented 6 toggle switches that persist to backend API:
-  1. Safeguarding Alerts toggle
-  2. AI Chat Buddies toggle
-  3. Live Chat toggle
-  4. Callback Requests toggle
-  5. Events toggle
-  6. Panic Button toggle
-- Each toggle calls `api.updateSettings()` with the new value on change
-- Toggles use proper visual feedback (green=enabled, gray=disabled)
+### Callback "Take" Button Fix
+**Status**: ✅ COMPLETE
 
-### Issue 3: Vercel Deployment (P2)
-**Status**: ✅ VERIFIED
+**What was fixed**:
+- Backend was using `status: "in_progress"` but frontend checked for `status: "taken"`
+- Updated `/backend/server.py` callback endpoints:
+  - `PATCH /callbacks/{id}/take` now sets `status: "taken"` and `taken_by`/`taken_by_name` fields
+  - `PATCH /callbacks/{id}/release` clears all assignment fields
+  - `PATCH /callbacks/{id}/complete` records `completed_by` and `completed_by_name`
+- All callback actions now include audit logging
 
-**What was done**:
-- Verified TypeScript compiles without errors (`npx tsc --noEmit` succeeds)
-- Verified Next.js build completes successfully (`yarn build` succeeds)
-- Build output shows all 9 routes generated correctly
-- `next.config.js` is Vercel-compatible with `output: 'standalone'`
+### Interaction Notes System
+**Status**: ✅ COMPLETE (NEW FEATURE)
+
+**What was implemented**:
+- Backend endpoints in `/backend/server.py`:
+  - `POST /api/notes` - Create interaction note
+  - `GET /api/notes` - Get notes (own + shared)
+  - `GET /api/notes/{id}` - Get specific note
+  - `PUT /api/notes/{id}` - Update note (author only)
+  - `DELETE /api/notes/{id}` - Delete note (author/admin)
+  - `POST /api/notes/{id}/share` - Share with specific staff
+- Notes can be:
+  - Linked to callbacks, alerts, cases, sessions
+  - Tagged (e.g., `supervisor-review`, `follow-up`)
+  - Shared with team or specific staff members
+- Supervisors/admins can see notes tagged `supervisor-review`
+- Updated `/portal/src/lib/api.ts` with full notes API support
+
+### WebRTC Audio Quality Improvements
+**Status**: ✅ COMPLETE
+
+**What was implemented**:
+- Enhanced audio constraints in both files:
+  - `echoCancellation: true`
+  - `noiseSuppression: true`
+  - `autoGainControl: true`
+  - `sampleRate: 48000`
+- Added more STUN servers for better connectivity
+- Added ICE connection state monitoring with auto-restart on failure
+- Added ICE gathering state logging
+- Improved disconnection handling (3-second grace period before error)
+- Better audio element lifecycle management
+
+### Socket.IO Stability Improvements
+**Status**: ✅ COMPLETE
+
+**What was implemented**:
+- Enhanced socket configuration in `/portal/src/hooks/useWebRTCPhone.tsx`:
+  - `reconnectionAttempts: Infinity` (keep trying forever)
+  - `reconnectionDelayMax: 5000`
+  - `timeout: 20000`
+- Added reconnection state handling with auto-re-registration
+- Added heartbeat mechanism (30-second interval)
+- Added `heartbeat` event handler in `/backend/webrtc_signaling.py`
+- Better disconnect reason handling
 
 ## Backend API
 - **Production URL**: `https://veterans-support-api.onrender.com`
 - **Socket.IO Path**: `/api/socket.io`
-- **Settings API**: `/api/settings` (GET/PUT)
-
-## Key Files
-1. `/frontend/src/components/SafeguardingCallModal.tsx` - New Socket.IO-based call modal
-2. `/portal/src/app/admin/page.tsx` - Admin portal with new feature toggles
-3. `/portal/.env.local` - Points to production Render API
-
-## Testing Notes
-- Admin portal login requires valid credentials on the production Render backend
-- The preview environment frontend connects to production API
-- Mobile app testing requires Expo with proper backend connectivity
-
-## Constraints (DO NOT MODIFY)
-- `/backend/` - FastAPI/Python code
-- `/frontend/app/unified-chat.tsx` - Only add SafeguardingCallModal, don't refactor
-- `/portal/src/hooks/useWebRTCPhone.tsx` - Working WebRTC hook
+- **Key Endpoints**:
+  - `/api/auth/login` - Login with audit logging
+  - `/api/callbacks` - CRUD for callbacks
+  - `/api/notes` - Interaction notes system
+  - `/api/staff/{id}` - Staff management
 
 ## User Credentials
 - Test user: `kev@radiocheck.me` / `AS90155mm`
 
 ## Future Tasks (Backlog)
-- WebRTC audio and disconnect issues (can't touch WebRTC hook)
-- Socket.IO stability improvements
-- Full CMS visual editor
-- Discussion Forums
-- Mood Tracker
-- Welsh Language Support
+- [ ] (P2) Move logs to top of admin logs page (deferred)
+- [ ] Admin panel refactoring (7000+ line file)
+- [ ] Full CMS visual editor
+- [ ] Discussion Forums
+- [ ] Mood Tracker
+- [ ] Welsh Language Support
+- [ ] End-to-end WebRTC call testing on production
+
+## Known Technical Debt
+- `/portal/src/app/admin/page.tsx` is 7000+ lines - needs to be split into components
+- WebRTC call flow involves 3 files that must be kept in sync

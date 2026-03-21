@@ -44,11 +44,13 @@ type ModalState =
 
 const TIMEOUT_SECONDS = 30;
 
-const ICE_SERVERS = [
+// Enhanced ICE server configuration with TURN servers for NAT traversal
+const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
   // Free TURN servers for NAT traversal (cross-network calls)
-  // These are from OpenRelay - a free TURN service
   {
     urls: 'turn:openrelay.metered.ca:80',
     username: 'openrelayproject',
@@ -65,6 +67,15 @@ const ICE_SERVERS = [
     credential: 'openrelayproject',
   },
 ];
+
+// Audio constraints for better call quality
+const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  sampleRate: 48000,
+  channelCount: 1,
+};
 
 export default function SafeguardingCallModal({
   visible,
@@ -191,21 +202,31 @@ export default function SafeguardingCallModal({
       callIdRef.current = data?.call_id || '';
       setModalState('connecting');
       
-      // Setup WebRTC - get user's microphone ready
+      // Setup WebRTC - get user's microphone ready with quality constraints
       try {
-        console.log('[SafeguardingCallModal] Setting up WebRTC...');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        console.log('[SafeguardingCallModal] Setting up WebRTC with enhanced audio...');
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: AUDIO_CONSTRAINTS, 
+          video: false 
+        });
         localStreamRef.current = stream;
-        console.log('[SafeguardingCallModal] Got local audio stream');
+        console.log('[SafeguardingCallModal] Got local audio stream with noise suppression');
         
-        // Create peer connection
-        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        // Create peer connection with enhanced config
+        const pc = new RTCPeerConnection({ 
+          iceServers: ICE_SERVERS,
+          iceCandidatePoolSize: 10,
+        });
         pcRef.current = pc;
         
         // Add local tracks
         stream.getTracks().forEach(track => {
           pc.addTrack(track, stream);
         });
+        
+        // Queue for ICE candidates received before remote description is set
+        const pendingCandidates: RTCIceCandidate[] = [];
+        let hasRemoteDescription = false;
         
         // Handle ICE candidates
         pc.onicecandidate = (event) => {
@@ -219,6 +240,20 @@ export default function SafeguardingCallModal({
           }
         };
         
+        // ICE gathering state monitoring
+        pc.onicegatheringstatechange = () => {
+          console.log('[SafeguardingCallModal] ICE gathering state:', pc.iceGatheringState);
+        };
+        
+        // ICE connection state monitoring  
+        pc.oniceconnectionstatechange = () => {
+          console.log('[SafeguardingCallModal] ICE connection state:', pc.iceConnectionState);
+          if (pc.iceConnectionState === 'failed') {
+            console.log('[SafeguardingCallModal] ICE connection failed, attempting restart...');
+            pc.restartIce();
+          }
+        };
+        
         // Handle connection state
         pc.onconnectionstatechange = () => {
           console.log('[SafeguardingCallModal] Connection state:', pc.connectionState);
@@ -228,19 +263,34 @@ export default function SafeguardingCallModal({
             callTimerRef.current = setInterval(() => {
               setCallDuration(prev => prev + 1);
             }, 1000);
-          } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-            setErrorMessage('Call connection lost');
+          } else if (pc.connectionState === 'failed') {
+            setErrorMessage('Call connection failed - please try again');
             setModalState('error');
+          } else if (pc.connectionState === 'disconnected') {
+            // Wait a moment before declaring error - might reconnect
+            setTimeout(() => {
+              if (pcRef.current?.connectionState === 'disconnected') {
+                setErrorMessage('Call connection lost');
+                setModalState('error');
+              }
+            }, 3000);
           }
         };
         
-        // Handle incoming audio
+        // Handle incoming audio with proper cleanup
         pc.ontrack = (event) => {
-          console.log('[SafeguardingCallModal] Received remote track');
+          console.log('[SafeguardingCallModal] Received remote track:', event.track.kind);
           if (event.streams && event.streams[0] && Platform.OS === 'web') {
+            // Clean up existing audio element
+            if (remoteAudioRef.current) {
+              remoteAudioRef.current.srcObject = null;
+              remoteAudioRef.current = null;
+            }
+            
             const audio = new Audio();
             audio.srcObject = event.streams[0];
             audio.autoplay = true;
+            audio.volume = 1.0;
             audio.play().catch(err => console.error('Audio play error:', err));
             remoteAudioRef.current = audio;
           }
