@@ -192,6 +192,9 @@ The Radiocheck project is a complex mix of:
 ## Future Tasks (Backlog)
 - [ ] (P2) Move logs to top of admin logs page (deferred)
 - [ ] Admin panel refactoring (7000+ line file)
+- [ ] **User Manuals** (NEW):
+  - [ ] Staff User Manual - Guide for peer supporters and counsellors
+  - [ ] Admin User Manual - Guide for administrators and supervisors
 - [ ] Full CMS visual editor
 - [ ] Discussion Forums
 - [ ] Mood Tracker
