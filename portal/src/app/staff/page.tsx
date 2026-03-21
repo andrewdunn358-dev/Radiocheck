@@ -4,14 +4,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import useWebRTCPhone from '@/hooks/useWebRTCPhone';
 import useTwilioPhone from '@/hooks/useTwilioPhone';
-import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation, LiveChatMessage } from '@/lib/api';
+import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation, LiveChatMessage, InternalMessage } from '@/lib/api';
 import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, MessageSquare, Briefcase, Phone,
   Calendar, Users, FileText, Shield, LogOut, Bell, Volume2, VolumeX,
   CheckCircle, Clock, User, ChevronRight, RefreshCw, X, Send,
-  Plus, Edit, Trash2, ChevronLeft, ArrowLeftRight, Eye, PhoneCall, Wifi, WifiOff,
-  PhoneIncoming, PhoneOff, Mic, MicOff, MapPin, Globe, Info, AlertOctagon, ArrowUp
+  Plus, Edit, Edit2, Trash2, ChevronLeft, ArrowLeftRight, Eye, PhoneCall, Wifi, WifiOff,
+  PhoneIncoming, PhoneOff, Mic, MicOff, MapPin, Globe, Info, AlertOctagon, ArrowUp, Share2, Mail
 } from 'lucide-react';
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
@@ -149,6 +149,17 @@ export default function StaffPortalPage() {
   const [newNoteTitle, setNewNoteTitle] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteShared, setNewNoteShared] = useState(false);
+  const [newNoteTags, setNewNoteTags] = useState<string[]>([]);
+  const [editingNote, setEditingNote] = useState<StaffNote | null>(null);
+  const [showShareModal, setShowShareModal] = useState<string | null>(null); // note ID to share
+  const [selectedShareUsers, setSelectedShareUsers] = useState<string[]>([]);
+  
+  // Internal Messages state
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
+  const [messages, setMessages] = useState<InternalMessage[]>([]);
+  const [newMessageTo, setNewMessageTo] = useState('');
+  const [newMessageContent, setNewMessageContent] = useState('');
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // Shift modal state
   const [showAddShift, setShowAddShift] = useState(false);
@@ -490,6 +501,14 @@ export default function StaffPortalPage() {
       clearInterval(timeoutCheck);
     };
   }, [token, logout, showTimeoutWarning]);
+
+  // Load messages periodically
+  useEffect(() => {
+    if (!token) return;
+    loadMessages();
+    const interval = setInterval(loadMessages, 30000); // Every 30 seconds
+    return () => clearInterval(interval);
+  }, [token, loadMessages]);
   
   // Sound alert function
   const playAlertSound = useCallback(() => {
@@ -834,6 +853,72 @@ export default function StaffPortalPage() {
       loadNotes();
     } catch (err) {
       console.error('Failed to delete note:', err);
+    }
+  };
+
+  // Edit note handler
+  const handleUpdateNote = async () => {
+    if (!token || !editingNote) return;
+    try {
+      await staffApi.updateNote(token, editingNote.id || editingNote._id || '', {
+        title: editingNote.title,
+        content: editingNote.content,
+        is_shared: editingNote.is_shared,
+        tags: editingNote.tags,
+      });
+      setEditingNote(null);
+      loadNotes();
+    } catch (err) {
+      console.error('Failed to update note:', err);
+    }
+  };
+
+  // Share note handler
+  const handleShareNote = async () => {
+    if (!token || !showShareModal || selectedShareUsers.length === 0) return;
+    try {
+      await staffApi.shareNote(token, showShareModal, selectedShareUsers);
+      setShowShareModal(null);
+      setSelectedShareUsers([]);
+      loadNotes();
+    } catch (err) {
+      console.error('Failed to share note:', err);
+    }
+  };
+
+  // Messages handlers
+  const loadMessages = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await staffApi.getMessages(token);
+      setMessages(response.messages || []);
+      setUnreadMessageCount(response.unread_count || 0);
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    }
+  }, [token]);
+
+  const handleSendMessage = async () => {
+    if (!token || !newMessageTo || !newMessageContent.trim()) return;
+    try {
+      await staffApi.sendMessage(token, {
+        to_id: newMessageTo,
+        content: newMessageContent.trim(),
+      });
+      setNewMessageContent('');
+      loadMessages();
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  };
+
+  const handleMarkMessageRead = async (id: string) => {
+    if (!token) return;
+    try {
+      await staffApi.markMessageRead(token, id);
+      loadMessages();
+    } catch (err) {
+      console.error('Failed to mark message read:', err);
     }
   };
 
@@ -1443,6 +1528,19 @@ export default function StaffPortalPage() {
 
         {/* Sound toggle & Logout */}
         <div className="p-4 border-t border-border space-y-3">
+          {/* Messages Button */}
+          <button
+            onClick={() => setShowMessagesModal(true)}
+            className="w-full flex items-center gap-2 text-gray-400 hover:text-white relative"
+          >
+            <Mail className="w-4 h-4" />
+            <span className="text-sm">Messages</span>
+            {unreadMessageCount > 0 && (
+              <span className="absolute top-0 right-0 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                {unreadMessageCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className="w-full flex items-center gap-2 text-gray-400 hover:text-white"
@@ -2570,18 +2668,49 @@ export default function StaffPortalPage() {
                 .filter(note => notesTab === 'my' ? !note.is_shared : note.is_shared)
                 .map(note => {
                   const noteId = note.id || note._id || '';
+                  const isAuthor = note.author_id === user?.id;
                   return (
                   <div key={noteId} className="bg-card border border-border rounded-xl p-6">
                     <div className="flex justify-between items-start mb-3">
                       <h3 className="font-semibold">{note.title}</h3>
-                      <button onClick={() => handleDeleteNote(noteId)} className="p-1 hover:bg-red-500/20 rounded text-red-400">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-1">
+                        {isAuthor && (
+                          <>
+                            <button 
+                              onClick={() => setEditingNote(note)} 
+                              className="p-1 hover:bg-blue-500/20 rounded text-blue-400"
+                              title="Edit note"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setShowShareModal(noteId);
+                                setSelectedShareUsers(note.share_with || []);
+                              }} 
+                              className="p-1 hover:bg-green-500/20 rounded text-green-400"
+                              title="Share note"
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteNote(noteId)} 
+                              className="p-1 hover:bg-red-500/20 rounded text-red-400"
+                              title="Delete note"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-gray-400 line-clamp-3 mb-3">{note.content}</p>
                     <div className="flex justify-between items-center text-xs text-gray-500">
                       <span>{formatTimeAgo(note.created_at)}</span>
-                      {note.is_shared && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Shared</span>}
+                      <div className="flex gap-2">
+                        {note.is_shared && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Shared</span>}
+                        {!isAuthor && <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded">From: {note.author_name}</span>}
+                      </div>
                     </div>
                   </div>
                   );
@@ -3498,6 +3627,197 @@ export default function StaffPortalPage() {
                   <ArrowUp className="w-4 h-4" />
                   Escalate
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Note Modal */}
+      {editingNote && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Edit Note</h2>
+              <button onClick={() => setEditingNote(null)} className="p-1 hover:bg-primary-dark rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editingNote.title}
+                  onChange={(e) => setEditingNote({ ...editingNote, title: e.target.value })}
+                  className="w-full px-4 py-2 bg-primary-dark border border-border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Content</label>
+                <textarea
+                  value={editingNote.content}
+                  onChange={(e) => setEditingNote({ ...editingNote, content: e.target.value })}
+                  rows={5}
+                  className="w-full px-4 py-2 bg-primary-dark border border-border rounded-lg resize-none"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="editNoteShared"
+                  checked={editingNote.is_shared}
+                  onChange={(e) => setEditingNote({ ...editingNote, is_shared: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="editNoteShared" className="text-sm">Share with team</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditingNote(null)}
+                className="flex-1 px-4 py-2 rounded-lg border border-border hover:bg-primary-dark transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateNote}
+                className="flex-1 px-4 py-2 rounded-lg bg-secondary text-white hover:bg-secondary/80 transition"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Note Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Share Note</h2>
+              <button onClick={() => { setShowShareModal(null); setSelectedShareUsers([]); }} className="p-1 hover:bg-primary-dark rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">Select staff members to share this note with:</p>
+            <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
+              {team.filter(m => m.id !== user?.id).map(member => (
+                <label key={member.id} className="flex items-center gap-3 p-3 bg-primary-dark rounded-lg cursor-pointer hover:bg-primary-dark/70">
+                  <input
+                    type="checkbox"
+                    checked={selectedShareUsers.includes(member.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedShareUsers([...selectedShareUsers, member.id]);
+                      } else {
+                        setSelectedShareUsers(selectedShareUsers.filter(id => id !== member.id));
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <div>
+                    <p className="font-medium">{member.name}</p>
+                    <p className="text-xs text-gray-500 capitalize">{member.role}</p>
+                  </div>
+                </label>
+              ))}
+              {team.filter(m => m.id !== user?.id).length === 0 && (
+                <p className="text-gray-500 text-center py-4">No other team members available</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowShareModal(null); setSelectedShareUsers([]); }}
+                className="flex-1 px-4 py-2 rounded-lg border border-border hover:bg-primary-dark transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleShareNote}
+                disabled={selectedShareUsers.length === 0}
+                className="flex-1 px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Share with {selectedShareUsers.length} member{selectedShareUsers.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Internal Messages Modal */}
+      {showMessagesModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-border">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Internal Messages
+                {unreadMessageCount > 0 && (
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{unreadMessageCount}</span>
+                )}
+              </h2>
+              <button onClick={() => setShowMessagesModal(false)} className="p-1 hover:bg-primary-dark rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* New Message Form */}
+            <div className="p-4 border-b border-border bg-primary-dark/50">
+              <div className="flex gap-2">
+                <select
+                  value={newMessageTo}
+                  onChange={(e) => setNewMessageTo(e.target.value)}
+                  className="flex-shrink-0 px-3 py-2 bg-primary-dark border border-border rounded-lg text-sm"
+                >
+                  <option value="">Send to...</option>
+                  {team.filter(m => m.id !== user?.id).map(member => (
+                    <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={newMessageContent}
+                  onChange={(e) => setNewMessageContent(e.target.value)}
+                  placeholder="Type your message..."
+                  className="flex-1 px-3 py-2 bg-primary-dark border border-border rounded-lg text-sm"
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!newMessageTo || !newMessageContent.trim()}
+                  className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/80 transition disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Messages List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {messages.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No messages yet</p>
+              ) : (
+                messages.map(msg => {
+                  const isFromMe = msg.from_id === user?.id;
+                  const isUnread = !msg.read && msg.to_id === user?.id;
+                  return (
+                    <div 
+                      key={msg.id} 
+                      className={`p-3 rounded-lg ${isFromMe ? 'bg-secondary/20 ml-8' : 'bg-primary-dark mr-8'} ${isUnread ? 'border-l-4 border-blue-500' : ''}`}
+                      onClick={() => isUnread && handleMarkMessageRead(msg.id)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-sm">
+                          {isFromMe ? `To: ${msg.to_name}` : `From: ${msg.from_name}`}
+                        </span>
+                        <span className="text-xs text-gray-500">{formatTimeAgo(msg.created_at)}</span>
+                      </div>
+                      <p className="text-sm">{msg.content}</p>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

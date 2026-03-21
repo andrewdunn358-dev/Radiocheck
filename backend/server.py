@@ -803,6 +803,23 @@ class InteractionNoteUpdate(BaseModel):
     share_with: Optional[List[str]] = None
     tags: Optional[List[str]] = None
 
+# Internal Message Models
+class InternalMessageCreate(BaseModel):
+    """Create a new internal message"""
+    to_id: str
+    content: str
+
+class InternalMessage(BaseModel):
+    """Internal message between staff"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    from_id: str
+    from_name: str
+    to_id: str
+    to_name: str
+    content: str
+    read: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 # Panic Alert Models
 class PanicAlertCreate(BaseModel):
     user_name: Optional[str] = None
@@ -4331,6 +4348,105 @@ async def share_interaction_note(
     except Exception as e:
         logging.error(f"Error sharing interaction note: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to share note")
+
+
+# ============ INTERNAL MESSAGES ENDPOINTS ============
+
+@api_router.get("/messages")
+async def get_messages(
+    current_user: User = Depends(get_current_user)
+):
+    """Get internal messages for current user"""
+    try:
+        # Get messages sent to or from this user
+        messages = await db.internal_messages.find(
+            {"$or": [
+                {"to_id": current_user.id},
+                {"from_id": current_user.id}
+            ]},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(100)
+        
+        # Count unread messages
+        unread_count = await db.internal_messages.count_documents({
+            "to_id": current_user.id,
+            "read": False
+        })
+        
+        return {"messages": messages, "unread_count": unread_count}
+    except Exception as e:
+        logging.error(f"Error fetching messages: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch messages")
+
+@api_router.post("/messages")
+async def send_message(
+    message_data: InternalMessageCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Send an internal message to another staff member"""
+    try:
+        # Get recipient info
+        recipient = await db.staff.find_one({"id": message_data.to_id}, {"_id": 0, "name": 1, "id": 1})
+        if not recipient:
+            raise HTTPException(status_code=404, detail="Recipient not found")
+        
+        message = InternalMessage(
+            from_id=current_user.id,
+            from_name=current_user.name,
+            to_id=message_data.to_id,
+            to_name=recipient.get("name", "Unknown"),
+            content=message_data.content
+        )
+        
+        await db.internal_messages.insert_one(message.dict())
+        
+        logging.info(f"Message sent from {current_user.name} to {recipient.get('name')}")
+        return {"message": "Message sent successfully", "id": message.id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error sending message: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send message")
+
+@api_router.patch("/messages/{message_id}/read")
+async def mark_message_read(
+    message_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Mark a message as read"""
+    try:
+        result = await db.internal_messages.update_one(
+            {"id": message_id, "to_id": current_user.id},
+            {"$set": {"read": True}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return {"message": "Message marked as read"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error marking message read: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to mark message read")
+
+@api_router.patch("/messages/read-all")
+async def mark_all_messages_read(
+    current_user: User = Depends(get_current_user)
+):
+    """Mark all messages as read"""
+    try:
+        result = await db.internal_messages.update_many(
+            {"to_id": current_user.id, "read": False},
+            {"$set": {"read": True}}
+        )
+        
+        return {"message": f"Marked {result.modified_count} messages as read"}
+    except Exception as e:
+        logging.error(f"Error marking all messages read: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to mark messages read")
+
+
 
 
 # ============ PANIC ALERT ENDPOINTS ============

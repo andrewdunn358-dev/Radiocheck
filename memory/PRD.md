@@ -46,6 +46,28 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - December 2025
 
+### Notes Edit/Share & Internal Messaging
+**Status**: ✅ COMPLETE
+
+**What was implemented**:
+- **Edit Notes**: Staff can now edit their notes after creation with an edit modal
+- **Share Notes with Staff**: Added a share modal to select specific team members to share notes with
+- **Internal Messaging System**: 
+  - New `/api/messages` endpoints in backend for sending/receiving messages between staff
+  - Messages button in staff portal sidebar with unread count badge
+  - Messages modal showing conversation history and ability to send new messages
+  - Mark messages as read functionality
+- Backend models: `InternalMessageCreate`, `InternalMessage`
+- API functions: `getMessages`, `sendMessage`, `markMessageRead`, `markAllMessagesRead`
+
+### Callback Request & Twilio Fix
+**Status**: ✅ COMPLETE
+
+**What was fixed**:
+- Fixed callback request failing due to missing `message` and `request_type` fields
+- Fixed Twilio "all staff are busy" message by normalizing UK phone numbers (07xxx → +44xxx)
+- Mobile app `.env` was pointing to preview URL instead of production - corrected
+
 ### Logo Update on Login Screens
 **Status**: ✅ COMPLETE
 

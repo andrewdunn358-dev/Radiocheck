@@ -570,6 +570,16 @@ export const staffApi = {
   shareNote: (token: string, id: string, shareWith: string[]) =>
     fetchAPI<ActionResponse>(`/notes/${id}/share`, { token, method: 'POST', body: JSON.stringify({ share_with: shareWith }) }),
 
+  // Internal Messages
+  getMessages: (token: string) =>
+    fetchAPI<{messages: InternalMessage[], unread_count: number}>('/messages', { token }),
+  sendMessage: (token: string, data: CreateMessageData) =>
+    fetchAPI<ActionResponse>('/messages', { token, method: 'POST', body: JSON.stringify(data) }),
+  markMessageRead: (token: string, id: string) =>
+    fetchAPI<ActionResponse>(`/messages/${id}/read`, { token, method: 'PATCH' }),
+  markAllMessagesRead: (token: string) =>
+    fetchAPI<ActionResponse>('/messages/read-all', { token, method: 'PATCH' }),
+
   // Supervision (supervisors only)
   getEscalations: (token: string) =>
     fetchAPI<Escalation[]>('/escalations', { token }),
@@ -922,3 +932,20 @@ export interface CreateSupervisionNoteData {
   note: string;
 }
 
+
+
+export interface InternalMessage {
+  id: string;
+  from_id: string;
+  from_name: string;
+  to_id: string;
+  to_name: string;
+  content: string;
+  read: boolean;
+  created_at: string;
+}
+
+export interface CreateMessageData {
+  to_id: string;
+  content: string;
+}
