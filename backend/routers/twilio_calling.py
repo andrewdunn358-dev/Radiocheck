@@ -272,8 +272,16 @@ async def handle_voice_webhook(request: Request):
         
         response = VoiceResponse()
         
-        # Check if this is an outbound call (To starts with + and is a phone number)
-        if to_number and to_number.startswith('+') and not to_number.startswith('client:'):
+        # Normalize phone number - UK numbers starting with 07 should be +44
+        normalized_to = to_number
+        if to_number and to_number.startswith('07') and len(to_number) >= 10:
+            normalized_to = '+44' + to_number[1:]
+            logger.info(f"Normalized UK phone number: {to_number} -> {normalized_to}")
+        
+        # Check if this is an outbound call (To is a phone number)
+        is_phone_number = normalized_to and (normalized_to.startswith('+') or (to_number.startswith('0') and len(to_number) >= 10))
+        
+        if is_phone_number and not to_number.startswith('client:'):
             # Outbound call to phone number
             response.say(
                 "Connecting your call now.",
@@ -285,7 +293,7 @@ async def handle_voice_webhook(request: Request):
                 caller_id=TWILIO_PHONE_NUMBER,
                 timeout=30
             )
-            dial.number(to_number)
+            dial.number(normalized_to)
             response.append(dial)
             
         elif to_number and to_number.startswith('client:'):
