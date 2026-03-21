@@ -579,6 +579,60 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       }));
     });
 
+    // Backend tells staff to initiate call to user (after staff accepted call request)
+    socket.on('initiate_call_to_user', async (data: {
+      request_id: string;
+      call_id: string;
+      user_id: string;
+      user_socket_id: string;
+      user_name: string;
+    }) => {
+      console.log('[WebRTCPhone] *** INITIATE CALL TO USER ***', data);
+      
+      // Store the call ID
+      currentCallIdRef.current = data.call_id;
+      
+      try {
+        updateStatus('ringing', `Calling ${data.user_name}...`);
+        
+        // Create peer connection and get local media
+        const pc = await createPeerConnection();
+        
+        // Create and send WebRTC offer to the user
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        console.log('[WebRTCPhone] Sending WebRTC offer to user:', data.user_id);
+        socket.emit('webrtc_offer', {
+          call_id: data.call_id,
+          offer: offer,
+          target_user_id: data.user_id,
+          target_socket_id: data.user_socket_id,
+        });
+        
+        setState(prev => ({
+          ...prev,
+          isInCall: true,
+          callerInfo: {
+            id: data.user_id,
+            name: data.user_name,
+            type: 'safeguarding_call',
+          }
+        }));
+        
+      } catch (error) {
+        console.error('[WebRTCPhone] Failed to initiate call to user:', error);
+        updateStatus('error', 'Failed to start call');
+        
+        // Notify user that call failed
+        socket.emit('call_failed', {
+          call_id: data.call_id,
+          user_id: data.user_id,
+          reason: 'Staff failed to initialize call',
+        });
+      }
+    });
+
     // Chat request confirmed - staff accepted and room is ready
     socket.on('chat_request_confirmed', (data: { room_id: string; user_id: string }) => {
       console.log('[WebRTCPhone] Chat request confirmed, room:', data.room_id);
