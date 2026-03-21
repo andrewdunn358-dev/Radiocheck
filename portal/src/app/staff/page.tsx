@@ -3778,16 +3778,18 @@ export default function StaffPortalPage() {
             </div>
             <p className="text-sm text-gray-400 mb-4">Select staff members to share this note with:</p>
             <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
-              {teamMembers.filter(m => m.id !== user?.id).map(member => (
-                <label key={member.id} className="flex items-center gap-3 p-3 bg-primary-dark rounded-lg cursor-pointer hover:bg-primary-dark/70">
+              {teamMembers.filter(m => m.id !== user?.id).map(member => {
+                const memberId = member.id || member.user_id || '';
+                return (
+                <label key={memberId} className="flex items-center gap-3 p-3 bg-primary-dark rounded-lg cursor-pointer hover:bg-primary-dark/70">
                   <input
                     type="checkbox"
-                    checked={selectedShareUsers.includes(member.id)}
+                    checked={selectedShareUsers.includes(memberId)}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedShareUsers([...selectedShareUsers, member.id]);
+                        setSelectedShareUsers([...selectedShareUsers, memberId]);
                       } else {
-                        setSelectedShareUsers(selectedShareUsers.filter(id => id !== member.id));
+                        setSelectedShareUsers(selectedShareUsers.filter(id => id !== memberId));
                       }
                     }}
                     className="w-4 h-4"
@@ -3797,7 +3799,8 @@ export default function StaffPortalPage() {
                     <p className="text-xs text-gray-500 capitalize">{member.role}</p>
                   </div>
                 </label>
-              ))}
+                );
+              })}
               {teamMembers.filter(m => m.id !== user?.id).length === 0 && (
                 <p className="text-gray-500 text-center py-4">No other team members available</p>
               )}
