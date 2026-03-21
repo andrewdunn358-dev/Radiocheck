@@ -3778,7 +3778,7 @@ export default function StaffPortalPage() {
             </div>
             <p className="text-sm text-gray-400 mb-4">Select staff members to share this note with:</p>
             <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
-              {team.filter(m => m.id !== user?.id).map(member => (
+              {teamMembers.filter(m => m.id !== user?.id).map(member => (
                 <label key={member.id} className="flex items-center gap-3 p-3 bg-primary-dark rounded-lg cursor-pointer hover:bg-primary-dark/70">
                   <input
                     type="checkbox"
@@ -3798,7 +3798,7 @@ export default function StaffPortalPage() {
                   </div>
                 </label>
               ))}
-              {team.filter(m => m.id !== user?.id).length === 0 && (
+              {teamMembers.filter(m => m.id !== user?.id).length === 0 && (
                 <p className="text-gray-500 text-center py-4">No other team members available</p>
               )}
             </div>
@@ -3847,7 +3847,7 @@ export default function StaffPortalPage() {
                   className="flex-shrink-0 px-3 py-2 bg-primary-dark border border-border rounded-lg text-sm"
                 >
                   <option value="">Send to...</option>
-                  {team.filter(m => m.id !== user?.id).map(member => (
+                  {teamMembers.filter(m => m.id !== user?.id).map(member => (
                     <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
                   ))}
                 </select>
