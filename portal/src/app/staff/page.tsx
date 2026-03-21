@@ -898,7 +898,7 @@ export default function StaffPortalPage() {
     }
   }, [token]);
 
-  const handleSendMessage = async () => {
+  const handleSendInternalMessage = async () => {
     if (!token || !newMessageTo || !newMessageContent.trim()) return;
     try {
       await staffApi.sendMessage(token, {
@@ -3857,10 +3857,10 @@ export default function StaffPortalPage() {
                   onChange={(e) => setNewMessageContent(e.target.value)}
                   placeholder="Type your message..."
                   className="flex-1 px-3 py-2 bg-primary-dark border border-border rounded-lg text-sm"
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendInternalMessage()}
                 />
                 <button
-                  onClick={handleSendMessage}
+                  onClick={handleSendInternalMessage}
                   disabled={!newMessageTo || !newMessageContent.trim()}
                   className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/80 transition disabled:opacity-50"
                 >
