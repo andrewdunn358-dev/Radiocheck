@@ -1,10 +1,10 @@
 /**
  * Safeguarding Call Modal Component
  * 
- * A React Native modal that allows users to request a voice call with
- * a supporter directly from the AI chat screen during safeguarding alerts.
- * 
- * Uses Socket.IO for real-time communication with the backend.
+ * Handles the full call flow when user taps "Call a Supporter":
+ * 1. Connect to Socket.IO, emit request_human_call
+ * 2. When staff accepts → auto-connect WebRTC (no user interaction needed)
+ * 3. If no staff/timeout → show callback form + crisis lines
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -16,7 +16,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Linking,
-  Animated,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
@@ -33,22 +34,20 @@ interface SafeguardingCallModalProps {
 }
 
 type ModalState = 
-  | 'connecting'      // Initial state - connecting to socket
-  | 'waiting'         // Request sent, waiting for staff
-  | 'supporter_found' // Staff accepted the call request
-  | 'incoming_call'   // WebRTC call incoming from staff
-  | 'in_call'         // Active call in progress
-  | 'no_staff'        // No staff available
-  | 'timeout'         // Request timed out
+  | 'finding'         // Looking for available staff
+  | 'connecting'      // Staff accepted, setting up WebRTC
+  | 'connected'       // In call
+  | 'no_staff'        // No staff available - show fallback options
+  | 'callback_form'   // User wants to request a callback
+  | 'callback_sent'   // Callback request submitted
   | 'error';          // Connection error
 
-interface IncomingCallData {
-  callId: string;
-  callerName: string;
-  callType: string;
-}
-
 const TIMEOUT_SECONDS = 30;
+
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
 
 export default function SafeguardingCallModal({
   visible,
@@ -59,42 +58,69 @@ export default function SafeguardingCallModal({
   onClose,
   onCallEnded,
 }: SafeguardingCallModalProps) {
-  const [modalState, setModalState] = useState<ModalState>('connecting');
+  const [modalState, setModalState] = useState<ModalState>('finding');
   const [staffName, setStaffName] = useState<string>('');
+  const [callDuration, setCallDuration] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [incomingCallData, setIncomingCallData] = useState<IncomingCallData | null>(null);
-  const [callId, setCallId] = useState<string>('');
   
+  // Callback form state
+  const [callbackName, setCallbackName] = useState(userName || '');
+  const [callbackPhone, setCallbackPhone] = useState('');
+  const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
+  
+  // Refs
   const socketRef = useRef<Socket | null>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const callIdRef = useRef<string>('');
   const hasRequestedRef = useRef(false);
-  
-  // Pulse animation for waiting state
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Start pulse animation
-  useEffect(() => {
-    if (visible && (modalState === 'connecting' || modalState === 'waiting')) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    }
-  }, [visible, modalState, pulseAnim]);
+  // Get anonymous user ID
+  const getAnonymousUserId = useCallback(() => {
+    return userId || `anon_${sessionId}`;
+  }, [userId, sessionId]);
 
-  // Cleanup function
+  // Cleanup everything
   const cleanup = useCallback(() => {
     console.log('[SafeguardingCallModal] Cleaning up...');
     
+    // Clear timers
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
     
+    // Stop local audio tracks
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('[SafeguardingCallModal] Stopped local track:', track.kind);
+      });
+      localStreamRef.current = null;
+    }
+    
+    // Close peer connection
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+      console.log('[SafeguardingCallModal] Closed peer connection');
+    }
+    
+    // Stop remote audio
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.pause();
+      remoteAudioRef.current.srcObject = null;
+      remoteAudioRef.current = null;
+    }
+    
+    // Disconnect socket
     if (socketRef.current) {
       socketRef.current.removeAllListeners();
       socketRef.current.disconnect();
@@ -102,13 +128,201 @@ export default function SafeguardingCallModal({
     }
     
     hasRequestedRef.current = false;
+    callIdRef.current = '';
+    setCallDuration(0);
   }, []);
 
-  // Connect to Socket.IO and request call when modal opens
+  // Start call duration timer
+  const startCallTimer = useCallback(() => {
+    callTimerRef.current = setInterval(() => {
+      setCallDuration(prev => prev + 1);
+    }, 1000);
+  }, []);
+
+  // Format duration as MM:SS
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Setup WebRTC peer connection
+  const setupWebRTC = useCallback(async () => {
+    console.log('[SafeguardingCallModal] Setting up WebRTC...');
+    
+    try {
+      // Get user's microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      localStreamRef.current = stream;
+      console.log('[SafeguardingCallModal] Got local audio stream');
+      
+      // Create peer connection
+      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      pcRef.current = pc;
+      
+      // Add local tracks to connection
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream);
+        console.log('[SafeguardingCallModal] Added local track:', track.kind);
+      });
+      
+      // Handle ICE candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socketRef.current) {
+          console.log('[SafeguardingCallModal] Sending ICE candidate');
+          socketRef.current.emit('webrtc_ice_candidate', {
+            call_id: callIdRef.current,
+            candidate: event.candidate,
+            user_id: getAnonymousUserId(),
+          });
+        }
+      };
+      
+      // Handle connection state changes
+      pc.onconnectionstatechange = () => {
+        console.log('[SafeguardingCallModal] Connection state:', pc.connectionState);
+        if (pc.connectionState === 'connected') {
+          setModalState('connected');
+          startCallTimer();
+        } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          console.log('[SafeguardingCallModal] Connection failed/disconnected');
+          setErrorMessage('Call connection lost');
+          setModalState('error');
+        }
+      };
+      
+      // Handle incoming remote track (staff's audio)
+      pc.ontrack = (event) => {
+        console.log('[SafeguardingCallModal] Received remote track:', event.track.kind);
+        if (event.streams && event.streams[0]) {
+          // Create audio element for playback (works on web)
+          if (Platform.OS === 'web') {
+            const audio = new Audio();
+            audio.srcObject = event.streams[0];
+            audio.autoplay = true;
+            audio.play().catch(err => console.error('Audio play error:', err));
+            remoteAudioRef.current = audio;
+          }
+          // Note: For native mobile, you'd use expo-av or react-native-webrtc
+        }
+      };
+      
+      return pc;
+    } catch (err: any) {
+      console.error('[SafeguardingCallModal] WebRTC setup error:', err);
+      setErrorMessage('Could not access microphone');
+      setModalState('error');
+      return null;
+    }
+  }, [getAnonymousUserId, startCallTimer]);
+
+  // Handle WebRTC offer from server
+  const handleWebRTCOffer = useCallback(async (offer: RTCSessionDescriptionInit) => {
+    console.log('[SafeguardingCallModal] Received WebRTC offer');
+    
+    if (!pcRef.current) {
+      console.error('[SafeguardingCallModal] No peer connection');
+      return;
+    }
+    
+    try {
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+      console.log('[SafeguardingCallModal] Set remote description');
+      
+      const answer = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(answer);
+      console.log('[SafeguardingCallModal] Created and set local answer');
+      
+      // Send answer back to server
+      if (socketRef.current) {
+        socketRef.current.emit('webrtc_answer', {
+          call_id: callIdRef.current,
+          answer: answer,
+          user_id: getAnonymousUserId(),
+        });
+      }
+    } catch (err) {
+      console.error('[SafeguardingCallModal] Error handling offer:', err);
+      setErrorMessage('Failed to connect call');
+      setModalState('error');
+    }
+  }, [getAnonymousUserId]);
+
+  // Handle ICE candidate from server
+  const handleICECandidate = useCallback(async (candidate: RTCIceCandidateInit) => {
+    console.log('[SafeguardingCallModal] Received ICE candidate');
+    
+    if (!pcRef.current) {
+      console.error('[SafeguardingCallModal] No peer connection for ICE');
+      return;
+    }
+    
+    try {
+      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (err) {
+      console.error('[SafeguardingCallModal] Error adding ICE candidate:', err);
+    }
+  }, []);
+
+  // End the call
+  const endCall = useCallback(() => {
+    console.log('[SafeguardingCallModal] Ending call...');
+    
+    // Notify server
+    if (socketRef.current && callIdRef.current) {
+      socketRef.current.emit('call_end', {
+        call_id: callIdRef.current,
+        user_id: getAnonymousUserId(),
+      });
+    }
+    
+    cleanup();
+    onCallEnded?.();
+    onClose();
+  }, [cleanup, getAnonymousUserId, onCallEnded, onClose]);
+
+  // Submit callback request
+  const submitCallbackRequest = useCallback(async () => {
+    if (!callbackName.trim() || !callbackPhone.trim()) {
+      return;
+    }
+    
+    setIsSubmittingCallback(true);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/callbacks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: callbackName.trim(),
+          phone: callbackPhone.trim(),
+          is_urgent: true,
+          reason: 'Safeguarding - Requested call when no staff available',
+          session_id: sessionId,
+          alert_id: alertId,
+        }),
+      });
+      
+      if (response.ok) {
+        setModalState('callback_sent');
+      } else {
+        setErrorMessage('Failed to submit callback request');
+      }
+    } catch (err) {
+      console.error('[SafeguardingCallModal] Callback submit error:', err);
+      setErrorMessage('Failed to submit callback request');
+    } finally {
+      setIsSubmittingCallback(false);
+    }
+  }, [callbackName, callbackPhone, sessionId, alertId]);
+
+  // Main effect - connect and request call when modal opens
   useEffect(() => {
     if (!visible) {
       cleanup();
-      setModalState('connecting');
+      setModalState('finding');
+      setCallbackName(userName || '');
+      setCallbackPhone('');
       return;
     }
 
@@ -118,242 +332,122 @@ export default function SafeguardingCallModal({
     }
     hasRequestedRef.current = true;
 
-    console.log('[SafeguardingCallModal] Modal opened, connecting to Socket.IO...');
-    console.log('[SafeguardingCallModal] API_URL:', API_URL);
-    console.log('[SafeguardingCallModal] Session ID:', sessionId);
-    console.log('[SafeguardingCallModal] Alert ID:', alertId);
-
-    setModalState('connecting');
+    console.log('[SafeguardingCallModal] Modal opened, connecting...');
+    setModalState('finding');
     setErrorMessage('');
 
-    // Connect to Socket.IO server
+    // Connect to Socket.IO
     const socket = io(API_URL, {
       path: '/api/socket.io',
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 3,
-      reconnectionDelay: 1000,
       timeout: 10000,
     });
 
     socketRef.current = socket;
 
-    // Connection handlers
     socket.on('connect', () => {
       console.log('[SafeguardingCallModal] Socket connected:', socket.id);
       
-      // Register the user
-      const anonymousUserId = userId || `anon_${sessionId}`;
-      console.log('[SafeguardingCallModal] Registering user:', anonymousUserId);
+      const anonUserId = getAnonymousUserId();
       
+      // Register user
       socket.emit('register', {
-        user_id: anonymousUserId,
+        user_id: anonUserId,
         user_type: 'user',
         name: userName,
         status: 'available',
       });
 
-      // Small delay to ensure registration is processed
+      // Request human call
       setTimeout(() => {
-        // Request human call
-        console.log('[SafeguardingCallModal] Emitting request_human_call...');
+        console.log('[SafeguardingCallModal] Emitting request_human_call');
         socket.emit('request_human_call', {
           session_id: sessionId,
           alert_id: alertId || '',
-          user_id: anonymousUserId,
+          user_id: anonUserId,
           user_name: userName,
           request_type: 'call',
         });
 
-        setModalState('waiting');
-
-        // Start timeout timer
+        // Start timeout
         timeoutRef.current = setTimeout(() => {
           console.log('[SafeguardingCallModal] Request timed out');
-          setModalState('timeout');
+          setModalState('no_staff');
         }, TIMEOUT_SECONDS * 1000);
-      }, 500);
+      }, 300);
     });
 
     socket.on('connect_error', (error) => {
-      console.error('[SafeguardingCallModal] Socket connection error:', error);
-      setModalState('error');
+      console.error('[SafeguardingCallModal] Socket error:', error);
       setErrorMessage('Could not connect to support service');
+      setModalState('error');
     });
 
-    socket.on('disconnect', (reason) => {
-      console.log('[SafeguardingCallModal] Socket disconnected:', reason);
-      if (modalState === 'waiting' || modalState === 'connecting') {
-        setModalState('error');
-        setErrorMessage('Connection lost');
-      }
-    });
-
-    // Listen for call request accepted
-    socket.on('call_request_accepted', (data: any) => {
-      console.log('[SafeguardingCallModal] Call request accepted:', data);
+    // Staff accepted - start WebRTC immediately
+    socket.on('call_request_accepted', async (data: any) => {
+      console.log('[SafeguardingCallModal] Call accepted:', data);
       
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
       
-      setStaffName(data?.staff_name || data?.acceptor_name || 'Support Staff');
-      setCallId(data?.call_id || '');
-      setModalState('supporter_found');
+      setStaffName(data?.staff_name || 'Support Staff');
+      callIdRef.current = data?.call_id || '';
+      setModalState('connecting');
       
-      // Staff will now initiate the WebRTC call - wait for incoming_call event
-      // Set a shorter timeout for the actual call to come through
-      timeoutRef.current = setTimeout(() => {
-        console.log('[SafeguardingCallModal] Waiting for incoming call timed out');
-        // Don't change state - staff might still be connecting
-      }, 15000);
+      // Setup WebRTC immediately - no user interaction needed
+      await setupWebRTC();
     });
 
-    // Listen for incoming WebRTC call from staff
-    socket.on('incoming_call', (data: any) => {
-      console.log('[SafeguardingCallModal] Incoming call:', data);
-      
+    // No staff available
+    socket.on('no_staff_available', () => {
+      console.log('[SafeguardingCallModal] No staff available');
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-      
-      setIncomingCallData({
-        callId: data.call_id,
-        callerName: data.caller_name || staffName || 'Support Staff',
-        callType: data.call_type || 'audio',
-      });
-      setModalState('incoming_call');
-    });
-
-    // Listen for call ended
-    socket.on('call_ended', (data: any) => {
-      console.log('[SafeguardingCallModal] Call ended:', data);
-      handleCallEnded();
-    });
-
-    // Listen for call cancelled
-    socket.on('call_cancelled', (data: any) => {
-      console.log('[SafeguardingCallModal] Call cancelled:', data);
       setModalState('no_staff');
     });
 
-    // Listen for no staff available
-    socket.on('no_staff_available', (data: any) => {
-      console.log('[SafeguardingCallModal] No staff available:', data);
-      
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+    // WebRTC offer from staff
+    socket.on('webrtc_offer', (data: any) => {
+      console.log('[SafeguardingCallModal] Received WebRTC offer');
+      if (data?.offer) {
+        handleWebRTCOffer(data.offer);
       }
-      
-      setModalState('no_staff');
     });
 
-    // Listen for incoming call (alternative success path)
-    socket.on('incoming_call', (data: any) => {
-      console.log('[SafeguardingCallModal] Incoming call:', data);
-      
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+    // ICE candidate from staff
+    socket.on('webrtc_ice_candidate', (data: any) => {
+      if (data?.candidate) {
+        handleICECandidate(data.candidate);
       }
-      
-      setStaffName(data?.caller_name || 'Support Staff');
-      setModalState('supporter_found');
+    });
+
+    // Call ended by staff
+    socket.on('call_ended', () => {
+      console.log('[SafeguardingCallModal] Call ended by staff');
+      cleanup();
+      onCallEnded?.();
+      onClose();
     });
 
     return cleanup;
-  }, [visible, sessionId, alertId, userId, userName, cleanup]);
+  }, [visible, sessionId, alertId, userId, userName, cleanup, getAnonymousUserId, setupWebRTC, handleWebRTCOffer, handleICECandidate, onCallEnded, onClose]);
+
+  // Crisis line handlers
+  const callNHS = () => Linking.openURL('tel:111');
+  const callSamaritans = () => Linking.openURL('tel:116123');
+  const callEmergency = () => Linking.openURL('tel:999');
 
   // Handle close
   const handleClose = () => {
     cleanup();
     onClose();
   };
-
-  // Handle call ended
-  const handleCallEnded = () => {
-    cleanup();
-    onCallEnded?.();
-  };
-
-  // Crisis helpline handlers
-  const callSamaritans = () => {
-    Linking.openURL('tel:116123');
-  };
-
-  const callNHS = () => {
-    Linking.openURL('tel:111');
-  };
-
-  const callEmergency = () => {
-    Linking.openURL('tel:999');
-  };
-
-  // Render crisis line fallback screen
-  const renderCrisisLines = () => (
-    <View style={styles.crisisContainer}>
-      <View style={styles.iconContainer}>
-        <View style={[styles.iconOuter, { borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-          <FontAwesome5 name="phone-alt" size={32} color="#f59e0b" />
-        </View>
-      </View>
-      
-      <Text style={styles.title}>
-        {modalState === 'no_staff' ? 'No Supporters Available' : 'Still Here For You'}
-      </Text>
-      
-      <Text style={styles.message}>
-        {modalState === 'no_staff' 
-          ? "Our team isn't available right now, but help is still available 24/7."
-          : "We couldn't connect you right now, but these services are always available:"}
-      </Text>
-
-      <View style={styles.crisisButtons}>
-        <TouchableOpacity 
-          style={[styles.crisisButton, { backgroundColor: '#16a34a' }]}
-          onPress={callSamaritans}
-          data-testid="call-samaritans-btn"
-        >
-          <FontAwesome5 name="phone-alt" size={20} color="#fff" />
-          <View style={styles.crisisButtonText}>
-            <Text style={styles.crisisButtonTitle}>Samaritans</Text>
-            <Text style={styles.crisisButtonNumber}>116 123 (24/7)</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.crisisButton, { backgroundColor: '#2563eb' }]}
-          onPress={callNHS}
-          data-testid="call-nhs-btn"
-        >
-          <FontAwesome5 name="phone-alt" size={20} color="#fff" />
-          <View style={styles.crisisButtonText}>
-            <Text style={styles.crisisButtonTitle}>NHS 111</Text>
-            <Text style={styles.crisisButtonNumber}>Mental Health</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.crisisButton, { backgroundColor: '#dc2626' }]}
-          onPress={callEmergency}
-          data-testid="call-999-btn"
-        >
-          <FontAwesome5 name="phone-alt" size={20} color="#fff" />
-          <View style={styles.crisisButtonText}>
-            <Text style={styles.crisisButtonTitle}>Emergency</Text>
-            <Text style={styles.crisisButtonNumber}>999</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-        <Text style={styles.closeButtonText}>Close</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   return (
     <Modal 
@@ -364,206 +458,244 @@ export default function SafeguardingCallModal({
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
-          {/* Connecting State */}
+          
+          {/* FINDING STAFF */}
+          {modalState === 'finding' && (
+            <View style={styles.content}>
+              <View style={styles.pulseContainer}>
+                <ActivityIndicator size="large" color="#22c55e" />
+              </View>
+              <Text style={styles.title}>Finding someone for you...</Text>
+              <Text style={styles.message}>
+                Please hold on while we connect you with an available supporter.
+              </Text>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* CONNECTING WebRTC */}
           {modalState === 'connecting' && (
             <View style={styles.content}>
-              <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseAnim }] }]}>
-                <View style={[styles.iconOuter, { borderColor: '#3b82f6' }]}>
-                  <ActivityIndicator size="large" color="#3b82f6" />
-                </View>
-              </Animated.View>
-              
-              <Text style={styles.title}>Connecting...</Text>
-              <Text style={styles.message}>
-                Setting up a secure connection to our support team.
-              </Text>
-              
-              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Waiting State */}
-          {modalState === 'waiting' && (
-            <View style={styles.content}>
-              <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseAnim }] }]}>
-                <View style={[styles.iconOuter, { borderColor: '#16a34a' }]}>
-                  <Ionicons name="call" size={40} color="#16a34a" />
-                </View>
-              </Animated.View>
-              
-              <Text style={styles.title}>Finding a Supporter</Text>
-              <Text style={styles.message}>
-                We're connecting you with an available team member. Please stay on this screen.
-              </Text>
-              
-              <View style={styles.steps}>
-                <View style={styles.step}>
-                  <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
-                  <Text style={styles.stepText}>Request received</Text>
-                </View>
-                <View style={styles.step}>
-                  <ActivityIndicator size="small" color="#16a34a" />
-                  <Text style={styles.stepText}>Finding available supporter...</Text>
+              <View style={styles.pulseContainer}>
+                <View style={styles.connectingIcon}>
+                  <Ionicons name="call" size={32} color="#22c55e" />
                 </View>
               </View>
-
-              <Text style={styles.hint}>
-                This usually takes less than 30 seconds.
-              </Text>
-              
-              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
-                <Text style={styles.cancelText}>Cancel & Go Back</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Supporter Found State - Staff is about to call */}
-          {modalState === 'supporter_found' && (
-            <View style={styles.content}>
-              <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseAnim }] }]}>
-                <View style={[styles.iconOuter, { borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
-                  <Ionicons name="call" size={40} color="#22c55e" />
-                </View>
-              </Animated.View>
-              
-              <Text style={styles.title}>Supporter Found!</Text>
+              <Text style={styles.title}>Connecting you now...</Text>
               <Text style={styles.staffName}>{staffName}</Text>
               <Text style={styles.message}>
-                {staffName} is connecting to you now...
+                Setting up your call with {staffName}
               </Text>
-              
-              <View style={styles.steps}>
-                <View style={styles.step}>
-                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-                  <Text style={styles.stepText}>Request accepted</Text>
-                </View>
-                <View style={styles.step}>
-                  <ActivityIndicator size="small" color="#22c55e" />
-                  <Text style={styles.stepText}>Connecting call...</Text>
-                </View>
-              </View>
-              
-              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
+              <ActivityIndicator size="small" color="#22c55e" style={{ marginTop: 16 }} />
             </View>
           )}
 
-          {/* Incoming Call State - WebRTC call ready to answer */}
-          {modalState === 'incoming_call' && incomingCallData && (
+          {/* CONNECTED - IN CALL */}
+          {modalState === 'connected' && (
             <View style={styles.content}>
-              <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseAnim }] }]}>
-                <View style={[styles.iconOuter, { borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
-                  <Ionicons name="call" size={48} color="#22c55e" />
-                </View>
-              </Animated.View>
-              
-              <Text style={styles.title}>Incoming Call</Text>
-              <Text style={styles.staffName}>{incomingCallData.callerName}</Text>
-              <Text style={styles.message}>
-                A supporter is calling you now
-              </Text>
-              
-              <View style={styles.callButtons}>
-                <TouchableOpacity 
-                  style={[styles.answerButton]}
-                  onPress={() => {
-                    // Accept the call - emit accept event
-                    if (socketRef.current && incomingCallData) {
-                      socketRef.current.emit('accept_call', {
-                        call_id: incomingCallData.callId,
-                        user_id: userId || `anon_${sessionId}`,
-                      });
-                      setModalState('in_call');
-                    }
-                  }}
-                  data-testid="answer-call-btn"
-                >
-                  <Ionicons name="call" size={28} color="#fff" />
-                  <Text style={styles.answerButtonText}>Answer</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.declineButton]}
-                  onPress={() => {
-                    // Decline the call
-                    if (socketRef.current && incomingCallData) {
-                      socketRef.current.emit('decline_call', {
-                        call_id: incomingCallData.callId,
-                        user_id: userId || `anon_${sessionId}`,
-                      });
-                    }
-                    handleClose();
-                  }}
-                  data-testid="decline-call-btn"
-                >
-                  <Ionicons name="call" size={28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
-                  <Text style={styles.declineButtonText}>Decline</Text>
-                </TouchableOpacity>
+              <View style={styles.connectedIcon}>
+                <Ionicons name="call" size={40} color="#fff" />
               </View>
-            </View>
-          )}
-
-          {/* In Call State */}
-          {modalState === 'in_call' && (
-            <View style={styles.content}>
-              <View style={styles.iconContainer}>
-                <View style={[styles.iconOuter, { borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
-                  <Ionicons name="call" size={40} color="#22c55e" />
-                </View>
-              </View>
-              
               <Text style={styles.title}>Connected</Text>
-              <Text style={styles.staffName}>{incomingCallData?.callerName || staffName}</Text>
-              <Text style={styles.message}>
-                You're now connected with a supporter
-              </Text>
+              <Text style={styles.staffName}>{staffName}</Text>
+              <Text style={styles.duration}>{formatDuration(callDuration)}</Text>
               
               <TouchableOpacity 
-                style={[styles.endCallButton]}
-                onPress={() => {
-                  // End the call
-                  if (socketRef.current) {
-                    socketRef.current.emit('end_call', {
-                      call_id: incomingCallData?.callId || callId,
-                      user_id: userId || `anon_${sessionId}`,
-                    });
-                  }
-                  handleCallEnded();
-                }}
+                style={styles.endCallButton} 
+                onPress={endCall}
                 data-testid="end-call-btn"
               >
                 <Ionicons name="call" size={24} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
-                <Text style={styles.endCallButtonText}>End Call</Text>
+                <Text style={styles.endCallText}>End Call</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* No Staff Available State */}
-          {modalState === 'no_staff' && renderCrisisLines()}
-
-          {/* Timeout State */}
-          {modalState === 'timeout' && renderCrisisLines()}
-
-          {/* Error State */}
-          {modalState === 'error' && (
+          {/* NO STAFF - FALLBACK OPTIONS */}
+          {modalState === 'no_staff' && (
             <View style={styles.content}>
-              <View style={styles.iconContainer}>
-                <View style={[styles.iconOuter, { borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                  <Ionicons name="alert-circle" size={48} color="#ef4444" />
-                </View>
+              <View style={styles.noStaffIcon}>
+                <FontAwesome5 name="user-clock" size={32} color="#f59e0b" />
               </View>
-              
-              <Text style={styles.title}>Connection Issue</Text>
+              <Text style={styles.title}>No Supporters Available</Text>
               <Text style={styles.message}>
-                {errorMessage || "We couldn't connect to our support service."}
+                Our team isn't available right now, but help is still here for you.
               </Text>
-              
-              {renderCrisisLines()}
+
+              <View style={styles.fallbackOptions}>
+                {/* Request Callback */}
+                <TouchableOpacity 
+                  style={[styles.fallbackButton, { backgroundColor: '#3b82f6' }]}
+                  onPress={() => setModalState('callback_form')}
+                  data-testid="request-callback-btn"
+                >
+                  <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+                  <Text style={styles.fallbackButtonText}>Request a Callback</Text>
+                </TouchableOpacity>
+
+                {/* NHS 111 */}
+                <TouchableOpacity 
+                  style={[styles.fallbackButton, { backgroundColor: '#0ea5e9' }]}
+                  onPress={callNHS}
+                  data-testid="call-nhs-btn"
+                >
+                  <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+                  <View style={styles.fallbackButtonContent}>
+                    <Text style={styles.fallbackButtonText}>NHS 111</Text>
+                    <Text style={styles.fallbackButtonSub}>Press Option 2 for Mental Health</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Samaritans */}
+                <TouchableOpacity 
+                  style={[styles.fallbackButton, { backgroundColor: '#16a34a' }]}
+                  onPress={callSamaritans}
+                  data-testid="call-samaritans-btn"
+                >
+                  <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+                  <View style={styles.fallbackButtonContent}>
+                    <Text style={styles.fallbackButtonText}>Samaritans</Text>
+                    <Text style={styles.fallbackButtonSub}>116 123 (Free, 24/7)</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Emergency */}
+                <TouchableOpacity 
+                  style={[styles.fallbackButton, { backgroundColor: '#dc2626' }]}
+                  onPress={callEmergency}
+                  data-testid="call-999-btn"
+                >
+                  <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+                  <View style={styles.fallbackButtonContent}>
+                    <Text style={styles.fallbackButtonText}>Emergency</Text>
+                    <Text style={styles.fallbackButtonSub}>999</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+                <Text style={styles.cancelText}>Close</Text>
+              </TouchableOpacity>
             </View>
           )}
+
+          {/* CALLBACK FORM */}
+          {modalState === 'callback_form' && (
+            <View style={styles.content}>
+              <Text style={styles.title}>Request a Callback</Text>
+              <Text style={styles.message}>
+                We'll call you back as soon as someone is available.
+              </Text>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Your Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={callbackName}
+                  onChangeText={setCallbackName}
+                  placeholder="Enter your name"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={callbackPhone}
+                  onChangeText={setCallbackPhone}
+                  placeholder="Enter your phone number"
+                  placeholderTextColor="#6b7280"
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.submitButton, (!callbackName.trim() || !callbackPhone.trim()) && styles.submitButtonDisabled]}
+                onPress={submitCallbackRequest}
+                disabled={!callbackName.trim() || !callbackPhone.trim() || isSubmittingCallback}
+                data-testid="submit-callback-btn"
+              >
+                {isSubmittingCallback ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Submit Request</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setModalState('no_staff')}>
+                <Text style={styles.cancelText}>Back</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* CALLBACK SENT */}
+          {modalState === 'callback_sent' && (
+            <View style={styles.content}>
+              <View style={styles.successIcon}>
+                <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
+              </View>
+              <Text style={styles.title}>Callback Requested</Text>
+              <Text style={styles.message}>
+                We've received your request and will call you back as soon as possible.
+              </Text>
+              <Text style={styles.hint}>
+                If you need immediate help, please use the crisis lines below.
+              </Text>
+
+              <View style={styles.fallbackOptions}>
+                <TouchableOpacity 
+                  style={[styles.fallbackButton, { backgroundColor: '#16a34a' }]}
+                  onPress={callSamaritans}
+                >
+                  <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+                  <Text style={styles.fallbackButtonText}>Samaritans: 116 123</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ERROR STATE */}
+          {modalState === 'error' && (
+            <View style={styles.content}>
+              <View style={styles.errorIcon}>
+                <Ionicons name="alert-circle" size={48} color="#ef4444" />
+              </View>
+              <Text style={styles.title}>Connection Issue</Text>
+              <Text style={styles.message}>
+                {errorMessage || "We couldn't connect your call."}
+              </Text>
+
+              <View style={styles.fallbackOptions}>
+                <TouchableOpacity 
+                  style={[styles.fallbackButton, { backgroundColor: '#3b82f6' }]}
+                  onPress={() => setModalState('callback_form')}
+                >
+                  <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+                  <Text style={styles.fallbackButtonText}>Request a Callback Instead</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.fallbackButton, { backgroundColor: '#16a34a' }]}
+                  onPress={callSamaritans}
+                >
+                  <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+                  <Text style={styles.fallbackButtonText}>Samaritans: 116 123</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+                <Text style={styles.cancelText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
         </View>
       </View>
     </Modal>
@@ -573,7 +705,7 @@ export default function SafeguardingCallModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -584,30 +716,53 @@ const styles = StyleSheet.create({
     padding: 32,
     width: '100%',
     maxWidth: 400,
-    alignItems: 'center',
   },
   content: {
     alignItems: 'center',
-    width: '100%',
   },
-  crisisContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  iconContainer: {
-    marginBottom: 24,
-  },
-  iconOuter: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
+  pulseContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(22, 163, 74, 0.1)',
+    marginBottom: 24,
+  },
+  connectingIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  connectedIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#22c55e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  noStaffIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  successIcon: {
+    marginBottom: 24,
+  },
+  errorIcon: {
+    marginBottom: 24,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#ffffff',
     textAlign: 'center',
@@ -618,7 +773,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#22c55e',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  duration: {
+    fontSize: 32,
+    fontWeight: '300',
+    color: '#9ca3af',
+    marginBottom: 32,
+    fontVariant: ['tabular-nums'],
   },
   message: {
     fontSize: 15,
@@ -627,139 +789,108 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
-  steps: {
-    width: '100%',
-    marginBottom: 24,
-    gap: 12,
-  },
-  step: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  stepText: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
   hint: {
     fontSize: 13,
     color: '#6b7280',
     textAlign: 'center',
-    fontStyle: 'italic',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   cancelButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#4b5563',
   },
   cancelText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#9ca3af',
+    color: '#6b7280',
   },
-  closeButton: {
-    width: '100%',
-    backgroundColor: '#3b82f6',
-    paddingVertical: 14,
-    borderRadius: 12,
+  endCallButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
+    justifyContent: 'center',
+    backgroundColor: '#dc2626',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 40,
+    gap: 12,
   },
-  closeButtonText: {
+  endCallText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
   },
-  successNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    padding: 12,
-    borderRadius: 12,
-    gap: 10,
-    marginBottom: 16,
-  },
-  successNoteText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#22c55e',
-    lineHeight: 18,
-  },
-  crisisButtons: {
+  fallbackOptions: {
     width: '100%',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  crisisButton: {
+  fallbackButton: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
     gap: 16,
   },
-  crisisButtonText: {
+  fallbackButtonContent: {
     flex: 1,
   },
-  crisisButtonTitle: {
+  fallbackButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
   },
-  crisisButtonNumber: {
-    fontSize: 14,
+  fallbackButtonSub: {
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
   },
-  callButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    marginTop: 24,
-  },
-  answerButton: {
-    backgroundColor: '#22c55e',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
+  closeButton: {
+    width: '100%',
+    backgroundColor: '#374151',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
-    gap: 4,
   },
-  answerButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  declineButton: {
-    backgroundColor: '#dc2626',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  declineButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  endCallButton: {
-    backgroundColor: '#dc2626',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 40,
-    gap: 12,
-    marginTop: 24,
-  },
-  endCallButtonText: {
-    color: '#fff',
+  closeButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#ffffff',
+  },
+  formGroup: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#9ca3af',
+    marginBottom: 8,
+  },
+  input: {
+    width: '100%',
+    backgroundColor: '#374151',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#4b5563',
+  },
+  submitButton: {
+    width: '100%',
+    backgroundColor: '#22c55e',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#4b5563',
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });
