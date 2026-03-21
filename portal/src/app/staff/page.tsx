@@ -70,13 +70,14 @@ export default function StaffPortalPage() {
   // Initialize WebRTC Phone (for peer-to-peer calls between staff)
   // CRITICAL: We MUST use callable_user_id from the profile, NOT user.id
   // The mobile app calls using peer_supporters.user_id, so we must register with that same ID
-  const webrtcUserId = (profile as any)?.callable_user_id || profile?.user_id || user?.id;
+  // Wait for profile to load before determining the ID to avoid re-registration
+  const webrtcUserId = profile ? ((profile as any)?.callable_user_id || profile?.user_id || profile?.id) : undefined;
   const webrtcPhone = useWebRTCPhone({
     serverUrl: API_URL,
     userId: webrtcUserId,
     userType: user?.role === 'counsellor' ? 'counsellor' : 'peer',
-    userName: user?.name,
-    enabled: !!token && !!user && !!webrtcUserId,
+    userName: profile?.name || user?.name,
+    enabled: !!token && !!user && !!profile && !!webrtcUserId,
   });
 
   // Initialize Twilio Phone (for browser-to-phone calls)
