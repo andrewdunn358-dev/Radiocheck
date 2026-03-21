@@ -260,8 +260,9 @@ export default function StaffPortalPage() {
   const loadNotes = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await staffApi.getNotes(token);
-      setNotes(data);
+      const response = await staffApi.getNotes(token);
+      // API returns {notes: [...], count: ...} - extract the notes array
+      setNotes(response.notes || []);
     } catch (err) {
       console.error('Failed to load notes:', err);
     }
