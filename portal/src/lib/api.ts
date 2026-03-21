@@ -544,8 +544,16 @@ export const staffApi = {
       fetchAPI<any[]>('/peer-supporters', { token }).catch(() => []),
     ]);
     return [
-      ...counsellors.map((c: any) => ({ ...c, role: 'counsellor' })),
-      ...peers.map((p: any) => ({ ...p, role: 'peer' })),
+      ...counsellors.map((c: any) => ({ 
+        ...c, 
+        role: 'counsellor',
+        name: c.name || c.firstName || 'Unknown Counsellor'
+      })),
+      ...peers.map((p: any) => ({ 
+        ...p, 
+        role: 'peer',
+        name: p.name || p.firstName || 'Unknown Peer'
+      })),
     ];
   },
   getStaffList: (token: string) =>
