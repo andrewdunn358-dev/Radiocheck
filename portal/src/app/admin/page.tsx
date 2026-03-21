@@ -1759,7 +1759,7 @@ export default function AdminPortal() {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      await api.updateCounsellorStatus(token!, member.id, 'available');
+                                      await api.updateStaffStatus(token!, member.id, 'available');
                                       setSuccess('Status updated');
                                       loadStaff();
                                     } catch (err: any) { setError(err.message); }
@@ -1775,7 +1775,7 @@ export default function AdminPortal() {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      await api.updateCounsellorStatus(token!, member.id, 'busy');
+                                      await api.updateStaffStatus(token!, member.id, 'busy');
                                       setSuccess('Status updated');
                                       loadStaff();
                                     } catch (err: any) { setError(err.message); }
@@ -1791,7 +1791,7 @@ export default function AdminPortal() {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      await api.updateCounsellorStatus(token!, member.id, 'off');
+                                      await api.updateStaffStatus(token!, member.id, 'off');
                                       setSuccess('Status updated');
                                       loadStaff();
                                     } catch (err: any) { setError(err.message); }
@@ -1810,7 +1810,7 @@ export default function AdminPortal() {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      await api.updatePeerStatus(token!, member.id, 'available');
+                                      await api.updateStaffStatus(token!, member.id, 'available');
                                       setSuccess('Status updated');
                                       loadStaff();
                                     } catch (err: any) { setError(err.message); }
@@ -1826,7 +1826,7 @@ export default function AdminPortal() {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      await api.updatePeerStatus(token!, member.id, 'limited');
+                                      await api.updateStaffStatus(token!, member.id, 'limited');
                                       setSuccess('Status updated');
                                       loadStaff();
                                     } catch (err: any) { setError(err.message); }
@@ -1842,7 +1842,7 @@ export default function AdminPortal() {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      await api.updatePeerStatus(token!, member.id, 'unavailable');
+                                      await api.updateStaffStatus(token!, member.id, 'unavailable');
                                       setSuccess('Status updated');
                                       loadStaff();
                                     } catch (err: any) { setError(err.message); }
