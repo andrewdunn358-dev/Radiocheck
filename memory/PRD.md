@@ -1,5 +1,26 @@
 # Radiocheck Veterans Support Platform - PRD
 
+## 🚨 CRITICAL RULE - CHECK EVERY TIME BEFORE SAVING 🚨
+
+**NEVER change these production URLs to preview URLs:**
+
+| File | Variable | MUST BE |
+|------|----------|---------|
+| `/app/frontend/.env` | `EXPO_PUBLIC_BACKEND_URL` | `https://veterans-support-api.onrender.com` |
+| `/app/frontend/.env` | `EXPO_PUBLIC_SITE_PASSWORD` | `radiocheck2025` |
+| `/app/portal/.env.local` | `NEXT_PUBLIC_API_URL` | `https://veterans-support-api.onrender.com` |
+| `/app/portal/.env.production` | `NEXT_PUBLIC_API_URL` | `https://veterans-support-api.onrender.com` |
+
+**Before ANY save to GitHub, run this check:**
+```bash
+grep -r "preview.emergentagent.com" /app/frontend/.env /app/portal/.env* 2>/dev/null
+```
+If this returns ANY results, FIX THEM before saving.
+
+The preview environment (`safeguard-call.preview.emergentagent.com`) is for testing code only. Production apps connect to Render (`veterans-support-api.onrender.com`).
+
+---
+
 ## Original Problem Statement
 The Radiocheck project is a complex mix of:
 - **FastAPI backend** (deployed on Render - DO NOT TOUCH)
