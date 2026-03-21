@@ -2061,11 +2061,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             staff = await db.staff.find_one({"legacy_user_id": user_id})
         
         if staff:
+            # Decrypt the name before returning
+            decrypted_name = staff.get("name", "")
+            try:
+                if decrypted_name and decrypted_name.startswith("ENC"):
+                    decrypted_name = decrypt_field(decrypted_name)
+            except Exception as e:
+                logging.warning(f"Failed to decrypt staff name: {e}")
+                decrypted_name = staff.get("name", "")
+            
             return User(
                 id=staff.get("id"),
                 email=staff["email"],
                 role=staff.get("role", "user"),
-                name=staff.get("name", "")
+                name=decrypted_name
             )
         
         # FALLBACK: Check legacy users collection
@@ -2085,6 +2094,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         # Ensure we have an 'id' field for the User model
         if 'id' not in user_data:
             user_data['id'] = str(user_data.get('_id', user_id))
+        
+        # Decrypt name if encrypted
+        if user_data.get('name') and str(user_data.get('name', '')).startswith("ENC"):
+            try:
+                user_data['name'] = decrypt_field(user_data['name'])
+            except Exception as e:
+                logging.warning(f"Failed to decrypt user name: {e}")
         
         return User(**user_data)
     except jwt.ExpiredSignatureError:
