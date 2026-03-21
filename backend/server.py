@@ -482,6 +482,7 @@ class StaffUpdate(BaseModel):
     sip_extension: Optional[str] = None
     sip_password: Optional[str] = None
     is_supervisor: Optional[bool] = None
+    status: Optional[str] = None
 
 class StaffStatusUpdate(BaseModel):
     """Update staff status - works for all roles"""
@@ -2335,6 +2336,15 @@ async def create_staff(staff_data: StaffCreate, current_user: User = Depends(req
     staff_doc.pop("password_hash", None)
     staff_doc.pop("_id", None)
     
+    # Audit log: admin created staff member
+    await audit_admin_action(
+        db,
+        user_id=current_user.id,
+        email=current_user.email,
+        action="user_created",
+        details={"new_user_email": staff_data.email, "role": staff_data.role}
+    )
+    
     logging.info(f"Created new staff member: {staff_data.email} ({staff_data.role})")
     
     return {"message": "Staff member created successfully", "staff": staff_doc}
@@ -2557,9 +2567,21 @@ async def update_staff_status(
 @api_router.delete("/staff/{staff_id}")
 async def delete_staff(staff_id: str, current_user: User = Depends(require_role("admin"))):
     """Delete a staff member (admin only)"""
+    # Get staff info before deletion for audit log
+    staff = await db.staff.find_one({"id": staff_id}, {"_id": 0, "email": 1, "role": 1, "name": 1})
+    
     result = await db.staff.delete_one({"id": staff_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    # Audit log: admin deleted staff member
+    await audit_admin_action(
+        db,
+        user_id=current_user.id,
+        email=current_user.email,
+        action="user_deleted",
+        details={"deleted_user_id": staff_id, "deleted_user_email": staff.get("email") if staff else "unknown"}
+    )
     
     return {"message": "Staff member deleted"}
 
@@ -3755,6 +3777,15 @@ async def update_settings(
         {"_id": "site_settings"},
         {"$set": update_data},
         upsert=True
+    )
+    
+    # Audit log: admin changed settings
+    await audit_admin_action(
+        db,
+        user_id=current_user.id,
+        email=current_user.email,
+        action="settings_changed",
+        details={"changed_fields": list(update_data.keys())}
     )
     
     return {"message": "Settings updated successfully"}
@@ -6021,6 +6052,15 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             print(f"[SAFEGUARDING] ALERT CREATED IN DATABASE - ID: {alert_id}, Risk: {risk_level}, Score: {risk_data['score']}")
             logging.warning(f"SAFEGUARDING ALERT [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown') if geo_data else 'Unknown'}, {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'}")
             
+            # Audit log: safeguarding alert created
+            await audit_safeguarding_alert(
+                db,
+                session_id=request.sessionId,
+                risk_level=risk_level,
+                score=risk_data["score"],
+                triggered_indicators=[t["indicator"] for t in risk_data["triggered_indicators"][:10]]
+            )
+            
             # NOTE: We no longer emit the alert immediately here.
             # The alert will be emitted when the user chooses to call or chat,
             # ensuring they are connected and ready to receive.
@@ -7003,7 +7043,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://safeguard-call.preview.emergentagent.com",
+        "https://portal-admin-9.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],

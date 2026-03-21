@@ -20,7 +20,7 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://safeguard-call.preview.emergentagent.com"
+    BASE_URL = "https://portal-admin-9.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"

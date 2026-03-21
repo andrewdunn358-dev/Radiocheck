@@ -73,9 +73,12 @@ interface StaffMember {
   role: string;
   status: string;
   phone?: string;
+  sms?: string;
+  whatsapp?: string;
   specialization?: string;
   area?: string;
   background?: string;
+  years_served?: string;
   is_supervisor?: boolean;
   created_at?: string;
   has_profile?: boolean;
@@ -6945,29 +6948,51 @@ export default function AdminPortal() {
         </div>
       )}
 
-      {/* Edit Staff Modal */}
+      {/* Edit Staff Modal - Comprehensive Profile Editor */}
       {editingStaff && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-            <h2 className="text-xl font-bold mb-4">Edit Staff Member</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 my-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Edit Staff Profile</h2>
+              <button 
+                onClick={() => setEditingStaff(null)}
+                className="p-1 hover:bg-gray-700 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <form onSubmit={handleUpdateStaff}>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Basic Info */}
+                <div className="col-span-2">
+                  <h3 className="text-sm font-semibold text-blue-400 mb-2 pb-1 border-b border-gray-700">Basic Information</h3>
+                </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Name</label>
+                  <label className="block text-sm text-gray-400 mb-1">Name *</label>
                   <input
                     type="text"
+                    required
                     value={editingStaff.name}
                     onChange={(e) => setEditingStaff({ ...editingStaff, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Phone</label>
+                  <label className="block text-sm text-gray-400 mb-1">Email</label>
                   <input
-                    type="tel"
-                    value={editingStaff.phone || ''}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    type="email"
+                    value={editingStaff.email}
+                    disabled
+                    className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Role</label>
+                  <input
+                    type="text"
+                    value={editingStaff.role}
+                    disabled
+                    className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed capitalize"
                   />
                 </div>
                 <div>
@@ -6975,16 +7000,123 @@ export default function AdminPortal() {
                   <select
                     value={editingStaff.status}
                     onChange={(e) => setEditingStaff({ ...editingStaff, status: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
                   >
                     <option value="available">Available</option>
-                    <option value="limited">Limited/Busy</option>
+                    <option value="busy">Busy</option>
                     <option value="unavailable">Unavailable</option>
-                    <option value="off">Off Duty</option>
                   </select>
                 </div>
+
+                {/* Contact Info */}
+                <div className="col-span-2 mt-4">
+                  <h3 className="text-sm font-semibold text-blue-400 mb-2 pb-1 border-b border-gray-700">Contact Information</h3>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={editingStaff.phone || ''}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
+                    placeholder="e.g., 07700 900123"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">SMS Number</label>
+                  <input
+                    type="tel"
+                    value={editingStaff.sms || ''}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, sms: e.target.value })}
+                    placeholder="Leave blank if same as phone"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">WhatsApp Number</label>
+                  <input
+                    type="tel"
+                    value={editingStaff.whatsapp || ''}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, whatsapp: e.target.value })}
+                    placeholder="Leave blank if same as phone"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Role-Specific Fields */}
+                <div className="col-span-2 mt-4">
+                  <h3 className="text-sm font-semibold text-blue-400 mb-2 pb-1 border-b border-gray-700">
+                    {editingStaff.role === 'counsellor' ? 'Counsellor Details' : 
+                     editingStaff.role === 'peer' ? 'Peer Supporter Details' : 'Professional Details'}
+                  </h3>
+                </div>
+
+                {/* Counsellor-specific: Specialization */}
+                {(editingStaff.role === 'counsellor' || editingStaff.role === 'supervisor') && (
+                  <div className="col-span-2">
+                    <label className="block text-sm text-gray-400 mb-1">Specialization</label>
+                    <input
+                      type="text"
+                      value={editingStaff.specialization || ''}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, specialization: e.target.value })}
+                      placeholder="e.g., PTSD, Anxiety, Trauma"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
+                    />
+                  </div>
+                )}
+
+                {/* Peer Supporter-specific fields */}
+                {editingStaff.role === 'peer' && (
+                  <>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Service Area</label>
+                      <input
+                        type="text"
+                        value={editingStaff.area || ''}
+                        onChange={(e) => setEditingStaff({ ...editingStaff, area: e.target.value })}
+                        placeholder="e.g., North West, London"
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Years Served</label>
+                      <input
+                        type="text"
+                        value={editingStaff.years_served || ''}
+                        onChange={(e) => setEditingStaff({ ...editingStaff, years_served: e.target.value })}
+                        placeholder="e.g., 1990-2005"
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm text-gray-400 mb-1">Military Background</label>
+                      <textarea
+                        value={editingStaff.background || ''}
+                        onChange={(e) => setEditingStaff({ ...editingStaff, background: e.target.value })}
+                        placeholder="e.g., Royal Marines, served 15 years..."
+                        rows={3}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 resize-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Supervisor checkbox */}
+                <div className="col-span-2 flex items-center gap-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id="is_supervisor"
+                    checked={editingStaff.is_supervisor || false}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, is_supervisor: e.target.checked })}
+                    className="w-4 h-4 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="is_supervisor" className="text-sm text-gray-300">
+                    Has supervisor privileges (can view all safeguarding alerts)
+                  </label>
+                </div>
               </div>
-              <div className="flex gap-3 mt-6">
+              
+              <div className="flex gap-3 mt-6 pt-4 border-t border-gray-700">
                 <button
                   type="button"
                   onClick={() => setEditingStaff(null)}

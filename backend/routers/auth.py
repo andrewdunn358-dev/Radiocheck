@@ -2,15 +2,16 @@
 Authentication Router - Handles user authentication and management
 """
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import List
+from typing import List, Optional
 import uuid
 from datetime import datetime, timedelta
 import bcrypt
 import jwt
 import secrets
 import os
+import logging
 
 from services.database import get_database
 from models.schemas import (
@@ -18,6 +19,11 @@ from models.schemas import (
     ChangePassword, ResetPasswordRequest, ResetPassword, AdminResetPassword
 )
 from encryption import decrypt_field
+
+# Import audit logging functions
+from audit_logger import audit_login, audit_admin_action, AuditEventType, log_audit_event
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -310,9 +316,18 @@ async def register_user(user_input: UserCreate, current_user: User = Depends(req
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: UserLogin):
+async def login(credentials: UserLogin, request: Request = None):
     """Login and get JWT token - checks unified staff collection first, then legacy users"""
     db = get_database()
+    
+    # Extract IP address for audit logging
+    client_ip = None
+    if request:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else None
     
     # Helper function to resolve the correct user_id from peer_supporters/counsellors profile
     # This ensures the ID we return matches what the mobile app uses for WebRTC calls
@@ -380,6 +395,10 @@ async def login(credentials: UserLogin):
                 token = create_access_token({"sub": staff_id})
                 redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
                 
+                # Audit log: successful login
+                await audit_login(db, user_id=staff_id, email=staff["email"], success=True, ip=client_ip)
+                logger.info(f"AUDIT: Successful login for {staff['email']} (staff collection)")
+                
                 return TokenResponse(
                     token=token,
                     user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=get_decrypted_name(staff.get("name"))),
@@ -405,6 +424,10 @@ async def login(credentials: UserLogin):
                     token = create_access_token({"sub": staff_id})
                     redirect = "/staff" if staff.get("role") in ["counsellor", "peer", "staff", "supervisor"] else None
                     
+                    # Audit log: successful login (legacy password migration)
+                    await audit_login(db, user_id=staff_id, email=staff["email"], success=True, ip=client_ip)
+                    logger.info(f"AUDIT: Successful login for {staff['email']} (legacy password migrated)")
+                    
                     return TokenResponse(
                         token=token,
                         user=User(id=staff_id, email=staff["email"], role=staff.get("role", "user"), name=get_decrypted_name(staff.get("name"))),
@@ -415,14 +438,23 @@ async def login(credentials: UserLogin):
     user = await db.users.find_one({"email": credentials.email})
     
     if not user:
+        # Audit log: failed login - user not found
+        await audit_login(db, user_id=None, email=credentials.email, success=False, ip=client_ip)
+        logger.warning(f"AUDIT: Failed login attempt for {credentials.email} - user not found")
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     # Check for password hash (support both field names for backwards compatibility)
     password_hash = user.get("hashed_password") or user.get("password_hash")
     if not password_hash:
+        # Audit log: failed login - no password hash
+        await audit_login(db, user_id=user.get("id"), email=credentials.email, success=False, ip=client_ip)
+        logger.warning(f"AUDIT: Failed login attempt for {credentials.email} - no password hash")
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     if not verify_password(credentials.password, password_hash):
+        # Audit log: failed login - wrong password
+        await audit_login(db, user_id=user.get("id"), email=credentials.email, success=False, ip=client_ip)
+        logger.warning(f"AUDIT: Failed login attempt for {credentials.email} - wrong password")
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     # Ensure user has an ID (generate if missing for legacy users)
@@ -440,6 +472,10 @@ async def login(credentials: UserLogin):
     
     token = create_access_token({"sub": user_id})
     redirect = "/staff" if user.get("role") in ["counsellor", "peer_supporter", "staff", "supervisor"] else None
+    
+    # Audit log: successful login (legacy users collection)
+    await audit_login(db, user_id=user_id, email=user["email"], success=True, ip=client_ip)
+    logger.info(f"AUDIT: Successful login for {user['email']} (legacy users collection)")
     
     return TokenResponse(
         token=token,

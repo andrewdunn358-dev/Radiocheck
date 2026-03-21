@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://safeguard-call.preview.emergentagent.com/api"
+BACKEND_URL = "https://portal-admin-9.preview.emergentagent.com/api"
 
 # Test data
 TEST_EMAILS = [
