@@ -1130,6 +1130,20 @@ async def accept_call_request(sid, data):
     # Generate a call ID
     call_id = f"call_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{staff_id[:8] if staff_id else 'staff'}"
     
+    # Add call to active_calls so webrtc_offer can find it
+    active_calls[call_id] = {
+        'caller_sid': sid,  # Staff is the caller
+        'caller_id': staff_id,
+        'caller_name': staff_name,
+        'callee_sids': {user_socket_id},
+        'callee_id': requester_user_id,
+        'callee_name': connected_users.get(user_socket_id, {}).get('name', 'Veteran'),
+        'call_type': 'safeguarding_call',
+        'status': 'connecting',
+        'started_at': datetime.utcnow().isoformat()
+    }
+    logger.info(f"Added call {call_id} to active_calls for safeguarding flow")
+    
     # Notify the user that their call was accepted - staff will call them
     await sio.emit('call_request_accepted', {
         'request_id': request_id,

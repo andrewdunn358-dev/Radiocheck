@@ -612,8 +612,6 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
         socket.emit('webrtc_offer', {
           call_id: data.call_id,
           offer: offer,
-          target_user_id: data.user_id,
-          target_socket_id: data.user_socket_id,
         });
         
         setState(prev => ({
