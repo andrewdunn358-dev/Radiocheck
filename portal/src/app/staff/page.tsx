@@ -502,14 +502,6 @@ export default function StaffPortalPage() {
     };
   }, [token, logout, showTimeoutWarning]);
 
-  // Load messages periodically
-  useEffect(() => {
-    if (!token) return;
-    loadMessages();
-    const interval = setInterval(loadMessages, 30000); // Every 30 seconds
-    return () => clearInterval(interval);
-  }, [token, loadMessages]);
-  
   // Sound alert function
   const playAlertSound = useCallback(() => {
     if (!soundEnabled) return;
@@ -921,6 +913,14 @@ export default function StaffPortalPage() {
       console.error('Failed to mark message read:', err);
     }
   };
+
+  // Load messages periodically
+  useEffect(() => {
+    if (!token) return;
+    loadMessages();
+    const interval = setInterval(loadMessages, 30000); // Every 30 seconds
+    return () => clearInterval(interval);
+  }, [token, loadMessages]);
 
   // Escalation actions (supervisors)
   const handleAcknowledgeEscalation = async (id: string) => {
