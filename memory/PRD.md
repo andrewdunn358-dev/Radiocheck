@@ -35,10 +35,14 @@ The Radiocheck project is a complex mix of:
 ├── frontend/                 # Expo React Native mobile app
 │   └── src/components/
 │       └── SafeguardingCallModal.tsx  # WebRTC with audio quality enhancements
+├── memory/
+│   ├── PRD.md               # This file - project requirements
+│   └── STAFF_PORTAL_AUDIT.md # Comprehensive staff portal audit
 └── portal/                   # Next.js unified portal
     ├── src/app/
     │   ├── admin/page.tsx    # Admin portal - FULLY REFACTORED (414 lines)
-    │   └── staff/page.tsx    # Staff portal with callbacks
+    │   └── staff/page.tsx    # Staff portal - PENDING REFACTOR (3,907 lines)
+    ├── src/components/admin/tabs/  # 33 extracted admin tab components
     ├── src/hooks/
     │   └── useWebRTCPhone.tsx  # WebRTC hook with Socket.IO stability
     └── src/lib/api.ts        # API functions with notes support
