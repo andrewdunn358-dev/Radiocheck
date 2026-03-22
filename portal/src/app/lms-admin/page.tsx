@@ -6,10 +6,35 @@ import { lmsAdminApi, lmsApi, CourseData, Registration, LearnerListItem } from '
 import Link from 'next/link';
 import { 
   GraduationCap, LogOut, LayoutDashboard, UserPlus, Users, Book, 
-  HelpCircle, Award, Bell, ChevronRight, Check, X, Eye, Trash2, Key, Edit, Plus
+  HelpCircle, Award, Bell, ChevronRight, Check, X, Eye, Trash2, Key, Edit, Plus,
+  AlertTriangle, ClipboardList, BarChart, ExternalLink, Save, CheckCircle
 } from 'lucide-react';
 
-type TabType = 'dashboard' | 'registrations' | 'learners' | 'modules' | 'certificates';
+type TabType = 'dashboard' | 'registrations' | 'learners' | 'modules' | 'quizzes' | 'alerts' | 'certificates';
+
+interface Alert {
+  id: string;
+  type: string;
+  message: string;
+  learner_email?: string;
+  module_id?: string;
+  created_at: string;
+  read: boolean;
+}
+
+interface Quiz {
+  module_id: string;
+  module_title: string;
+  questions: QuizQuestion[];
+}
+
+interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correct_answer: string;
+  explanation?: string;
+}
 
 export default function LMSAdminPage() {
   const { user, isLoading, login, logout } = useAdminAuth();
@@ -17,12 +42,25 @@ export default function LMSAdminPage() {
   const [courseData, setCourseData] = useState<CourseData | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [learners, setLearners] = useState<LearnerListItem[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [unreadAlertCount, setUnreadAlertCount] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+
+  // Quiz state
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+
+  // Learner progress detail
+  const [selectedLearnerProgress, setSelectedLearnerProgress] = useState<any>(null);
+
+  // Edit learner modal
+  const [editingLearner, setEditingLearner] = useState<LearnerListItem | null>(null);
+  const [editLearnerName, setEditLearnerName] = useState('');
+  const [editLearnerNotes, setEditLearnerNotes] = useState('');
 
   // Modal states
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
@@ -35,6 +73,8 @@ export default function LMSAdminPage() {
   }, [user, activeTab]);
 
   const loadData = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    
     try {
       const course = await lmsApi.getCourse();
       setCourseData(course);
@@ -47,6 +87,23 @@ export default function LMSAdminPage() {
       if (activeTab === 'dashboard' || activeTab === 'learners') {
         const learnData = await lmsAdminApi.getLearners();
         setLearners(learnData.learners || []);
+      }
+
+      // Load alerts
+      if (activeTab === 'dashboard' || activeTab === 'alerts') {
+        try {
+          const alertsRes = await fetch(`${API_URL}/api/lms/admin/alerts`, {
+            headers: { 'X-Admin-Email': user?.email || '' }
+          });
+          if (alertsRes.ok) {
+            const alertsData = await alertsRes.json();
+            setAlerts(alertsData.alerts || []);
+            setUnreadAlertCount(alertsData.alerts?.filter((a: Alert) => !a.read).length || 0);
+          }
+        } catch (e) {
+          // Alerts may not be implemented yet - set empty
+          setAlerts([]);
+        }
       }
     } catch (err) {
       console.error('Failed to load data:', err);
@@ -131,6 +188,97 @@ export default function LMSAdminPage() {
     }
   };
 
+  const handleViewLearnerProgress = async (learner: LearnerListItem) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    try {
+      const res = await fetch(`${API_URL}/api/lms/progress?email=${encodeURIComponent(learner.email)}`);
+      if (res.ok) {
+        const progressData = await res.json();
+        setSelectedLearnerProgress({ learner, progress: progressData });
+      }
+    } catch (e) {
+      alert('Failed to load learner progress');
+    }
+  };
+
+  const handleEditLearner = (learner: LearnerListItem) => {
+    setEditingLearner(learner);
+    setEditLearnerName(learner.full_name);
+    setEditLearnerNotes(learner.manual_add_notes || '');
+  };
+
+  const handleSaveLearnerEdit = async () => {
+    if (!editingLearner) return;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    try {
+      const res = await fetch(`${API_URL}/api/lms/admin/learner/${encodeURIComponent(editingLearner.email)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Email': user?.email || '' },
+        body: JSON.stringify({ full_name: editLearnerName, notes: editLearnerNotes }),
+      });
+      if (res.ok) {
+        setEditingLearner(null);
+        loadData();
+        alert('Learner updated successfully');
+      } else {
+        throw new Error('Update failed');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to update learner');
+    }
+  };
+
+  const loadQuizForModule = async (moduleId: string, moduleTitle: string) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    try {
+      // Try to get quiz from the admin quiz endpoint
+      const res = await fetch(`${API_URL}/api/lms/admin/quiz/${moduleId}`, {
+        headers: { 'X-Admin-Email': user?.email || '' }
+      });
+      if (res.ok) {
+        const quizData = await res.json();
+        setSelectedQuiz({ module_id: moduleId, module_title: moduleTitle, questions: quizData.questions || [] });
+      } else {
+        // Fallback - try to get module details
+        const moduleRes = await fetch(`${API_URL}/api/lms/module/${moduleId}`);
+        if (moduleRes.ok) {
+          const moduleData = await moduleRes.json();
+          if (moduleData.module?.quiz) {
+            setSelectedQuiz({ 
+              module_id: moduleId, 
+              module_title: moduleTitle, 
+              questions: moduleData.module.quiz.questions || [] 
+            });
+          } else {
+            alert('No quiz configured for this module');
+          }
+        } else {
+          alert('Could not load quiz for this module');
+        }
+      }
+    } catch (e) {
+      alert('Could not load quiz for this module');
+    }
+  };
+
+  const handleMarkAllAlertsRead = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    try {
+      await fetch(`${API_URL}/api/lms/admin/alerts/mark-read`, {
+        method: 'POST',
+        headers: { 'X-Admin-Email': user?.email || '' }
+      });
+      setAlerts(alerts.map(a => ({ ...a, read: true })));
+      setUnreadAlertCount(0);
+    } catch (e) {
+      console.error('Failed to mark alerts as read');
+    }
+  };
+
+  const openLearnerPortalPreview = () => {
+    window.open('/learning', '_blank');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -206,6 +354,8 @@ export default function LMSAdminPage() {
     { id: 'registrations', label: 'Registrations', icon: UserPlus, badge: pendingCount },
     { id: 'learners', label: 'Learners', icon: Users },
     { id: 'modules', label: 'Course Modules', icon: Book },
+    { id: 'quizzes', label: 'Quizzes', icon: ClipboardList },
+    { id: 'alerts', label: 'Alerts', icon: Bell, badge: unreadAlertCount },
     { id: 'certificates', label: 'Certificates', icon: Award },
   ];
 
@@ -459,6 +609,20 @@ export default function LMSAdminPage() {
                       <td className="py-3">
                         <div className="flex gap-1">
                           <button 
+                            onClick={() => handleViewLearnerProgress(learner)}
+                            className="p-2 hover:bg-white/5 rounded" title="View Progress"
+                            data-testid={`view-progress-${learner.email}`}
+                          >
+                            <BarChart className="w-4 h-4 text-secondary" />
+                          </button>
+                          <button 
+                            onClick={() => handleEditLearner(learner)}
+                            className="p-2 hover:bg-white/5 rounded" title="Edit Learner"
+                            data-testid={`edit-learner-${learner.email}`}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
                             onClick={() => handleResetPassword(learner.email)}
                             className="p-2 hover:bg-white/5 rounded" title="Reset Password"
                           >
@@ -483,16 +647,26 @@ export default function LMSAdminPage() {
         {/* Modules */}
         {activeTab === 'modules' && courseData && (
           <div>
-            <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Book className="w-6 h-6 text-secondary" />
-              Course Modules
-            </h1>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Book className="w-6 h-6 text-secondary" />
+                Course Modules
+              </h1>
+              <button
+                onClick={openLearnerPortalPreview}
+                className="flex items-center gap-2 px-4 py-2 border border-secondary text-secondary rounded-lg hover:bg-secondary/10"
+                data-testid="preview-course-btn"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Preview Course as Learner
+              </button>
+            </div>
 
             <div className="space-y-4">
               {courseData.modules.map((module, index) => (
                 <div key={module.id} className="bg-card border border-border rounded-xl p-6">
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-semibold mb-1">
                         {index + 1}. {module.title}
                         {module.is_critical && (
@@ -504,9 +678,112 @@ export default function LMSAdminPage() {
                       <p className="text-sm text-gray-400 mb-2">{module.description}</p>
                       <p className="text-xs text-gray-500">{module.duration_minutes} minutes</p>
                     </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => loadQuizForModule(module.id, module.title)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-white/5"
+                        data-testid={`view-quiz-${module.id}`}
+                      >
+                        <ClipboardList className="w-4 h-4" />
+                        View Quiz
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quizzes Tab */}
+        {activeTab === 'quizzes' && courseData && (
+          <div>
+            <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <ClipboardList className="w-6 h-6 text-secondary" />
+              Quiz Management
+            </h1>
+
+            <div className="space-y-4">
+              {courseData.modules.map((module, index) => (
+                <div key={module.id} className="bg-card border border-border rounded-xl p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold">Module {index + 1}: {module.title}</h3>
+                      <p className="text-sm text-gray-400">
+                        {module.is_critical ? 'Critical module - 100% required' : 'Regular module'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => loadQuizForModule(module.id, module.title)}
+                      className="flex items-center gap-2 px-4 py-2 bg-secondary text-primary-dark rounded-lg hover:bg-secondary-light"
+                      data-testid={`edit-quiz-${module.id}`}
+                    >
+                      <Eye className="w-4 h-4" />
+                      View/Edit Quiz
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Alerts Tab */}
+        {activeTab === 'alerts' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Bell className="w-6 h-6 text-secondary" />
+                Alerts
+                {unreadAlertCount > 0 && (
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {unreadAlertCount} new
+                  </span>
+                )}
+              </h1>
+              {alerts.length > 0 && (
+                <button
+                  onClick={handleMarkAllAlertsRead}
+                  className="text-sm text-secondary hover:underline"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
+
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              {alerts.length === 0 ? (
+                <div className="p-12 text-center text-gray-500">
+                  <Bell className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No alerts at this time</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {alerts.map((alert) => (
+                    <div key={alert.id} className={`p-4 flex gap-4 ${!alert.read ? 'bg-secondary/5' : ''}`}>
+                      <div className={`w-2 h-2 rounded-full mt-2 ${!alert.read ? 'bg-secondary' : 'bg-gray-600'}`} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            alert.type === 'quiz_fail' ? 'bg-red-500/20 text-red-400' :
+                            alert.type === 'completion' ? 'bg-green-500/20 text-green-400' :
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {alert.type.replace('_', ' ')}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(alert.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm">{alert.message}</p>
+                        {alert.learner_email && (
+                          <p className="text-xs text-gray-400 mt-1">Learner: {alert.learner_email}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -635,6 +912,154 @@ export default function LMSAdminPage() {
                 Add & Enroll Learner
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quiz View Modal */}
+      {selectedQuiz && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSelectedQuiz(null)}>
+          <div className="bg-card rounded-xl border border-border w-full max-w-3xl max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-secondary" />
+                Quiz: {selectedQuiz.module_title}
+              </h2>
+              <button onClick={() => setSelectedQuiz(null)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              {selectedQuiz.questions.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No quiz questions configured for this module.</p>
+              ) : (
+                <div className="space-y-6">
+                  {selectedQuiz.questions.map((q, idx) => (
+                    <div key={q.id} className="bg-primary-dark rounded-xl p-4">
+                      <p className="font-medium mb-3">Q{idx + 1}. {q.question}</p>
+                      <div className="space-y-2 mb-3">
+                        {q.options.map((opt, optIdx) => (
+                          <div 
+                            key={optIdx}
+                            className={`px-3 py-2 rounded-lg text-sm ${
+                              opt === q.correct_answer 
+                                ? 'bg-green-500/20 border border-green-500/50 text-green-400' 
+                                : 'bg-card border border-border'
+                            }`}
+                          >
+                            {String.fromCharCode(65 + optIdx)}. {opt}
+                            {opt === q.correct_answer && <span className="ml-2 text-xs">(Correct Answer)</span>}
+                          </div>
+                        ))}
+                      </div>
+                      {q.explanation && (
+                        <p className="text-xs text-gray-400 border-t border-border pt-2">
+                          <strong>Explanation:</strong> {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Learner Progress Modal */}
+      {selectedLearnerProgress && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSelectedLearnerProgress(null)}>
+          <div className="bg-card rounded-xl border border-border w-full max-w-2xl max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <BarChart className="w-5 h-5 text-secondary" />
+                Progress: {selectedLearnerProgress.learner.full_name}
+              </h2>
+              <button onClick={() => setSelectedLearnerProgress(null)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              <div className="mb-6">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">Overall Progress</span>
+                  <span className="font-semibold">{selectedLearnerProgress.progress.progress_percent || 0}%</span>
+                </div>
+                <div className="w-full h-3 bg-border rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-secondary rounded-full" 
+                    style={{ width: `${selectedLearnerProgress.progress.progress_percent || 0}%` }}
+                  />
+                </div>
+              </div>
+              
+              <h3 className="font-semibold mb-4">Module Completion</h3>
+              <div className="space-y-3">
+                {selectedLearnerProgress.progress.completed_modules?.map((mod: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-primary-dark rounded-lg">
+                    <span className="text-sm">{mod.module_title || `Module ${mod.module_id}`}</span>
+                    <div className="flex items-center gap-3">
+                      {mod.quiz_score !== undefined && (
+                        <span className={`text-sm ${mod.quiz_score >= 80 ? 'text-green-400' : 'text-yellow-400'}`}>
+                          Quiz: {mod.quiz_score}%
+                        </span>
+                      )}
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                    </div>
+                  </div>
+                )) || (
+                  <p className="text-gray-500 text-sm">No modules completed yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Learner Modal */}
+      {editingLearner && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setEditingLearner(null)}>
+          <div className="bg-card rounded-xl border border-border w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Edit className="w-5 h-5 text-secondary" />
+                Edit Learner
+              </h2>
+              <button onClick={() => setEditingLearner(null)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-2">Email (Read Only)</label>
+                <input 
+                  type="email" 
+                  value={editingLearner.email} 
+                  disabled 
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg text-gray-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-2">Full Name</label>
+                <input 
+                  type="text" 
+                  value={editLearnerName}
+                  onChange={(e) => setEditLearnerName(e.target.value)}
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm text-gray-400 mb-2">Notes</label>
+                <textarea 
+                  rows={4}
+                  value={editLearnerNotes}
+                  onChange={(e) => setEditLearnerNotes(e.target.value)}
+                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none resize-none"
+                  placeholder="Add notes about this learner..."
+                />
+              </div>
+              <button 
+                onClick={handleSaveLearnerEdit}
+                className="w-full py-3 bg-secondary hover:bg-secondary-light text-primary-dark rounded-lg font-semibold flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>
       )}

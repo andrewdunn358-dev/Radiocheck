@@ -67,6 +67,49 @@ The Radiocheck project is a complex mix of:
 
 ---
 
+### LMS Portal Feature Parity Enhancement (P0)
+**Status**: ✅ COMPLETE (March 22, 2026)
+
+**Problem**: The new Next.js Learning and LMS-Admin portals were missing key features compared to the legacy vanilla JS versions.
+
+**Implemented Features**:
+
+**Learning Portal (`/app/portal/src/app/learning/`)**:
+1. **Mr Clark Floating Chat Widget** - New component `TutorChatWidget.tsx`
+   - Floating widget visible on all learning pages
+   - Mr Clark avatar + "Ask Mr Clark" button
+   - Full chat window with history and typing indicators
+
+2. **Tutor Introduction per Module**
+   - Shows Mr Clark's personalized intro for each module
+   - Fetches from `/api/lms/tutor/module-intro/{moduleId}`
+
+3. **Reflection Questions System** - New component `ReflectionQuestions.tsx`
+   - AI-evaluated reflection questions for critical modules
+   - Required before quiz access
+   - Competency tracking and feedback
+
+**LMS Admin Portal (`/app/portal/src/app/lms-admin/`)**:
+1. **Quiz Management Tab** - View quiz questions with correct answers
+2. **Alerts Tab** - System alerts with mark all read
+3. **Learner Progress Detail Modal** - Module completion breakdown
+4. **Edit Learner Modal** - Edit name and notes
+5. **Preview Course Button** - Opens learner portal in new tab
+
+**Files Created**:
+- `/app/portal/src/components/learning/TutorChatWidget.tsx`
+- `/app/portal/src/components/learning/ReflectionQuestions.tsx`
+- `/app/memory/LMS_PORTAL_AUDIT.md`
+
+**Files Modified**:
+- `/app/portal/src/app/learning/layout.tsx`
+- `/app/portal/src/app/learning/module/[id]/page.tsx`
+- `/app/portal/src/app/lms-admin/page.tsx`
+
+**Verification**: Portal builds successfully with `npm run build`
+
+---
+
 ## Completed Work - December 2025
 
 ### Notes Edit/Share & Internal Messaging

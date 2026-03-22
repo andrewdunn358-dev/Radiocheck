@@ -5,13 +5,31 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLearnerAuth } from '@/hooks/useLearnerAuth';
 import { lmsApi, ModuleResponse, QuizResults } from '@/lib/api';
+import ReflectionQuestions from '@/components/learning/ReflectionQuestions';
 import { 
   ArrowLeft, Clock, CheckCircle, XCircle, AlertTriangle, 
   ChevronRight, BookOpen, HelpCircle, Award, RotateCcw,
-  ExternalLink, MessageSquare
+  ExternalLink, MessageSquare, Lightbulb
 } from 'lucide-react';
 
-type ViewState = 'content' | 'quiz' | 'results';
+type ViewState = 'content' | 'reflection' | 'quiz' | 'results';
+
+interface TutorIntro {
+  tutor: {
+    name: string;
+    avatar_url: string;
+    title: string;
+  };
+  introduction: string;
+}
+
+interface ReflectionData {
+  module_name: string;
+  has_reflection: boolean;
+  questions: { id: string; question: string; type: 'scenario' | 'reflection' }[];
+  tutor: { name: string; avatar_url: string; title: string };
+  intro_message: string;
+}
 
 export default function ModulePage() {
   const params = useParams();
@@ -27,7 +45,11 @@ export default function ModulePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Tutor chat
+  // Tutor intro and reflection
+  const [tutorIntro, setTutorIntro] = useState<TutorIntro | null>(null);
+  const [reflectionData, setReflectionData] = useState<ReflectionData | null>(null);
+
+  // Tutor chat (keeping for sidebar, but main widget is in layout)
   const [showTutor, setShowTutor] = useState(false);
   const [tutorMessage, setTutorMessage] = useState('');
   const [tutorChat, setTutorChat] = useState<{role: string; content: string}[]>([]);
@@ -39,6 +61,7 @@ export default function ModulePage() {
       return;
     }
     loadModule();
+    loadTutorData();
   }, [learner, moduleId]);
 
   const loadModule = async () => {
@@ -51,6 +74,47 @@ export default function ModulePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadTutorData = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    
+    // Load tutor introduction
+    try {
+      const introRes = await fetch(`${API_URL}/api/lms/tutor/module-intro/${moduleId}`);
+      if (introRes.ok) {
+        const introData = await introRes.json();
+        setTutorIntro(introData);
+      }
+    } catch (e) {
+      console.log('Tutor intro not available');
+    }
+
+    // Load reflection questions (for critical modules)
+    try {
+      const reflectRes = await fetch(`${API_URL}/api/lms/tutor/reflection-questions/${moduleId}`);
+      if (reflectRes.ok) {
+        const reflectData = await reflectRes.json();
+        if (reflectData.has_reflection) {
+          setReflectionData(reflectData);
+        }
+      }
+    } catch (e) {
+      console.log('No reflection questions for this module');
+    }
+  };
+
+  const handleStartQuiz = () => {
+    // If this module has reflection questions and hasn't been completed, show reflection first
+    if (reflectionData && !moduleData?.is_completed) {
+      setViewState('reflection');
+    } else {
+      setViewState('quiz');
+    }
+  };
+
+  const handleReflectionComplete = () => {
+    setViewState('quiz');
   };
 
   const handleQuizSubmit = async () => {
@@ -176,8 +240,21 @@ export default function ModulePage() {
             <BookOpen className="w-4 h-4 inline mr-2" />
             Content
           </button>
+          {reflectionData && (
+            <button
+              onClick={() => setViewState('reflection')}
+              className={`px-4 py-3 border-b-2 transition-colors ${
+                viewState === 'reflection'
+                  ? 'border-secondary text-secondary' 
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <Lightbulb className="w-4 h-4 inline mr-2" />
+              Reflection
+            </button>
+          )}
           <button
-            onClick={() => setViewState('quiz')}
+            onClick={() => setViewState(viewState === 'results' ? 'results' : 'quiz')}
             className={`px-4 py-3 border-b-2 transition-colors ${
               viewState === 'quiz' || viewState === 'results'
                 ? 'border-secondary text-secondary' 
@@ -193,6 +270,26 @@ export default function ModulePage() {
         {/* Content View */}
         {viewState === 'content' && (
           <div>
+            {/* Tutor Introduction */}
+            {tutorIntro && (
+              <div className="mb-8 p-6 bg-card border border-border rounded-xl" data-testid="tutor-intro">
+                <div className="flex gap-4">
+                  <img 
+                    src={tutorIntro.tutor.avatar_url} 
+                    alt={tutorIntro.tutor.name}
+                    className="w-16 h-16 rounded-full border-2 border-secondary flex-shrink-0"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-white">{tutorIntro.tutor.name}</span>
+                      <span className="text-sm text-gray-400">- {tutorIntro.tutor.title}</span>
+                    </div>
+                    <p className="text-gray-300">{tutorIntro.introduction}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {module.image_url && (
               <img 
                 src={module.image_url} 
@@ -226,16 +323,50 @@ export default function ModulePage() {
               </div>
             )}
 
+            {/* Reflection Notice for Critical Modules */}
+            {reflectionData && !is_completed && (
+              <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex gap-3" data-testid="reflection-notice">
+                <Lightbulb className="w-6 h-6 text-yellow-400 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-yellow-400">Reflection Required</p>
+                  <p className="text-sm text-gray-300">
+                    This is a critical module. Before taking the quiz, you&apos;ll need to answer some reflection questions reviewed by {reflectionData.tutor.name}.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="mt-8 flex justify-end">
               <button
-                onClick={() => setViewState('quiz')}
+                onClick={handleStartQuiz}
                 className="flex items-center gap-2 px-6 py-3 bg-secondary text-primary-dark font-semibold rounded-lg hover:bg-secondary-light"
+                data-testid="start-quiz-btn"
               >
-                Take Quiz
-                <ChevronRight className="w-5 h-5" />
+                {reflectionData && !is_completed ? (
+                  <>
+                    <Lightbulb className="w-5 h-5" />
+                    Complete Reflection & Quiz
+                  </>
+                ) : (
+                  <>
+                    Take Quiz
+                    <ChevronRight className="w-5 h-5" />
+                  </>
+                )}
               </button>
             </div>
           </div>
+        )}
+
+        {/* Reflection View */}
+        {viewState === 'reflection' && reflectionData && learner && (
+          <ReflectionQuestions
+            reflectionData={reflectionData}
+            learnerEmail={learner.email}
+            moduleId={moduleId}
+            onComplete={handleReflectionComplete}
+            onCancel={() => setViewState('content')}
+          />
         )}
 
         {/* Quiz View */}
