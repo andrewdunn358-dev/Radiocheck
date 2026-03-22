@@ -44,6 +44,30 @@ The Radiocheck project is a complex mix of:
     └── src/lib/api.ts        # API functions with notes support
 ```
 
+## Completed Work - March 2026
+
+### BUG FIX: Vercel Frontend Build Failure (P0)
+**Status**: ✅ COMPLETE (March 22, 2026)
+
+**Root Cause**: The Expo frontend build was failing due to `require()` statements referencing non-existent image files. When using React Native/Expo, `require()` statements for local images must reference files that exist.
+
+**Missing Images**:
+- `jack.png` - Avatar not generated
+- `baz.png` - Avatar not generated  
+- `megan.png` - Avatar not generated
+- `penny.png` - Avatar not generated
+
+**Fix Applied**:
+- Removed broken `require()` statements from:
+  - `/app/frontend/app/chat/[characterId].tsx` (AVATAR_IMAGES map)
+  - `/app/frontend/app/home.tsx` (AI_AVATARS map)
+- Added `doris.png` which was available but not included
+- Characters with missing avatars will fall back to using their remote image URL via `getAvatarSource()` helper
+
+**Verification**: `npx expo export --platform web` now completes successfully
+
+---
+
 ## Completed Work - December 2025
 
 ### Notes Edit/Share & Internal Messaging
@@ -190,15 +214,17 @@ The Radiocheck project is a complex mix of:
 - Test user: `kev@radiocheck.me` / `AS90155mm`
 
 ## Future Tasks (Backlog)
-- [ ] (P2) Move logs to top of admin logs page (deferred)
-- [ ] Admin panel refactoring (7000+ line file)
-- [ ] **User Manuals** (NEW):
+- [ ] (P1) Generate photorealistic avatars for Jack, Baz, Megan, Penny
+- [ ] (P1) **User Manuals**:
   - [ ] Staff User Manual - Guide for peer supporters and counsellors
   - [ ] Admin User Manual - Guide for administrators and supervisors
-- [ ] Full CMS visual editor
-- [ ] Discussion Forums
-- [ ] Mood Tracker
-- [ ] Welsh Language Support
+- [ ] (P1) Admin panel refactoring (7000+ line file - `/portal/src/app/admin/page.tsx`)
+- [ ] (P1) Staff panel refactoring (4000+ line file - `/portal/src/app/staff/page.tsx`)
+- [ ] (P2) Move logs to top of admin logs page (deferred)
+- [ ] (P2) Full CMS visual editor
+- [ ] (P2) Discussion Forums
+- [ ] (P2) Mood Tracker
+- [ ] (P2) Welsh Language Support
 - [ ] End-to-end WebRTC call testing on production
 
 ## Known Technical Debt

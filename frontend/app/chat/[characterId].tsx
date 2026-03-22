@@ -31,19 +31,17 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { API_URL } from '../../src/config/api';
 
 // Avatar image mapping for React Native local images
+// NOTE: jack.png, baz.png, megan.png, penny.png are missing - need to generate avatars for these characters
 const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
   '/images/tommy.png': require('../../assets/images/tommy.png'),
   '/images/rachel.png': require('../../assets/images/rachel.png'),
   '/images/finch.png': require('../../assets/images/finch.png'),
   '/images/bob.png': require('../../assets/images/bob.png'),
   '/images/margie.png': require('../../assets/images/margie.png'),
-  '/images/jack.png': require('../../assets/images/jack.png'),
   '/images/rita.png': require('../../assets/images/rita.png'),
   '/images/catherine.png': require('../../assets/images/catherine.png'),
   '/images/frankie.png': require('../../assets/images/frankie.png'),
-  '/images/baz.png': require('../../assets/images/baz.png'),
-  '/images/megan.png': require('../../assets/images/megan.png'),
-  '/images/penny.png': require('../../assets/images/penny.png'),
+  '/images/doris.png': require('../../assets/images/doris.png'),
   '/images/alex.png': require('../../assets/images/alex.png'),
   '/images/sam.png': require('../../assets/images/sam.png'),
   '/images/kofi.png': require('../../assets/images/kofi.png'),

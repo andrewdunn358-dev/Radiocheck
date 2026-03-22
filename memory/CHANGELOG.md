@@ -4,6 +4,36 @@ Quick reference for tracking development changes.
 
 ---
 
+## March 22, 2026
+
+### BUG FIXED: Vercel Frontend Build Failure (P0)
+**Status:** ✅ FIXED
+
+**Root Cause:** The frontend Expo build was failing due to `require()` statements referencing non-existent image files:
+- `jack.png` - MISSING
+- `baz.png` - MISSING
+- `megan.png` - MISSING
+- `penny.png` - MISSING
+
+When using React Native/Expo, `require()` statements for local images must reference files that actually exist. The build process fails when these files are missing.
+
+**Fix Applied:**
+- Removed the broken `require()` statements from:
+  - `/app/frontend/app/chat/[characterId].tsx` (AVATAR_IMAGES map)
+  - `/app/frontend/app/home.tsx` (AI_AVATARS map)
+- Added `doris.png` which was available but not included
+- Characters with missing avatars will now fall back to using their remote image URL
+
+**Files Changed:**
+- `/app/frontend/app/chat/[characterId].tsx` - Fixed AVATAR_IMAGES map
+- `/app/frontend/app/home.tsx` - Fixed AI_AVATARS map
+
+**Verified:** `npx expo export --platform web` now completes successfully with all 58 static routes
+
+**Next Steps:** Generate photorealistic avatars for Jack, Baz, Megan, and Penny to restore their local image loading
+
+---
+
 ## December 21, 2025
 
 ### WebRTC Call Lifecycle Fixes (P0)
