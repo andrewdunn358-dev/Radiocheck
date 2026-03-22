@@ -18,6 +18,35 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const NEW_LOGO_URL = require('../assets/images/logo.png');
 
+// AI Avatar image mapping - required for React Native local images
+const AI_AVATARS: Record<string, any> = {
+  '/images/frankie.png': require('../assets/images/frankie.png'),
+  '/images/tommy.png': require('../assets/images/tommy.png'),
+  '/images/rachel.png': require('../assets/images/rachel.png'),
+  '/images/bob.png': require('../assets/images/bob.png'),
+  '/images/megan.png': require('../assets/images/megan.png'),
+  '/images/penny.png': require('../assets/images/penny.png'),
+  '/images/finch.png': require('../assets/images/finch.png'),
+  '/images/margie.png': require('../assets/images/margie.png'),
+  '/images/jack.png': require('../assets/images/jack.png'),
+  '/images/baz.png': require('../assets/images/baz.png'),
+  '/images/rita.png': require('../assets/images/rita.png'),
+  '/images/catherine.png': require('../assets/images/catherine.png'),
+  '/images/alex.png': require('../assets/images/alex.png'),
+  '/images/sam.png': require('../assets/images/sam.png'),
+  '/images/kofi.png': require('../assets/images/kofi.png'),
+  '/images/james.png': require('../assets/images/james.png'),
+};
+
+// Helper function to get avatar source
+const getAvatarSource = (avatar: string) => {
+  if (AI_AVATARS[avatar]) {
+    return AI_AVATARS[avatar];
+  }
+  // For CMS images, use URI
+  return { uri: avatar };
+};
+
 // AI Team member type
 interface AITeamMember {
   name: string;
@@ -378,7 +407,7 @@ export default function Index() {
                     activeOpacity={0.8}
                     data-testid={`ai-team-${member.name.toLowerCase()}`}
                   >
-                    <Image source={{ uri: member.avatar }} style={styles.aiTeamAvatar} />
+                    <Image source={getAvatarSource(member.avatar)} style={styles.aiTeamAvatar} />
                     <Text style={styles.aiTeamName}>{member.name}</Text>
                     <Text style={styles.aiTeamDesc}>{member.description}</Text>
                   </TouchableOpacity>
