@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST='{"app/admin/page.tsx -> ../components/LocationMap":{"id":7287,"files":["static/css/fc1c9daac70c093b.css","static/chunks/d0deef33.afff9b3bf7059c8b.js","static/chunks/287.61e726cf1e506249.js"]}}';
+self.__REACT_LOADABLE_MANIFEST='{"components/admin/tabs/LogsTab/index.tsx -> @/app/components/LocationMap":{"id":7287,"files":["static/css/fc1c9daac70c093b.css","static/chunks/d0deef33.afff9b3bf7059c8b.js","static/chunks/287.61e726cf1e506249.js"]}}';

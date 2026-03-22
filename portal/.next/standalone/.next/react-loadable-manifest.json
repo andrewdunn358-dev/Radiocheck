@@ -1,5 +1,5 @@
 {
-  "app/admin/page.tsx -> ../components/LocationMap": {
+  "components/admin/tabs/LogsTab/index.tsx -> @/app/components/LocationMap": {
     "id": 7287,
     "files": [
       "static/css/fc1c9daac70c093b.css",

@@ -46,6 +46,68 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - March 2026
 
+### Admin Portal Phase 3 Refactoring - LogsTab Extraction (P0)
+**Status**: ✅ COMPLETE (December 2025)
+
+**Problem**: Continue refactoring the admin portal by extracting the Logs tab with its 7 sub-tabs.
+
+**Phase 3 Extraction Completed**:
+- Reduced `page.tsx` from **5,175 lines → 3,891 lines** (~1,284 lines removed)
+
+**New LogsTab Components Created** (`/app/portal/src/components/admin/tabs/LogsTab/`):
+1. `index.tsx` (790 lines)
+   - Main container with stats summary cards
+   - App usage analytics dashboard
+   - Usage charts (Line, Bar, Doughnut)
+   - Activity trend charts
+   - Location map integration
+   - Sub-tab navigation and routing
+
+2. `CallsSubTab.tsx` (58 lines)
+   - Call logs table with date/time, contact, type, method columns
+
+3. `ChatsSubTab.tsx` (111 lines)
+   - Chat rooms table
+   - Chat History Modal for viewing conversation
+
+4. `SafeguardingSubTab.tsx` (240 lines)
+   - Safeguarding alerts table with risk levels
+   - Safeguarding Alert Detail Modal
+   - Acknowledge/Resolve actions
+
+5. `ScreeningSubTab.tsx` (67 lines)
+   - Screening submissions table with risk scores
+
+6. `CallbacksSubTab.tsx` (58 lines)
+   - Callback requests table with status tracking
+
+7. `PanicSubTab.tsx` (50 lines)
+   - Panic alerts table with animated active alerts
+
+8. `AuditSubTab.tsx` (103 lines)
+   - Audit logs table with event type filter
+
+**Total LogsTab extracted**: 1,477 lines into reusable components
+
+**Total Admin Page Reduction**: 7,229 lines → 3,891 lines (**46% reduction**)
+
+**Verification**: Build successful, TypeScript compilation passes
+
+**Remaining tabs to extract** (Phase 4+):
+- RotaTab (~540 lines)
+- GovernanceTab (7 sub-tabs, ~770 lines)
+- EventsTab (~315 lines)
+- AIUsageTab
+- MonitoringTab
+- MigrationTab
+- CMSTab
+- BetaTab
+- ComplianceTab
+- LearningTab
+- TimeTrackingTab
+
+---
+
 ### Admin Portal Phase 2 Refactoring - Tab Extraction (P0)
 **Status**: ✅ COMPLETE (March 22, 2026)
 
@@ -354,11 +416,11 @@ The Radiocheck project is a complex mix of:
 - Test user: `kev@radiocheck.me` / `AS90155mm`
 
 ## Future Tasks (Backlog)
+- [ ] (P0) Continue Admin Portal Refactoring - Extract remaining tabs (Rota, Governance, Events, etc.)
+- [ ] (P1) Staff Portal Refactoring - `/portal/src/app/staff/page.tsx` (3,907 lines)
 - [ ] (P1) **User Manuals**:
   - [ ] Staff User Manual - Guide for peer supporters and counsellors
   - [ ] Admin User Manual - Guide for administrators and supervisors
-- [ ] (P1) Admin panel refactoring (7000+ line file - `/portal/src/app/admin/page.tsx`)
-- [ ] (P1) Staff panel refactoring (4000+ line file - `/portal/src/app/staff/page.tsx`)
 - [ ] (P2) Move logs to top of admin logs page (deferred)
 - [ ] (P2) Full CMS visual editor
 - [ ] (P2) Discussion Forums
@@ -367,5 +429,6 @@ The Radiocheck project is a complex mix of:
 - [ ] End-to-end WebRTC call testing on production
 
 ## Known Technical Debt
-- `/portal/src/app/admin/page.tsx` is 7000+ lines - needs to be split into components
+- `/portal/src/app/admin/page.tsx` is 3,891 lines (down from 7,229 - 46% reduced) - continue refactoring remaining tabs
+- `/portal/src/app/staff/page.tsx` is 3,907 lines - needs to be audited and refactored
 - WebRTC call flow involves 3 files that must be kept in sync
