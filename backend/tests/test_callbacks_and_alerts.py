@@ -11,7 +11,7 @@ import os
 import uuid
 
 # Use environment variable or default to the preview URL
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://modular-admin-draft.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://logs-modular-1.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"

@@ -27,7 +27,7 @@
       "email": "test@example.com",
       "password": "testpass123"
     },
-    "preview_url": "https://modular-admin-draft.preview.emergentagent.com"
+    "preview_url": "https://logs-modular-1.preview.emergentagent.com"
   },
   "seed_data_creation": "Test user test@example.com with password testpass123 already exists",
   "retest_needed": false,
