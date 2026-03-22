@@ -31,6 +31,41 @@ Quick reference for tracking development changes.
 - **Result: 11/11 PASSED (100%)**
 - Reports saved to `/app/test_reports/safeguarding_test_report.md`
 
+### NEW: 4 App Home Page Tiles
+**Status:** ✅ COMPLETE
+
+Created 4 new comprehensive resource pages:
+
+1. **They Served** (`/they-served`) - LGBTQ+ Veterans
+   - Fighting With Pride, Galop, Stonewall, LGBT Foundation
+   - The Ban history, Medal restoration, Financial redress
+   - Mental health support, community resources
+
+2. **Forces Kids** (`/forces-kids`) - Service Children
+   - Scotty's Little Soldiers, Little Troopers
+   - Army Cadet Force, Air Training Corps, Sea Cadets, CCF
+   - Education support, Service Pupil Premium
+   - Bereaved children support (Winston's Wish)
+
+3. **Commonwealth Comrades** (`/commonwealth-veterans`) - Commonwealth Veterans
+   - Settlement rights (FREE ILR after 4+ years)
+   - Family settlement, British citizenship
+   - CFFVC, RBL, SSAFA support
+   - NHS entitlement, travel schemes
+
+4. **Faith & Service** (`/faith-service`) - Religious Support
+   - Armed Forces Chaplaincy (all branches)
+   - Christian, Muslim, Jewish, Sikh, Hindu, Buddhist resources
+   - Moral injury support
+   - "No faith? That's OK too" section
+
+**Files Created:**
+- `/app/frontend/app/they-served.tsx`
+- `/app/frontend/app/forces-kids.tsx`
+- `/app/frontend/app/commonwealth-veterans.tsx`
+- `/app/frontend/app/faith-service.tsx`
+- Updated `/app/frontend/app/home.tsx` with new menu items
+
 ### BUG FIXED: Safeguarding Alerts Not Being Created (CRITICAL)
 **Status:** ✅ FIXED
 
