@@ -5,8 +5,8 @@ import { Plus, RefreshCw, X, Calendar, Clock, Video, MapPin, Users } from 'lucid
 import { api } from '@/lib/admin-api';
 import dynamic from 'next/dynamic';
 
-// Dynamically import JitsiRoom to avoid SSR issues
-const JitsiRoom = dynamic(() => import('@/components/shared/JitsiRoom'), { ssr: false });
+// Dynamically import AgoraRoom to avoid SSR issues
+const AgoraRoom = dynamic(() => import('@/components/shared/AgoraRoom'), { ssr: false });
 
 interface EventsTabProps {
   token: string;
@@ -266,9 +266,9 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
 
   return (
     <div data-testid="events-tab">
-      {/* Jitsi Room Modal */}
+      {/* Agora Room Modal */}
       {activeJitsiEvent && (
-        <JitsiRoom
+        <AgoraRoom
           roomName={`event_${activeJitsiEvent.id}`}
           displayName={userName || 'Admin'}
           eventTitle={activeJitsiEvent.title}

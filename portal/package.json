@@ -11,6 +11,7 @@
   "dependencies": {
     "@twilio/voice-sdk": "^2.18.1",
     "@types/leaflet": "^1.9.21",
+    "agora-rtc-sdk-ng": "^4.24.3",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
     "leaflet": "^1.9.4",

@@ -5,8 +5,8 @@ import { Calendar, Clock, Video, MapPin, Users, RefreshCw } from 'lucide-react';
 import { staffApi } from '@/lib/api';
 import dynamic from 'next/dynamic';
 
-// Dynamically import JitsiRoom to avoid SSR issues
-const JitsiRoom = dynamic(() => import('@/components/shared/JitsiRoom'), { ssr: false });
+// Dynamically import AgoraRoom to avoid SSR issues
+const AgoraRoom = dynamic(() => import('@/components/shared/AgoraRoom'), { ssr: false });
 
 interface EventsTabProps {
   token: string;
@@ -81,9 +81,9 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
 
   return (
     <div data-testid="staff-events-tab">
-      {/* Jitsi Room Modal */}
+      {/* Agora Room Modal */}
       {activeJitsiEvent && (
-        <JitsiRoom
+        <AgoraRoom
           roomName={`event_${activeJitsiEvent.id}`}
           displayName={userName || 'Staff'}
           eventTitle={activeJitsiEvent.title}

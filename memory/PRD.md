@@ -79,7 +79,7 @@ None - All P0 items complete
 - **events**: `{ title, description, date, event_type?, location?, jitsi_room_id?, created_by, created_at }`
 
 ## Third-Party Integrations
-- **Jitsi Meet**: Video conferencing via `meet.jit.si` public servers
+- **Agora Video SDK**: Video conferencing via Agora RTC (App ID: cfd84eb3fcd7490cbe366d8cd1a4d974)
 
 ## Known Issues
 None currently active
