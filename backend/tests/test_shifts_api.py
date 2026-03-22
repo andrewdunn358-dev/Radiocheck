@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-refactor-final.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://staff-portal-batch2.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 STAFF_USER = {

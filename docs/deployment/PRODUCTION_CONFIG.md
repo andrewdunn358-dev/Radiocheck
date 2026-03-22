@@ -34,5 +34,5 @@ When forking a session, agents sometimes change these URLs to the preview enviro
 
 ## Preview Environment (Emergent)
 
-- Preview URL: `https://admin-refactor-final.preview.emergentagent.com`
+- Preview URL: `https://staff-portal-batch2.preview.emergentagent.com`
 - This is for testing ONLY - changes here don't affect production until deployed

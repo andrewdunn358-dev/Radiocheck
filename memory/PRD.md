@@ -41,19 +41,83 @@ The Radiocheck project is a complex mix of:
 └── portal/                   # Next.js unified portal
     ├── src/app/
     │   ├── admin/page.tsx    # Admin portal - FULLY REFACTORED (414 lines)
-    │   └── staff/page.tsx    # Staff portal - BATCH 1 COMPLETE (2,257 lines)
+    │   └── staff/page.tsx    # Staff portal - FULLY REFACTORED (1,166 lines)
     ├── src/components/
     │   ├── admin/tabs/       # 33 extracted admin tab components
-    │   └── staff/tabs/       # 3 extracted staff tab components (Batch 1)
-    │       ├── AlertsTab.tsx     # Safeguarding + Panic alerts with real-time polling
-    │       ├── LiveChatTab.tsx   # Live chat with WebSocket handlers
-    │       └── CasesTab.tsx      # Case management with modals
+    │   └── staff/tabs/       # 8 extracted staff tab components (ALL COMPLETE)
+    │       ├── AlertsTab.tsx       # Safeguarding + Panic alerts with real-time polling
+    │       ├── CallbacksTab.tsx    # Callback requests with Twilio integration
+    │       ├── CasesTab.tsx        # Case management with modals
+    │       ├── LiveChatTab.tsx     # Live chat with WebSocket handlers
+    │       ├── NotesTab.tsx        # Staff notes with sharing
+    │       ├── RotaTab.tsx         # Shift scheduling with calendar
+    │       ├── SupervisionTab.tsx  # Supervisor escalation management
+    │       └── TeamTab.tsx         # Team status and WebRTC calling
     ├── src/hooks/
     │   └── useWebRTCPhone.tsx  # WebRTC hook with Socket.IO stability
     └── src/lib/api.ts        # API functions with notes support
 ```
 
-## Completed Work - February 2026
+## Completed Work - December 2025
+
+### Staff Portal FINAL Phase Refactoring - All Tabs Extracted (P0)
+**Status**: ✅ COMPLETE (December 2025)
+
+**Problem**: Complete refactoring of `/app/portal/src/app/staff/page.tsx` (3,907 lines) using the same phased approach as admin portal.
+
+**Final Extraction Completed (Batch 2)**:
+- Reduced `page.tsx` from **2,257 lines → 1,166 lines** (~48% additional reduction)
+- Total reduction: **3,907 lines → 1,166 lines** (~70% total reduction)
+- Created 5 additional tab components
+
+**Components Extracted in Batch 2**:
+1. **CallbacksTab.tsx** (270 lines):
+   - ✅ Callback listing with sub-tabs (pending/active/completed)
+   - ✅ Take/release/complete callback actions
+   - ✅ Twilio phone integration for calling
+   - ✅ `useCallbackCounts` hook for badge counts
+
+2. **RotaTab.tsx** (260 lines):
+   - ✅ Calendar view with shift indicators
+   - ✅ Add shift modal
+   - ✅ Delete shift and request swap functionality
+   - ✅ Swap requests display
+
+3. **TeamTab.tsx** (150 lines):
+   - ✅ Team members on duty display
+   - ✅ WebRTC call button for available members
+   - ✅ Real-time status sync event listeners
+   - ✅ Team stats breakdown (available/busy/offline)
+
+4. **NotesTab.tsx** (350 lines):
+   - ✅ My notes and shared notes tabs
+   - ✅ Add/edit/delete note modals
+   - ✅ Share note with team members modal
+   - ✅ Author tracking and permissions
+
+5. **SupervisionTab.tsx** (140 lines):
+   - ✅ Supervisor-only access check
+   - ✅ Pending/all escalations tabs
+   - ✅ Acknowledge and resolve escalation actions
+
+**Hook Exports for Parent Component**:
+- `useAlertCounts(token)` - Returns alert data and counts for dashboard/badges
+- `useLiveChatCounts(token)` - Returns chat data and counts for dashboard/badges
+- `useCaseCounts(token)` - Returns case data and counts for dashboard/badges
+- `useCallbackCounts(token)` - Returns callback data and counts for dashboard/badges
+
+**Remaining in page.tsx (1,166 lines)**:
+- Login UI and authentication form
+- Sidebar navigation
+- Dashboard tab (summary view - intentionally kept in main page)
+- Session timeout warning
+- WebRTC and Twilio phone UI in header
+- Internal messages modal
+- Panic button modal
+
+**Verification**: Build successful (`next build` passed)
+
+---
 
 ### Staff Portal Batch 1 Refactoring - AlertsTab/LiveChatTab/CasesTab Extraction (P1)
 **Status**: ✅ COMPLETE (February 2026)

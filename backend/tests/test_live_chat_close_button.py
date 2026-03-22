@@ -9,7 +9,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-refactor-final.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://staff-portal-batch2.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"

@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timedelta
 
 # Get base URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://admin-refactor-final.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://staff-portal-batch2.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_CREDENTIALS = {
