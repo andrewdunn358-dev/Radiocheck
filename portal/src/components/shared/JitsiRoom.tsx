@@ -25,8 +25,29 @@ export default function JitsiRoom({ roomName, displayName, onClose, eventTitle }
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isContainerReady, setIsContainerReady] = useState(false);
+  const isMountedRef = useRef(true);
+
+  // Delay initialization until container is ready
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    // Give the DOM a moment to render the container
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        setIsContainerReady(true);
+      }
+    }, 100);
+
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
+    if (!isContainerReady) return;
+
     // Load Jitsi Meet External API script
     const loadJitsiScript = () => {
       return new Promise<void>((resolve, reject) => {
@@ -48,26 +69,24 @@ export default function JitsiRoom({ roomName, displayName, onClose, eventTitle }
       try {
         await loadJitsiScript();
         
-        // Wait for DOM to be ready
-        if (!jitsiContainerRef.current) {
-          console.error('Jitsi container not found');
+        // Double-check container exists and component is still mounted
+        if (!jitsiContainerRef.current || !isMountedRef.current) {
+          console.log('[Jitsi] Container not ready or component unmounted');
           return;
         }
 
         // Generate a clean room name (alphanumeric only)
         const cleanRoomName = roomName.replace(/[^a-zA-Z0-9]/g, '');
         
-        // Initialize Jitsi Meet
+        console.log('[Jitsi] Initializing with room:', `RadioCheck_${cleanRoomName}`);
+
+        // Initialize Jitsi Meet with optimized config for public meet.jit.si
         const api = new window.JitsiMeetExternalAPI('meet.jit.si', {
           roomName: `RadioCheck_${cleanRoomName}`,
           parentNode: jitsiContainerRef.current,
           width: '100%',
           height: '100%',
           configOverwrite: {
-            // Disable lobby - instant access like TikTok Live
-            prejoinPageEnabled: false,
-            lobbyModeEnabled: false,
-            
             // Start with audio muted by default
             startWithAudioMuted: true,
             startWithVideoMuted: false,
@@ -80,34 +99,56 @@ export default function JitsiRoom({ roomName, displayName, onClose, eventTitle }
             enableWelcomePage: false,
             enableClosePage: false,
             
+            // Hide some UI elements for cleaner experience
+            hideConferenceSubject: false,
+            hideConferenceTimer: false,
+            
+            // Disable features that cause warnings on public Jitsi
+            disableAudioLevels: true,
+            enableNoAudioDetection: false,
+            enableNoisyMicDetection: false,
+            
+            // Disable speaker stats completely (fixes speaker-selection error)
+            disableSpeakerStatsSearch: true,
+            speakerStats: {
+              disabled: true,
+            },
+            
+            // Disable features not supported on public meet.jit.si
+            disableThirdPartyRequests: true,
+            analytics: {
+              disabled: true,
+            },
+            
+            // Disable large video optimization issues
+            channelLastN: -1,
+            
+            // Quality settings
+            resolution: 720,
+            constraints: {
+              video: {
+                height: { ideal: 720, max: 1080, min: 240 }
+              }
+            },
+            
             // Toolbar configuration
             toolbarButtons: [
               'microphone',
               'camera',
               'desktop',
               'fullscreen',
-              'fodeviceselection',
               'hangup',
               'chat',
               'raisehand',
               'tileview',
               'participants-pane',
+              'settings',
+              'toggle-camera',
             ],
             
-            // Hide some UI elements for cleaner experience
-            hideConferenceSubject: false,
-            hideConferenceTimer: false,
-            
-            // Disable notifications we don't need
-            notifications: [],
-            
-            // Quality settings
-            resolution: 720,
-            constraints: {
-              video: {
-                height: { ideal: 720, max: 720, min: 180 }
-              }
-            },
+            // CRITICAL: Always enforce prejoin settings LAST to prevent overrides
+            prejoinPageEnabled: false,
+            lobbyModeEnabled: false,
           },
           interfaceConfigOverwrite: {
             SHOW_JITSI_WATERMARK: false,
@@ -116,12 +157,20 @@ export default function JitsiRoom({ roomName, displayName, onClose, eventTitle }
             BRAND_WATERMARK_LINK: '',
             SHOW_POWERED_BY: false,
             SHOW_PROMOTIONAL_CLOSE_PAGE: false,
-            DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+            DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
             MOBILE_APP_PROMO: false,
             HIDE_INVITE_MORE_HEADER: true,
             TOOLBAR_ALWAYS_VISIBLE: true,
             DEFAULT_BACKGROUND: '#1a1a2e',
-            DISABLE_VIDEO_BACKGROUND: true,
+            FILM_STRIP_MAX_HEIGHT: 120,
+            // Minimal settings sections to avoid unsupported features
+            SETTINGS_SECTIONS: ['devices', 'language', 'profile'],
+            // Use simpler toolbar without problematic features
+            TOOLBAR_BUTTONS: [
+              'microphone', 'camera', 'desktop', 'fullscreen',
+              'fodeviceselection', 'hangup', 'chat', 'raisehand',
+              'tileview', 'videoquality', 'filmstrip', 'settings'
+            ],
           },
           userInfo: {
             displayName: displayName,
@@ -132,25 +181,52 @@ export default function JitsiRoom({ roomName, displayName, onClose, eventTitle }
 
         // Event listeners
         api.addListener('videoConferenceJoined', () => {
-          setIsLoading(false);
-          // Mute audio by default
-          api.executeCommand('toggleAudio');
+          console.log('[Jitsi] Joined conference');
+          // Give Jitsi more time to fully initialize all video components
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setIsLoading(false);
+            }
+          }, 1000);
+        });
+
+        // Handle Jitsi errors gracefully - suppress non-critical warnings
+        api.addListener('errorOccurred', (error: any) => {
+          const errorName = error?.error?.name || error?.name || '';
+          const errorMessage = error?.error?.message || error?.message || '';
+          
+          console.warn('[Jitsi] Error/Warning:', errorName, errorMessage);
+          
+          // Only show error to user for critical issues
+          if (errorName === 'gum.general' || errorName === 'gum.permission_denied') {
+            if (isMountedRef.current) {
+              setError('Camera/microphone access denied. Please allow access and try again.');
+            }
+          }
         });
 
         api.addListener('participantJoined', () => {
-          setParticipantCount(prev => prev + 1);
+          if (isMountedRef.current) {
+            setParticipantCount(prev => prev + 1);
+          }
         });
 
         api.addListener('participantLeft', () => {
-          setParticipantCount(prev => Math.max(1, prev - 1));
+          if (isMountedRef.current) {
+            setParticipantCount(prev => Math.max(1, prev - 1));
+          }
         });
 
         api.addListener('audioMuteStatusChanged', (data: { muted: boolean }) => {
-          setIsMuted(data.muted);
+          if (isMountedRef.current) {
+            setIsMuted(data.muted);
+          }
         });
 
         api.addListener('videoMuteStatusChanged', (data: { muted: boolean }) => {
-          setIsVideoOff(data.muted);
+          if (isMountedRef.current) {
+            setIsVideoOff(data.muted);
+          }
         });
 
         api.addListener('readyToClose', () => {
@@ -158,9 +234,11 @@ export default function JitsiRoom({ roomName, displayName, onClose, eventTitle }
         });
 
       } catch (err: any) {
-        console.error('Failed to initialize Jitsi:', err);
-        setError(err.message || 'Failed to load video room');
-        setIsLoading(false);
+        console.error('[Jitsi] Failed to initialize:', err);
+        if (isMountedRef.current) {
+          setError(err.message || 'Failed to load video room');
+          setIsLoading(false);
+        }
       }
     };
 
@@ -169,11 +247,15 @@ export default function JitsiRoom({ roomName, displayName, onClose, eventTitle }
     // Cleanup
     return () => {
       if (apiRef.current) {
-        apiRef.current.dispose();
+        try {
+          apiRef.current.dispose();
+        } catch (e) {
+          console.warn('[Jitsi] Dispose error:', e);
+        }
         apiRef.current = null;
       }
     };
-  }, [roomName, displayName, onClose]);
+  }, [roomName, displayName, onClose, isContainerReady]);
 
   const handleToggleAudio = () => {
     if (apiRef.current) {

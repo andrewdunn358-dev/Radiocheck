@@ -2,7 +2,7 @@
   "components/admin/tabs/EventsTab.tsx -> @/components/shared/JitsiRoom": {
     "id": 6873,
     "files": [
-      "static/chunks/873.02ba3e4e0d5d57c4.js"
+      "static/chunks/873.255773b5352dec07.js"
     ]
   },
   "components/admin/tabs/LogsTab/index.tsx -> @/app/components/LocationMap": {
@@ -16,7 +16,7 @@
   "components/staff/tabs/EventsTab.tsx -> @/components/shared/JitsiRoom": {
     "id": 6873,
     "files": [
-      "static/chunks/19.9308b1425d68bb27.js"
+      "static/chunks/19.14b61fdec39c0e74.js"
     ]
   }
 }
