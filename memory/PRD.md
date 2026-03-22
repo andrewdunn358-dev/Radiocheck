@@ -60,6 +60,41 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - December 2025
 
+### Events Tab Jitsi Integration (P2)
+**Status**: ✅ COMPLETE (December 2025)
+
+Implemented virtual events with Jitsi Meet video conferencing:
+
+1. **JitsiRoom Component** (`/app/portal/src/components/shared/JitsiRoom.tsx`)
+   - Full-screen video conferencing modal
+   - No lobby/waiting room - instant access like TikTok Live
+   - Audio muted by default
+   - Participant counter
+   - Custom controls (mute, camera, leave)
+
+2. **Admin EventsTab Updates** (`/app/portal/src/components/admin/tabs/EventsTab.tsx`)
+   - Event type selector: In-Person, Virtual, Hybrid
+   - Location field for physical events
+   - "LIVE" badge for active events
+   - "Join Now" button when virtual events are live
+   - Purple info banner explaining Jitsi access
+
+3. **Staff EventsTab** (`/app/portal/src/components/staff/tabs/EventsTab.tsx`)
+   - New Events tab added to staff portal sidebar
+   - View upcoming community events
+   - Join virtual events when live
+   - Responsive grid layout
+
+**Features**:
+- Instant video access (no account/lobby required)
+- Audio muted by default for safety
+- Full toolbar: mic, camera, screenshare, chat, raise hand, tile view
+- Branded room names (`RadioCheck_eventId`)
+- Participant count visible in header
+- Clean exit handling
+
+---
+
 ### User Manuals Created (P1)
 **Status**: ✅ COMPLETE (December 2025)
 

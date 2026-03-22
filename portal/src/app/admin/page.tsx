@@ -376,6 +376,7 @@ export default function AdminPortal() {
               token={token!}
               onSuccess={setSuccess}
               onError={setError}
+              userName={user?.name || user?.email || 'Admin'}
             />
           )}
 

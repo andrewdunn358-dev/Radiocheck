@@ -1,16 +1,23 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, X, Calendar, Clock } from 'lucide-react';
+import { Plus, RefreshCw, X, Calendar, Clock, Video, MapPin, Users } from 'lucide-react';
 import { api } from '@/lib/admin-api';
+import dynamic from 'next/dynamic';
+
+// Dynamically import JitsiRoom to avoid SSR issues
+const JitsiRoom = dynamic(() => import('@/components/shared/JitsiRoom'), { ssr: false });
 
 interface EventsTabProps {
   token: string;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
+  userName?: string;
 }
 
-export default function EventsTab({ token, onSuccess, onError }: EventsTabProps) {
+type EventType = 'in-person' | 'virtual' | 'hybrid';
+
+export default function EventsTab({ token, onSuccess, onError, userName }: EventsTabProps) {
   // Data state
   const [events, setEvents] = useState<any[]>([]);
   
@@ -21,6 +28,9 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
   const [eventAttendance, setEventAttendance] = useState<any[]>([]);
   const [attendanceEventTitle, setAttendanceEventTitle] = useState('');
   
+  // Jitsi state
+  const [activeJitsiEvent, setActiveJitsiEvent] = useState<any>(null);
+  
   // Form state
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -30,6 +40,8 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
     duration_minutes: 60,
     host_name: '',
     max_participants: 20,
+    event_type: 'in-person' as EventType,
+    location: '',
   });
 
   const loadEvents = useCallback(async () => {
@@ -46,6 +58,26 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
     loadEvents();
   }, [loadEvents]);
 
+  // Check if event is currently live (within its scheduled time + duration)
+  const isEventLive = (event: any) => {
+    const eventDate = new Date(event.scheduled_for || event.event_date);
+    const now = new Date();
+    const endTime = new Date(eventDate.getTime() + (event.duration_minutes || 60) * 60000);
+    return now >= eventDate && now <= endTime;
+  };
+
+  // Check if event is upcoming (not started yet)
+  const isEventUpcoming = (event: any) => {
+    const eventDate = new Date(event.scheduled_for || event.event_date);
+    return new Date() < eventDate;
+  };
+
+  // Check if event supports virtual attendance
+  const isVirtualEvent = (event: any) => {
+    const eventType = event.event_type || 'in-person';
+    return eventType === 'virtual' || eventType === 'hybrid';
+  };
+
   const handleSubmitEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
@@ -57,6 +89,8 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
         duration_minutes: newEvent.duration_minutes,
         host_name: newEvent.host_name,
         max_participants: newEvent.max_participants,
+        event_type: newEvent.event_type,
+        location: newEvent.location,
       };
       if (editingEvent) {
         await api.updateEvent(token, editingEvent.id, eventData);
@@ -67,7 +101,14 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
       }
       setShowEventModal(false);
       setEditingEvent(null);
-      setNewEvent({ title: '', description: '', event_date: new Date().toISOString().split('T')[0], event_time: '14:00', duration_minutes: 60, host_name: '', max_participants: 20 });
+      setNewEvent({ 
+        title: '', description: '', 
+        event_date: new Date().toISOString().split('T')[0], 
+        event_time: '14:00', duration_minutes: 60, 
+        host_name: '', max_participants: 20,
+        event_type: 'in-person',
+        location: '',
+      });
       loadEvents();
     } catch (err: any) {
       onError('Failed to ' + (editingEvent ? 'update' : 'create') + ' event: ' + err.message);
@@ -95,6 +136,8 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
       duration_minutes: event.duration_minutes || 60,
       host_name: event.host_name || '',
       max_participants: event.max_participants || 20,
+      event_type: event.event_type || 'in-person',
+      location: event.location || '',
     });
     setEditingEvent(event);
     setShowEventModal(true);
@@ -111,8 +154,128 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
     }
   };
 
+  const handleJoinEvent = (event: any) => {
+    setActiveJitsiEvent(event);
+  };
+
+  const getEventTypeBadge = (eventType: EventType) => {
+    switch (eventType) {
+      case 'virtual':
+        return <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 flex items-center gap-1"><Video className="w-3 h-3" /> Virtual</span>;
+      case 'hybrid':
+        return <span className="px-2 py-0.5 rounded text-xs bg-indigo-500/20 text-indigo-400 flex items-center gap-1"><Video className="w-3 h-3" /> Hybrid</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" /> In-Person</span>;
+    }
+  };
+
+  // Render event card
+  const renderEventCard = (event: any, isPast: boolean = false) => {
+    const eventType = event.event_type || 'in-person';
+    const isLive = isEventLive(event);
+    const isUpcoming = isEventUpcoming(event);
+    const canJoinVirtually = isVirtualEvent(event) && isLive;
+
+    return (
+      <div key={event.id} className={`bg-gray-700 rounded-lg p-4 ${isPast ? 'opacity-75' : ''} ${isLive ? 'ring-2 ring-green-500' : ''}`}>
+        <div className="flex justify-between items-start mb-2">
+          <h4 className="font-medium">{event.title}</h4>
+          <div className="flex items-center gap-2">
+            {getEventTypeBadge(eventType)}
+            {isLive && (
+              <span className="px-2 py-0.5 rounded text-xs bg-green-500 text-white animate-pulse flex items-center gap-1">
+                <span className="w-2 h-2 bg-white rounded-full"></span>
+                LIVE
+              </span>
+            )}
+            {!isLive && !isPast && (
+              <span className={`px-2 py-1 rounded text-xs ${
+                event.status === 'cancelled' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                {event.status || 'scheduled'}
+              </span>
+            )}
+          </div>
+        </div>
+        
+        <p className="text-sm text-gray-400 mb-2">{event.description?.substring(0, 60)}{event.description?.length > 60 ? '...' : ''}</p>
+        
+        {event.location && (
+          <div className="flex items-center gap-1 text-sm text-gray-400 mb-2">
+            <MapPin className="w-3 h-3" />
+            <span>{event.location}</span>
+          </div>
+        )}
+        
+        <div className="flex justify-between items-center text-sm mb-2">
+          <span className="text-gray-400">
+            {new Date(event.scheduled_for || event.event_date).toLocaleDateString()} at {new Date(event.scheduled_for || event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <span className="text-blue-400 flex items-center gap-1">
+            <Users className="w-3 h-3" />
+            {event.participant_count || 0}/{event.max_participants || '∞'}
+          </span>
+        </div>
+        
+        <div className="flex gap-2 mt-3 flex-wrap">
+          {/* Join button for live virtual/hybrid events */}
+          {canJoinVirtually && (
+            <button 
+              onClick={() => handleJoinEvent(event)}
+              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1"
+            >
+              <Video className="w-3 h-3" />
+              Join Now
+            </button>
+          )}
+          
+          {/* Show reminder for upcoming virtual events */}
+          {isVirtualEvent(event) && isUpcoming && (
+            <span className="px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded text-xs flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              Starting {new Date(event.scheduled_for || event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          
+          {!isPast && (
+            <>
+              <button 
+                onClick={() => handleEditEvent(event)}
+                className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded text-xs"
+              >
+                Edit
+              </button>
+              <button 
+                onClick={() => handleViewAttendance(event)}
+                className="px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded text-xs"
+              >
+                Attendance
+              </button>
+              <button 
+                onClick={() => handleDeleteEvent(event)}
+                className="px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded text-xs"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div data-testid="events-tab">
+      {/* Jitsi Room Modal */}
+      {activeJitsiEvent && (
+        <JitsiRoom
+          roomName={`event_${activeJitsiEvent.id}`}
+          displayName={userName || 'Admin'}
+          eventTitle={activeJitsiEvent.title}
+          onClose={() => setActiveJitsiEvent(null)}
+        />
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Events Management</h2>
         <div className="flex gap-2">
@@ -132,7 +295,7 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
       {/* Create/Edit Event Modal */}
       {showEventModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg border border-gray-700">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg border border-gray-700 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">{editingEvent ? 'Edit Event' : 'Create New Event'}</h3>
               <button onClick={() => { setShowEventModal(false); setEditingEvent(null); }} className="p-1 hover:bg-gray-700 rounded">
@@ -151,6 +314,7 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
                     required
                   />
                 </div>
+                
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Description</label>
                   <textarea
@@ -159,6 +323,63 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
                   />
                 </div>
+
+                {/* Event Type Selector */}
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Event Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'in-person', label: 'In-Person', icon: MapPin },
+                      { value: 'virtual', label: 'Virtual', icon: Video },
+                      { value: 'hybrid', label: 'Hybrid', icon: Users },
+                    ].map((type) => {
+                      const Icon = type.icon;
+                      return (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() => setNewEvent({ ...newEvent, event_type: type.value as EventType })}
+                          className={`p-3 rounded-lg border transition flex flex-col items-center gap-1 ${
+                            newEvent.event_type === type.value
+                              ? 'border-blue-500 bg-blue-500/20 text-blue-400'
+                              : 'border-gray-600 bg-gray-700 text-gray-400 hover:border-gray-500'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span className="text-xs">{type.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Location field - shown for in-person and hybrid events */}
+                {(newEvent.event_type === 'in-person' || newEvent.event_type === 'hybrid') && (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={newEvent.location}
+                      onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      placeholder="Enter venue address"
+                    />
+                  </div>
+                )}
+
+                {/* Virtual event info */}
+                {(newEvent.event_type === 'virtual' || newEvent.event_type === 'hybrid') && (
+                  <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 text-purple-400 text-sm">
+                      <Video className="w-4 h-4" />
+                      <span>Virtual access via Jitsi Meet - no account needed</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Participants can join instantly when the event goes live.
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">Date</label>
@@ -181,6 +402,7 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
                     />
                   </div>
                 </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">Duration (mins)</label>
@@ -201,6 +423,7 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
                     />
                   </div>
                 </div>
+                
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Host Name</label>
                   <input
@@ -211,6 +434,7 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
                   />
                 </div>
               </div>
+              
               <div className="flex gap-3 mt-6">
                 <button type="button" onClick={() => { setShowEventModal(false); setEditingEvent(null); }} className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
                   Cancel
@@ -231,55 +455,15 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
             <Calendar className="w-5 h-5 text-blue-400" />
             Upcoming Events
           </h3>
-          {events.filter(e => new Date(e.scheduled_for || e.event_date) > new Date()).length === 0 ? (
+          {events.filter(e => new Date(e.scheduled_for || e.event_date) > new Date() || isEventLive(e)).length === 0 ? (
             <p className="text-gray-400 text-center py-8">No upcoming events scheduled</p>
           ) : (
             <div className="space-y-3">
               {events
-                .filter(e => new Date(e.scheduled_for || e.event_date) > new Date())
+                .filter(e => new Date(e.scheduled_for || e.event_date) > new Date() || isEventLive(e))
                 .sort((a, b) => new Date(a.scheduled_for || a.event_date).getTime() - new Date(b.scheduled_for || b.event_date).getTime())
                 .slice(0, 5)
-                .map((event) => (
-                  <div key={event.id} className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium">{event.title}</h4>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        event.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
-                        event.status === 'live' ? 'bg-green-500/20 text-green-400' :
-                        'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {event.status || 'scheduled'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-400 mb-2">{event.description?.substring(0, 60)}...</p>
-                    <div className="flex justify-between items-center text-sm mb-2">
-                      <span className="text-gray-400">
-                        {new Date(event.scheduled_for || event.event_date).toLocaleDateString()} at {new Date(event.scheduled_for || event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <span className="text-blue-400">{event.participant_count || 0}/{event.max_participants || '∞'}</span>
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <button 
-                        onClick={() => handleEditEvent(event)}
-                        className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded text-xs"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleViewAttendance(event)}
-                        className="px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded text-xs"
-                      >
-                        Attendance
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteEvent(event)}
-                        className="px-2 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded text-xs"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                .map((event) => renderEventCard(event, false))}
             </div>
           )}
         </div>
@@ -290,19 +474,22 @@ export default function EventsTab({ token, onSuccess, onError }: EventsTabProps)
             <Clock className="w-5 h-5 text-gray-400" />
             Recent Events
           </h3>
-          {events.filter(e => new Date(e.scheduled_for || e.event_date) <= new Date()).length === 0 ? (
+          {events.filter(e => new Date(e.scheduled_for || e.event_date) <= new Date() && !isEventLive(e)).length === 0 ? (
             <p className="text-gray-400 text-center py-8">No past events</p>
           ) : (
             <div className="space-y-3">
               {events
-                .filter(e => new Date(e.scheduled_for || e.event_date) <= new Date())
+                .filter(e => new Date(e.scheduled_for || e.event_date) <= new Date() && !isEventLive(e))
                 .sort((a, b) => new Date(b.scheduled_for || b.event_date).getTime() - new Date(a.scheduled_for || a.event_date).getTime())
                 .slice(0, 5)
                 .map((event) => (
                   <div key={event.id} className="bg-gray-700 rounded-lg p-4 opacity-75">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium">{event.title}</h4>
-                      <span className="text-xs text-gray-400">{event.participant_count || 0} attended</span>
+                      <div className="flex items-center gap-2">
+                        {getEventTypeBadge(event.event_type || 'in-person')}
+                        <span className="text-xs text-gray-400">{event.participant_count || 0} attended</span>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-400">
                       {new Date(event.scheduled_for || event.event_date).toLocaleDateString()}

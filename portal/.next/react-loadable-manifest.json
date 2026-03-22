@@ -1,10 +1,22 @@
 {
+  "components/admin/tabs/EventsTab.tsx -> @/components/shared/JitsiRoom": {
+    "id": 6873,
+    "files": [
+      "static/chunks/873.02ba3e4e0d5d57c4.js"
+    ]
+  },
   "components/admin/tabs/LogsTab/index.tsx -> @/app/components/LocationMap": {
     "id": 7287,
     "files": [
       "static/css/fc1c9daac70c093b.css",
       "static/chunks/d0deef33.afff9b3bf7059c8b.js",
       "static/chunks/287.61e726cf1e506249.js"
+    ]
+  },
+  "components/staff/tabs/EventsTab.tsx -> @/components/shared/JitsiRoom": {
+    "id": 6873,
+    "files": [
+      "static/chunks/19.9308b1425d68bb27.js"
     ]
   }
 }

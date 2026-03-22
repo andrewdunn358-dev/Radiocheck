@@ -16,6 +16,7 @@ import TeamTab from '@/components/staff/tabs/TeamTab';
 import NotesTab from '@/components/staff/tabs/NotesTab';
 import SupervisionTab from '@/components/staff/tabs/SupervisionTab';
 import DashboardTab from '@/components/staff/tabs/DashboardTab';
+import EventsTab from '@/components/staff/tabs/EventsTab';
 
 // Layout components
 import LoginScreen from '@/components/staff/LoginScreen';
@@ -31,7 +32,7 @@ import SessionTimeoutModal from '@/components/staff/modals/SessionTimeoutModal';
 import PanicModal from '@/components/staff/modals/PanicModal';
 import MessagesModal from '@/components/staff/modals/MessagesModal';
 
-type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
+type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'events' | 'supervision';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
 
@@ -257,6 +258,7 @@ export default function StaffPortalPage() {
         {activeTab === 'rota' && <RotaTab token={token!} user={user} />}
         {activeTab === 'team' && <TeamTab token={token!} user={user} webrtcPhone={webrtcPhone} />}
         {activeTab === 'notes' && <NotesTab token={token!} user={user} />}
+        {activeTab === 'events' && <EventsTab token={token!} userName={profile?.name || user?.name} />}
         {activeTab === 'supervision' && user?.is_supervisor && <SupervisionTab token={token!} user={user} />}
       </main>
 

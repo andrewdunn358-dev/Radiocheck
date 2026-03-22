@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, MessageSquare, Briefcase, Phone,
-  Calendar, Users, FileText, Shield, LogOut, Volume2, VolumeX, Mail
+  Calendar, Users, FileText, Shield, LogOut, Volume2, VolumeX, Mail, CalendarDays
 } from 'lucide-react';
 
 interface NavItem {
@@ -53,6 +53,7 @@ export default function Sidebar({
     { id: 'rota', label: 'Rota', icon: Calendar },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'notes', label: 'Notes', icon: FileText },
+    { id: 'events', label: 'Events', icon: CalendarDays },
     ...(user?.is_supervisor ? [{ id: 'supervision', label: 'Supervision', icon: Shield }] : []),
   ];
 
