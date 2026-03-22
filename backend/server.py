@@ -6079,6 +6079,34 @@ async def get_ai_characters():
                 "description": "Calm, composed, and grounded support. She helps you think clearly when emotions run high.",
                 "avatar": AI_CHARACTERS["catherine"]["avatar"],
                 "bio": "Catherine is composed, articulate, and grounded. She helps you think clearly when emotions run high and approach problems with calm intelligence."
+            },
+            {
+                "id": "alex",
+                "name": "Alex",
+                "description": "LGBTQ+ veterans specialist. Former RAF, served under the ban. Helps with rights, redress, and healing.",
+                "avatar": AI_CHARACTERS["alex"]["avatar"],
+                "bio": "Alex is non-binary, former RAF, who served under the ban and understands the unique journey of LGBTQ+ veterans. They help navigate medal restoration, financial redress, and finding community."
+            },
+            {
+                "id": "sam",
+                "name": "Sam",
+                "description": "Forces kids specialist. Supports service children, military families, and bereaved children.",
+                "avatar": AI_CHARACTERS["sam"]["avatar"],
+                "bio": "Sam was an Army wife for 15 years with three children. She understands school moves, deployments, and the unique resilience of forces kids. She also supports bereaved military children."
+            },
+            {
+                "id": "kofi",
+                "name": "Kofi",
+                "description": "Commonwealth veterans specialist. Originally from Ghana, 16 years British Army. Helps with settlement rights and entitlements.",
+                "avatar": AI_CHARACTERS["kofi"]["avatar"],
+                "bio": "Kofi served 16 years in the Royal Logistics Corps. He navigated the immigration system himself and now helps other Commonwealth veterans claim their rights to settlement, NHS care, and pensions."
+            },
+            {
+                "id": "james",
+                "name": "James",
+                "description": "Faith & spiritual support. Former Army Chaplain (Padre). Supports veterans of all faiths and none.",
+                "avatar": AI_CHARACTERS["james"]["avatar"],
+                "bio": "James was an Army Chaplain for 20 years, serving alongside soldiers of every faith. He provides spiritual care without preaching, and supports those dealing with moral injury."
             }
         ],
         "about": {

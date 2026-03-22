@@ -66,6 +66,23 @@ Created 4 new comprehensive resource pages:
 - `/app/frontend/app/faith-service.tsx`
 - Updated `/app/frontend/app/home.tsx` with new menu items
 
+### NEW: 4 AI Characters for Specialist Support
+**Status:** ✅ COMPLETE
+
+Created 4 new AI personas with full safeguarding (Soul Document integration):
+
+| Character | Specialty | Background |
+|-----------|-----------|------------|
+| **Alex** | LGBTQ+ Veterans | Former RAF, served under the ban, helps with medal restoration & redress |
+| **Sam** | Forces Kids | Army wife 15 years, supports service children, bereaved children |
+| **Kofi** | Commonwealth Veterans | 16 years RLC, from Ghana, helps with settlement rights & entitlements |
+| **James** | Faith & Spiritual | 20 years Army Chaplain, supports all faiths and none, moral injury |
+
+**Avatars Generated:** 4 unique AI-generated portraits
+**Personas Created:** `/app/backend/personas/alex.py`, `sam.py`, `kofi.py`, `james.py`
+**Database Updated:** All 4 characters added to `ai_characters` collection
+**API Verified:** All 16 characters now available via `/api/ai-buddies/characters`
+
 ### BUG FIXED: Safeguarding Alerts Not Being Created (CRITICAL)
 **Status:** ✅ FIXED
 
