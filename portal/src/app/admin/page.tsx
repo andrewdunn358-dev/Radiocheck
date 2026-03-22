@@ -37,6 +37,11 @@ import type {
 } from '@/types/admin';
 import { useMainAdminAuth } from '@/hooks/useMainAdminAuth';
 
+// Import tab components
+import StaffTab from '@/components/admin/tabs/StaffTab';
+import AIPersonasTab from '@/components/admin/tabs/AIPersonasTab';
+import SettingsTab from '@/components/admin/tabs/SettingsTab';
+
 // Register Chart.js components
 ChartJS.register(
   CategoryScale,
@@ -112,10 +117,7 @@ export default function AdminPortal() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  // Data state
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [staffFilter, setStaffFilter] = useState<string>('');
-  const [staffRoleFilter, setStaffRoleFilter] = useState<string>('all');
+  // Data state - Logs
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [safeguardingAlerts, setSafeguardingAlerts] = useState<SafeguardingAlert[]>([]);
@@ -128,7 +130,6 @@ export default function AdminPortal() {
   const [showChatHistoryModal, setShowChatHistoryModal] = useState(false);
   const [selectedSafeguardingAlert, setSelectedSafeguardingAlert] = useState<any>(null);
   const [showAlertDetailModal, setShowAlertDetailModal] = useState(false);
-  const [aiCharacters, setAICharacters] = useState<AICharacter[]>([]);
   const [aiUsage, setAIUsage] = useState<AIUsageSummary | null>(null);
   const [monitoringStats, setMonitoringStats] = useState<any>(null);
   const [migrationStatus, setMigrationStatus] = useState<any>(null);
@@ -184,16 +185,6 @@ export default function AdminPortal() {
   const [appUsageStats, setAppUsageStats] = useState<any>(null);
   const [aiChatStats, setAiChatStats] = useState<any>(null);
   const [locationData, setLocationData] = useState<any>(null);
-
-  // Settings state
-  const [systemSettings, setSystemSettings] = useState<any>({
-    logo_url: '',
-    admin_notification_email: '',
-    cso_email: '',
-    peer_registration_notification_email: '',
-  });
-  const [clearLogsType, setClearLogsType] = useState<string>('');
-  const [clearLogsConfirmText, setClearLogsConfirmText] = useState('');
   
   // Time Tracking state
   const [timeTrackingSummary, setTimeTrackingSummary] = useState<any>(null);
@@ -211,10 +202,6 @@ export default function AdminPortal() {
     description: '',
   });
 
-  // AI Character editing state
-  const [editingCharacter, setEditingCharacter] = useState<AICharacter | null>(null);
-  const [showCharacterModal, setShowCharacterModal] = useState(false);
-
   // Event editing state
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
@@ -228,23 +215,17 @@ export default function AdminPortal() {
     max_participants: 20,
   });
   
-  // Modal state
-  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
-  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-  const [newStaff, setNewStaff] = useState({
-    email: '',
-    password: '',
-    name: '',
-    role: 'peer' as 'admin' | 'supervisor' | 'counsellor' | 'peer',
-    phone: '',
-    specialization: '',
-    area: '',
+  // Rota shift modal state
+  const [showAddShiftModal, setShowAddShiftModal] = useState(false);
+  const [newShiftData, setNewShiftData] = useState({
+    date: '',
+    start_time: '09:00',
+    end_time: '17:00',
+    user_id: '',
+    user_name: '',
+    user_email: '',
   });
-
-  // Reset Password Modal state
-  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
-  const [resetPasswordUser, setResetPasswordUser] = useState<{ id: string; name: string } | null>(null);
-  const [resetPasswordData, setResetPasswordData] = useState({ newPassword: '', confirmPassword: '' });
+  const [rotaStaffList, setRotaStaffList] = useState<StaffMember[]>([]);
   
   // Rota Swap tabs state
   const [swapTabView, setSwapTabView] = useState<'pending' | 'all'>('pending');
@@ -264,15 +245,6 @@ export default function AdminPortal() {
 
   // Real-time alert counter state
   const [pendingAlertCount, setPendingAlertCount] = useState(0);
-
-  // Add Shift modal state
-  const [showAddShiftModal, setShowAddShiftModal] = useState(false);
-  const [newShift, setNewShift] = useState({
-    date: new Date().toISOString().split('T')[0],
-    start_time: '09:00',
-    end_time: '17:00',
-    user_id: '',
-  });
   
   // Rota Calendar state
   const [rotaCalendarMonth, setRotaCalendarMonth] = useState(new Date());
@@ -287,13 +259,13 @@ export default function AdminPortal() {
         setError(null);
         switch (activeTab) {
           case 'staff':
-            await loadStaff();
+            // StaffTab manages its own data loading
             break;
           case 'logs':
             await loadLogs();
             break;
           case 'ai-personas':
-            await loadAICharacters();
+            // AIPersonasTab manages its own data loading
             break;
           case 'ai-usage':
             await loadAIUsage();
@@ -335,7 +307,7 @@ export default function AdminPortal() {
     };
     
     loadData();
-  }, [token, activeTab, activeLogSubTab, staffRoleFilter]);
+  }, [token, activeTab, activeLogSubTab]);
 
   // Monitoring auto-refresh every 30 seconds
   useEffect(() => {
@@ -374,83 +346,6 @@ export default function AdminPortal() {
   }, [token]);
 
   // Load functions
-  const loadStaff = async () => {
-    if (!token) return;
-    try {
-      // First try the new unified staff endpoint
-      const data = await api.getStaff(token, staffRoleFilter !== 'all' ? staffRoleFilter : undefined);
-      // If we get data from the new endpoint, use it
-      if (Array.isArray(data) && data.length > 0) {
-        setStaff(data);
-        return;
-      }
-      
-      // If new endpoint returns empty, try the admin unified-staff view (combines legacy collections)
-      const unifiedData = await api.getUnifiedStaff(token).catch(() => []);
-      if (Array.isArray(unifiedData) && unifiedData.length > 0) {
-        // Map the unified-staff response to our StaffMember format
-        const mappedData = unifiedData.map((u: any) => ({
-          id: u.user_id || u.id,
-          email: u.email,
-          name: u.name,
-          role: u.role,
-          status: u.profile?.status || 'offline',
-          phone: u.profile?.phone || '',
-          specialization: u.profile?.specialization || '',
-          area: u.profile?.area || '',
-          background: u.profile?.background || '',
-          _source: 'unified',
-          has_profile: u.has_profile,
-          created_at: u.created_at,
-        }));
-        // Filter by role if needed
-        const filtered = staffRoleFilter === 'all' 
-          ? mappedData 
-          : mappedData.filter((s: any) => s.role === staffRoleFilter);
-        setStaff(filtered);
-        return;
-      }
-      
-      // Fallback to legacy endpoints if both fail
-      console.log('Falling back to legacy endpoints...');
-      const [counsellors, peers] = await Promise.all([
-        api.getCounsellors(token).catch(() => []),
-        api.getPeerSupporters(token).catch(() => []),
-      ]);
-      const combined = [
-        ...(Array.isArray(counsellors) ? counsellors : []).map((c: any) => ({ 
-          id: c.id,
-          email: c.email || '',
-          name: c.name,
-          role: 'counsellor',
-          status: c.status || 'offline',
-          phone: c.phone || '',
-          specialization: c.specialization || '',
-          _source: 'counsellors' 
-        })),
-        ...(Array.isArray(peers) ? peers : []).map((p: any) => ({ 
-          id: p.id,
-          email: p.email || '',
-          name: p.firstName || p.name,
-          role: 'peer',
-          status: p.status || 'offline',
-          phone: p.phone || '',
-          area: p.area || '',
-          background: p.background || '',
-          _source: 'peer_supporters' 
-        })),
-      ];
-      // Filter by role if needed
-      const filtered = staffRoleFilter === 'all' 
-        ? combined 
-        : combined.filter((s: any) => s.role === staffRoleFilter);
-      setStaff(filtered);
-    } catch (err: any) {
-      console.error('Failed to load staff:', err);
-      setStaff([]);
-    }
-  };
-
   const loadLogs = async () => {
     if (!token) return;
     try {
@@ -506,22 +401,6 @@ export default function AdminPortal() {
     }
   };
 
-  const loadAICharacters = async () => {
-    if (!token) return;
-    try {
-      const data = await api.getAICharacters(token);
-      setAICharacters(Array.isArray(data?.characters) ? data.characters : []);
-    } catch (err: any) {
-      // Fallback to public endpoint
-      try {
-        const data = await api.fetch<{ characters: AICharacter[] }>('/ai-characters', {});
-        setAICharacters(Array.isArray(data?.characters) ? data.characters : []);
-      } catch {
-        setAICharacters([]);
-      }
-    }
-  };
-
   const loadAIUsage = async () => {
     if (!token) return;
     try {
@@ -564,12 +443,14 @@ export default function AdminPortal() {
   const loadRota = async () => {
     if (!token) return;
     try {
-      const [shiftsData, swapsData] = await Promise.all([
+      const [shiftsData, swapsData, staffData] = await Promise.all([
         api.getShifts(token).catch(() => []),
         api.getPendingSwaps(token).catch(() => []),
+        api.getStaff(token).catch(() => []),
       ]);
       setShifts(Array.isArray(shiftsData) ? shiftsData : []);
       setPendingSwaps(Array.isArray(swapsData) ? swapsData : []);
+      setRotaStaffList(Array.isArray(staffData) ? staffData : []);
     } catch (err: any) {
       console.error('Rota data not available:', err);
     }
@@ -761,49 +642,6 @@ export default function AdminPortal() {
     }
   };
 
-  // Staff CRUD handlers
-  const handleCreateStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-    
-    try {
-      await api.createStaff(token, newStaff);
-      setSuccess('Staff member created successfully');
-      setShowAddStaffModal(false);
-      setNewStaff({ email: '', password: '', name: '', role: 'peer', phone: '', specialization: '', area: '' });
-      await loadStaff();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleUpdateStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !editingStaff) return;
-    
-    try {
-      await api.updateStaff(token, editingStaff.id, editingStaff);
-      setSuccess('Staff member updated successfully');
-      setEditingStaff(null);
-      await loadStaff();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleDeleteStaff = async (id: string) => {
-    if (!token) return;
-    if (!confirm('Are you sure you want to delete this staff member?')) return;
-    
-    try {
-      await api.deleteStaff(token, id);
-      setSuccess('Staff member deleted');
-      await loadStaff();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
   const handleRunMigration = async () => {
     if (!token) return;
     if (!confirm('This will migrate all legacy users to the unified staff collection. Continue?')) return;
@@ -827,15 +665,6 @@ export default function AdminPortal() {
       setError(err.message);
     }
   };
-
-  // Filter staff
-  const filteredStaff = staff.filter(s => {
-    const matchesSearch = !staffFilter || 
-      s.name?.toLowerCase().includes(staffFilter.toLowerCase()) ||
-      s.email?.toLowerCase().includes(staffFilter.toLowerCase());
-    const matchesRole = staffRoleFilter === 'all' || s.role === staffRoleFilter;
-    return matchesSearch && matchesRole;
-  });
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -1011,188 +840,11 @@ export default function AdminPortal() {
         <div className="p-6">
           {/* Staff Tab */}
           {activeTab === 'staff' && (
-            <div data-testid="staff-tab">
-              {/* Toolbar */}
-              <div className="flex flex-wrap gap-4 mb-6">
-                <div className="flex-1 min-w-[200px]">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search staff..."
-                      value={staffFilter}
-                      onChange={(e) => setStaffFilter(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
-                <select
-                  value={staffRoleFilter}
-                  onChange={(e) => setStaffRoleFilter(e.target.value)}
-                  className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 outline-none"
-                >
-                  <option value="all">All Roles</option>
-                  <option value="admin">Admin</option>
-                  <option value="supervisor">Supervisor</option>
-                  <option value="counsellor">Counsellor</option>
-                  <option value="peer">Peer Supporter</option>
-                </select>
-                <button
-                  onClick={() => setShowAddStaffModal(true)}
-                  data-testid="add-staff-btn"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Staff
-                </button>
-                <button
-                  onClick={loadStaff}
-                  className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  <RefreshCw className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Staff Table */}
-              <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Name</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Email</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Role</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {filteredStaff.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                          No staff members found
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredStaff.map((member) => (
-                        <tr key={member.id} className="hover:bg-gray-700/50" data-testid={`staff-row-${member.id}`}>
-                          <td className="px-4 py-3">
-                            <div>
-                              <span className="font-medium">{member.name}</span>
-                              {member._source && (
-                                <span className="ml-2 text-xs text-gray-500">({member._source})</span>
-                              )}
-                              {/* Profile link indicator */}
-                              {member.role !== 'admin' && (
-                                member.has_profile ? (
-                                  <p className="text-xs text-green-500 mt-1">Linked to profile</p>
-                                ) : (
-                                  <p className="text-xs text-gray-500 mt-1">No profile linked</p>
-                                )
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-400">{member.email}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              member.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
-                              member.role === 'supervisor' ? 'bg-blue-500/20 text-blue-400' :
-                              member.role === 'counsellor' ? 'bg-green-500/20 text-green-400' :
-                              'bg-yellow-500/20 text-yellow-400'
-                            }`}>
-                              {member.role}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {/* Status buttons - unified for all staff: Available, Busy, Unavailable */}
-                            <div className="flex gap-1">
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api.updateStaffStatus(token!, member.id, 'available');
-                                    setSuccess('Status updated');
-                                    loadStaff();
-                                  } catch (err: any) { setError(err.message); }
-                                }}
-                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                  member.status === 'available' 
-                                    ? 'bg-green-500 text-white' 
-                                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                }`}
-                              >
-                                Available
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api.updateStaffStatus(token!, member.id, 'busy');
-                                    setSuccess('Status updated');
-                                    loadStaff();
-                                  } catch (err: any) { setError(err.message); }
-                                }}
-                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                  member.status === 'busy' 
-                                    ? 'bg-yellow-500 text-white' 
-                                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                }`}
-                              >
-                                Busy
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api.updateStaffStatus(token!, member.id, 'unavailable');
-                                    setSuccess('Status updated');
-                                    loadStaff();
-                                  } catch (err: any) { setError(err.message); }
-                                }}
-                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                  member.status === 'unavailable' || member.status === 'off'
-                                    ? 'bg-gray-500 text-white' 
-                                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                }`}
-                              >
-                                Unavailable
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setEditingStaff(member)}
-                                className="p-1 hover:bg-gray-600 rounded"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4 text-blue-400" />
-                              </button>
-                              {member.role !== 'admin' && (
-                                <button
-                                  onClick={() => {
-                                    setResetPasswordUser({ id: member.id, name: member.name });
-                                    setResetPasswordData({ newPassword: '', confirmPassword: '' });
-                                    setShowResetPasswordModal(true);
-                                  }}
-                                  className="p-1 hover:bg-gray-600 rounded"
-                                  title="Reset Password"
-                                >
-                                  <Key className="w-4 h-4 text-yellow-400" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeleteStaff(member.id)}
-                                className="p-1 hover:bg-gray-600 rounded"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-400" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <StaffTab 
+              token={token!}
+              onSuccess={setSuccess}
+              onError={setError}
+            />
           )}
 
           {/* Logs Tab */}
@@ -2397,291 +2049,13 @@ export default function AdminPortal() {
 
           {/* AI Personas Tab */}
           {activeTab === 'ai-personas' && (
-            <div data-testid="ai-personas-tab">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">AI Chat Personas</h2>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={async () => {
-                      if (!token) return;
-                      try {
-                        await api.seedAICharacters(token);
-                        setSuccess('Default AI characters imported');
-                        loadAICharacters();
-                      } catch (err: any) {
-                        setError('Failed to import defaults: ' + err.message);
-                      }
-                    }}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Import Defaults
-                  </button>
-                  <button onClick={loadAICharacters} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
-                    <RefreshCw className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Edit Character Modal */}
-              {showCharacterModal && editingCharacter && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-bold">Edit AI Character</h3>
-                      <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }} className="p-1 hover:bg-gray-700 rounded">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                    <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      if (!token || !editingCharacter) return;
-                      try {
-                        await api.updateAICharacter(token, editingCharacter.id, editingCharacter);
-                        setSuccess('Character updated successfully');
-                        setShowCharacterModal(false);
-                        setEditingCharacter(null);
-                        loadAICharacters();
-                      } catch (err: any) {
-                        setError('Failed to update character: ' + err.message);
-                      }
-                    }}>
-                      <div className="space-y-4">
-                        {/* Row 1: Name and Character ID */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm text-gray-400 mb-1">Character Name *</label>
-                            <input
-                              type="text"
-                              value={editingCharacter.name}
-                              onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })}
-                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-gray-400 mb-1">Character ID</label>
-                            <input
-                              type="text"
-                              value={editingCharacter.id}
-                              disabled
-                              className="w-full px-3 py-2 bg-gray-600 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Cannot be changed after creation</p>
-                          </div>
-                        </div>
-
-                        {/* Short Description */}
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Short Description</label>
-                          <input
-                            type="text"
-                            value={editingCharacter.description || ''}
-                            onChange={(e) => setEditingCharacter({ ...editingCharacter, description: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                            placeholder="Brief description shown in character list"
-                          />
-                        </div>
-
-                        {/* Bio */}
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Bio (Optional)</label>
-                          <textarea
-                            value={editingCharacter.bio || ''}
-                            onChange={(e) => setEditingCharacter({ ...editingCharacter, bio: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white h-20"
-                            placeholder="Longer biography shown in character detail view"
-                          />
-                        </div>
-
-                        {/* Row 2: Category, Order, Enabled */}
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm text-gray-400 mb-1">Category</label>
-                            <select
-                              value={editingCharacter.category || 'general'}
-                              onChange={(e) => setEditingCharacter({ ...editingCharacter, category: e.target.value })}
-                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                            >
-                              <option value="general">General</option>
-                              <option value="legal">Legal</option>
-                              <option value="wellbeing">Wellbeing</option>
-                              <option value="addiction">Addiction</option>
-                              <option value="family">Family</option>
-                              <option value="fitness">Fitness</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm text-gray-400 mb-1">Display Order</label>
-                            <input
-                              type="number"
-                              value={editingCharacter.order || 0}
-                              onChange={(e) => setEditingCharacter({ ...editingCharacter, order: parseInt(e.target.value) })}
-                              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                              min="0"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2 pt-6">
-                            <input
-                              type="checkbox"
-                              id="char-enabled"
-                              checked={editingCharacter.is_enabled}
-                              onChange={(e) => setEditingCharacter({ ...editingCharacter, is_enabled: e.target.checked })}
-                              className="w-4 h-4"
-                            />
-                            <label htmlFor="char-enabled" className="text-sm">Enabled (visible to users)</label>
-                          </div>
-                        </div>
-
-                        {/* Avatar Section */}
-                        <div className="border border-gray-600 rounded-lg p-4">
-                          <label className="block text-sm text-gray-400 mb-2">Avatar</label>
-                          <div className="flex items-start gap-4">
-                            {editingCharacter.avatar && (
-                              <img 
-                                src={editingCharacter.avatar} 
-                                alt={editingCharacter.name}
-                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-600"
-                              />
-                            )}
-                            <div className="flex-1">
-                              <input
-                                type="text"
-                                value={editingCharacter.avatar || ''}
-                                onChange={(e) => setEditingCharacter({ ...editingCharacter, avatar: e.target.value })}
-                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                                placeholder="Enter avatar URL (e.g., /static/avatars/character.png)"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">Enter URL or use /static/avatars/ path</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* System Prompt */}
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">System Prompt *</label>
-                          <textarea
-                            value={editingCharacter.prompt || ''}
-                            onChange={(e) => setEditingCharacter({ ...editingCharacter, prompt: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
-                            rows={12}
-                            placeholder="Enter the system prompt that defines this character's personality, behavior, and responses..."
-                          />
-                          <p className="text-xs text-gray-500 mt-1">This defines how the AI character responds to users</p>
-                        </div>
-
-                        {editingCharacter.is_hardcoded && (
-                          <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
-                            <p className="text-yellow-300 text-sm">
-                              ⚠️ This is a hardcoded character. Changes will create a database override.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-3 mt-6">
-                        <button
-                          type="button"
-                          onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }}
-                          className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
-                        >
-                          Save Changes
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {aiCharacters.length === 0 ? (
-                  <div className="col-span-full text-center py-8 text-gray-400">
-                    <p>No AI characters configured</p>
-                    <p className="text-sm mt-2">Click "Import Defaults" to add default characters</p>
-                  </div>
-                ) : (
-                  aiCharacters.map((char) => {
-                    const avatarUrl = resolveAvatarUrl(char.avatar);
-                    return (
-                      <div key={char.id} className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-                        <div className="flex items-start gap-4">
-                          {avatarUrl ? (
-                            <img 
-                              src={avatarUrl} 
-                              alt={char.name} 
-                              className="w-16 h-16 rounded-full object-cover bg-gray-700" 
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                const fallback = (e.target as HTMLImageElement).nextElementSibling;
-                                if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div 
-                            className={`w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-2xl font-bold ${avatarUrl ? 'hidden' : ''}`}
-                          >
-                            {(char.name || 'A')[0].toUpperCase()}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-lg">{char.name}</h3>
-                            <p className="text-sm text-gray-400 mt-1 line-clamp-2">{char.description || 'No description'}</p>
-                            <div className="mt-2 flex items-center gap-2 flex-wrap">
-                              {/* Enable/Disable Toggle */}
-                              <button
-                                onClick={async () => {
-                                  if (!token) return;
-                                  try {
-                                    await api.toggleAICharacterStatus(token, char.id, !char.is_enabled);
-                                    setSuccess(`${char.name} ${!char.is_enabled ? 'enabled' : 'disabled'}`);
-                                    loadAICharacters();
-                                  } catch (err: any) {
-                                    setError('Failed to update status: ' + err.message);
-                                  }
-                                }}
-                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                  char.is_enabled 
-                                    ? 'bg-green-500 hover:bg-green-600 text-white' 
-                                    : 'bg-gray-600 hover:bg-gray-500 text-gray-300'
-                                }`}
-                              >
-                                {char.is_enabled ? 'Enabled' : 'Disabled'}
-                              </button>
-                              {char.order !== undefined && (
-                                <span className="text-xs text-gray-500">Order: {char.order}</span>
-                              )}
-                            </div>
-                            {/* Edit Button */}
-                            <button
-                              onClick={async () => {
-                                try {
-                                  // Fetch full character details including prompt
-                                  const fullChar = await api.getAICharacter(token!, char.id);
-                                  setEditingCharacter(fullChar);
-                                  setShowCharacterModal(true);
-                                } catch (err) {
-                                  // Fallback to current data if fetch fails
-                                  setEditingCharacter({ ...char });
-                                  setShowCharacterModal(true);
-                                }
-                              }}
-                              className="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs"
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+            <AIPersonasTab
+              token={token!}
+              onSuccess={setSuccess}
+              onError={setError}
+            />
           )}
+
 
           {/* AI Usage Tab */}
           {activeTab === 'ai-usage' && (
@@ -3128,18 +2502,18 @@ export default function AdminPortal() {
                     </div>
                     <form onSubmit={async (e) => {
                       e.preventDefault();
-                      if (!token || !newShift.user_id) return;
+                      if (!token || !newShiftData.user_id) return;
                       try {
-                        const selectedStaff = staff.find((s: StaffMember) => s.id === newShift.user_id);
+                        const selectedStaff = rotaStaffList.find((s: StaffMember) => s.id === newShiftData.user_id);
                         await api.createShift(
                           token,
-                          { date: newShift.date, start_time: newShift.start_time, end_time: newShift.end_time },
-                          newShift.user_id,
+                          { date: newShiftData.date, start_time: newShiftData.start_time, end_time: newShiftData.end_time },
+                          newShiftData.user_id,
                           selectedStaff?.name || '',
                           selectedStaff?.email || ''
                         );
                         setShowAddShiftModal(false);
-                        setNewShift({ date: new Date().toISOString().split('T')[0], start_time: '09:00', end_time: '17:00', user_id: '' });
+                        setNewShiftData({ date: new Date().toISOString().split('T')[0], start_time: '09:00', end_time: '17:00', user_id: '', user_name: '', user_email: '' });
                         loadRota();
                         setSuccess('Shift created successfully');
                       } catch (err: any) {
@@ -3150,13 +2524,13 @@ export default function AdminPortal() {
                         <div>
                           <label className="block text-sm text-gray-400 mb-1">Staff Member</label>
                           <select
-                            value={newShift.user_id}
-                            onChange={(e) => setNewShift({ ...newShift, user_id: e.target.value })}
+                            value={newShiftData.user_id}
+                            onChange={(e) => setNewShiftData({ ...newShiftData, user_id: e.target.value })}
                             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                             required
                           >
                             <option value="">Select staff member...</option>
-                            {staff.map((staffMember: StaffMember) => (
+                            {rotaStaffList.map((staffMember: StaffMember) => (
                               <option key={staffMember.id} value={staffMember.id}>{staffMember.name} ({staffMember.role})</option>
                             ))}
                           </select>
@@ -3165,8 +2539,8 @@ export default function AdminPortal() {
                           <label className="block text-sm text-gray-400 mb-1">Date</label>
                           <input
                             type="date"
-                            value={newShift.date}
-                            onChange={(e) => setNewShift({ ...newShift, date: e.target.value })}
+                            value={newShiftData.date}
+                            onChange={(e) => setNewShiftData({ ...newShiftData, date: e.target.value })}
                             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                             required
                           />
@@ -3176,8 +2550,8 @@ export default function AdminPortal() {
                             <label className="block text-sm text-gray-400 mb-1">Start Time</label>
                             <input
                               type="time"
-                              value={newShift.start_time}
-                              onChange={(e) => setNewShift({ ...newShift, start_time: e.target.value })}
+                              value={newShiftData.start_time}
+                              onChange={(e) => setNewShiftData({ ...newShiftData, start_time: e.target.value })}
                               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                               required
                             />
@@ -3186,8 +2560,8 @@ export default function AdminPortal() {
                             <label className="block text-sm text-gray-400 mb-1">End Time</label>
                             <input
                               type="time"
-                              value={newShift.end_time}
-                              onChange={(e) => setNewShift({ ...newShift, end_time: e.target.value })}
+                              value={newShiftData.end_time}
+                              onChange={(e) => setNewShiftData({ ...newShiftData, end_time: e.target.value })}
                               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                               required
                             />
@@ -3221,7 +2595,7 @@ export default function AdminPortal() {
                   <p className="text-2xl font-bold">
                     {shifts.filter(s => {
                       if (s.date !== new Date().toISOString().split('T')[0]) return false;
-                      const staffMember = staff.find((st: StaffMember) => st.id === s.user_id);
+                      const staffMember = rotaStaffList.find((st: StaffMember) => st.id === s.user_id);
                       return staffMember?.role === 'counsellor';
                     }).length}
                   </p>
@@ -3231,7 +2605,7 @@ export default function AdminPortal() {
                   <p className="text-2xl font-bold">
                     {shifts.filter(s => {
                       if (s.date !== new Date().toISOString().split('T')[0]) return false;
-                      const staffMember = staff.find((st: StaffMember) => st.id === s.user_id);
+                      const staffMember = rotaStaffList.find((st: StaffMember) => st.id === s.user_id);
                       return staffMember?.role === 'peer';
                     }).length}
                   </p>
@@ -3345,7 +2719,7 @@ export default function AdminPortal() {
                               <div className="space-y-0.5">
                                 {dayShifts.slice(0, 2).map((s, i) => (
                                   <div key={i} className={`text-[10px] px-1 py-0.5 rounded truncate ${
-                                    staff.find((st: StaffMember) => st.id === s.user_id)?.role === 'counsellor' 
+                                    rotaStaffList.find((st: StaffMember) => st.id === s.user_id)?.role === 'counsellor' 
                                       ? 'bg-green-500/40 text-green-200'
                                       : 'bg-blue-500/40 text-blue-200'
                                   }`}>
@@ -3402,7 +2776,7 @@ export default function AdminPortal() {
                           <p className="text-gray-400">No shifts scheduled</p>
                           <button 
                             onClick={() => {
-                              setNewShift({ ...newShift, date: dateToShow });
+                              setNewShiftData({ ...newShiftData, date: dateToShow });
                               setShowAddShiftModal(true);
                             }}
                             className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
@@ -3416,7 +2790,7 @@ export default function AdminPortal() {
                     return (
                       <div className="space-y-3">
                         {dayShifts.map((shift) => {
-                          const staffMember = staff.find((st: StaffMember) => st.id === shift.user_id);
+                          const staffMember = rotaStaffList.find((st: StaffMember) => st.id === shift.user_id);
                           return (
                             <div key={shift.id} className="bg-gray-700 rounded-lg p-3">
                               <div className="flex justify-between items-start mb-2">
@@ -3445,7 +2819,7 @@ export default function AdminPortal() {
                         
                         <button 
                           onClick={() => {
-                            setNewShift({ ...newShift, date: dateToShow });
+                            setNewShiftData({ ...newShiftData, date: dateToShow });
                             setShowAddShiftModal(true);
                           }}
                           className="w-full mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center justify-center gap-2"
@@ -5786,789 +5160,16 @@ export default function AdminPortal() {
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
-            <div data-testid="settings-tab">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">System Settings</h2>
-                <button 
-                  onClick={async () => {
-                    try {
-                      const settings = await api.getSettings(token!);
-                      setSystemSettings(settings);
-                    } catch (err) {
-                      console.error('Failed to load settings');
-                    }
-                  }}
-                  className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
-                >
-                  <RefreshCw className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Logo Settings */}
-                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-400" />
-                    Logo Settings
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-2">Current Logo</label>
-                      <div className="bg-gray-700 rounded-lg p-4 flex items-center justify-center">
-                        {systemSettings.logo_url ? (
-                          <img src={systemSettings.logo_url} alt="Logo" className="max-h-20" />
-                        ) : (
-                          <span className="text-gray-500">No logo uploaded</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Logo URL</label>
-                      <input
-                        type="text"
-                        value={systemSettings.logo_url || ''}
-                        onChange={(e) => setSystemSettings({ ...systemSettings, logo_url: e.target.value })}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="https://example.com/logo.png"
-                      />
-                    </div>
-                    <button 
-                      onClick={async () => {
-                        try {
-                          await api.updateSettings(token!, { logo_url: systemSettings.logo_url });
-                          setSuccess('Logo updated');
-                        } catch (err: any) {
-                          setError('Failed to update logo: ' + err.message);
-                        }
-                      }}
-                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
-                    >
-                      Save Logo
-                    </button>
-                  </div>
-                </div>
-
-                {/* Email Settings */}
-                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-green-400" />
-                    Email Notifications
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Admin Notification Email</label>
-                      <input
-                        type="email"
-                        value={systemSettings.admin_notification_email || ''}
-                        onChange={(e) => setSystemSettings({ ...systemSettings, admin_notification_email: e.target.value })}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="admin@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">CSO Email</label>
-                      <input
-                        type="email"
-                        value={systemSettings.cso_email || ''}
-                        onChange={(e) => setSystemSettings({ ...systemSettings, cso_email: e.target.value })}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="cso@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Peer Registration Notification Email</label>
-                      <input
-                        type="email"
-                        value={systemSettings.peer_registration_notification_email || ''}
-                        onChange={(e) => setSystemSettings({ ...systemSettings, peer_registration_notification_email: e.target.value })}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="notifications@example.com"
-                      />
-                    </div>
-                    <button 
-                      onClick={async () => {
-                        try {
-                          await api.updateSettings(token!, {
-                            admin_notification_email: systemSettings.admin_notification_email,
-                            cso_email: systemSettings.cso_email,
-                            peer_registration_notification_email: systemSettings.peer_registration_notification_email,
-                          });
-                          setSuccess('Email settings saved');
-                        } catch (err: any) {
-                          setError('Failed to save: ' + err.message);
-                        }
-                      }}
-                      className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg"
-                    >
-                      Save Email Settings
-                    </button>
-                  </div>
-                </div>
-
-                {/* Clear Logs */}
-                <div className="bg-gray-800 rounded-lg border border-red-700 p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2 text-red-400">
-                    <Trash2 className="w-5 h-5" />
-                    Clear Logs (Danger Zone)
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Select Log Type to Clear</label>
-                      <select
-                        value={clearLogsType}
-                        onChange={(e) => setClearLogsType(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                      >
-                        <option value="">Select log type...</option>
-                        <option value="safeguarding">Safeguarding Alerts</option>
-                        <option value="calls">Call Logs</option>
-                        <option value="chats">Chat Logs</option>
-                        <option value="analytics">Analytics Data</option>
-                        <option value="callbacks">Callback Logs</option>
-                        <option value="screening">Screening Data</option>
-                        <option value="panic">Panic Alerts</option>
-                        <option value="all">ALL DATA (Dangerous!)</option>
-                      </select>
-                    </div>
-                    
-                    {clearLogsType === 'all' && (
-                      <div className="bg-red-900/30 border border-red-600 rounded-lg p-3">
-                        <p className="text-red-300 text-sm mb-2">This will delete ALL logs permanently. Type "DELETE ALL" to confirm:</p>
-                        <input
-                          type="text"
-                          value={clearLogsConfirmText}
-                          onChange={(e) => setClearLogsConfirmText(e.target.value)}
-                          className="w-full px-3 py-2 bg-gray-700 border border-red-600 rounded-lg text-white"
-                          placeholder="Type DELETE ALL"
-                        />
-                      </div>
-                    )}
-                    
-                    <button 
-                      onClick={async () => {
-                        if (!clearLogsType) {
-                          setError('Please select a log type');
-                          return;
-                        }
-                        if (clearLogsType === 'all' && clearLogsConfirmText !== 'DELETE ALL') {
-                          setError('Please type "DELETE ALL" to confirm');
-                          return;
-                        }
-                        if (!confirm(`Are you sure you want to clear ${clearLogsType} logs? This cannot be undone.`)) return;
-                        
-                        try {
-                          await api.clearLogs(token!, clearLogsType);
-                          setSuccess(`${clearLogsType} logs cleared successfully`);
-                          setClearLogsType('');
-                          setClearLogsConfirmText('');
-                        } catch (err: any) {
-                          setError('Failed to clear logs: ' + err.message);
-                        }
-                      }}
-                      disabled={!clearLogsType || (clearLogsType === 'all' && clearLogsConfirmText !== 'DELETE ALL')}
-                      className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg"
-                    >
-                      Clear Selected Logs
-                    </button>
-                  </div>
-                </div>
-
-                {/* System Info */}
-                <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-yellow-400" />
-                    System Information
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Version</span>
-                      <span>2.0.0 (Next.js)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Environment</span>
-                      <span className="text-green-400">Production</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">API Endpoint</span>
-                      <span className="text-xs font-mono text-gray-400 truncate max-w-[200px]">{API_URL}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Logged in as</span>
-                      <span>{user?.email}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feature Toggles Section */}
-              <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-purple-400" />
-                  Feature Toggles
-                </h3>
-                <div className="space-y-4">
-                  {/* Safeguarding Alerts Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                    <div>
-                      <p className="font-medium">Safeguarding Alerts</p>
-                      <p className="text-sm text-gray-400">Enable real-time safeguarding alerts from AI chats</p>
-                    </div>
-                    <button
-                      data-testid="toggle-safeguarding-alerts"
-                      onClick={async () => {
-                        try {
-                          const newValue = !systemSettings.safeguarding_alerts_enabled;
-                          await api.updateSettings(token!, { safeguarding_alerts_enabled: newValue });
-                          setSystemSettings({ ...systemSettings, safeguarding_alerts_enabled: newValue });
-                          setSuccess('Setting updated');
-                        } catch (err: any) {
-                          setError('Failed to update setting: ' + err.message);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        systemSettings.safeguarding_alerts_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          systemSettings.safeguarding_alerts_enabled !== false ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* AI Chat Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                    <div>
-                      <p className="font-medium">AI Chat Buddies</p>
-                      <p className="text-sm text-gray-400">Enable AI companion chat feature for users</p>
-                    </div>
-                    <button
-                      data-testid="toggle-ai-chat"
-                      onClick={async () => {
-                        try {
-                          const newValue = !systemSettings.ai_chat_enabled;
-                          await api.updateSettings(token!, { ai_chat_enabled: newValue });
-                          setSystemSettings({ ...systemSettings, ai_chat_enabled: newValue });
-                          setSuccess('Setting updated');
-                        } catch (err: any) {
-                          setError('Failed to update setting: ' + err.message);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        systemSettings.ai_chat_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          systemSettings.ai_chat_enabled !== false ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Live Chat Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                    <div>
-                      <p className="font-medium">Live Chat</p>
-                      <p className="text-sm text-gray-400">Enable live chat with support staff</p>
-                    </div>
-                    <button
-                      data-testid="toggle-live-chat"
-                      onClick={async () => {
-                        try {
-                          const newValue = !systemSettings.live_chat_enabled;
-                          await api.updateSettings(token!, { live_chat_enabled: newValue });
-                          setSystemSettings({ ...systemSettings, live_chat_enabled: newValue });
-                          setSuccess('Setting updated');
-                        } catch (err: any) {
-                          setError('Failed to update setting: ' + err.message);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        systemSettings.live_chat_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          systemSettings.live_chat_enabled !== false ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Callback Requests Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                    <div>
-                      <p className="font-medium">Callback Requests</p>
-                      <p className="text-sm text-gray-400">Allow users to request phone callbacks</p>
-                    </div>
-                    <button
-                      data-testid="toggle-callbacks"
-                      onClick={async () => {
-                        try {
-                          const newValue = !systemSettings.callbacks_enabled;
-                          await api.updateSettings(token!, { callbacks_enabled: newValue });
-                          setSystemSettings({ ...systemSettings, callbacks_enabled: newValue });
-                          setSuccess('Setting updated');
-                        } catch (err: any) {
-                          setError('Failed to update setting: ' + err.message);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        systemSettings.callbacks_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          systemSettings.callbacks_enabled !== false ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Events Feature Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                    <div>
-                      <p className="font-medium">Events</p>
-                      <p className="text-sm text-gray-400">Enable community events feature</p>
-                    </div>
-                    <button
-                      data-testid="toggle-events"
-                      onClick={async () => {
-                        try {
-                          const newValue = !systemSettings.events_enabled;
-                          await api.updateSettings(token!, { events_enabled: newValue });
-                          setSystemSettings({ ...systemSettings, events_enabled: newValue });
-                          setSuccess('Setting updated');
-                        } catch (err: any) {
-                          setError('Failed to update setting: ' + err.message);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        systemSettings.events_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          systemSettings.events_enabled !== false ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Panic Button Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                    <div>
-                      <p className="font-medium">Panic Button</p>
-                      <p className="text-sm text-gray-400">Enable emergency panic button for users</p>
-                    </div>
-                    <button
-                      data-testid="toggle-panic"
-                      onClick={async () => {
-                        try {
-                          const newValue = !systemSettings.panic_button_enabled;
-                          await api.updateSettings(token!, { panic_button_enabled: newValue });
-                          setSystemSettings({ ...systemSettings, panic_button_enabled: newValue });
-                          setSuccess('Setting updated');
-                        } catch (err: any) {
-                          setError('Failed to update setting: ' + err.message);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        systemSettings.panic_button_enabled !== false ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          systemSettings.panic_button_enabled !== false ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SettingsTab
+              token={token!}
+              userEmail={user?.email}
+              onSuccess={setSuccess}
+              onError={setError}
+            />
           )}
         </div>
       </main>
 
-      {/* Add Staff Modal */}
-      {showAddStaffModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-            <h2 className="text-xl font-bold mb-4">Add New Staff Member</h2>
-            <form onSubmit={handleCreateStaff}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Email *</label>
-                  <input
-                    type="email"
-                    value={newStaff.email}
-                    onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    value={newStaff.password}
-                    onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Name *</label>
-                  <input
-                    type="text"
-                    value={newStaff.name}
-                    onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Role *</label>
-                  <select
-                    value={newStaff.role}
-                    onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value as any })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                  >
-                    <option value="peer">Peer Supporter</option>
-                    <option value="counsellor">Counsellor</option>
-                    <option value="supervisor">Supervisor</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={newStaff.phone}
-                    onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                  />
-                </div>
-                {(newStaff.role === 'counsellor' || newStaff.role === 'supervisor') && (
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Specialization</label>
-                    <input
-                      type="text"
-                      value={newStaff.specialization}
-                      onChange={(e) => setNewStaff({ ...newStaff, specialization: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                      placeholder="e.g., PTSD, Anxiety"
-                    />
-                  </div>
-                )}
-                {newStaff.role === 'peer' && (
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Service Area</label>
-                    <input
-                      type="text"
-                      value={newStaff.area}
-                      onChange={(e) => setNewStaff({ ...newStaff, area: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                      placeholder="e.g., Army, Navy"
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddStaffModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                >
-                  Create Staff
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Staff Modal - Comprehensive Profile Editor */}
-      {editingStaff && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 my-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Edit Staff Profile</h2>
-              <button 
-                onClick={() => setEditingStaff(null)}
-                className="p-1 hover:bg-gray-700 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleUpdateStaff}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Basic Info */}
-                <div className="col-span-2">
-                  <h3 className="text-sm font-semibold text-blue-400 mb-2 pb-1 border-b border-gray-700">Basic Information</h3>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingStaff.name}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={editingStaff.email}
-                    disabled
-                    className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Role</label>
-                  <input
-                    type="text"
-                    value={editingStaff.role}
-                    disabled
-                    className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed capitalize"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Status</label>
-                  <select
-                    value={editingStaff.status}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, status: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
-                  >
-                    <option value="available">Available</option>
-                    <option value="busy">Busy</option>
-                    <option value="unavailable">Unavailable</option>
-                  </select>
-                </div>
-
-                {/* Contact Info */}
-                <div className="col-span-2 mt-4">
-                  <h3 className="text-sm font-semibold text-blue-400 mb-2 pb-1 border-b border-gray-700">Contact Information</h3>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={editingStaff.phone || ''}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
-                    placeholder="e.g., 07700 900123"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">SMS Number</label>
-                  <input
-                    type="tel"
-                    value={editingStaff.sms || ''}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, sms: e.target.value })}
-                    placeholder="Leave blank if same as phone"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">WhatsApp Number</label>
-                  <input
-                    type="tel"
-                    value={editingStaff.whatsapp || ''}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, whatsapp: e.target.value })}
-                    placeholder="Leave blank if same as phone"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
-                  />
-                </div>
-
-                {/* Role-Specific Fields */}
-                <div className="col-span-2 mt-4">
-                  <h3 className="text-sm font-semibold text-blue-400 mb-2 pb-1 border-b border-gray-700">
-                    {editingStaff.role === 'counsellor' ? 'Counsellor Details' : 
-                     editingStaff.role === 'peer' ? 'Peer Supporter Details' : 'Professional Details'}
-                  </h3>
-                </div>
-
-                {/* Counsellor-specific: Specialization */}
-                {(editingStaff.role === 'counsellor' || editingStaff.role === 'supervisor') && (
-                  <div className="col-span-2">
-                    <label className="block text-sm text-gray-400 mb-1">Specialization</label>
-                    <input
-                      type="text"
-                      value={editingStaff.specialization || ''}
-                      onChange={(e) => setEditingStaff({ ...editingStaff, specialization: e.target.value })}
-                      placeholder="e.g., PTSD, Anxiety, Trauma"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
-                    />
-                  </div>
-                )}
-
-                {/* Peer Supporter-specific fields */}
-                {editingStaff.role === 'peer' && (
-                  <>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Service Area</label>
-                      <input
-                        type="text"
-                        value={editingStaff.area || ''}
-                        onChange={(e) => setEditingStaff({ ...editingStaff, area: e.target.value })}
-                        placeholder="e.g., North West, London"
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Years Served</label>
-                      <input
-                        type="text"
-                        value={editingStaff.years_served || ''}
-                        onChange={(e) => setEditingStaff({ ...editingStaff, years_served: e.target.value })}
-                        placeholder="e.g., 1990-2005"
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm text-gray-400 mb-1">Military Background</label>
-                      <textarea
-                        value={editingStaff.background || ''}
-                        onChange={(e) => setEditingStaff({ ...editingStaff, background: e.target.value })}
-                        placeholder="e.g., Royal Marines, served 15 years..."
-                        rows={3}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 resize-none"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* Supervisor checkbox */}
-                <div className="col-span-2 flex items-center gap-2 mt-2">
-                  <input
-                    type="checkbox"
-                    id="is_supervisor"
-                    checked={editingStaff.is_supervisor || false}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, is_supervisor: e.target.checked })}
-                    className="w-4 h-4 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="is_supervisor" className="text-sm text-gray-300">
-                    Has supervisor privileges (can view all safeguarding alerts)
-                  </label>
-                </div>
-              </div>
-              
-              <div className="flex gap-3 mt-6 pt-4 border-t border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => setEditingStaff(null)}
-                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Password Modal */}
-      {showResetPasswordModal && resetPasswordUser && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Reset Password for {resetPasswordUser.name}</h2>
-              <button onClick={() => setShowResetPasswordModal(false)} className="p-1 hover:bg-gray-700 rounded">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (resetPasswordData.newPassword.length < 8) {
-                setError('Password must be at least 8 characters');
-                return;
-              }
-              if (resetPasswordData.newPassword !== resetPasswordData.confirmPassword) {
-                setError('Passwords do not match');
-                return;
-              }
-              try {
-                await api.adminResetPassword(token!, resetPasswordUser.id, resetPasswordData.newPassword);
-                setSuccess('Password reset successfully');
-                setShowResetPasswordModal(false);
-                setResetPasswordUser(null);
-                setResetPasswordData({ newPassword: '', confirmPassword: '' });
-              } catch (err: any) {
-                setError('Failed to reset password: ' + err.message);
-              }
-            }}>
-              <p className="text-sm text-gray-400 mb-4">
-                Password must be at least 8 characters and cannot match any of the last 3 passwords used.
-              </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">New Password *</label>
-                  <input
-                    type="password"
-                    value={resetPasswordData.newPassword}
-                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                    placeholder="Minimum 8 characters"
-                    minLength={8}
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Confirm Password *</label>
-                  <input
-                    type="password"
-                    value={resetPasswordData.confirmPassword}
-                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, confirmPassword: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                    placeholder="Re-enter password"
-                    minLength={8}
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowResetPasswordModal(false);
-                    setResetPasswordUser(null);
-                    setResetPasswordData({ newPassword: '', confirmPassword: '' });
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
-                >
-                  Reset Password
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

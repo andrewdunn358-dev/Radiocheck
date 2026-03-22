@@ -46,6 +46,45 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - March 2026
 
+### Admin Portal Phase 2 Refactoring - Tab Extraction (P0)
+**Status**: ✅ COMPLETE (March 22, 2026)
+
+**Problem**: Continue refactoring the admin portal by extracting tab components.
+
+**Phase 2 Extraction Completed**:
+- Reduced `page.tsx` from **6,575 lines → 5,175 lines** (~1,400 lines removed)
+
+**New Tab Components Created** (`/app/portal/src/components/admin/tabs/`):
+1. `StaffTab.tsx` (681 lines)
+   - Full staff management with CRUD operations
+   - Search and filter functionality
+   - Add Staff, Edit Staff, and Reset Password modals
+
+2. `AIPersonasTab.tsx` (329 lines)
+   - AI character grid with enable/disable toggles
+   - Character editing modal
+   - Import defaults functionality
+
+3. `SettingsTab.tsx` (304 lines)
+   - Logo settings
+   - Email notification settings
+   - Clear logs (danger zone)
+   - System information
+   - Feature toggles
+
+**Total extracted**: 1,314 lines into reusable components
+
+**Verification**: Build successful, admin portal login page renders correctly
+
+**Remaining tabs to extract** (Phase 3+):
+- LogsTab (7 sub-tabs, ~1,200 lines)
+- RotaTab (~540 lines)
+- GovernanceTab (7 sub-tabs, ~770 lines)
+- EventsTab (~315 lines)
+- Other smaller tabs
+
+---
+
 ### Admin Portal Phase 1 Refactoring - Infrastructure Extraction (P0)
 **Status**: ✅ COMPLETE (March 22, 2026)
 
