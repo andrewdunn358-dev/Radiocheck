@@ -106,4 +106,16 @@ export interface AIUsageSummary {
   }>;
   by_provider?: Record<string, { tokens: number; cost: number }>;
   by_character?: Array<{ character_name?: string; name?: string; request_count?: number; requests?: number; cost_gbp?: number; cost?: number }>;
+  recent_usage?: Array<{ 
+    date?: string; 
+    timestamp?: string;
+    provider?: string; 
+    model?: string; 
+    requests?: number;
+    request_count?: number;
+    tokens?: number;
+    total_tokens?: number;
+    cost_gbp?: number;
+    cost?: number;
+  }>;
 }

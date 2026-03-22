@@ -11,7 +11,7 @@ import os
 from datetime import datetime, timedelta
 
 # Get base URL from environment - using preview URL for testing
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://logs-modular-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-refactor-final.preview.emergentagent.com').rstrip('/')
 
 
 class TestLMSCourseAPI:

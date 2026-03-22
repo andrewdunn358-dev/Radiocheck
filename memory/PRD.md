@@ -37,7 +37,7 @@ The Radiocheck project is a complex mix of:
 │       └── SafeguardingCallModal.tsx  # WebRTC with audio quality enhancements
 └── portal/                   # Next.js unified portal
     ├── src/app/
-    │   ├── admin/page.tsx    # Admin portal with staff profile editing
+    │   ├── admin/page.tsx    # Admin portal - FULLY REFACTORED (414 lines)
     │   └── staff/page.tsx    # Staff portal with callbacks
     ├── src/hooks/
     │   └── useWebRTCPhone.tsx  # WebRTC hook with Socket.IO stability
@@ -45,6 +45,75 @@ The Radiocheck project is a complex mix of:
 ```
 
 ## Completed Work - February 2026
+
+### Admin Portal FINAL Phase Refactoring - Complete Modularization (P0)
+**Status**: ✅ COMPLETE (February 2026)
+
+**Problem**: Complete the final refactoring pass of `/app/portal/src/app/admin/page.tsx` by extracting the remaining 8 tabs.
+
+**Final Phase Extraction Completed**:
+- Reduced `page.tsx` from **2,157 lines → 414 lines** (~81% reduction from this phase)
+- **Total Admin Page Reduction**: 7,229 lines → 414 lines (**94% reduction overall!**)
+
+**New Components Created in Final Phase**:
+1. `/app/portal/src/components/admin/tabs/AIUsageTab.tsx` (264 lines)
+   - Provider breakdown cards with budget bars
+   - Daily usage charts (Line & Bar)
+   - Recent usage table
+
+2. `/app/portal/src/components/admin/tabs/MonitoringTab.tsx` (156 lines)
+   - Activity stats (calls, chats, AI sessions, callbacks)
+   - User stats
+   - Server health gauges (CPU, Memory, Load)
+   - Auto-refresh every 30 seconds with cleanup on unmount
+
+3. `/app/portal/src/components/admin/tabs/MigrationTab.tsx` (132 lines)
+   - Legacy counts display
+   - Run migration and fix passwords actions
+
+4. `/app/portal/src/components/admin/tabs/CMSTab.tsx` (144 lines)
+   - Page list sidebar
+   - Page content viewer
+
+5. `/app/portal/src/components/admin/tabs/BetaTestingTab.tsx` (210 lines)
+   - Beta toggle
+   - Pre/Post survey stats
+   - Survey responses list
+
+6. `/app/portal/src/components/admin/tabs/ComplianceTab.tsx` (246 lines)
+   - GDPR metrics
+   - Staff wellbeing section
+   - Security incidents & complaints
+   - Policy document downloads
+
+7. `/app/portal/src/components/admin/tabs/LearningTab/` (488 lines total)
+   - `index.tsx` - Main container with 4 sub-tabs
+   - `PatternsSubTab.tsx` - Safety patterns with filters
+   - `QueueSubTab.tsx` - Approval queue
+   - `ApprovedSubTab.tsx` - Approved learnings list
+   - `FeedbackSubTab.tsx` - Response feedback management
+
+8. `/app/portal/src/components/admin/tabs/TimeTrackingTab.tsx` (291 lines)
+   - Month selector
+   - Summary cards (hours, cost, entries, avg daily)
+   - Recent entries list
+   - Category breakdown
+   - Daily breakdown grid
+   - Add time entry modal
+
+**Final Admin Page Structure** (`page.tsx` - 414 lines):
+- Imports
+- Tab definitions array
+- Auth hook usage
+- Alert counter polling
+- Message auto-clear
+- Login form
+- Main layout (sidebar, header, content area)
+- Tab component rendering
+
+**Verification**: Build successful, TypeScript compilation passes
+
+---
 
 ### Admin Portal Phase 4 Refactoring - Rota/Governance/Events Extraction (P0)
 **Status**: ✅ COMPLETE (February 2026)
