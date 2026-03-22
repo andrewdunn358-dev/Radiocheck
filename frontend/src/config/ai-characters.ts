@@ -553,8 +553,8 @@ export const getCharacter = (id: string): AICharacter => {
     return byName;
   }
   
-  // Default fallback
-  return AI_CHARACTERS.hugo;
+  // Default fallback to tommy (the main character)
+  return AI_CHARACTERS.tommy;
 };
 
 // Get all characters as an array
@@ -567,8 +567,8 @@ export const getCrisisCharacters = (): AICharacter[] => {
   return [AI_CHARACTERS.tommy, AI_CHARACTERS.doris].filter(Boolean);
 };
 
-// Get characters for self-care (Hugo primarily)
+// Get characters for self-care (Tommy & Bob & Margie primarily)
 export const getSelfCareCharacters = (): AICharacter[] => {
-  return [AI_CHARACTERS.hugo, AI_CHARACTERS.bob, AI_CHARACTERS.margie].filter(Boolean);
+  return [AI_CHARACTERS.tommy, AI_CHARACTERS.bob, AI_CHARACTERS.margie].filter(Boolean);
 };
 // Force rebuild Sun Mar  1 21:47:27 UTC 2026

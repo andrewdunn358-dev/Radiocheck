@@ -21,6 +21,7 @@ import {
   Modal,
   Linking,
   StatusBar,
+  ImageSourcePropType,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -28,6 +29,35 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
 import { API_URL } from '../../src/config/api';
+
+// Avatar image mapping for React Native local images
+const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
+  '/images/tommy.png': require('../../assets/images/tommy.png'),
+  '/images/rachel.png': require('../../assets/images/rachel.png'),
+  '/images/finch.png': require('../../assets/images/finch.png'),
+  '/images/bob.png': require('../../assets/images/bob.png'),
+  '/images/margie.png': require('../../assets/images/margie.png'),
+  '/images/jack.png': require('../../assets/images/jack.png'),
+  '/images/rita.png': require('../../assets/images/rita.png'),
+  '/images/catherine.png': require('../../assets/images/catherine.png'),
+  '/images/frankie.png': require('../../assets/images/frankie.png'),
+  '/images/baz.png': require('../../assets/images/baz.png'),
+  '/images/megan.png': require('../../assets/images/megan.png'),
+  '/images/penny.png': require('../../assets/images/penny.png'),
+  '/images/alex.png': require('../../assets/images/alex.png'),
+  '/images/sam.png': require('../../assets/images/sam.png'),
+  '/images/kofi.png': require('../../assets/images/kofi.png'),
+  '/images/james.png': require('../../assets/images/james.png'),
+};
+
+// Helper function to get avatar source (handles both local and remote images)
+const getAvatarSource = (avatar: string): ImageSourcePropType => {
+  if (AVATAR_IMAGES[avatar]) {
+    return AVATAR_IMAGES[avatar];
+  }
+  // For CMS/remote images, use URI
+  return { uri: avatar };
+};
 import { getCharacter, AICharacter } from '../../src/config/ai-characters';
 import AIConsentModal from '../../src/components/AIConsentModal';
 import { useAgeGateContext } from '../../src/context/AgeGateContext';
@@ -61,8 +91,8 @@ export default function DynamicAIChat() {
   // Get character config
   const character = useMemo(() => getCharacter(characterId), [characterId]);
   
-  // Create dynamic styles
-  const styles = useMemo(() => createStyles(colors, isDark, character.accentColor), [colors, isDark, character.accentColor]);
+  // Create dynamic styles - use fallback color if character not found
+  const styles = useMemo(() => createStyles(colors, isDark, character?.accentColor || '#3b82f6'), [colors, isDark, character?.accentColor]);
   
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
@@ -603,7 +633,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
         <Pressable onPress={handleGoBack} style={styles.backButton} data-testid="back-button">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Image source={{ uri: character.avatar }} style={styles.headerAvatar} />
+        <Image source={getAvatarSource(character.avatar)} style={styles.headerAvatar} />
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>{character.name}</Text>
           <Text style={styles.headerSubtitle}>{character.role}</Text>
@@ -629,7 +659,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
       {/* AI Profile Card - shows on first message */}
       {messages.length <= 1 && (
         <View style={styles.aiProfileCard}>
-          <Image source={{ uri: character.avatar }} style={styles.aiProfileAvatar} />
+          <Image source={getAvatarSource(character.avatar)} style={styles.aiProfileAvatar} />
           <View style={styles.aiProfileInfo}>
             <Text style={styles.aiProfileName}>{character.name}</Text>
             <Text style={styles.aiProfileRole}>{character.role}</Text>
@@ -678,7 +708,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
               >
                 {message.sender === 'buddy' && (
                   <View style={styles.buddyLabel}>
-                    <Image source={{ uri: character.avatar }} style={styles.buddyLabelAvatar} />
+                    <Image source={getAvatarSource(character.avatar)} style={styles.buddyLabelAvatar} />
                     <Text style={styles.buddyLabelText}>{character.name}</Text>
                   </View>
                 )}
