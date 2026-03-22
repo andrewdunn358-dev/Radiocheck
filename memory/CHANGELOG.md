@@ -18,19 +18,17 @@ Quick reference for tracking development changes.
 When using React Native/Expo, `require()` statements for local images must reference files that actually exist. The build process fails when these files are missing.
 
 **Fix Applied:**
-- Removed the broken `require()` statements from:
-  - `/app/frontend/app/chat/[characterId].tsx` (AVATAR_IMAGES map)
-  - `/app/frontend/app/home.tsx` (AI_AVATARS map)
+- Generated 4 new photorealistic avatars for Jack, Baz, Megan, and Penny
+- Added all 4 images to `/app/frontend/assets/images/`
+- Restored full `require()` statements in both files
 - Added `doris.png` which was available but not included
-- Characters with missing avatars will now fall back to using their remote image URL
 
 **Files Changed:**
-- `/app/frontend/app/chat/[characterId].tsx` - Fixed AVATAR_IMAGES map
-- `/app/frontend/app/home.tsx` - Fixed AI_AVATARS map
+- `/app/frontend/app/chat/[characterId].tsx` - Restored full AVATAR_IMAGES map (17 avatars)
+- `/app/frontend/app/home.tsx` - Restored full AI_AVATARS map (17 avatars)
+- `/app/frontend/assets/images/` - Added jack.png, baz.png, megan.png, penny.png
 
-**Verified:** `npx expo export --platform web` now completes successfully with all 58 static routes
-
-**Next Steps:** Generate photorealistic avatars for Jack, Baz, Megan, and Penny to restore their local image loading
+**Verified:** `npx expo export --platform web` completes successfully with all 58 static routes
 
 ---
 

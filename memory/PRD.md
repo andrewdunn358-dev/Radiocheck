@@ -51,20 +51,19 @@ The Radiocheck project is a complex mix of:
 
 **Root Cause**: The Expo frontend build was failing due to `require()` statements referencing non-existent image files. When using React Native/Expo, `require()` statements for local images must reference files that exist.
 
-**Missing Images**:
-- `jack.png` - Avatar not generated
-- `baz.png` - Avatar not generated  
-- `megan.png` - Avatar not generated
-- `penny.png` - Avatar not generated
+**Missing Images** (now generated):
+- `jack.png` ✅ Generated - Ex-Royal Navy compensation expert
+- `baz.png` ✅ Generated - Ex-Rifles transition specialist  
+- `megan.png` ✅ Generated - Ex-RAF MERT women veterans specialist
+- `penny.png` ✅ Generated - Ex-Royal Navy benefits specialist
 
 **Fix Applied**:
-- Removed broken `require()` statements from:
-  - `/app/frontend/app/chat/[characterId].tsx` (AVATAR_IMAGES map)
-  - `/app/frontend/app/home.tsx` (AI_AVATARS map)
+- Generated 4 new photorealistic avatars using AI image generation
+- Downloaded all 4 images to `/app/frontend/assets/images/`
+- Restored full `require()` mappings in both frontend files
 - Added `doris.png` which was available but not included
-- Characters with missing avatars will fall back to using their remote image URL via `getAvatarSource()` helper
 
-**Verification**: `npx expo export --platform web` now completes successfully
+**Verification**: `npx expo export --platform web` completes successfully with all 58 static routes and 17 AI avatars
 
 ---
 
@@ -214,7 +213,6 @@ The Radiocheck project is a complex mix of:
 - Test user: `kev@radiocheck.me` / `AS90155mm`
 
 ## Future Tasks (Backlog)
-- [ ] (P1) Generate photorealistic avatars for Jack, Baz, Megan, Penny
 - [ ] (P1) **User Manuals**:
   - [ ] Staff User Manual - Guide for peer supporters and counsellors
   - [ ] Admin User Manual - Guide for administrators and supervisors

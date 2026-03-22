@@ -19,14 +19,17 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const NEW_LOGO_URL = require('../assets/images/logo.png');
 
 // AI Avatar image mapping - required for React Native local images
-// NOTE: jack.png, baz.png, megan.png, penny.png are missing - need to generate avatars for these characters
 const AI_AVATARS: Record<string, any> = {
   '/images/frankie.png': require('../assets/images/frankie.png'),
   '/images/tommy.png': require('../assets/images/tommy.png'),
   '/images/rachel.png': require('../assets/images/rachel.png'),
   '/images/bob.png': require('../assets/images/bob.png'),
+  '/images/megan.png': require('../assets/images/megan.png'),
+  '/images/penny.png': require('../assets/images/penny.png'),
   '/images/finch.png': require('../assets/images/finch.png'),
   '/images/margie.png': require('../assets/images/margie.png'),
+  '/images/jack.png': require('../assets/images/jack.png'),
+  '/images/baz.png': require('../assets/images/baz.png'),
   '/images/rita.png': require('../assets/images/rita.png'),
   '/images/catherine.png': require('../assets/images/catherine.png'),
   '/images/doris.png': require('../assets/images/doris.png'),
