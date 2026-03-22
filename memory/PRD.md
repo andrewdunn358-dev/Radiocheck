@@ -46,6 +46,36 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - March 2026
 
+### Admin Portal Phase 1 Refactoring - Infrastructure Extraction (P0)
+**Status**: ✅ COMPLETE (March 22, 2026)
+
+**Problem**: The admin portal page was a 7,229-line monolithic component that needed to be broken down.
+
+**Phase 1 Extraction Completed**:
+- Reduced `page.tsx` from **7,229 lines → 6,574 lines** (655 lines extracted)
+
+**New Files Created**:
+1. `/app/portal/src/types/admin.ts` (109 lines)
+   - Extracted: User, StaffMember, CallLog, ChatRoom, SafeguardingAlert, AICharacter, AIUsageSummary interfaces
+
+2. `/app/portal/src/lib/admin-api.ts` (478 lines)
+   - Extracted: Full API client with 60+ methods
+   - Includes: API_URL config, resolveAvatarUrl helper
+
+3. `/app/portal/src/hooks/useMainAdminAuth.ts` (154 lines)
+   - Extracted: Auth state, session management, login/logout handlers
+   - Note: Named "useMainAdminAuth" to avoid conflict with existing useAdminAuth.tsx for LMS
+
+4. `/app/portal/src/contexts/AdminContext.tsx` (85 lines)
+   - Created: Shared context for error/success notifications, sidebar state
+   - TODO comment added for future domain-specific context splitting
+
+**Verification**: Build successful, admin portal login page renders correctly
+
+**Next Phase**: Extract tab components (StaffTab, LogsTab, etc.) to `/app/portal/src/components/admin/tabs/`
+
+---
+
 ### Admin Portal Full Audit (P0)
 **Status**: ✅ COMPLETE (March 22, 2026)
 
@@ -63,13 +93,13 @@ The Radiocheck project is a complex mix of:
 **Refactoring Plan Created**: See `/app/memory/ADMIN_PORTAL_AUDIT.md`
 
 **Proposed Structure After Refactoring**:
-- `/app/portal/src/lib/admin-api.ts` - API client
-- `/app/portal/src/types/admin.ts` - TypeScript interfaces
-- `/app/portal/src/hooks/useAdminAuth.ts` - Auth hook
-- `/app/portal/src/contexts/AdminContext.tsx` - Shared state
-- `/app/portal/src/components/admin/tabs/` - 30+ tab components
-- `/app/portal/src/components/admin/modals/` - 10+ modal components
-- `/app/portal/src/components/admin/ui/` - Shared UI components
+- `/app/portal/src/lib/admin-api.ts` - API client ✅ DONE
+- `/app/portal/src/types/admin.ts` - TypeScript interfaces ✅ DONE
+- `/app/portal/src/hooks/useMainAdminAuth.ts` - Auth hook ✅ DONE
+- `/app/portal/src/contexts/AdminContext.tsx` - Shared state ✅ DONE
+- `/app/portal/src/components/admin/tabs/` - 30+ tab components (Phase 2)
+- `/app/portal/src/components/admin/modals/` - 10+ modal components (Phase 3)
+- `/app/portal/src/components/admin/ui/` - Shared UI components (Phase 4)
 
 **Expected Outcome**: 7,229 lines → ~50 files averaging 100-150 lines each
 
