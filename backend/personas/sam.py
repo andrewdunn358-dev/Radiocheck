@@ -8,7 +8,7 @@ Warm, nurturing, practical. Understands the unique challenges of forces kids.
 PERSONA = {
     "id": "sam",
     "name": "Sam",
-    "avatar": "https://static.prod-images.emergentagent.com/jobs/a985fad0-5525-4cd3-9457-f90ff327079e/images/d4928ff8eebf7a60f27b9b4a26566eaa68a2549fdb9e4b1a63ecffd5ddda9222.png",
+    "avatar": "/images/sam.png",
     "role": "Forces Kids Specialist",
     "accent_color": "#f97316",
     

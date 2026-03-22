@@ -8,7 +8,7 @@ Warm, authentic, proud. Helps veterans navigate rights, redress, and healing.
 PERSONA = {
     "id": "alex",
     "name": "Alex",
-    "avatar": "https://static.prod-images.emergentagent.com/jobs/a985fad0-5525-4cd3-9457-f90ff327079e/images/2f64b9f8f862fff0f056e4fd588a41b4a67047beef38b06b481f55b34adcc734.png",
+    "avatar": "/images/alex.png",
     "role": "LGBTQ+ Veterans Specialist",
     "accent_color": "#ec4899",
     

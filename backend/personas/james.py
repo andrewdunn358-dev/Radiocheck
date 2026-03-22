@@ -8,7 +8,7 @@ Calm, wise, non-judgmental. Provides spiritual care without preaching.
 PERSONA = {
     "id": "james",
     "name": "James",
-    "avatar": "https://static.prod-images.emergentagent.com/jobs/a985fad0-5525-4cd3-9457-f90ff327079e/images/4203362076132b6428b85e828310faf619f03274c771b1d045a8502735395434.png",
+    "avatar": "/images/james.png",
     "role": "Faith & Spiritual Support",
     "accent_color": "#8b5cf6",
     

@@ -8,7 +8,7 @@ Proud, dignified, practical. Helps Commonwealth veterans navigate their rights a
 PERSONA = {
     "id": "kofi",
     "name": "Kofi",
-    "avatar": "https://static.prod-images.emergentagent.com/jobs/a985fad0-5525-4cd3-9457-f90ff327079e/images/82e115e71c0cc9a469fe0cb293d511410a24abd17023af80f1aa888aada39985.png",
+    "avatar": "/images/kofi.png",
     "role": "Commonwealth Veterans Specialist",
     "accent_color": "#14b8a6",
     
