@@ -41,14 +41,59 @@ The Radiocheck project is a complex mix of:
 └── portal/                   # Next.js unified portal
     ├── src/app/
     │   ├── admin/page.tsx    # Admin portal - FULLY REFACTORED (414 lines)
-    │   └── staff/page.tsx    # Staff portal - PENDING REFACTOR (3,907 lines)
-    ├── src/components/admin/tabs/  # 33 extracted admin tab components
+    │   └── staff/page.tsx    # Staff portal - BATCH 1 COMPLETE (2,257 lines)
+    ├── src/components/
+    │   ├── admin/tabs/       # 33 extracted admin tab components
+    │   └── staff/tabs/       # 3 extracted staff tab components (Batch 1)
+    │       ├── AlertsTab.tsx     # Safeguarding + Panic alerts with real-time polling
+    │       ├── LiveChatTab.tsx   # Live chat with WebSocket handlers
+    │       └── CasesTab.tsx      # Case management with modals
     ├── src/hooks/
     │   └── useWebRTCPhone.tsx  # WebRTC hook with Socket.IO stability
     └── src/lib/api.ts        # API functions with notes support
 ```
 
 ## Completed Work - February 2026
+
+### Staff Portal Batch 1 Refactoring - AlertsTab/LiveChatTab/CasesTab Extraction (P1)
+**Status**: ✅ COMPLETE (February 2026)
+
+**Problem**: Begin refactoring of `/app/portal/src/app/staff/page.tsx` (3,907 lines) using the same phased approach as admin portal.
+
+**Batch 1 Extraction Completed**:
+- Reduced `page.tsx` from **3,907 lines → 2,257 lines** (~42% reduction)
+- Created 3 new tab components (1,828 lines total)
+
+**Critical Real-Time Handlers Moved** (VERIFIED):
+1. **AlertsTab** (488 lines):
+   - ✅ Safeguarding alerts polling (30s interval)
+   - ✅ Panic alerts polling (30s interval)
+   - ✅ Sound alert on new active alerts
+   - ✅ Cleanup on unmount
+
+2. **LiveChatTab** (645 lines):
+   - ✅ Live chat rooms polling (30s interval)
+   - ✅ `chat_request_confirmed` WebSocket event listener
+   - ✅ `new_chat_message` WebSocket event listener
+   - ✅ Sound alert on new waiting chats
+   - ✅ AI Feedback modal (integrated)
+   - ✅ All event listener cleanup on unmount
+
+3. **CasesTab** (695 lines):
+   - ✅ Case listing with filters
+   - ✅ Case detail modal
+   - ✅ Add session note modal
+   - ✅ Create case modal
+   - ✅ Escalate case modal
+
+**Hook Exports for Parent Component**:
+- `useAlertCounts(token)` - Returns alert data and counts for dashboard/badges
+- `useLiveChatCounts(token)` - Returns chat data and counts for dashboard/badges
+- `useCaseCounts(token)` - Returns case data and counts for dashboard/badges
+
+**Verification**: Build successful (`next build` passed)
+
+---
 
 ### Admin Portal FINAL Phase Refactoring - Complete Modularization (P0)
 **Status**: ✅ COMPLETE (February 2026)

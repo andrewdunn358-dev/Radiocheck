@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import useWebRTCPhone from '@/hooks/useWebRTCPhone';
 import useTwilioPhone from '@/hooks/useTwilioPhone';
-import { staffApi, SafeguardingAlert, PanicAlert, LiveChatRoom, Case, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation, LiveChatMessage, InternalMessage } from '@/lib/api';
+import { staffApi, Callback, Shift, ShiftSwap, TeamMember, StaffNote, Escalation, InternalMessage } from '@/lib/api';
 import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, MessageSquare, Briefcase, Phone,
@@ -13,6 +13,11 @@ import {
   Plus, Edit, Edit2, Trash2, ChevronLeft, ArrowLeftRight, Eye, PhoneCall, Wifi, WifiOff,
   PhoneIncoming, PhoneOff, Mic, MicOff, MapPin, Globe, Info, AlertOctagon, ArrowUp, Share2, Mail
 } from 'lucide-react';
+
+// Import extracted tab components
+import AlertsTab, { useAlertCounts } from '@/components/staff/tabs/AlertsTab';
+import LiveChatTab, { useLiveChatCounts } from '@/components/staff/tabs/LiveChatTab';
+import CasesTab, { useCaseCounts } from '@/components/staff/tabs/CasesTab';
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'supervision';
 type AlertsSubTab = 'safeguarding' | 'panic';
@@ -26,6 +31,11 @@ console.log('[StaffPortal] Using API_URL:', API_URL);
 export default function StaffPortalPage() {
   const { user, profile, token, isLoading, login, logout, updateStatus } = useStaffAuth();
 
+  // Use hooks for badge counts and dashboard data (these poll independently for nav/dashboard)
+  const { safeguardingAlerts, panicAlerts, activeSafeguardingCount, activePanicCount, activeAlertsCount } = useAlertCounts(token);
+  const { waitingChatsCount } = useLiveChatCounts(token);
+  const { openCasesCount } = useCaseCounts(token);
+
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -37,18 +47,8 @@ export default function StaffPortalPage() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [soundEnabled, setSoundEnabled] = useState(true);
   
-  // Sub-tab states
-  const [alertsSubTab, setAlertsSubTab] = useState<AlertsSubTab>('safeguarding');
+  // Sub-tab states (only for tabs not yet extracted)
   const [callbacksSubTab, setCallbacksSubTab] = useState<CallbacksSubTab>('pending');
-  
-  // Case management state
-  const [selectedCase, setSelectedCase] = useState<Case | null>(null);
-  const [showCaseModal, setShowCaseModal] = useState(false);
-  const [caseStatusFilter, setCaseStatusFilter] = useState<string>('');
-  const [caseRiskFilter, setCaseRiskFilter] = useState<string>('');
-  const [showAddSessionModal, setShowAddSessionModal] = useState(false);
-  const [newSessionNote, setNewSessionNote] = useState('');
-  const [caseSessions, setCaseSessions] = useState<any[]>([]);
   
   // Session timeout state (2 hour inactivity timeout)
   const lastActivityRef = useRef<number>(Date.now());
@@ -57,11 +57,8 @@ export default function StaffPortalPage() {
   const sessionStartRef = useRef<number>(Date.now());
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   
-  // Sound alert refs
+  // Sound alert refs (for parent-level sound only)
   const audioContextRef = useRef<AudioContext | null>(null);
-  const prevSafeguardingCountRef = useRef<number>(0);
-  const prevChatCountRef = useRef<number>(0);
-  const prevPanicCountRef = useRef<number>(0);
 
   // Phone/WebRTC state - now using the hook
   const [phoneStatus, setPhoneStatus] = useState<'connecting' | 'ready' | 'error' | 'unavailable'>('connecting');
@@ -121,19 +118,10 @@ export default function StaffPortalPage() {
     }
   }, [webrtcPhone.isRegistered, webrtcPhone.status]);
 
-  // Data state
-  const [safeguardingAlerts, setSafeguardingAlerts] = useState<SafeguardingAlert[]>([]);
-  const [panicAlerts, setPanicAlerts] = useState<PanicAlert[]>([]);
-  const [liveChatRooms, setLiveChatRooms] = useState<LiveChatRoom[]>([]);
-  const [cases, setCases] = useState<Case[]>([]);
+  // Data state (only for tabs not yet extracted)
   const [callbacks, setCallbacks] = useState<Callback[]>([]);
 
-  // Modal state
-  const [activeChatRoom, setActiveChatRoom] = useState<LiveChatRoom | null>(null);
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-
-  // Additional data state
+  // Additional data state (remaining tabs)
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [swapRequests, setSwapRequests] = useState<ShiftSwap[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -169,74 +157,15 @@ export default function StaffPortalPage() {
   const [newShiftEnd, setNewShiftEnd] = useState('');
   const [newShiftType, setNewShiftType] = useState('morning');
 
-  // Escalations state
-  const [escalationsTab, setEscalationsTab] = useState<'pending' | 'all'>('pending');
-
-  // Panic button state (for peers)
+  // Panic button state (for dashboard - kept for peer support)
   const [showPanicModal, setShowPanicModal] = useState(false);
   const [panicReason, setPanicReason] = useState('');
   const [triggeringPanic, setTriggeringPanic] = useState(false);
 
-  // AI Feedback modal state
-  const [showAiFeedbackModal, setShowAiFeedbackModal] = useState(false);
-  const [aiFeedbackData, setAiFeedbackData] = useState<{ messageId: string; message: string; response: string } | null>(null);
-  const [aiFeedbackRating, setAiFeedbackRating] = useState<'good' | 'needs_improvement' | 'inappropriate' | 'missed_risk' | null>(null);
-  const [aiFeedbackComment, setAiFeedbackComment] = useState('');
+  // Escalations state (for supervision tab - not yet extracted)
+  const [escalationsTab, setEscalationsTab] = useState<'pending' | 'all'>('pending');
 
-  // Case management state
-  const [showCreateCaseModal, setShowCreateCaseModal] = useState(false);
-  const [showEscalateModal, setShowEscalateModal] = useState(false);
-  const [escalateCaseId, setEscalateCaseId] = useState<string | null>(null);
-  const [escalateTo, setEscalateTo] = useState('');
-  const [escalateReason, setEscalateReason] = useState('');
-  const [escalateNotes, setEscalateNotes] = useState('');
-  const [newCaseUserId, setNewCaseUserId] = useState('');
-  const [newCaseUserName, setNewCaseUserName] = useState('');
-  const [newCaseNotes, setNewCaseNotes] = useState('');
-  const [newCaseRiskLevel, setNewCaseRiskLevel] = useState('medium');
-  const [availableCounsellors, setAvailableCounsellors] = useState<any[]>([]);
-
-  // Load data
-  const loadAlerts = useCallback(async () => {
-    if (!token) {
-      console.log('[StaffPage] loadAlerts: No token, skipping');
-      return;
-    }
-    console.log('[StaffPage] loadAlerts: Loading safeguarding and panic alerts...');
-    try {
-      const [safeguarding, panic] = await Promise.all([
-        staffApi.getSafeguardingAlerts(token),
-        staffApi.getPanicAlerts(token),
-      ]);
-      console.log('[StaffPage] loadAlerts: Received safeguarding:', safeguarding?.length || 0, 'alerts');
-      console.log('[StaffPage] loadAlerts: Received panic:', panic?.length || 0, 'alerts');
-      setSafeguardingAlerts(safeguarding || []);
-      setPanicAlerts(panic || []);
-    } catch (err) {
-      console.error('[StaffPage] loadAlerts: Failed to load alerts:', err);
-    }
-  }, [token]);
-
-  const loadLiveChats = useCallback(async () => {
-    if (!token) return;
-    try {
-      const rooms = await staffApi.getLiveChatRooms(token);
-      setLiveChatRooms(rooms);
-    } catch (err) {
-      console.error('Failed to load live chats:', err);
-    }
-  }, [token]);
-
-  const loadCases = useCallback(async () => {
-    if (!token) return;
-    try {
-      const casesData = await staffApi.getCases(token);
-      setCases(Array.isArray(casesData) ? casesData : []);
-    } catch (err) {
-      console.error('Failed to load cases:', err);
-    }
-  }, [token]);
-
+  // Load data (only for tabs not yet extracted)
   const loadCallbacks = useCallback(async () => {
     if (!token) return;
     try {
@@ -290,12 +219,11 @@ export default function StaffPortalPage() {
     }
   }, [token]);
 
-  // Initial data load and polling
+  // Initial data load and polling (only for tabs not yet extracted)
+  // AlertsTab, LiveChatTab, and CasesTab now manage their own data loading
   useEffect(() => {
     if (token) {
-      loadAlerts();
-      loadLiveChats();
-      loadCases();
+      // Load data for remaining tabs only
       loadCallbacks();
       loadShifts();
       loadTeam();
@@ -303,17 +231,8 @@ export default function StaffPortalPage() {
       if (user?.is_supervisor) {
         loadEscalations();
       }
-
-      // Poll for alerts every 30 seconds
-      const alertInterval = setInterval(loadAlerts, 30000);
-      const chatInterval = setInterval(loadLiveChats, 30000);
-
-      return () => {
-        clearInterval(alertInterval);
-        clearInterval(chatInterval);
-      };
     }
-  }, [token, loadAlerts, loadLiveChats, loadCases, loadCallbacks, loadShifts, loadTeam, loadNotes, loadEscalations, user?.is_supervisor]);
+  }, [token, loadCallbacks, loadShifts, loadTeam, loadNotes, loadEscalations, user?.is_supervisor]);
 
   // Listen for real-time status sync from other portals
   useEffect(() => {
@@ -343,123 +262,6 @@ export default function StaffPortalPage() {
       window.removeEventListener('staff_offline', handleStaffOffline as EventListener);
     };
   }, [loadTeam]);
-
-  // AUTO-OPEN CHAT when chat_request_confirmed event is dispatched
-  // This is the RELIABLE way to open chat - listens for custom event from WebRTC hook
-  // This matches the legacy portal behavior (webrtc-phone.js calling showLiveChatModal directly)
-  useEffect(() => {
-    const handleChatConfirmed = async (event: Event) => {
-      const customEvent = event as CustomEvent<{ 
-        room_id: string; 
-        user_id: string; 
-        user_name?: string; 
-        session_id?: string;
-      }>;
-      const { room_id: roomId, user_id: userId, user_name: userName } = customEvent.detail;
-      
-      // CRITICAL: Use webrtcUserId (callable_user_id) for joining chat, NOT user.id
-      // The chat room was created with the Socket.IO user_id which is callable_user_id
-      const staffIdForChat = webrtcUserId || user?.id;
-      
-      if (!roomId || !token || !staffIdForChat || !user?.name) {
-        console.log('[StaffPage] Cannot open chat - missing data:', { roomId, hasToken: !!token, staffIdForChat, userName: user?.name });
-        return;
-      }
-      
-      console.log('[StaffPage] *** CHAT CONFIRMED EVENT RECEIVED ***');
-      console.log('[StaffPage] Opening chat room:', roomId, 'for user:', userId, userName);
-      console.log('[StaffPage] Using staff ID for join:', staffIdForChat, '(webrtcUserId:', webrtcUserId, ', user.id:', user?.id, ')');
-      
-      try {
-        // Join the chat room via API (like legacy joinLiveChat)
-        // MUST use webrtcUserId (same as Socket.IO registration) to match room's staff_id
-        await staffApi.joinLiveChat(token, roomId, staffIdForChat, user.name);
-        
-        // Get existing messages
-        const messages = await staffApi.getLiveChatMessages(token, roomId);
-        
-        // Create room object and set as active
-        const room: LiveChatRoom = {
-          id: roomId,
-          room_id: roomId,
-          user_id: userId,
-          user_name: userName || 'Veteran',
-          status: 'active',
-          staff_id: staffIdForChat,
-          staff_name: user.name,
-          created_at: new Date().toISOString(),
-        };
-        
-        // Open the chat modal
-        setActiveChatRoom(room);
-        setChatMessages(messages);
-        setActiveTab('livechat');
-        
-        // Reload live chats to ensure list is up to date
-        loadLiveChats();
-        
-        console.log('[StaffPage] Chat room opened successfully via event handler');
-      } catch (err) {
-        console.error('[StaffPage] Failed to open chat room:', err);
-      }
-    };
-    
-    // Listen for custom event dispatched by useWebRTCPhone
-    window.addEventListener('chat_request_confirmed', handleChatConfirmed);
-    
-    return () => {
-      window.removeEventListener('chat_request_confirmed', handleChatConfirmed);
-    };
-  }, [token, user?.id, user?.name, webrtcUserId, loadLiveChats]);
-
-  // Listen for real-time chat messages via Socket.IO
-  useEffect(() => {
-    const handleNewMessage = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        room_id: string;
-        message: string;
-        sender_id: string;
-        sender_name: string;
-        sender_type: string;
-        timestamp: string;
-        message_id: string;
-      }>;
-      const data = customEvent.detail;
-      
-      console.log('[StaffPage] Received new_chat_message:', data);
-      
-      // Only add to messages if this is for the active chat room
-      // AND the sender is not us (avoid duplicates from our own messages)
-      const currentRoomId = activeChatRoom?.id || activeChatRoom?.room_id || activeChatRoom?._id;
-      const myId = webrtcUserId || user?.id;
-      
-      if (data.room_id === currentRoomId && data.sender_id !== myId) {
-        const newMsg = {
-          id: data.message_id,
-          text: data.message,
-          sender: data.sender_type === 'staff' ? 'staff' : 'user',
-          sender_name: data.sender_name,
-          timestamp: data.timestamp
-        };
-        setChatMessages(prev => {
-          // Prevent duplicates by checking message_id
-          if (prev.some(m => m.id === data.message_id)) {
-            return prev;
-          }
-          return [...prev, newMsg];
-        });
-      }
-      
-      // Reload live chats to update the list view
-      loadLiveChats();
-    };
-    
-    window.addEventListener('new_chat_message', handleNewMessage);
-    
-    return () => {
-      window.removeEventListener('new_chat_message', handleNewMessage);
-    };
-  }, [activeChatRoom, webrtcUserId, user?.id, loadLiveChats]);
 
   // Session timeout logic
   useEffect(() => {
@@ -503,7 +305,7 @@ export default function StaffPortalPage() {
     };
   }, [token, logout, showTimeoutWarning]);
 
-  // Sound alert function
+  // Sound alert function - passed to tab components
   const playAlertSound = useCallback(() => {
     if (!soundEnabled) return;
     try {
@@ -527,24 +329,6 @@ export default function StaffPortalPage() {
       console.error('Failed to play alert sound:', e);
     }
   }, [soundEnabled]);
-  
-  // Check for new alerts and play sound
-  useEffect(() => {
-    const activeAlertCount = safeguardingAlerts.filter(a => a.status === 'active').length;
-    const waitingChatCount = liveChatRooms.filter(r => r.status === 'waiting').length;
-    const activePanicCount = panicAlerts.filter(a => a.status === 'active').length;
-    
-    // Play sound if new alerts appeared
-    if (activeAlertCount > prevSafeguardingCountRef.current ||
-        waitingChatCount > prevChatCountRef.current ||
-        activePanicCount > prevPanicCountRef.current) {
-      playAlertSound();
-    }
-    
-    prevSafeguardingCountRef.current = activeAlertCount;
-    prevChatCountRef.current = waitingChatCount;
-    prevPanicCountRef.current = activePanicCount;
-  }, [safeguardingAlerts, liveChatRooms, panicAlerts, playAlertSound]);
   
   // Load sound preference from localStorage
   useEffect(() => {
@@ -582,105 +366,7 @@ export default function StaffPortalPage() {
     }
   };
 
-  // Alert actions
-  const handleAcknowledgeSafeguarding = async (id: string) => {
-    if (!token) return;
-    try {
-      await staffApi.acknowledgeSafeguardingAlert(token, id);
-      loadAlerts();
-    } catch (err) {
-      console.error('Failed to acknowledge alert:', err);
-    }
-  };
-
-  const handleResolveSafeguarding = async (id: string) => {
-    if (!token) return;
-    try {
-      await staffApi.resolveSafeguardingAlert(token, id);
-      loadAlerts();
-    } catch (err) {
-      console.error('Failed to resolve alert:', err);
-    }
-  };
-
-  // Live chat actions
-  const handleJoinChat = async (room: LiveChatRoom) => {
-    if (!token || !user?.id || !user?.name) return;
-    try {
-      const roomId = room.id || room.room_id || room._id;
-      if (!roomId) {
-        console.error('No room ID found');
-        return;
-      }
-      await staffApi.joinLiveChat(token, roomId, user.id, user.name);
-      const messages = await staffApi.getLiveChatMessages(token, roomId);
-      setActiveChatRoom(room);
-      setChatMessages(messages);
-      loadLiveChats();
-    } catch (err) {
-      console.error('Failed to join chat:', err);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!token || !activeChatRoom || !newMessage.trim()) return;
-    try {
-      const roomId = activeChatRoom.id || activeChatRoom.room_id || activeChatRoom._id;
-      if (!roomId) {
-        console.error('No room ID found');
-        return;
-      }
-      
-      // CRITICAL: Use Socket.IO for real-time delivery (like legacy portal)
-      const messageSent = webrtcPhone.sendChatMessage(
-        roomId,
-        newMessage,
-        webrtcUserId || user?.id || '',
-        user?.name || 'Staff',
-        'staff'
-      );
-      
-      // Also persist to database via REST API
-      await staffApi.sendLiveChatMessage(token, roomId, newMessage);
-      
-      // Add message to local state immediately for responsive UI
-      const newMsg = {
-        id: `msg_${Date.now()}`,
-        text: newMessage,
-        sender: 'staff',
-        sender_name: user?.name || 'Staff',
-        timestamp: new Date().toISOString()
-      };
-      setChatMessages(prev => [...prev, newMsg]);
-      
-      setNewMessage('');
-      
-      if (!messageSent) {
-        console.warn('Socket message not sent - relying on API persistence');
-      }
-    } catch (err) {
-      console.error('Failed to send message:', err);
-    }
-  };
-
-  const handleEndChat = async () => {
-    if (!token || !activeChatRoom) return;
-    try {
-      const roomId = activeChatRoom.id || activeChatRoom.room_id || activeChatRoom._id;
-      if (!roomId) {
-        console.error('No room ID found');
-        return;
-      }
-      await staffApi.endLiveChat(token, roomId);
-      setActiveChatRoom(null);
-      setChatMessages([]);
-      loadLiveChats();
-    } catch (err) {
-      console.error('Failed to end chat:', err);
-    }
-  };
-
-  // Callback actions
+  // Callback actions (remaining - not yet extracted)
   const handleTakeCallback = async (id: string) => {
     if (!token) return;
     try {
@@ -711,68 +397,37 @@ export default function StaffPortalPage() {
     }
   };
   
-  // Panic alert actions
-  const handleAcknowledgePanic = async (id: string) => {
-    if (!token) return;
+  // Panic alert function - kept for dashboard panic button
+  const triggerPanicAlert = async () => {
+    if (!token || triggeringPanic) return;
+    setTriggeringPanic(true);
     try {
-      await staffApi.acknowledgePanicAlert(token, id);
-      loadAlerts();
-    } catch (err) {
-      console.error('Failed to acknowledge panic alert:', err);
-    }
-  };
-  
-  const handleResolvePanic = async (id: string) => {
-    if (!token) return;
-    try {
-      await staffApi.resolvePanicAlert(token, id);
-      loadAlerts();
-    } catch (err) {
-      console.error('Failed to resolve panic alert:', err);
-    }
-  };
-  
-  const handleTriggerPanic = async () => {
-    if (!token) return;
-    if (!confirm('Are you sure you want to trigger a panic alert? This will notify all supervisors and counsellors immediately.')) return;
-    try {
-      await staffApi.triggerPanic(token);
-      loadAlerts();
-      alert('Panic alert sent! Help is on the way.');
+      await fetch(`${API_URL}/api/safeguarding/panic-alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          staff_id: user?.id,
+          staff_name: user?.name || user?.email,
+          reason: panicReason || 'Staff member triggered panic button',
+          location: 'staff_portal',
+          risk_level: 'critical'
+        })
+      });
+      setShowPanicModal(false);
+      setPanicReason('');
+      alert('Panic alert sent! A counsellor will be notified.');
     } catch (err) {
       console.error('Failed to trigger panic:', err);
-      alert('Failed to send panic alert. Please try again or call for help directly.');
+      alert('Failed to send panic alert. Please try again.');
+    } finally {
+      setTriggeringPanic(false);
     }
   };
-  
-  const handleAddSessionNote = async () => {
-    if (!token || !selectedCase?._id || !newSessionNote.trim()) return;
-    try {
-      await staffApi.addCaseSession(token, selectedCase._id, {
-        notes: newSessionNote,
-        session_type: 'general',
-        staff_id: user?.id,
-        staff_name: user?.name
-      });
-      setNewSessionNote('');
-      setShowAddSessionModal(false);
-      // Reload sessions
-      const sessions = await staffApi.getCaseSessions(token, selectedCase._id);
-      setCaseSessions(sessions);
-    } catch (err) {
-      console.error('Failed to add session note:', err);
-      alert('Failed to add session note');
-    }
-  };
-  
-  // Filter cases
-  const filteredCases = cases.filter(c => {
-    if (caseStatusFilter && c.status !== caseStatusFilter) return false;
-    if (caseRiskFilter && c.risk_level !== caseRiskFilter) return false;
-    return true;
-  });
 
-  // Shift actions
+  // Shift actions (remaining - not yet extracted)
   const handleAddShift = async () => {
     if (!token || !user || !newShiftDate || !newShiftStart || !newShiftEnd) return;
     try {
@@ -1003,194 +658,9 @@ export default function StaffPortalPage() {
     }
   };
 
-  // Counts for badges
-  const activeSafeguardingCount = safeguardingAlerts.filter(a => a.status === 'active').length;
-  const activePanicCount = panicAlerts.filter(a => a.status === 'active').length;
-  const activeAlertsCount = activeSafeguardingCount + activePanicCount;
-  const waitingChatsCount = liveChatRooms.filter(r => r.status === 'waiting').length;
+  // Counts for badges (remaining - callbacks only; others from hooks)
   const pendingCallbacksCount = callbacks.filter(c => c.status === 'pending').length;
   const activeCallbacksCount = callbacks.filter(c => c.status === 'taken').length;
-
-  // Trigger panic alert (for peer supporters)
-  const triggerPanicAlert = async () => {
-    if (!token || triggeringPanic) return;
-    setTriggeringPanic(true);
-    try {
-      await fetch(`${API_URL}/api/safeguarding/panic-alert`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          staff_id: user?.id,
-          staff_name: user?.name || user?.email,
-          reason: panicReason || 'Staff member triggered panic button',
-          location: 'staff_portal',
-          risk_level: 'critical'
-        })
-      });
-      setShowPanicModal(false);
-      setPanicReason('');
-      alert('Panic alert sent! A counsellor will be notified.');
-    } catch (err) {
-      console.error('Failed to trigger panic:', err);
-      alert('Failed to send panic alert. Please try again.');
-    } finally {
-      setTriggeringPanic(false);
-    }
-  };
-
-  // Submit AI feedback
-  const submitAiFeedback = async () => {
-    if (!token || !aiFeedbackData || !aiFeedbackRating) return;
-    try {
-      await fetch(`${API_URL}/api/ai-feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          session_id: activeChatRoom?.room_id || 'staff_review',
-          message_index: 0,
-          ai_character: 'support_ai',
-          rating: aiFeedbackRating === 'good' ? 5 : aiFeedbackRating === 'needs_improvement' ? 3 : 1,
-          feedback_type: aiFeedbackRating,
-          comment: aiFeedbackComment,
-          user_message: aiFeedbackData.message,
-          ai_response: aiFeedbackData.response,
-        })
-      });
-      setShowAiFeedbackModal(false);
-      setAiFeedbackData(null);
-      setAiFeedbackRating(null);
-      setAiFeedbackComment('');
-      alert('Feedback submitted. Thank you!');
-    } catch (err) {
-      console.error('Failed to submit AI feedback:', err);
-    }
-  };
-
-  // Load available counsellors for escalation
-  const loadAvailableCounsellors = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_URL}/api/counsellors/available`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setAvailableCounsellors(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Failed to load counsellors:', err);
-    }
-  };
-
-  // Create a new case
-  const handleCreateCase = async () => {
-    if (!token || !newCaseUserName) return;
-    try {
-      const res = await fetch(`${API_URL}/api/cases/direct`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          user_name: newCaseUserName,
-          user_id: newCaseUserId || undefined,
-          initial_notes: newCaseNotes,
-          risk_level: newCaseRiskLevel,
-        })
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to create case');
-      }
-      setShowCreateCaseModal(false);
-      setNewCaseUserName('');
-      setNewCaseUserId('');
-      setNewCaseNotes('');
-      setNewCaseRiskLevel('medium');
-      loadCases();
-      alert('Case created successfully');
-    } catch (err: any) {
-      console.error('Failed to create case:', err);
-      alert(err.message || 'Failed to create case. Please try again.');
-    }
-  };
-
-  // View case details
-  const handleViewCase = async (caseItem: Case) => {
-    if (!token) return;
-    const caseId = caseItem._id || (caseItem as any).id;
-    try {
-      const res = await fetch(`${API_URL}/api/cases/${caseId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch case details');
-      const data = await res.json();
-      setSelectedCase(data);
-      setShowCaseModal(true);
-    } catch (err) {
-      console.error('Failed to load case details:', err);
-      // Still show what we have
-      setSelectedCase(caseItem);
-      setShowCaseModal(true);
-    }
-  };
-
-  // Open escalation modal
-  const handleOpenEscalate = (caseId: string) => {
-    setEscalateCaseId(caseId);
-    setEscalateTo('');
-    setEscalateReason('');
-    setEscalateNotes('');
-    loadAvailableCounsellors();
-    setShowEscalateModal(true);
-  };
-
-  // Escalate case to counsellor/supervisor
-  const handleEscalateCase = async () => {
-    if (!token || !escalateCaseId || !escalateTo || !escalateReason) return;
-    try {
-      // Share case with the counsellor
-      await fetch(`${API_URL}/api/cases/${escalateCaseId}/share`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          counsellor_id: escalateTo
-        })
-      });
-      
-      // Add escalation session note
-      await fetch(`${API_URL}/api/cases/${escalateCaseId}/sessions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          presenting_issue: `Case escalated. Reason: ${escalateReason}${escalateNotes ? '. Notes: ' + escalateNotes : ''}`,
-          risk_level: 'high',
-          outcome: 'escalate_to_counsellor',
-          actions_taken: ['Escalated to counsellor/supervisor']
-        })
-      });
-
-      setShowEscalateModal(false);
-      setShowCaseModal(false);
-      setEscalateCaseId(null);
-      loadCases();
-      alert('Case escalated successfully. The counsellor has been notified.');
-    } catch (err) {
-      console.error('Failed to escalate case:', err);
-      alert('Failed to escalate case. Please try again.');
-    }
-  };
 
   if (isLoading) {
     return (
@@ -1396,10 +866,8 @@ export default function StaffPortalPage() {
                 data-testid="accept-chat-request-btn"
                 onClick={() => {
                   webrtcPhone.acceptChatRequest();
-                  // Switch to live chat tab
+                  // Switch to live chat tab (it will load its own data)
                   setActiveTab('livechat');
-                  // Reload live chats to get the new room
-                  setTimeout(() => loadLiveChats(), 1000);
                 }}
                 className="px-4 py-2 bg-white text-blue-600 hover:bg-gray-100 rounded-lg text-sm font-semibold"
               >
@@ -1711,7 +1179,7 @@ export default function StaffPortalPage() {
                   <Briefcase className="w-5 h-5 text-purple-400" />
                   <span className="text-gray-400">Open Cases</span>
                 </div>
-                <div className="text-3xl font-bold">{cases.filter(c => c.status !== 'closed').length}</div>
+                <div className="text-3xl font-bold">{openCasesCount}</div>
               </div>
               <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-2">
@@ -1778,526 +1246,35 @@ export default function StaffPortalPage() {
           </div>
         )}
 
-        {/* Alerts Tab */}
+        {/* Alerts Tab - Extracted to AlertsTab component */}
         {activeTab === 'alerts' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <AlertTriangle className="w-6 h-6 text-secondary" />
-                Alerts
-              </h1>
-              <div className="flex gap-2">
-                {/* Panic Trigger Button for Peers */}
-                {user?.role === 'peer' && (
-                  <button 
-                    onClick={handleTriggerPanic}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 animate-pulse"
-                    data-testid="panic-trigger-btn"
-                  >
-                    <AlertOctagon className="w-5 h-5" />
-                    PANIC
-                  </button>
-                )}
-                <button onClick={loadAlerts} className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-white/5">
-                  <RefreshCw className="w-4 h-4" />
-                  Refresh
-                </button>
-              </div>
-            </div>
-            
-            {/* Alert Sub-tabs */}
-            <div className="flex gap-4 mb-6 border-b border-border">
-              <button
-                onClick={() => setAlertsSubTab('safeguarding')}
-                className={`px-4 py-3 border-b-2 transition-colors flex items-center gap-2 ${
-                  alertsSubTab === 'safeguarding' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-white'
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                Safeguarding
-                {activeSafeguardingCount > 0 && (
-                  <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                    {activeSafeguardingCount}
-                  </span>
-                )}
-              </button>
-              {/* Panic alerts visible only to counsellors/supervisors/admins */}
-              {(user?.role === 'counsellor' || user?.is_supervisor || user?.role === 'admin') && (
-                <button
-                  onClick={() => setAlertsSubTab('panic')}
-                  className={`px-4 py-3 border-b-2 transition-colors flex items-center gap-2 ${
-                    alertsSubTab === 'panic' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <AlertOctagon className="w-4 h-4" />
-                  Panic Alerts
-                  {activePanicCount > 0 && (
-                    <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full animate-pulse">
-                      {activePanicCount}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
-            
-            {/* Safeguarding Alerts Sub-tab */}
-            {alertsSubTab === 'safeguarding' && (
-              <div className="space-y-4">
-                {safeguardingAlerts.map((alert) => (
-                  <div key={alert.id || alert._id} className={`bg-card border rounded-xl p-6 ${alert.status === 'active' ? 'border-red-500' : 'border-border'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className={`px-2 py-1 rounded text-xs text-white ${getRiskBadgeColor(alert.risk_level || 'medium')}`}>
-                            {(alert.risk_level || 'UNKNOWN').toUpperCase()} RISK
-                          </span>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            alert.status === 'active' ? 'bg-red-500/20 text-red-400' :
-                            alert.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-green-500/20 text-green-400'
-                          }`}>
-                            {(alert.status || 'unknown').toUpperCase()}
-                          </span>
-                          {/* Contact captured indicator */}
-                          {alert.contact_captured ? (
-                            <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> Contact
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
-                              <Info className="w-3 h-3" /> No Contact
-                            </span>
-                          )}
-                        </div>
-                        {alert.user_name && <p className="font-semibold">{alert.user_name}</p>}
-                        {alert.character_name && <p className="text-sm text-gray-400">Talking to: {alert.character_name}</p>}
-                        {alert.session_id && <p className="text-xs text-gray-500 font-mono">Session: {alert.session_id}</p>}
-                      </div>
-                      <span className="text-sm text-gray-400">{formatTimeAgo(alert.created_at)}</span>
-                    </div>
-
-                    <div className="bg-primary-dark/50 rounded-lg p-4 mb-4">
-                      <p className="text-sm font-medium text-gray-400 mb-1">Trigger Message:</p>
-                      <p>{alert.triggering_message || alert.trigger_message}</p>
-                    </div>
-
-                    {((alert.triggered_indicators?.length ?? 0) > 0 || (alert.trigger_phrases?.length ?? 0) > 0) && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {(alert.triggered_indicators || alert.trigger_phrases || []).map((phrase: string, i: number) => (
-                          <span key={i} className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">
-                            {phrase}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Tracking info section - matching backend field names */}
-                    {(alert.client_ip || alert.geo_city || alert.geo_country) && (
-                      <div className="bg-primary-dark/30 rounded-lg p-3 mb-4 text-xs">
-                        <p className="text-gray-400 font-semibold mb-2 flex items-center gap-1">
-                          <Globe className="w-3 h-3" /> Tracking Info
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-gray-500">
-                          {alert.client_ip && <p>IP: {alert.client_ip}</p>}
-                          {(alert.geo_city || alert.geo_region || alert.geo_country) && (
-                            <p>Location: {[alert.geo_city, alert.geo_region, alert.geo_country].filter(Boolean).join(', ')}</p>
-                          )}
-                          {alert.geo_isp && <p>ISP: {alert.geo_isp}</p>}
-                          {alert.geo_timezone && <p>Timezone: {alert.geo_timezone}</p>}
-                          {alert.user_agent && <p className="col-span-2 truncate">Browser: {alert.user_agent}</p>}
-                        </div>
-                        {/* Map placeholder - could add Leaflet map if coords available */}
-                        {alert.geo_lat && alert.geo_lon && (
-                          <p className="mt-2 text-gray-600">📍 Coordinates: {alert.geo_lat.toFixed(4)}, {alert.geo_lon.toFixed(4)}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Conversation History - matching legacy portal */}
-                    {alert.conversation_history && alert.conversation_history.length > 0 && (
-                      <details className="bg-primary-dark/30 rounded-lg p-3 mb-4">
-                        <summary className="cursor-pointer text-sm text-gray-400 flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4" /> 
-                          View Conversation History ({alert.conversation_history.length} messages)
-                        </summary>
-                        <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
-                          {alert.conversation_history.slice(-6).map((msg, idx) => (
-                            <div key={idx} className={`p-2 rounded text-xs ${msg.role === 'user' ? 'bg-blue-500/10 text-blue-300' : 'bg-gray-500/10 text-gray-300'}`}>
-                              <span className="font-semibold">{msg.role === 'user' ? 'User' : (alert.character === 'tommy' ? 'Tommy' : 'Rachel')}:</span>{' '}
-                              {msg.content.length > 200 ? msg.content.substring(0, 200) + '...' : msg.content}
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    )}
-
-                    {alert.status !== 'resolved' && (
-                      <div className="flex gap-3">
-                        {alert.status === 'active' && (
-                          <button
-                            onClick={() => handleAcknowledgeSafeguarding(alert.id)}
-                            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-                          >
-                            Acknowledge
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleResolveSafeguarding(alert.id)}
-                          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                        >
-                          Resolve
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {safeguardingAlerts.length === 0 && (
-                  <div className="text-center py-12 text-gray-500">
-                    <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No safeguarding alerts</p>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Panic Alerts Sub-tab */}
-            {alertsSubTab === 'panic' && (user?.role === 'counsellor' || user?.is_supervisor || user?.role === 'admin') && (
-              <div className="space-y-4">
-                {panicAlerts.map((alert) => (
-                  <div key={alert.id || alert._id} className={`bg-card border rounded-xl p-6 ${alert.status === 'active' ? 'border-red-500 bg-red-500/5' : 'border-border'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="px-2 py-1 rounded text-xs bg-red-600 text-white flex items-center gap-1">
-                            <AlertOctagon className="w-3 h-3" /> PANIC ALERT
-                          </span>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            alert.status === 'active' ? 'bg-red-500/20 text-red-400 animate-pulse' :
-                            alert.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-green-500/20 text-green-400'
-                          }`}>
-                            {alert.status.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="font-semibold text-lg">{alert.triggered_by_name || 'Staff Member'}</p>
-                        <p className="text-sm text-gray-400">{alert.triggered_by_role || 'Peer Supporter'}</p>
-                      </div>
-                      <span className="text-sm text-gray-400">{formatTimeAgo(alert.created_at)}</span>
-                    </div>
-
-                    {alert.message && (
-                      <div className="bg-red-500/10 rounded-lg p-4 mb-4 border border-red-500/30">
-                        <p>{alert.message}</p>
-                      </div>
-                    )}
-                    
-                    {/* Contact info */}
-                    {alert.phone && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <Phone className="w-4 h-4 text-green-400" />
-                        <span className="font-mono">{alert.phone}</span>
-                        {!twilioPhone.isInCall && (
-                          <button 
-                            className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                            onClick={() => alert.phone && twilioPhone.makeCall(alert.phone)}
-                          >
-                            Call Now
-                          </button>
-                        )}
-                        {twilioPhone.isInCall && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-green-400 animate-pulse flex items-center gap-1">
-                              <PhoneCall className="w-3 h-3" />
-                              {twilioPhone.formattedDuration}
-                            </span>
-                            <button 
-                              onClick={twilioPhone.toggleMute}
-                              className={`px-2 py-1 rounded text-xs ${twilioPhone.isMuted ? 'bg-yellow-500' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
-                            >
-                              {twilioPhone.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-                            </button>
-                            <button 
-                              onClick={twilioPhone.hangUp}
-                              className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 flex items-center gap-1"
-                            >
-                              <PhoneOff className="w-3 h-3" />
-                              Hang Up
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {alert.status !== 'resolved' && (
-                      <div className="flex gap-3">
-                        {alert.status === 'active' && (
-                          <button
-                            onClick={() => handleAcknowledgePanic(alert.id || alert._id)}
-                            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-                          >
-                            Acknowledge
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleResolvePanic(alert.id || alert._id)}
-                          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                        >
-                          Resolve
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {panicAlerts.length === 0 && (
-                  <div className="text-center py-12 text-gray-500">
-                    <AlertOctagon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No panic alerts</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <AlertsTab
+            token={token!}
+            user={user}
+            webrtcUserId={webrtcUserId}
+            twilioPhone={twilioPhone}
+            soundEnabled={soundEnabled}
+            onPlayAlertSound={playAlertSound}
+          />
         )}
 
-        {/* Live Chat Tab */}
+        {/* Live Chat Tab - Extracted to LiveChatTab component */}
         {activeTab === 'livechat' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <MessageSquare className="w-6 h-6 text-secondary" />
-                Live Support Requests
-              </h1>
-              <button onClick={loadLiveChats} className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-white/5">
-                <RefreshCw className="w-4 h-4" />
-                Refresh
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {liveChatRooms.filter(r => r.status !== 'ended').map((room) => {
-                // Calculate message count and get last message
-                const messageCount = room.messages?.length || 0;
-                const lastMessage = room.messages && room.messages.length > 0 
-                  ? room.messages[room.messages.length - 1] 
-                  : null;
-                  
-                return (
-                <div key={room._id || room.id} className={`bg-card border rounded-xl p-6 ${
-                  room.status === 'waiting' ? 'border-yellow-500' : 
-                  room.safeguarding_alert_id ? 'border-red-500' : 'border-border'
-                }`}>
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <User className="w-5 h-5 text-gray-400" />
-                        <span className="font-semibold">{room.user_name || 'Anonymous User'}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          room.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
-                          room.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                          'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {room.status}
-                        </span>
-                        {/* Staff type badge */}
-                        {room.staff_type && (
-                          <span className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">
-                            {room.staff_type === 'counsellor' ? 'Counsellor' : 'Peer'} Request
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Safeguarding Alert Link - IMPORTANT */}
-                      {room.safeguarding_alert_id && (
-                        <div className="flex items-center gap-2 mb-2 text-red-400 text-sm">
-                          <Shield className="w-4 h-4" />
-                          <span className="font-semibold">🚨 Linked to Safeguarding Alert</span>
-                          {room.risk_level && (
-                            <span className={`px-2 py-0.5 rounded text-xs ${
-                              room.risk_level === 'RED' ? 'bg-red-500 text-white' :
-                              room.risk_level === 'AMBER' ? 'bg-amber-500 text-white' :
-                              'bg-yellow-500 text-white'
-                            }`}>
-                              {room.risk_level}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Meta info */}
-                      <div className="flex items-center gap-4 text-sm text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          Waiting: {formatTimeAgo(room.created_at)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="w-4 h-4" />
-                          {messageCount} messages
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      {room.status === 'waiting' && (
-                        <button
-                          onClick={() => handleJoinChat(room)}
-                          className="px-4 py-2 bg-secondary text-primary-dark rounded-lg hover:bg-secondary-light font-semibold"
-                        >
-                          Join Chat
-                        </button>
-                      )}
-                      {room.status === 'active' && room.staff_id === user?.id && (
-                        <button
-                          onClick={() => handleJoinChat(room)}
-                          className="px-4 py-2 bg-primary-light text-white rounded-lg hover:bg-primary"
-                        >
-                          Continue Chat
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Message preview */}
-                  {lastMessage ? (
-                    <div className="bg-primary-dark/50 rounded-lg p-3 mt-3">
-                      <p className="text-xs text-gray-500 mb-1">Latest message:</p>
-                      <p className="text-sm text-gray-300 truncate">
-                        "{lastMessage.text?.substring(0, 100)}{(lastMessage.text?.length || 0) > 100 ? '...' : ''}"
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-primary-dark/50 rounded-lg p-3 mt-3">
-                      <p className="text-sm text-gray-500 italic">No messages yet - user just connected</p>
-                    </div>
-                  )}
-                </div>
-              )})}
-              {liveChatRooms.filter(r => r.status !== 'ended').length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No active chat requests</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <LiveChatTab
+            token={token!}
+            user={user}
+            webrtcUserId={webrtcUserId}
+            webrtcPhone={webrtcPhone}
+            onPlayAlertSound={playAlertSound}
+          />
         )}
 
-        {/* Cases Tab */}
+        {/* Cases Tab - Extracted to CasesTab component */}
         {activeTab === 'cases' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Briefcase className="w-6 h-6 text-secondary" />
-                My Cases
-              </h1>
-              <div className="flex gap-2">
-                <button
-                  data-testid="create-case-btn"
-                  onClick={() => setShowCreateCaseModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-secondary text-black rounded-lg hover:bg-secondary/90"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Case
-                </button>
-                <select
-                  value={caseStatusFilter}
-                  onChange={(e) => setCaseStatusFilter(e.target.value)}
-                  className="px-3 py-2 bg-card border border-border rounded-lg text-white"
-                >
-                  <option value="">All Status</option>
-                  <option value="open">Open</option>
-                  <option value="active">Active</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="escalated">Escalated</option>
-                  <option value="closed">Closed</option>
-                </select>
-                <select
-                  value={caseRiskFilter}
-                  onChange={(e) => setCaseRiskFilter(e.target.value)}
-                  className="px-3 py-2 bg-card border border-border rounded-lg text-white"
-                >
-                  <option value="">All Risk</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-                <button onClick={loadCases} className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-white/5">
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-primary-dark/50">
-                  <tr className="text-left text-sm text-gray-400">
-                    <th className="px-6 py-4">Case #</th>
-                    <th className="px-6 py-4">User</th>
-                    <th className="px-6 py-4">Risk Level</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Sessions</th>
-                    <th className="px-6 py-4">Assigned To</th>
-                    <th className="px-6 py-4">Updated</th>
-                    <th className="px-6 py-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCases.map((c) => (
-                    <tr key={c._id} className="border-t border-border hover:bg-white/5">
-                      <td className="px-6 py-4 font-mono">{c.case_number}</td>
-                      <td className="px-6 py-4">{c.user_name || '-'}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-xs text-white ${getRiskBadgeColor(c.risk_level)}`}>
-                          {c.risk_level}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          c.status === 'open' ? 'bg-blue-500/20 text-blue-400' :
-                          c.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
-                          c.status === 'escalated' ? 'bg-red-500/20 text-red-400' :
-                          'bg-green-500/20 text-green-400'
-                        }`}>
-                          {c.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm">{c.session_count || 0}/6</span>
-                      </td>
-                      <td className="px-6 py-4">{c.assigned_to_name || '-'}</td>
-                      <td className="px-6 py-4 text-gray-400">{formatTimeAgo(c.updated_at)}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button 
-                            data-testid={`view-case-${c._id}`}
-                            onClick={() => handleViewCase(c)}
-                            className="text-secondary hover:underline text-sm flex items-center gap-1"
-                          >
-                            <Eye className="w-4 h-4" /> View
-                          </button>
-                          {(c.status === 'open' || c.status === 'active' || c.status === 'in_progress') && (
-                            <button 
-                              data-testid={`escalate-case-${c._id}`}
-                              onClick={() => handleOpenEscalate(c._id)}
-                              className="text-amber-400 hover:underline text-sm flex items-center gap-1"
-                            >
-                              <ArrowUp className="w-4 h-4" /> Escalate
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredCases.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No cases found</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <CasesTab
+            token={token!}
+            user={user}
+          />
         )}
 
         {/* Callbacks Tab */}
@@ -2913,116 +1890,6 @@ export default function StaffPortalPage() {
         </div>
       )}
 
-      {/* Live Chat Modal */}
-      {activeChatRoom && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-xl w-full max-w-2xl h-[600px] flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-border flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold">Chat with {activeChatRoom.user_name || 'User'}</h3>
-                <p className="text-sm text-gray-400">Room: {activeChatRoom.room_id}</p>
-              </div>
-              <div className="flex gap-2">
-                {/* Call User Button - DISABLED: WebRTC calling not working yet */}
-                {/* TODO: Re-enable once WebRTC call flow is fixed
-                <button
-                  data-testid="call-from-chat-btn"
-                  onClick={() => {
-                    if (activeChatRoom.user_id) {
-                      webrtcPhone.makeCall(activeChatRoom.user_id);
-                    }
-                  }}
-                  disabled={!activeChatRoom.user_id || webrtcPhone.isInCall}
-                  className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                >
-                  <Phone className="w-4 h-4" />
-                  Call User
-                </button>
-                */}
-                <button
-                  onClick={handleEndChat}
-                  className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
-                >
-                  End Chat
-                </button>
-                <button
-                  onClick={() => { setActiveChatRoom(null); setChatMessages([]); }}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`p-3 rounded-lg max-w-[80%] ${
-                    msg.sender === 'staff' 
-                      ? 'bg-secondary/20 ml-auto' 
-                      : msg.sender === 'ai' || msg.is_ai_response
-                        ? 'bg-blue-500/20 border border-blue-500/30'
-                        : 'bg-primary-light/30'
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <p className="text-xs text-gray-400 mb-1">
-                      {msg.sender === 'staff' ? 'You' : msg.sender === 'ai' || msg.is_ai_response ? 'AI Assistant' : 'User'}
-                    </p>
-                    {/* AI Feedback button for AI responses */}
-                    {(msg.sender === 'ai' || msg.is_ai_response) && (
-                      <button
-                        data-testid={`ai-feedback-btn-${i}`}
-                        onClick={() => {
-                          // Find the user message this AI was responding to
-                          const userMsg = chatMessages.slice(0, i).reverse().find(m => m.sender === 'user' || (!m.is_ai_response && m.sender !== 'staff'));
-                          setAiFeedbackData({
-                            messageId: msg.id || msg._id || `msg_${i}`,
-                            message: userMsg?.text || 'Unknown user message',
-                            response: msg.text
-                          });
-                          setShowAiFeedbackModal(true);
-                        }}
-                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        Feedback
-                      </button>
-                    )}
-                  </div>
-                  <p>{msg.text}</p>
-                  <p className="text-xs text-gray-500 mt-1">{new Date(msg.timestamp).toLocaleTimeString()}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Input */}
-            <div className="p-4 border-t border-border">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
-                  className="px-4 py-2 bg-secondary text-primary-dark rounded-lg disabled:opacity-50"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Add Shift Modal */}
       {showAddShift && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowAddShift(false)}>
@@ -3142,156 +2009,6 @@ export default function StaffPortalPage() {
         </div>
       )}
 
-      {/* Case Detail Modal */}
-      {showCaseModal && selectedCase && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowCaseModal(false)}>
-          <div className="bg-card border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-border flex justify-between items-center sticky top-0 bg-card">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-secondary" />
-                Case {selectedCase.case_number}
-              </h2>
-              <button onClick={() => setShowCaseModal(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
-            </div>
-            <div className="p-6">
-              {/* Case Summary */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <p className="text-sm text-gray-400">User</p>
-                  <p className="font-semibold">{selectedCase.user_name || 'Unknown'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Risk Level</p>
-                  <span className={`px-2 py-1 rounded text-xs text-white ${getRiskBadgeColor(selectedCase.risk_level)}`}>
-                    {selectedCase.risk_level?.toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Status</p>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    selectedCase.status === 'open' ? 'bg-blue-500/20 text-blue-400' :
-                    selectedCase.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
-                    selectedCase.status === 'escalated' ? 'bg-red-500/20 text-red-400' :
-                    'bg-green-500/20 text-green-400'
-                  }`}>
-                    {selectedCase.status?.replace('_', ' ')}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Assigned To</p>
-                  <p>{selectedCase.assigned_to_name || 'Unassigned'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Sessions</p>
-                  <p>{selectedCase.session_count || 0} / 6</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Created</p>
-                  <p>{formatTimeAgo(selectedCase.created_at)}</p>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selectedCase.description && (
-                <div className="mb-6">
-                  <p className="text-sm text-gray-400 mb-2">Description</p>
-                  <p className="bg-primary-dark/50 rounded-lg p-4">{selectedCase.description}</p>
-                </div>
-              )}
-
-              {/* Safety Plan */}
-              {selectedCase.safety_plan && (
-                <div className="mb-6 bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                  <h3 className="font-semibold text-green-400 mb-2 flex items-center gap-2">
-                    <Shield className="w-4 h-4" /> Safety Plan
-                  </h3>
-                  <p className="text-sm whitespace-pre-wrap">{selectedCase.safety_plan}</p>
-                </div>
-              )}
-
-              {/* Sessions */}
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold">Session Notes ({caseSessions.length})</h3>
-                  <button
-                    onClick={() => setShowAddSessionModal(true)}
-                    className="flex items-center gap-2 px-3 py-1 bg-secondary text-primary-dark rounded-lg text-sm"
-                  >
-                    <Plus className="w-4 h-4" /> Add Session
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {caseSessions.map((session, i) => (
-                    <div key={session._id || i} className="bg-primary-dark/30 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm text-secondary font-medium">{session.session_type || 'General'}</span>
-                        <span className="text-xs text-gray-500">{formatTimeAgo(session.created_at)}</span>
-                      </div>
-                      <p className="text-sm">{session.notes}</p>
-                      {session.staff_name && (
-                        <p className="text-xs text-gray-500 mt-2">By: {session.staff_name}</p>
-                      )}
-                    </div>
-                  ))}
-                  {caseSessions.length === 0 && (
-                    <p className="text-center text-gray-500 py-4">No session notes yet</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                {user?.role === 'peer' && selectedCase.status !== 'escalated' && (
-                  <button className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-                    Escalate to Counsellor
-                  </button>
-                )}
-                <button 
-                  onClick={() => setShowCaseModal(false)}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Session Modal */}
-      {showAddSessionModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setShowAddSessionModal(false)}>
-          <div className="bg-card border border-border rounded-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Plus className="w-5 h-5 text-secondary" />
-                Add Session Note
-              </h2>
-              <button onClick={() => setShowAddSessionModal(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Session Notes</label>
-                <textarea
-                  value={newSessionNote}
-                  onChange={(e) => setNewSessionNote(e.target.value)}
-                  placeholder="Write session notes..."
-                  rows={6}
-                  className="w-full px-4 py-3 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none resize-none"
-                />
-              </div>
-              <button
-                onClick={handleAddSessionNote}
-                disabled={!newSessionNote.trim()}
-                className="w-full py-3 bg-secondary text-primary-dark font-semibold rounded-lg disabled:opacity-50"
-              >
-                Save Session Note
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Panic Button Modal (for peer supporters) */}
       {showPanicModal && (
         <div data-testid="panic-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
@@ -3342,373 +2059,6 @@ export default function StaffPortalPage() {
           </div>
         </div>
       )}
-
-      {/* AI Feedback Modal */}
-      {showAiFeedbackModal && aiFeedbackData && (
-        <div data-testid="ai-feedback-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-card rounded-2xl p-6 max-w-2xl w-full mx-4 my-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-secondary" />
-              AI Response Feedback
-            </h2>
-            
-            <div className="space-y-4 mb-6">
-              <div className="bg-primary-dark rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">User message:</p>
-                <p className="text-sm">{aiFeedbackData.message}</p>
-              </div>
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <p className="text-xs text-blue-400 mb-1">AI response:</p>
-                <p className="text-sm">{aiFeedbackData.response}</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-3">Rate this response:</label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'good', label: 'Good Response', icon: '✓', color: 'border-green-500 bg-green-500/10 text-green-400' },
-                  { value: 'needs_improvement', label: 'Needs Improvement', icon: '!', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-400' },
-                  { value: 'inappropriate', label: 'Inappropriate', icon: '✗', color: 'border-red-500 bg-red-500/10 text-red-400' },
-                  { value: 'missed_risk', label: 'Missed Risk', icon: '⚠', color: 'border-orange-500 bg-orange-500/10 text-orange-400' },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setAiFeedbackRating(option.value as any)}
-                    className={`p-3 rounded-lg border-2 transition flex items-center gap-2 ${
-                      aiFeedbackRating === option.value ? option.color : 'border-border hover:border-gray-600'
-                    }`}
-                  >
-                    <span>{option.icon}</span>
-                    <span className="text-sm">{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-2">Additional comments:</label>
-              <textarea
-                value={aiFeedbackComment}
-                onChange={(e) => setAiFeedbackComment(e.target.value)}
-                className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                placeholder="What could be improved? What was missed?"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => {
-                  setShowAiFeedbackModal(false);
-                  setAiFeedbackData(null);
-                  setAiFeedbackRating(null);
-                  setAiFeedbackComment('');
-                }}
-                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitAiFeedback}
-                disabled={!aiFeedbackRating}
-                className="flex-1 px-4 py-3 rounded-lg bg-secondary text-black hover:bg-secondary/90 transition disabled:opacity-50"
-              >
-                Submit Feedback
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Case Modal */}
-      {showCreateCaseModal && (
-        <div data-testid="create-case-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-secondary" />
-              Create New Case
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">User Name *</label>
-                <input
-                  data-testid="case-user-name"
-                  type="text"
-                  value={newCaseUserName}
-                  onChange={(e) => setNewCaseUserName(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                  placeholder="Enter the user's name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">User ID (optional)</label>
-                <input
-                  data-testid="case-user-id"
-                  type="text"
-                  value={newCaseUserId}
-                  onChange={(e) => setNewCaseUserId(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                  placeholder="If known"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Risk Level</label>
-                <select
-                  data-testid="case-risk-level"
-                  value={newCaseRiskLevel}
-                  onChange={(e) => setNewCaseRiskLevel(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Initial Notes</label>
-                <textarea
-                  data-testid="case-notes"
-                  value={newCaseNotes}
-                  onChange={(e) => setNewCaseNotes(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                  placeholder="Describe the presenting issue..."
-                  rows={4}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={() => {
-                  setShowCreateCaseModal(false);
-                  setNewCaseUserName('');
-                  setNewCaseUserId('');
-                  setNewCaseNotes('');
-                  setNewCaseRiskLevel('medium');
-                }}
-                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
-              >
-                Cancel
-              </button>
-              <button
-                data-testid="submit-create-case"
-                onClick={handleCreateCase}
-                disabled={!newCaseUserName}
-                className="flex-1 px-4 py-3 rounded-lg bg-secondary text-black hover:bg-secondary/90 transition disabled:opacity-50"
-              >
-                Create Case
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Escalate Case Modal */}
-      {showEscalateModal && (
-        <div data-testid="escalate-case-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <ArrowUp className="w-5 h-5 text-amber-400" />
-              Escalate Case
-            </h2>
-            
-            <p className="text-gray-400 mb-4">
-              Select a counsellor or supervisor to escalate this case to. They will receive access and a notification.
-            </p>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Escalate To *</label>
-                <select
-                  data-testid="escalate-to"
-                  value={escalateTo}
-                  onChange={(e) => setEscalateTo(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                >
-                  <option value="">Select counsellor/supervisor...</option>
-                  {availableCounsellors.map((c) => (
-                    <option key={c.id || c.user_id} value={c.user_id || c.id}>
-                      {c.name} {c.status === 'available' ? '(Available)' : ''}
-                    </option>
-                  ))}
-                  {/* Also include team members who are supervisors/counsellors */}
-                  {teamMembers.filter(m => m.role === 'supervisor' || m.role === 'counsellor').map((m) => (
-                    <option key={m.id || m.user_id} value={m.user_id || m.id}>
-                      {m.name} ({m.role}) {m.status === 'available' ? '(Available)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Reason for Escalation *</label>
-                <select
-                  data-testid="escalate-reason"
-                  value={escalateReason}
-                  onChange={(e) => setEscalateReason(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                >
-                  <option value="">Select reason...</option>
-                  <option value="high_risk">High Risk - Needs Immediate Attention</option>
-                  <option value="complex_case">Complex Case - Beyond My Scope</option>
-                  <option value="clinical_input">Needs Clinical Input</option>
-                  <option value="safeguarding">Safeguarding Concern</option>
-                  <option value="supervision_guidance">Need Supervision Guidance</option>
-                  <option value="handover">Handover to Another Counsellor</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Additional Notes</label>
-                <textarea
-                  data-testid="escalate-notes"
-                  value={escalateNotes}
-                  onChange={(e) => setEscalateNotes(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-primary-dark border border-border focus:border-secondary outline-none"
-                  placeholder="Any additional information..."
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={() => {
-                  setShowEscalateModal(false);
-                  setEscalateCaseId(null);
-                  setEscalateTo('');
-                  setEscalateReason('');
-                  setEscalateNotes('');
-                }}
-                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
-              >
-                Cancel
-              </button>
-              <button
-                data-testid="submit-escalate"
-                onClick={handleEscalateCase}
-                disabled={!escalateTo || !escalateReason}
-                className="flex-1 px-4 py-3 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
-              >
-                Escalate Case
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Case Detail Modal */}
-      {showCaseModal && selectedCase && (
-        <div data-testid="case-detail-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-card rounded-2xl p-6 max-w-2xl w-full mx-4 my-8">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-secondary" />
-                  Case: {selectedCase.user_name || 'Unknown'}
-                </h2>
-                <p className="text-sm text-gray-400">Case #{selectedCase.case_number || selectedCase._id}</p>
-              </div>
-              <button
-                onClick={() => { setShowCaseModal(false); setSelectedCase(null); }}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-primary-dark rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Status</p>
-                <p className={`font-semibold ${
-                  selectedCase.status === 'active' ? 'text-blue-400' :
-                  selectedCase.status === 'escalated' ? 'text-amber-400' :
-                  selectedCase.status === 'closed' ? 'text-green-400' :
-                  'text-gray-400'
-                }`}>
-                  {selectedCase.status?.replace('_', ' ') || 'Active'}
-                </p>
-              </div>
-              <div className="bg-primary-dark rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Risk Level</p>
-                <p className={`font-semibold ${
-                  selectedCase.risk_level === 'critical' ? 'text-red-500' :
-                  selectedCase.risk_level === 'high' ? 'text-amber-400' :
-                  selectedCase.risk_level === 'medium' ? 'text-yellow-400' :
-                  'text-green-400'
-                }`}>
-                  {selectedCase.risk_level || 'Medium'}
-                </p>
-              </div>
-              <div className="bg-primary-dark rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Sessions</p>
-                <p className="font-semibold">{selectedCase.session_count || 0} / 6</p>
-              </div>
-              <div className="bg-primary-dark rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Assigned To</p>
-                <p className="font-semibold">{selectedCase.assigned_to_name || 'You'}</p>
-              </div>
-            </div>
-
-            {/* Sessions/Notes */}
-            {(selectedCase as any).sessions && (selectedCase as any).sessions.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold mb-3">Session Notes</h3>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {(selectedCase as any).sessions.map((session: any, i: number) => (
-                    <div key={i} className="bg-primary-dark rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs text-gray-500">
-                          {new Date(session.date || session.created_at).toLocaleDateString()}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          session.risk_level === 'high' || session.risk_level === 'critical' ? 'bg-red-500/20 text-red-400' :
-                          'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {session.risk_level}
-                        </span>
-                      </div>
-                      <p className="text-sm">{session.presenting_issue || session.notes}</p>
-                      {session.outcome && (
-                        <p className="text-xs text-gray-500 mt-2">Outcome: {session.outcome.replace('_', ' ')}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => { setShowCaseModal(false); setSelectedCase(null); }}
-                className="flex-1 px-4 py-3 rounded-lg border border-border hover:bg-primary-dark transition"
-              >
-                Close
-              </button>
-              {(selectedCase.status === 'active' || selectedCase.status === 'open' || selectedCase.status === 'in_progress') && (
-                <button
-                  onClick={() => {
-                    setShowCaseModal(false);
-                    handleOpenEscalate(selectedCase._id);
-                  }}
-                  className="flex-1 px-4 py-3 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition flex items-center justify-center gap-2"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                  Escalate
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Edit Note Modal */}
       {editingNote && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
