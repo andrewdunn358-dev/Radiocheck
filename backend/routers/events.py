@@ -35,6 +35,8 @@ class EventCreate(BaseModel):
     recurring: Optional[str] = Field(None)  # 'weekly', 'monthly', or None
     requires_moderation: bool = True
     waiting_room_enabled: bool = True
+    event_type: str = Field("in-person")  # 'in-person', 'virtual', 'hybrid'
+    location: Optional[str] = Field(None, max_length=500)
 
 
 class EventUpdate(BaseModel):
@@ -46,6 +48,8 @@ class EventUpdate(BaseModel):
     host_name: Optional[str] = Field(None, min_length=1, max_length=100)
     recurring: Optional[str] = None
     status: Optional[str] = None  # 'scheduled', 'live', 'ended', 'cancelled'
+    event_type: Optional[str] = None  # 'in-person', 'virtual', 'hybrid'
+    location: Optional[str] = None
 
 
 class EventResponse(BaseModel):
@@ -99,6 +103,7 @@ def serialize_event(event: dict) -> dict:
         "title": event["title"],
         "description": event.get("description"),
         "event_date": event["event_date"],
+        "scheduled_for": event["event_date"],  # Alias for compatibility
         "duration_minutes": event["duration_minutes"],
         "max_participants": event.get("max_participants"),
         "host_name": event["host_name"],
@@ -109,6 +114,8 @@ def serialize_event(event: dict) -> dict:
         "created_at": event["created_at"],
         "requires_moderation": event.get("requires_moderation", True),
         "waiting_room_enabled": event.get("waiting_room_enabled", True),
+        "event_type": event.get("event_type", "in-person"),
+        "location": event.get("location"),
     }
 
 
@@ -140,6 +147,8 @@ async def create_event(event: EventCreate):
         "updated_at": datetime.utcnow(),
         "requires_moderation": event.requires_moderation,
         "waiting_room_enabled": event.waiting_room_enabled,
+        "event_type": event.event_type,
+        "location": event.location,
     }
     
     await db.events.insert_one(event_doc)

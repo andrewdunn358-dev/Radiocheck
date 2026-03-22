@@ -32,6 +32,8 @@ interface Event {
   status: string;
   jitsi_room_name: string;
   participant_count: number;
+  event_type?: 'in-person' | 'virtual' | 'hybrid';
+  location?: string;
 }
 
 interface JoinDetails {
@@ -176,9 +178,18 @@ export default function EventsSection() {
   };
 
   const isEventJoinable = (event: Event) => {
-    // Allow joining any scheduled/live event for testing purposes
-    // The backend will handle the actual time validation if needed
-    return event.status !== 'cancelled' && event.status !== 'ended';
+    // Only virtual or hybrid events can be joined online
+    const eventType = event.event_type || 'in-person';
+    const canJoinVirtually = eventType === 'virtual' || eventType === 'hybrid';
+    
+    // Allow joining if it's a virtual/hybrid event that isn't cancelled or ended
+    return canJoinVirtually && event.status !== 'cancelled' && event.status !== 'ended';
+  };
+
+  // Check if event is in-person only (for showing different UI)
+  const isInPersonOnly = (event: Event) => {
+    const eventType = event.event_type || 'in-person';
+    return eventType === 'in-person';
   };
 
   // Don't render if no events and not loading
@@ -219,9 +230,35 @@ export default function EventsSection() {
                   </View>
                 )}
                 
+                {/* Event Type Badge */}
+                <View style={[
+                  styles.eventTypeBadge,
+                  event.event_type === 'virtual' && styles.virtualBadge,
+                  event.event_type === 'hybrid' && styles.hybridBadge,
+                  (!event.event_type || event.event_type === 'in-person') && styles.inPersonBadge,
+                ]}>
+                  <Ionicons 
+                    name={event.event_type === 'virtual' || event.event_type === 'hybrid' ? 'videocam' : 'location'} 
+                    size={10} 
+                    color="#fff" 
+                  />
+                  <Text style={styles.eventTypeBadgeText}>
+                    {event.event_type === 'virtual' ? 'Virtual' : 
+                     event.event_type === 'hybrid' ? 'Hybrid' : 'In-Person'}
+                  </Text>
+                </View>
+                
                 {/* Event Info */}
                 <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
                 <Text style={styles.eventTime}>{formatEventTime(event.event_date)}</Text>
+                
+                {/* Location for in-person/hybrid events */}
+                {event.location && (event.event_type === 'in-person' || event.event_type === 'hybrid') && (
+                  <View style={styles.eventMeta}>
+                    <Ionicons name="location" size={14} color={colors.textMuted} />
+                    <Text style={styles.eventHost} numberOfLines={1}>{event.location}</Text>
+                  </View>
+                )}
                 
                 <View style={styles.eventMeta}>
                   <Ionicons name="person" size={14} color={colors.textMuted} />
@@ -246,6 +283,11 @@ export default function EventsSection() {
                     <Ionicons name="videocam" size={16} color="#fff" />
                     <Text style={styles.joinButtonText}>Join Now</Text>
                   </TouchableOpacity>
+                ) : isInPersonOnly(event) ? (
+                  <View style={styles.inPersonInfo}>
+                    <Ionicons name="location" size={16} color={colors.textMuted} />
+                    <Text style={styles.inPersonText}>In-person event</Text>
+                  </View>
                 ) : (
                   <TouchableOpacity
                     style={[
@@ -422,6 +464,30 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  eventTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  virtualBadge: {
+    backgroundColor: '#8b5cf6',
+  },
+  hybridBadge: {
+    backgroundColor: '#6366f1',
+  },
+  inPersonBadge: {
+    backgroundColor: '#64748b',
+  },
+  eventTypeBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
   eventTitle: {
     fontSize: 15,
     fontWeight: '600',
@@ -486,6 +552,21 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   remindedText: {
     color: '#22c55e',
+  },
+  inPersonInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 10,
+    gap: 6,
+  },
+  inPersonText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '500',
   },
   // Modal Styles
   modalOverlay: {

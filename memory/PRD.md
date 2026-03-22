@@ -63,35 +63,45 @@ The Radiocheck project is a complex mix of:
 ### Events Tab Jitsi Integration (P2)
 **Status**: ✅ COMPLETE (December 2025)
 
-Implemented virtual events with Jitsi Meet video conferencing:
+Implemented virtual events with Jitsi Meet video conferencing across all portals:
 
-1. **JitsiRoom Component** (`/app/portal/src/components/shared/JitsiRoom.tsx`)
-   - Full-screen video conferencing modal
-   - No lobby/waiting room - instant access like TikTok Live
-   - Audio muted by default
-   - Participant counter
-   - Custom controls (mute, camera, leave)
+**Backend Changes** (`/app/backend/routers/events.py`):
+- Added `event_type` field: 'in-person', 'virtual', 'hybrid'
+- Added `location` field for physical event venues
+- Updated `serialize_event()` to include new fields
+- Backward compatible - existing events default to 'in-person'
 
-2. **Admin EventsTab Updates** (`/app/portal/src/components/admin/tabs/EventsTab.tsx`)
-   - Event type selector: In-Person, Virtual, Hybrid
-   - Location field for physical events
-   - "LIVE" badge for active events
-   - "Join Now" button when virtual events are live
-   - Purple info banner explaining Jitsi access
+**Admin Portal** (`/app/portal/src/components/admin/tabs/EventsTab.tsx`):
+- Event type selector with icons (In-Person, Virtual, Hybrid)
+- Location field for physical events
+- "LIVE" badge for active events
+- "Join Now" button when virtual events are live
+- Purple info banner explaining Jitsi access
 
-3. **Staff EventsTab** (`/app/portal/src/components/staff/tabs/EventsTab.tsx`)
-   - New Events tab added to staff portal sidebar
-   - View upcoming community events
-   - Join virtual events when live
-   - Responsive grid layout
+**Staff Portal** (`/app/portal/src/components/staff/tabs/EventsTab.tsx`):
+- New Events tab added to staff portal sidebar
+- View upcoming community events
+- Join virtual events when live
 
-**Features**:
-- Instant video access (no account/lobby required)
-- Audio muted by default for safety
-- Full toolbar: mic, camera, screenshare, chat, raise hand, tile view
-- Branded room names (`RadioCheck_eventId`)
-- Participant count visible in header
-- Clean exit handling
+**Mobile App** (`/app/frontend/src/components/EventsSection.tsx`):
+- Event type badges (Virtual/Hybrid/In-Person with icons)
+- Location display for physical events
+- "Join Now" only for virtual/hybrid events
+- "In-person event" indicator for physical-only events
+- Updated Event interface with `event_type` and `location`
+
+**Jitsi Room** (`/app/portal/src/components/shared/JitsiRoom.tsx`):
+- Full-screen video modal
+- No lobby - instant access
+- Audio muted by default
+- Custom controls (mute, camera, leave)
+- Participant counter
+
+**Flow**:
+1. Admin creates event → selects type (Virtual/Hybrid/In-Person)
+2. Event appears on app.radiocheck.me
+3. When event goes live, veterans see "Join Now" (virtual events only)
+4. Click opens Jitsi room instantly (no account needed)
 
 ---
 
