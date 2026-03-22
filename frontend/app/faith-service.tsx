@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Linking, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -238,6 +238,25 @@ export default function FaithService() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* James AI Chat Card - TOP OF PAGE */}
+        <TouchableOpacity 
+          style={styles.aiCard}
+          onPress={() => router.push('/chat/james')}
+          activeOpacity={0.9}
+        >
+          <Image 
+            source={require('../assets/images/james.png')}
+            style={styles.aiAvatar}
+          />
+          <View style={styles.aiTextContainer}>
+            <Text style={styles.aiTitle}>Chat with James</Text>
+            <Text style={styles.aiSubtitle}>20 years Army Chaplain — for all faiths and none</Text>
+          </View>
+          <View style={styles.aiBadge}>
+            <Text style={styles.aiBadgeText}>24/7</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.heroGradient}>
@@ -543,5 +562,49 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 8,
+  },
+  // AI Chat Card styles
+  aiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f3ff',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#8b5cf6',
+  },
+  aiAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#ddd6fe',
+  },
+  aiTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  aiTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  aiSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  aiBadge: {
+    backgroundColor: '#8b5cf6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  aiBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

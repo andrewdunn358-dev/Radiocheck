@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Linking, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -208,6 +208,25 @@ export default function ForcesKids() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Sam AI Chat Card - TOP OF PAGE */}
+        <TouchableOpacity 
+          style={styles.aiCard}
+          onPress={() => router.push('/chat/sam')}
+          activeOpacity={0.9}
+        >
+          <Image 
+            source={require('../assets/images/sam.png')}
+            style={styles.aiAvatar}
+          />
+          <View style={styles.aiTextContainer}>
+            <Text style={styles.aiTitle}>Chat with Sam</Text>
+            <Text style={styles.aiSubtitle}>Army wife 15 years — she understands forces kids</Text>
+          </View>
+          <View style={styles.aiBadge}>
+            <Text style={styles.aiBadgeText}>24/7</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.heroGradient}>
@@ -551,5 +570,49 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
     color: '#166534',
     marginTop: 4,
+  },
+  // AI Chat Card styles
+  aiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff7ed',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#f97316',
+  },
+  aiAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fed7aa',
+  },
+  aiTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  aiTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  aiSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  aiBadge: {
+    backgroundColor: '#f97316',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  aiBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

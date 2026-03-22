@@ -78,10 +78,15 @@ Created 4 new AI personas with full safeguarding (Soul Document integration):
 | **Kofi** | Commonwealth Veterans | 16 years RLC, from Ghana, helps with settlement rights & entitlements |
 | **James** | Faith & Spiritual | 20 years Army Chaplain, supports all faiths and none, moral injury |
 
-**Avatars Generated:** 4 unique AI-generated portraits
+**Avatars Generated:** 4 unique AI-generated portraits (now PHOTOREALISTIC)
 **Personas Created:** `/app/backend/personas/alex.py`, `sam.py`, `kofi.py`, `james.py`
 **Database Updated:** All 4 characters added to `ai_characters` collection
 **API Verified:** All 16 characters now available via `/api/ai-buddies/characters`
+
+### UPDATED: AI Chat Cards on New Pages
+- Added specialist AI chat card at TOP of each page (matching other pages like women-veterans)
+- Each page now shows their specialist character with "Chat with [Name]" button
+- Updated "Meet the AI Team" section on home page with all 4 new characters
 
 ### BUG FIXED: Safeguarding Alerts Not Being Created (CRITICAL)
 **Status:** ✅ FIXED

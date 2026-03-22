@@ -182,6 +182,25 @@ export default function TheyServed() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Alex AI Chat Card - TOP OF PAGE */}
+        <TouchableOpacity 
+          style={styles.aiCard}
+          onPress={() => router.push('/chat/alex')}
+          activeOpacity={0.9}
+        >
+          <Image 
+            source={require('../assets/images/alex.png')}
+            style={styles.aiAvatar}
+          />
+          <View style={styles.aiTextContainer}>
+            <Text style={styles.aiTitle}>Chat with Alex</Text>
+            <Text style={styles.aiSubtitle}>Former RAF, served under the ban — they get it</Text>
+          </View>
+          <View style={styles.aiBadge}>
+            <Text style={styles.aiBadgeText}>24/7</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.heroGradient}>
@@ -512,5 +531,49 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  // AI Chat Card styles
+  aiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fdf2f8',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#ec4899',
+  },
+  aiAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f3e8ff',
+  },
+  aiTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  aiTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  aiSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  aiBadge: {
+    backgroundColor: '#ec4899',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  aiBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
