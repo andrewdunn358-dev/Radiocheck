@@ -60,6 +60,23 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - December 2025
 
+### User Manuals Created (P1)
+**Status**: ✅ COMPLETE (December 2025)
+
+Created comprehensive user manuals for both portals:
+
+1. **Staff User Manual** (`/app/portal/public/docs/STAFF_USER_MANUAL.md`)
+   - ~500 lines of documentation
+   - Covers: Login, Dashboard, Alerts, Live Chat, Cases, Callbacks, Rota, Team, Notes, Supervision, Internal Messages
+   - Includes troubleshooting guide and quick reference
+
+2. **Admin User Manual** (`/app/portal/public/docs/ADMIN_USER_MANUAL.md`)
+   - ~600 lines of documentation
+   - Covers: All 15 admin tabs including Staff, Rota, CMS, AI Personas, Events (with Jitsi virtual event info), Compliance, Logs, Settings
+   - Includes role permissions matrix and keyboard shortcuts
+
+---
+
 ### Staff Portal FINAL Phase Refactoring - All Tabs Extracted (P0)
 **Status**: ✅ COMPLETE (December 2025)
 
