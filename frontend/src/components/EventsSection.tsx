@@ -178,18 +178,21 @@ export default function EventsSection() {
   };
 
   const isEventJoinable = (event: Event) => {
-    // Only virtual or hybrid events can be joined online
-    const eventType = event.event_type || 'in-person';
-    const canJoinVirtually = eventType === 'virtual' || eventType === 'hybrid';
-    
-    // Allow joining if it's a virtual/hybrid event that isn't cancelled or ended
-    return canJoinVirtually && event.status !== 'cancelled' && event.status !== 'ended';
+    // All events have Jitsi rooms - allow joining any live or upcoming event
+    // (regardless of event_type - the event_type is informational only)
+    return event.status !== 'cancelled' && event.status !== 'ended' && event.jitsi_room_name;
   };
 
-  // Check if event is in-person only (for showing different UI)
+  // Check if event is in-person only (for showing location prominently)
   const isInPersonOnly = (event: Event) => {
     const eventType = event.event_type || 'in-person';
     return eventType === 'in-person';
+  };
+  
+  // Check if event supports virtual attendance
+  const isVirtualEvent = (event: Event) => {
+    const eventType = event.event_type || 'in-person';
+    return eventType === 'virtual' || eventType === 'hybrid';
   };
 
   // Don't render if no events and not loading
@@ -281,13 +284,10 @@ export default function EventsSection() {
                     onPress={() => handleJoinClick(event)}
                   >
                     <Ionicons name="videocam" size={16} color="#fff" />
-                    <Text style={styles.joinButtonText}>Join Now</Text>
+                    <Text style={styles.joinButtonText}>
+                      {isEventLive(event) ? 'Join Now' : 'Join Event'}
+                    </Text>
                   </TouchableOpacity>
-                ) : isInPersonOnly(event) ? (
-                  <View style={styles.inPersonInfo}>
-                    <Ionicons name="location" size={16} color={colors.textMuted} />
-                    <Text style={styles.inPersonText}>In-person event</Text>
-                  </View>
                 ) : (
                   <TouchableOpacity
                     style={[
