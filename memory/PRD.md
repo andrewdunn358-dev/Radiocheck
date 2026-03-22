@@ -46,6 +46,42 @@ The Radiocheck project is a complex mix of:
 
 ## Completed Work - February 2026
 
+### Admin Portal Phase 4 Refactoring - Rota/Governance/Events Extraction (P0)
+**Status**: ✅ COMPLETE (February 2026)
+
+**Problem**: Continue refactoring the admin portal by extracting Rota, Governance (with 7 sub-tabs), and Events tabs.
+
+**Phase 4 Extraction Completed**:
+- Reduced `page.tsx` from **3,891 lines → 2,157 lines** (~1,734 lines removed)
+
+**New Components Created**:
+1. `/app/portal/src/components/admin/tabs/RotaTab.tsx` (574 lines)
+   - Full month calendar view
+   - Add/Edit shift modal
+   - Coverage stats
+   - Swap request management (pending/all views)
+
+2. `/app/portal/src/components/admin/tabs/GovernanceTab/` (1,007 lines total)
+   - `index.tsx` - Main container with 7 sub-tabs
+   - `HazardsSubTab.tsx` - Clinical safety hazard log
+   - `KPIsSubTab.tsx` - Safeguarding KPIs dashboard
+   - `IncidentsSubTab.tsx` - Incident management
+   - `ModerationSubTab.tsx` - Peer report queue
+   - `ApprovalsSubTab.tsx` - CSO pending approvals
+   - `ComplianceSubTab.tsx` - AI compliance checker
+   - `ReportsSubTab.tsx` - Summary reports with email scheduling
+
+3. `/app/portal/src/components/admin/tabs/EventsTab.tsx` (369 lines)
+   - Create/edit event modal
+   - Upcoming and past events views
+   - View attendance modal
+
+**Total Admin Page Reduction**: 7,229 lines → 2,157 lines (**70% reduction!**)
+
+**Verification**: Build successful, TypeScript compilation passes
+
+---
+
 ### Admin Portal Phase 3 Refactoring - LogsTab Extraction (P0)
 **Status**: ✅ COMPLETE (February 2026)
 
@@ -429,6 +465,6 @@ The Radiocheck project is a complex mix of:
 - [ ] End-to-end WebRTC call testing on production
 
 ## Known Technical Debt
-- `/portal/src/app/admin/page.tsx` is 3,891 lines (down from 7,229 - 46% reduced) - continue refactoring remaining tabs
+- `/portal/src/app/admin/page.tsx` is 2,157 lines (down from 7,229 - 70% reduced) - continue refactoring remaining tabs
 - `/portal/src/app/staff/page.tsx` is 3,907 lines - needs to be audited and refactored
 - WebRTC call flow involves 3 files that must be kept in sync
