@@ -125,25 +125,25 @@ const aiTeam = [
   }
 ];
 
-// Founders Data
+// Founders Data - from the actual app
 const founders = [
   {
-    name: 'Andrew',
-    role: 'Co-Founder',
-    description: 'Army veteran with a passion for using technology to support the military community. Andrew leads the vision and strategy for Radio Check.',
-    image: '/images/founders/andrew.jpg',
+    name: 'Andrew "Frankie" Dunn',
+    role: 'Founder',
+    description: 'Andrew served 27 years in the British Army before creating Frankie\'s Pod: Uncorking the Unforgettable. Through podcasting and projects like Radio Check, he works to build communities where veterans can connect and support each other.',
+    image: 'https://customer-assets.emergentagent.com/job_e4b45c7f-469e-4d50-8310-96df1bd9d53a/artifacts/4zwz619g_image.png',
   },
   {
-    name: 'Anthony',
-    role: 'Co-Founder',
-    description: 'Experienced in mental health support services and veteran welfare. Anthony ensures Radio Check delivers meaningful, effective support.',
-    image: '/images/founders/anthony.jpg',
+    name: 'Rachel Webster',
+    role: 'Founder',
+    description: 'Rachel is a veteran of the British Army, having served for 24 years across operational and leadership roles. Since leaving the Army, she has remained committed to supporting the veteran community through advocacy initiatives.',
+    image: 'https://customer-assets.emergentagent.com/job_e4b45c7f-469e-4d50-8310-96df1bd9d53a/artifacts/kec981d4_Rachel.avif',
   },
   {
-    name: 'Rachel',
-    role: 'Co-Founder',
-    description: 'Specialist in peer support training and safeguarding. Rachel oversees the human support team and volunteer training programmes.',
-    image: '/images/founders/rachel.jpg',
+    name: 'Anthony Donnelly',
+    role: 'Founder',
+    description: 'Anthony is the founder of Zentrafuge (Labs) Limited, an AI safety and research initiative. He focuses on AI safety architecture and building systems that earn trust. Zentrafuge\'s safety modules are integrated into Radio Check.',
+    image: 'https://customer-assets.emergentagent.com/job_e4b45c7f-469e-4d50-8310-96df1bd9d53a/artifacts/jz9ku914_image.png',
   }
 ];
 
@@ -417,12 +417,16 @@ export default function HomePage() {
                 key={index}
                 className="bg-card rounded-2xl p-8 border border-border hover:border-secondary/50 transition text-center group"
               >
-                <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-secondary/30 to-primary overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <span className="text-5xl font-bold text-secondary">{founder.name[0]}</span>
+                <div className="w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden group-hover:scale-105 transition-transform">
+                  <img 
+                    src={founder.image} 
+                    alt={founder.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <h3 className="text-2xl font-semibold mb-1">{founder.name}</h3>
                 <p className="text-secondary font-medium mb-4">{founder.role}</p>
-                <p className="text-secondary/80">{founder.description}</p>
+                <p className="text-secondary/80 text-sm">{founder.description}</p>
               </div>
             ))}
           </div>
