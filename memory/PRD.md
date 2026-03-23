@@ -23,14 +23,21 @@ Build a comprehensive veterans support platform with:
 - [x] Created `/app/portal/public/docs/ADMIN_USER_MANUAL.md`
 - [x] Created `/app/portal/public/docs/STAFF_USER_MANUAL.md`
 
-### Phase 3: Virtual Events with Jitsi (DONE - Dec 2025)
+### Phase 3: Virtual Events with Agora (DONE - Dec 2025)
 - [x] Events feature scaffolding across all platforms
-- [x] Admin portal: Event creation with Jitsi room generation
+- [x] Admin portal: Event creation with video room generation
 - [x] Staff portal: Events tab with join functionality
 - [x] Mobile app: Events visibility and join button
 - [x] Backend API: `/api/events/upcoming`, `POST /api/events`
-- [x] Fixed mobile app "Join" button visibility bug
-- [x] **Fixed Jitsi pre-join screen bug** (Dec 2025) - Users can now join directly without getting stuck on lobby
+- [x] Replaced Jitsi with Agora Video SDK for reliable video conferencing
+
+### Phase 4: Marketing Website (DONE - Dec 2025)
+- [x] Created modern landing page for radiocheck.me
+- [x] Added "Meet the AI Team" section with 9 AI companions
+- [x] Added portal links (app, staff, admin)
+- [x] Created Privacy Policy page
+- [x] Created Terms of Service page
+- [x] Configured subdomain rewrites for Vercel deployment
 
 ## In Progress
 None - All P0 items complete
