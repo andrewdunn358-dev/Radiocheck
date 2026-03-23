@@ -423,8 +423,9 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
                     <label className="block text-sm text-gray-400 mb-1">Duration (mins)</label>
                     <input
                       type="number"
+                      min="15"
                       value={newEvent.duration_minutes}
-                      onChange={(e) => setNewEvent({ ...newEvent, duration_minutes: parseInt(e.target.value) })}
+                      onChange={(e) => setNewEvent({ ...newEvent, duration_minutes: Math.max(15, parseInt(e.target.value) || 15) })}
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                     />
                   </div>
@@ -432,8 +433,9 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
                     <label className="block text-sm text-gray-400 mb-1">Max Participants</label>
                     <input
                       type="number"
+                      min="1"
                       value={newEvent.max_participants}
-                      onChange={(e) => setNewEvent({ ...newEvent, max_participants: parseInt(e.target.value) })}
+                      onChange={(e) => setNewEvent({ ...newEvent, max_participants: parseInt(e.target.value) || 1 })}
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                     />
                   </div>
