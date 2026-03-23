@@ -25,6 +25,11 @@ const nextConfig = {
         has: [{ type: 'host', value: 'admin.radiocheck.me' }],
         destination: '/admin/:path*',
       },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'training.radiocheck.me' }],
+        destination: '/learning/:path*',
+      },
     ];
   },
 }
