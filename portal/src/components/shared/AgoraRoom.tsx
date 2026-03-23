@@ -14,12 +14,13 @@ interface AgoraRoomProps {
   displayName: string;
   onClose: () => void;
   eventTitle?: string;
+  agoraToken?: string;
 }
 
 // Configure Agora SDK
 AgoraRTC.setLogLevel(3); // Warning level only
 
-export default function AgoraRoom({ roomName, displayName, onClose, eventTitle }: AgoraRoomProps) {
+export default function AgoraRoom({ roomName, displayName, onClose, eventTitle, agoraToken }: AgoraRoomProps) {
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localVideoRef = useRef<HTMLDivElement>(null);
   const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
@@ -31,10 +32,11 @@ export default function AgoraRoom({ roomName, displayName, onClose, eventTitle }
   const [error, setError] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
 
-  const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID;
+  const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || 'cfd84eb3fcd7490cbe366d8cd1a4d974';
 
-  // Generate a clean channel name from room name
+  // Channel name - use roomName directly if it already starts with radiocheck_
   const getChannelName = useCallback(() => {
+    if (roomName.startsWith('radiocheck_')) return roomName;
     return `radiocheck_${roomName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`;
   }, [roomName]);
 
@@ -106,7 +108,7 @@ export default function AgoraRoom({ roomName, displayName, onClose, eventTitle }
         const channelName = getChannelName();
         console.log('[Agora] Joining channel:', channelName);
         
-        const uid = await client.join(appId, channelName, null, null);
+        const uid = await client.join(appId, channelName, agoraToken || null, null);
         console.log('[Agora] Joined channel with UID:', uid);
 
         // Create local tracks

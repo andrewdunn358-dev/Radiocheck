@@ -30,6 +30,8 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
   
   // Video room state
   const [activeVideoEvent, setActiveVideoEvent] = useState<any>(null);
+  const [videoToken, setVideoToken] = useState<string | null>(null);
+  const [videoChannel, setVideoChannel] = useState<string | null>(null);
   
   // Form state
   const [newEvent, setNewEvent] = useState({
@@ -169,8 +171,21 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
     }
   };
 
-  const handleJoinEvent = (event: any) => {
-    setActiveVideoEvent(event);
+  const handleJoinEvent = async (event: any) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+      const res = await fetch(`${apiUrl}/api/events/${event.id}/join?display_name=${encodeURIComponent(userName || 'Admin')}`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Failed to join event');
+      const data = await res.json();
+      setVideoToken(data.agora_token);
+      setVideoChannel(data.agora_channel);
+      setActiveVideoEvent(event);
+    } catch (err: any) {
+      onError('Failed to join event: ' + err.message);
+    }
   };
 
   const getEventTypeBadge = (eventType: EventType) => {
@@ -278,10 +293,11 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
       {/* Agora Room Modal */}
       {activeVideoEvent && (
         <AgoraRoom
-          roomName={`event_${activeVideoEvent.id}`}
+          roomName={videoChannel || `event_${activeVideoEvent.id}`}
           displayName={userName || 'Admin'}
           eventTitle={activeVideoEvent.title}
-          onClose={() => setActiveVideoEvent(null)}
+          agoraToken={videoToken || undefined}
+          onClose={() => { setActiveVideoEvent(null); setVideoToken(null); setVideoChannel(null); }}
         />
       )}
 

@@ -4,7 +4,7 @@
     "files": [
       "static/chunks/d185def3.e88c29d24051d171.js",
       "static/chunks/102.f992a08b50f77c22.js",
-      "static/chunks/252.9358f48f0252e38f.js"
+      "static/chunks/252.155deccc5b699525.js"
     ]
   },
   "components/admin/tabs/LogsTab/index.tsx -> @/app/components/LocationMap": {
@@ -20,7 +20,7 @@
     "files": [
       "static/chunks/d185def3.e88c29d24051d171.js",
       "static/chunks/102.f992a08b50f77c22.js",
-      "static/chunks/667.95bc77a0667e7909.js"
+      "static/chunks/667.63116c0624077e3d.js"
     ]
   }
 }

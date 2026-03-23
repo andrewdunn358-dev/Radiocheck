@@ -39,6 +39,9 @@ interface Event {
 interface JoinDetails {
   event_id: string;
   jitsi_room_name: string;
+  agora_token: string;
+  agora_app_id: string;
+  agora_channel: string;
   display_name: string;
   is_moderator: boolean;
 }
@@ -374,9 +377,11 @@ export default function EventsSection() {
       <Modal visible={showAgora} animationType="slide">
         {joinDetails && (
           <AgoraMeetComponent
-            roomName={`event_${joinDetails.event_id}`}
+            roomName={joinDetails.agora_channel || `event_${joinDetails.event_id}`}
             displayName={joinDetails.display_name}
             eventTitle={selectedEvent?.title}
+            agoraToken={joinDetails.agora_token}
+            agoraAppId={joinDetails.agora_app_id}
             onClose={handleCloseAgora}
           />
         )}

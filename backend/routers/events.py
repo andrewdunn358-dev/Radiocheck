@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 import secrets
 import hashlib
+import time
+from agora_token_builder import RtcTokenBuilder
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -75,6 +77,7 @@ class JoinEventResponse(BaseModel):
     jitsi_room_name: str
     agora_channel: str
     agora_app_id: str
+    agora_token: str
     display_name: str
     is_moderator: bool
     jwt_token: Optional[str]
@@ -401,7 +404,19 @@ async def join_event(event_id: str, display_name: str = "Veteran", user_id: Opti
     
     # Agora configuration
     agora_app_id = "cfd84eb3fcd7490cbe366d8cd1a4d974"
+    agora_app_certificate = "46321e5dd1ab4df68d6a370721c94feb"
     agora_channel = f"radiocheck_event{event_id.replace('-', '').lower()}"
+    
+    # Generate Agora RTC token (valid for 2 hours)
+    token_expiration = int(time.time()) + 7200
+    agora_token = RtcTokenBuilder.buildTokenWithUid(
+        appId=agora_app_id,
+        appCertificate=agora_app_certificate,
+        channelName=agora_channel,
+        uid=0,
+        role=1,
+        privilegeExpiredTs=token_expiration
+    )
     
     # Config for backwards compatibility
     agora_config = {
@@ -415,6 +430,7 @@ async def join_event(event_id: str, display_name: str = "Veteran", user_id: Opti
         "jitsi_room_name": event["jitsi_room_name"],
         "agora_channel": agora_channel,
         "agora_app_id": agora_app_id,
+        "agora_token": agora_token,
         "display_name": display_name,
         "is_moderator": is_moderator,
         "jwt_token": None,

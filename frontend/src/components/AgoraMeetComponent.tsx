@@ -14,6 +14,8 @@ interface AgoraMeetProps {
   displayName: string;
   onClose: () => void;
   eventTitle?: string;
+  agoraToken?: string;
+  agoraAppId?: string;
 }
 
 const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'cfd84eb3fcd7490cbe366d8cd1a4d974';
@@ -23,6 +25,8 @@ export default function AgoraMeetComponent({
   displayName,
   onClose,
   eventTitle,
+  agoraToken,
+  agoraAppId,
 }: AgoraMeetProps) {
   const clientRef = useRef<any>(null);
   const localVideoRef = useRef<HTMLDivElement>(null);
@@ -36,7 +40,10 @@ export default function AgoraMeetComponent({
   const [isJoined, setIsJoined] = useState(false);
   const isMountedRef = useRef(true);
 
+  // Channel name is provided directly from the backend
   const getChannelName = useCallback(() => {
+    // If roomName already starts with 'radiocheck_', use as-is (from backend)
+    if (roomName.startsWith('radiocheck_')) return roomName;
     return `radiocheck_${roomName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`;
   }, [roomName]);
 
@@ -75,7 +82,8 @@ export default function AgoraMeetComponent({
       return;
     }
 
-    if (!AGORA_APP_ID) {
+    const appId = agoraAppId || AGORA_APP_ID;
+    if (!appId) {
       setError('Video configuration missing. Please contact support.');
       setIsLoading(false);
       return;
@@ -97,9 +105,9 @@ export default function AgoraMeetComponent({
         client.on('user-left', handleUserLeft);
 
         const channelName = getChannelName();
-        console.log('[Agora] Joining channel:', channelName);
+        console.log('[Agora] Joining channel:', channelName, 'with token:', agoraToken ? 'yes' : 'no');
 
-        await client.join(AGORA_APP_ID, channelName, null, null);
+        await client.join(appId, channelName, agoraToken || null, null);
         console.log('[Agora] Joined channel');
 
         const tracks = await AgoraRTC.createMicrophoneAndCameraTracks(
