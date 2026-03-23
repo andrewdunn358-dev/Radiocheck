@@ -43,6 +43,11 @@ export const api = {
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+      // Handle Pydantic validation errors which come as array
+      if (Array.isArray(error.detail)) {
+        const messages = error.detail.map((e: any) => `${e.loc?.join('.')}: ${e.msg}`).join(', ');
+        throw new Error(messages);
+      }
       throw new Error(error.detail || `HTTP ${response.status}`);
     }
     
