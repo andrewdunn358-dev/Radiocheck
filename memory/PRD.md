@@ -93,4 +93,4 @@ None currently active
 
 ## Testing Notes
 - Portal build verification: `cd /app/portal && yarn build`
-- Preview URL: https://event-join-fix.preview.emergentagent.com
+- Preview URL: https://video-fix-20.preview.emergentagent.com

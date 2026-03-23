@@ -7,7 +7,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://event-join-fix.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://video-fix-20.preview.emergentagent.com')
 
 # Admin credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"

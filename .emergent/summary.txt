@@ -1,113 +1,58 @@
 <analysis>**original_problem_statement:**
-The user's goal is to refactor the monolithic frontend pages for a Radiocheck Veterans Support Platform, create user manuals, and integrate a Jitsi-based virtual events feature that is accessible from the admin portal, staff portal, and a veteran-facing mobile app.
+The user's initial goal was to refactor monolithic frontend pages, create user manuals, and integrate a Jitsi-based virtual events feature. The scope has since expanded significantly to include replacing Jitsi with Agora on the web portal, migrating the main  marketing website into the Next.js application, and resolving multiple bugs related to event creation and subdomain routing.
 
 **PRODUCT REQUIREMENTS:**
-1.  **(P0) Refactor Admin Portal Page**: Break down the monolithic file into smaller components. (COMPLETED)
-2.  **(P0) Refactor Staff Portal Page**: Audit and refactor the monolithic file. (COMPLETED)
-3.  **(P1) Create User Manuals**: Create user manuals for both staff and admin users. (COMPLETED)
-4.  **(P0) Jitsi Events Integration**: Implement a feature for admins to create virtual events, which staff and veterans can then join from their respective applications. (IN PROGRESS)
-5.  **(P2) Future Features**: Implement a full CMS visual editor, discussion forums, a mood tracker, and Welsh language support.
+1.  **(P0) Refactor Admin & Staff Portals**: Break down monolithic files. (COMPLETED)
+2.  **(P1) Create User Manuals**: Create user manuals for staff and admin. (COMPLETED)
+3.  **(P0) Virtual Events Integration**: Implement a feature for admins to create virtual events. The web portal implementation was migrated from Jitsi to Agora. The mobile app still uses Jitsi and has a critical bug preventing users from joining events. (IN PROGRESS)
+4.  **(P1) Website Migration**: Migrate  into the Next.js portal, update its theme, and add content (AI Team, Founders). (COMPLETED)
+5.  **(P1) Subdomain Routing**: Implement subdomain routing for , , , and . (COMPLETED, pending Vercel deployment verification)
+6.  **(P2) Future Features**: CMS visual editor, discussion forums, mood tracker, Welsh language support.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The project consists of a Next.js admin/staff portal (), a FastAPI backend, and a React Native (Expo) mobile app (). The main refactoring of the admin and staff portals is complete, with monolithic pages broken down into dozens of smaller components. User manuals have been created.
+The project consists of a FastAPI backend, a Next.js web application (), and a React Native mobile app ().
 
-An events feature with Jitsi Meet integration has been implemented across all platforms. Admins can create events, and they appear in the staff portal and mobile app. However, a critical bug prevents users from joining the video call from the web portals.
+*   **Web Portal ()**: Now serves the main marketing site (), admin, staff, training, and LMS admin portals. It uses Next.js middleware for subdomain routing. Virtual events in the portal now use the **Agora Video SDK** after a full replacement of the original Jitsi implementation.
+*   **Mobile App ()**: Still uses **Jitsi Meet**. A critical bug prevents users from joining video calls.
+*   **Backend ()**: API for events, time tracking, etc. The hourly rate for time tracking has been updated to £40.
 
 **Last working item**:
--   **Last item agent was working**: The agent was debugging a Jitsi Meet connection issue. When a user clicks Join Event from the admin or staff web portal, the Jitsi iFrame loads but gets stuck on the pre-join/lobby screen. The user provided console logs indicating . The agent identified that the component responsible, , was likely missing the correct configuration to bypass this screen.
+-   **Last item agent was working**: The user reported that joining events on the **mobile app** is still broken, providing console logs that show the Jitsi pre-join screen is appearing (). The agent correctly identified that the focus needs to be on the mobile app's  and was about to begin fixing it. The user has expressed significant frustration that this was not addressed earlier when the web portal video SDK was being changed.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Manual testing. The fix involves editing a React component. After the fix, the agent needs to confirm the app builds successfully with yarn run v1.22.22
-$ next build
-  ▲ Next.js 14.2.5
-  - Environments: .env.local, .env.production
-
-   Creating an optimized production build ...
- ✓ Compiled successfully
-   Linting and checking validity of types ...
-   Collecting page data ...
-   Generating static pages (0/9) ...
-   Generating static pages (2/9) 
-   Generating static pages (4/9) 
-   Generating static pages (6/9) 
- ✓ Generating static pages (9/9)
-   Finalizing page optimization ...
-   Collecting build traces ...
-
-Route (app)                              Size     First Load JS
-┌ ○ /                                    173 B          94.6 kB
-├ ○ /_not-found                          871 B          88.5 kB
-├ ○ /admin                               108 kB          198 kB
-├ ○ /learning                            6.5 kB          105 kB
-├ ○ /learning/certificate                2.63 kB         101 kB
-├ ƒ /learning/module/[id]                6.37 kB         104 kB
-├ ○ /lms-admin                           8.39 kB         106 kB
-└ ○ /staff                               85.7 kB         187 kB
-+ First Load JS shared by all            87.6 kB
-  ├ chunks/23-6e12b91451ca1289.js        31.5 kB
-  ├ chunks/fd9d1056-52987fed3a59fd00.js  53.6 kB
-  └ other shared chunks (total)          2.46 kB
-
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
-Done in 24.70s.. Visual verification by the user or using the screenshot tool on the Events tab in the admin portal will be required to confirm the fix.
--   **User Testing Done**: Y (The user discovered and reported the bug).
+-   **Which testing method agent to use?**: Manual testing of the React Native (Expo) mobile app.
+-   **User Testing Done**: Y (User reported the bug with logs).
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Jitsi connection gets stuck on pre-join screen (P0)**
+-   **Issue 1: Mobile app Jitsi connection gets stuck on pre-join screen (P0)**
+-   **Issue 2: Subdomain routing not working on Vercel (P1)**
 
 **Issues Detail**:
--   **Issue 1: Jitsi connection gets stuck on pre-join screen (P0)**
-    -   **Attempted fixes**: No code changes have been attempted yet. The agent's last action was to view the working Jitsi component from the mobile app to understand the correct configuration.
+-   **Issue 1: Mobile app Jitsi connection gets stuck on pre-join screen (P0)**
+    -   **Attempted fixes**: No fixes have been applied to the mobile app component yet. The agent previously fixed a similar issue in the (now deleted) web portal component.
     -   **Next debug checklist**:
-        1.  View the buggy component: .
-        2.  View the working reference component: .
-        3.  Identify the configuration options in  that disable the pre-join page (e.g., ).
-        4.  Use  to add these missing options to the  object in .
-        5.  Run yarn run v1.22.22
-$ next build
-  ▲ Next.js 14.2.5
-  - Environments: .env.local, .env.production
-
-   Creating an optimized production build ...
- ✓ Compiled successfully
-   Linting and checking validity of types ...
-   Collecting page data ...
-   Generating static pages (0/9) ...
-   Generating static pages (2/9) 
-   Generating static pages (4/9) 
-   Generating static pages (6/9) 
- ✓ Generating static pages (9/9)
-   Finalizing page optimization ...
-   Collecting build traces ...
-
-Route (app)                              Size     First Load JS
-┌ ○ /                                    173 B          94.6 kB
-├ ○ /_not-found                          871 B          88.5 kB
-├ ○ /admin                               108 kB          198 kB
-├ ○ /learning                            6.5 kB          105 kB
-├ ○ /learning/certificate                2.63 kB         101 kB
-├ ƒ /learning/module/[id]                6.37 kB         104 kB
-├ ○ /lms-admin                           8.39 kB         106 kB
-└ ○ /staff                               85.7 kB         187 kB
-+ First Load JS shared by all            87.6 kB
-  ├ chunks/23-6e12b91451ca1289.js        31.5 kB
-  ├ chunks/fd9d1056-52987fed3a59fd00.js  53.6 kB
-  └ other shared chunks (total)          2.46 kB
-
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
-Done in 19.50s. to confirm the change doesn't introduce any build errors.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical bug blocking the entire virtual events feature on the web portals. Fixing it will allow staff and admins to seamlessly join video calls as intended.
+        1.  View .
+        2.  In the  object, ensure  is set correctly inside the  object.
+        3.  Add other recommended Jitsi config options to reduce warnings and improve stability (e.g., , ).
+        4.  Confirm the mobile app builds and runs without errors.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical P0 bug blocking the core virtual events feature for end-users on the mobile app. Fixing it is the highest priority.
     -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend.
+    -   **Is recurring issue?**: Y (A similar issue was fixed on the web portal before the Agora migration).
+    -   **Should Test frontend/backend/both after fix?**: Frontend (Mobile App).
+    -   **Blocked on other issue**: None.
+
+-   **Issue 2: Subdomain routing not working on Vercel (P1)**
+    -   **Attempted fixes**: The agent first implemented rewrites in . When that didn't work as expected on Vercel, the agent switched to a more robust Next.js Middleware implementation ().
+    -   **Next debug checklist**:
+        1.  The user needs to push the latest code (containing ) to GitHub.
+        2.  Vercel should automatically redeploy.
+        3.  The user needs to confirm that all required domains (, , etc.) are added to the Vercel project settings and have a Valid Configuration.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is required for the production environment to function correctly, directing users to the right portals based on the URL.
+    -   **Status**: BLOCKED (Awaiting user action: push to GitHub and verify Vercel settings).
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend (Vercel deployment).
     -   **Blocked on other issue**: None.
 
 **In progress Task List**:
@@ -115,7 +60,7 @@ Done in 19.50s. to confirm the change doesn't introduce any build errors.
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
-    *   (P1) Enhance Jitsi integration with a TikTok Live-like user experience (chat overlay, reactions).
+    *   (P1) Enhance video UX with a TikTok Live-like user experience (chat overlay, reactions).
     *   (P2) Add push notifications for when virtual events go live.
     *   (P2) Create PDF export versions of the user manuals.
 *   **Future Tasks**:
@@ -125,117 +70,79 @@ Done in 19.50s. to confirm the change doesn't introduce any build errors.
     *   (P2) Add Welsh Language Support.
 
 **Completed work in this session**
--   **Staff Portal Final Refactoring (DONE)**: Reduced  from an initial 3,907 lines to 271 lines by extracting all UI and logic into 19 separate components and hooks.
--   **User Manuals Creation (DONE)**: Created  and  in .
--   **Events Feature Scaffolding (DONE)**: Integrated event creation in the admin portal, added an events tab to the staff portal, and synced event visibility with the mobile app. This included backend API updates and frontend UI changes across all three platforms.
--   **Mobile App Event Joinability Fix (DONE)**: Resolved a bug where the Join button would not appear on the mobile app. The logic was updated to make all events with a Jitsi room joinable.
+-   **Jitsi → Agora Migration (Web Portal)**: Replaced the Jitsi implementation in the web portal with the Agora Video SDK. Created  and removed the old .
+-   ** Website Migration**: Rebuilt the entire marketing website within the Next.js portal (), including a new theme, AI team section, founders section, and portal links.
+-   **Asset Correction**: Found and implemented the correct AI companion avatars, partner logos, and founder photos from the existing mobile app assets and codebase.
+-   **Event Creation Bug Fix (422 Error)**: Resolved multiple issues causing event creation to fail. Added frontend validation for required fields () and minimum values (). Improved API error message parsing to give the user clearer feedback.
+-   **Subdomain Routing**: Implemented subdomain routing for , , , and  using Next.js Middleware ().
+-   **Time Tracking Updates**: Updated the default hourly rate to £40 in the backend (), added multiple time entries via , and fixed a frontend display bug where  was not being read correctly.
 
 **Earlier issues found/mentioned but not fixed**
--   None.
+-   The core issue of the Jitsi pre-join screen on the **mobile app** was reported in the initial handoff and was not addressed until the very end of the session, causing significant user frustration.
 
 **Known issue recurrence from previous fork**
--   None.
+-   The Jitsi pre-join screen bug. It was fixed on the web portal, but the fix was not propagated to the mobile app, causing a recurrence of the core problem on a different platform.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Monolithic Component Refactoring**: Decomposing large React pages into smaller, maintainable components.
--   **Jitsi Meet Integration**: Using the Jitsi external API () to embed video conferencing. The current issue revolves around correctly configuring the API options to control UI features like the pre-join screen.
--   **Cross-Platform Synchronization**: Managing a feature (Events) across three distinct clients (Admin Web, Staff Web, Mobile App) by updating a central backend API and ensuring each client consumes the data correctly.
+-   **Video SDKs**: Jitsi Meet (on mobile) vs. Agora RTC (on web).
+-   **Next.js Routing**: Migrated from  rewrites to a more robust  for handling subdomains.
+-   **Next.js Standalone Build**: Debugged issues where the  folder and  assets were not being copied correctly, requiring updates to the  script in .
+-   **API Error Handling**: Traced a  error from a generic frontend message back to specific Pydantic validation errors in the FastAPI backend () and improved frontend error parsing to display detailed messages.
 
 **key DB schema**
--   **events**: Documents in this collection now support optional  and  fields.
+-   No changes made in this session.
 
 **changes in tech stack**
--   **Jitsi Meet**: Added for video conferencing.
+-   **Agora RTC SDK**: Added to the  project for web-based video events. Jitsi is now only used in the mobile app.
 
 **All files of reference**
-*    (File with the bug)
-*    (Working reference for the fix)
-*    (A consumer of the buggy component)
-*    (Project requirements and progress tracker)
-
-**Areas that need refactoring**:
--   None. Major refactoring is complete.
-
-**key api endpoints**
--   : Fetches events for the mobile and staff portals.
--   : Creates a new event from the admin portal.
+-    (File with the P0 bug)
+-    (The new subdomain routing logic)
+-    (The new marketing website homepage)
+-    (Event creation form with validation fixes)
+-    (Backend validation rules for events)
+-    (Backend logic for hourly rates)
+-    (Updated with session work)
 
 **Critical Info for New Agent**
--   Your immediate and highest-priority task is to fix the Jitsi integration. Users on the admin and staff web portals cannot join virtual events because they are getting stuck in the Jitsi pre-join lobby.
--   The bug is in .
--   A working implementation exists at .
--   You must compare the Jitsi API options in both files and apply the correct configuration (likely ) to the buggy  file.
--   After applying the fix, verify the portal builds correctly by running yarn run v1.22.22
-$ next build
-  ▲ Next.js 14.2.5
-  - Environments: .env.local, .env.production
-
-   Creating an optimized production build ...
- ✓ Compiled successfully
-   Linting and checking validity of types ...
-   Collecting page data ...
-   Generating static pages (0/9) ...
-   Generating static pages (2/9) 
-   Generating static pages (4/9) 
-   Generating static pages (6/9) 
- ✓ Generating static pages (9/9)
-   Finalizing page optimization ...
-   Collecting build traces ...
-
-Route (app)                              Size     First Load JS
-┌ ○ /                                    173 B          94.6 kB
-├ ○ /_not-found                          871 B          88.5 kB
-├ ○ /admin                               108 kB          198 kB
-├ ○ /learning                            6.5 kB          105 kB
-├ ○ /learning/certificate                2.63 kB         101 kB
-├ ƒ /learning/module/[id]                6.37 kB         104 kB
-├ ○ /lms-admin                           8.39 kB         106 kB
-└ ○ /staff                               85.7 kB         187 kB
-+ First Load JS shared by all            87.6 kB
-  ├ chunks/23-6e12b91451ca1289.js        31.5 kB
-  ├ chunks/fd9d1056-52987fed3a59fd00.js  53.6 kB
-  └ other shared chunks (total)          2.46 kB
-
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
-Done in 19.59s..
+-   **Your immediate P0 priority is to fix the Jitsi pre-join bug in the React Native mobile app.** The user is very frustrated this was not fixed earlier. The bug is in , and the fix is likely adding  to the Jitsi config.
+-   The user's mental model is: Admins create events on the web portal (), but users join events from the mobile app (). Do not focus on the Join button in the admin portal unless asked.
+-   The subdomain routing issue is likely a Vercel configuration problem. The code fix (using ) is complete. Guide the user to redeploy and check their Vercel domain settings.
+-   The agent repeatedly failed to find correct assets (avatars, founder photos) until the user became frustrated. Be extra diligent in auditing existing code and assets before generating new ones.
 
 **documents and test reports created in this job**
--   
--   
--   
+-    (Updated)
+-    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **jitsi wont connect**: User reported the current P0 bug with console logs. (IN PROGRESS)
-2.  **cant click or join from the app**: User reported a bug where the join button was missing on mobile. (RESOLVED)
-3.  **so when we create an event it appears on the app.radiocheck.me**: User requested verification that the event sync was working. (VERIFIED, but led to bug discovery)
-4.  **Events tab Jitsi integration (from uploaded spec)**: User requested the Jitsi feature. (COMPLETED, but buggy)
-5.  **do user masnuals for admin and staff...**: User requested user manuals. (COMPLETED)
-6.  **The staff portal refactoring is not yet complete...**: User corrected the agent's premature completion of the refactoring task. (ADDRESSED)
-7.  **rerad**: User provided an artifact to confirm the refactoring plan. (ADDRESSED)
-8.  **Please use ask_human tool and confirm your plan now.**: User initiated the work session.
+1.  **User**: Reports Jitsi logs from the mobile app again, showing . Expresses frustration that this should be for virtual coffee meets and that the app wasn't updated.
+2.  **Agent**: Acknowledges the logs are from Jitsi on the mobile app and confirms the pre-join issue. Clarifies the different states of the portal (Agora) and mobile app (Jitsi) and asks the user for their preferred path forward.
+3.  **User**: why wasnt the app updated this should have been obvious - Expresses frustration that the mobile app was neglected.
+4.  **Agent**: Apologizes and pivots to fixing the mobile app.
+5.  **User**: ffs we wont be using the admin to join its for the mobile app the admin portal has no join button - Corrects the agent's focus, clarifying that the primary user journey for joining events is on the mobile app.
+6.  **Agent**: Apologizes again and confirms focus on the mobile app's Jitsi component.
+7.  **User**: Provides more Jitsi logs from the mobile app.
+8.  **Agent**: Acknowledges the logs and confirms the issue is .
+9.  **User**: Provides the Pydantic validation error  must be .
+10. **Agent**: Identifies the root cause of the 422 error and adds  validation to the frontend form.
 
 **Project Health Check:**
--   **Broken**: The core functionality of joining virtual events from the admin/staff web portal is broken.
+-   **Broken**: Joining virtual events from the React Native mobile app () is broken.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   **Jitsi Meet**: Implemented for video conferencing. Currently buggy on the web portal side.
+-   **Jitsi Meet**: Used in the React Native mobile app (). Currently has a P0 bug.
+-   **Agora Video SDK**: Used in the Next.js web portal (). Replaced Jitsi.
 
 **Testing status**
 -   Testing agent used after significant changes: NO
 -   Troubleshoot agent used after agent stuck in loop: NO
 -   Test files created: None
--   Known regressions: The Jitsi integration in  is not working as intended.
-
-**Credentials to test flow:**
--   N/A
+-   Known regressions: The virtual event joining functionality, which was the original goal, is still broken for the primary user platform (mobile app).
 
 **What agent forgot to execute**
--   The agent did not properly test the Jitsi integration after implementing it, missing the critical pre-join screen issue which the user later found.
--   The agent prematurely declared the staff page refactoring complete before fully meeting the line-count target, requiring user intervention to finish the task correctly.</analysis>
+-   The agent failed to address the Jitsi bug on the mobile platform, focusing exclusively on the web portal, which was not the user's primary concern for the join event feature. This required multiple corrections from the user.
+-   The agent repeatedly failed to find existing images and assets within the codebase, opting to generate new ones until the user became frustrated and provided explicit guidance.</analysis>
