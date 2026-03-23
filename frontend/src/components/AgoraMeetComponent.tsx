@@ -122,10 +122,6 @@ export default function AgoraMeetComponent({
           setLocalVideoTrack(videoTrack);
         }
 
-        if (localVideoRef.current) {
-          videoTrack.play(localVideoRef.current);
-        }
-
         await client.publish([audioTrack, videoTrack]);
         console.log('[Agora] Published local tracks');
 
@@ -165,11 +161,18 @@ export default function AgoraMeetComponent({
     };
   }, [AGORA_APP_ID, getChannelName, handleUserPublished, handleUserUnpublished, handleUserLeft]);
 
+  // Play local video once joined and DOM is ready
   useEffect(() => {
-    if (localVideoTrack && localVideoRef.current && !isVideoOff) {
-      localVideoTrack.play(localVideoRef.current);
+    if (localVideoTrack && isJoined && !isVideoOff) {
+      // Small delay to ensure DOM element is rendered after loading state clears
+      const timer = setTimeout(() => {
+        if (localVideoRef.current) {
+          localVideoTrack.play(localVideoRef.current);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [localVideoTrack, isVideoOff]);
+  }, [localVideoTrack, isJoined, isVideoOff]);
 
   const handleToggleAudio = async () => {
     if (localAudioTrack) {

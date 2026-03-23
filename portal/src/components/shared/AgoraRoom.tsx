@@ -129,11 +129,6 @@ export default function AgoraRoom({ roomName, displayName, onClose, eventTitle, 
         setLocalAudioTrack(audioTrack);
         setLocalVideoTrack(videoTrack);
 
-        // Play local video
-        if (localVideoRef.current) {
-          videoTrack.play(localVideoRef.current);
-        }
-
         // Publish local tracks
         await client.publish([audioTrack, videoTrack]);
         console.log('[Agora] Published local tracks');
@@ -179,12 +174,17 @@ export default function AgoraRoom({ roomName, displayName, onClose, eventTitle, 
     };
   }, [appId, getChannelName, handleUserPublished, handleUserUnpublished, handleUserLeft, handleUserJoined]);
 
-  // Play local video when track is ready
+  // Play local video when track is ready and DOM is rendered (after loading clears)
   useEffect(() => {
-    if (localVideoTrack && localVideoRef.current && !isVideoOff) {
-      localVideoTrack.play(localVideoRef.current);
+    if (localVideoTrack && isJoined && !isVideoOff) {
+      const timer = setTimeout(() => {
+        if (localVideoRef.current) {
+          localVideoTrack.play(localVideoRef.current);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [localVideoTrack, isVideoOff]);
+  }, [localVideoTrack, isJoined, isVideoOff]);
 
   const handleToggleAudio = async () => {
     if (localAudioTrack) {
