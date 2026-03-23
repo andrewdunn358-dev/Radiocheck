@@ -1,86 +1,127 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { 
   MessageCircle, Phone, Dumbbell, Heart, BookOpen, Users,
   Shield, Clock, UserCheck, ChevronDown, ExternalLink,
-  Menu, X, Sparkles, Linkedin, Mail
+  Menu, X, Sparkles
 } from 'lucide-react';
 
-// AI Team Data with real descriptions
+// AI Team Data - from the actual app's ai-characters.ts
 const aiTeam = [
   {
     name: 'Tommy',
-    role: 'Your Laid-Back Mate',
-    description: 'Ex-Infantry, now your go-to for a relaxed chat. Tommy keeps it real with dry humor and zero judgment. Perfect for when you just need someone to listen.',
-    personality: 'Calm, friendly, relatable',
-    avatar: '/images/ai/tommy.png',
-    color: 'from-emerald-500 to-green-600'
+    role: 'Your Battle Buddy',
+    description: 'Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back.',
+    avatar: '/images/tommy.png',
+    color: '#f59e0b'
   },
   {
     name: 'Bob',
-    role: 'Straight-Talking Para',
-    description: 'Former Parachute Regiment. Bob tells it like it is with Para banter and no-nonsense advice. When you need someone to cut through the BS.',
-    personality: 'Direct, honest, motivating',
-    avatar: '/images/ai/bob.png',
-    color: 'from-red-500 to-rose-600'
+    role: 'Peer Support Buddy',
+    description: 'A friendly ear when you need to talk. Bob understands military life and is here to listen without judgment.',
+    avatar: '/images/bob.png',
+    color: '#3b82f6'
   },
   {
     name: 'Frankie',
-    role: 'PTI Fitness Coach',
-    description: 'Your virtual PTI who combines physical training with mental resilience. Frankie runs The Gym - building strength inside and out.',
-    personality: 'Energetic, encouraging, structured',
-    avatar: '/images/ai/frankie.png',
-    color: 'from-orange-500 to-amber-600'
+    role: 'Physical Training Instructor',
+    description: 'Your PTI - a former British Army Physical Training Instructor. He brings proper military fitness discipline with motivating banter.',
+    avatar: '/images/frankie.png',
+    color: '#22c55e'
   },
   {
     name: 'Rachel',
-    role: 'Warm & Caring Support',
-    description: 'Former Army medic with a gentle approach. Rachel specializes in emotional support and helping you process difficult feelings.',
-    personality: 'Empathetic, patient, nurturing',
-    avatar: '/images/ai/rachel.png',
-    color: 'from-pink-500 to-rose-500'
+    role: 'Criminal Justice Support',
+    description: 'Rachel provides warm, non-judgemental support for veterans in or leaving the criminal justice system.',
+    avatar: '/images/rachel.png',
+    color: '#14b8a6'
   },
   {
     name: 'Rita',
     role: 'Family Support Specialist',
-    description: 'Dedicated to supporting military families. Rita helps partners, parents, and children navigate the unique challenges they face.',
-    personality: 'Understanding, supportive, resourceful',
-    avatar: '/images/ai/rita.png',
-    color: 'from-purple-500 to-violet-600'
+    description: 'Supporting the partners, spouses, parents and loved ones of veterans. Rita understands that families serve too.',
+    avatar: '/images/rita.png',
+    color: '#f472b6'
   },
   {
-    name: 'Mac',
-    role: 'Royal Navy Veteran',
-    description: 'Senior rate who served on submarines. Mac understands the unique pressures of naval service and long deployments.',
-    personality: 'Steady, wise, experienced',
-    avatar: '/images/ai/mac.png',
-    color: 'from-blue-500 to-cyan-600'
+    name: 'Jack',
+    role: 'Compensation Schemes Expert',
+    description: 'Jack is ex-Royal Navy — 20 years at sea. He helps with compensation claims, AFCS, War Pensions, and hearing loss.',
+    avatar: '/images/jack.png',
+    color: '#1e40af'
   },
   {
-    name: 'Taff',
-    role: 'RAF Ground Crew',
-    description: 'Former RAF technician. Taff is practical, solution-focused, and great at breaking down problems into manageable pieces.',
-    personality: 'Analytical, practical, reassuring',
-    avatar: '/images/ai/taff.png',
-    color: 'from-sky-500 to-blue-600'
+    name: 'Margie',
+    role: 'Addiction Support Specialist',
+    description: 'Supporting veterans dealing with addiction - alcohol, drugs, gambling, and other compulsive behaviours. Margie understands without judgement.',
+    avatar: '/images/margie.png',
+    color: '#ec4899'
   },
   {
-    name: 'Jock',
-    role: 'Scottish Highlander',
-    description: 'Former Royal Regiment of Scotland. Jock brings highland hospitality and a warm Scottish welcome for a good blether.',
-    personality: 'Friendly, humorous, welcoming',
-    avatar: '/images/ai/jock.png',
-    color: 'from-indigo-500 to-purple-600'
+    name: 'Catherine',
+    role: 'Calm & Intelligent Support',
+    description: 'Catherine is composed, articulate, and grounded. She helps you think clearly when emotions run high.',
+    avatar: '/images/catherine.png',
+    color: '#8b5cf6'
   },
   {
-    name: 'Sarge',
-    role: 'Senior NCO Mentor',
-    description: 'The wise senior NCO who has seen it all. Sarge provides mentorship and helps you navigate transition challenges.',
-    personality: 'Authoritative, knowledgeable, mentoring',
-    avatar: '/images/ai/sarge.png',
-    color: 'from-slate-500 to-gray-600'
+    name: 'Finch',
+    role: 'Military Law & Legal Support',
+    description: 'Expert in UK military law, the Armed Forces Act, and service discipline. Finch helps veterans understand their legal rights.',
+    avatar: '/images/finch.png',
+    color: '#6366f1'
+  },
+  {
+    name: 'Baz',
+    role: 'Support Services & Transition',
+    description: 'Baz is an ex-Rifles infantry soldier who helps veterans navigate support services, housing, and the transition out of military life.',
+    avatar: '/images/baz.png',
+    color: '#78716c'
+  },
+  {
+    name: 'Megan',
+    role: 'Women Veterans Specialist',
+    description: 'Megan is ex-RAF MERT — a Chinook medic who flew nearly 200 missions. She specialises in supporting women veterans.',
+    avatar: '/images/megan.png',
+    color: '#a855f7'
+  },
+  {
+    name: 'Penny',
+    role: 'Benefits & Money Specialist',
+    description: 'Penny is ex-Royal Navy, 15 years as a Writer. She knows the benefits system inside out — UC, PIP, Council Tax, debt advice.',
+    avatar: '/images/penny.png',
+    color: '#22c55e'
+  },
+  {
+    name: 'Alex',
+    role: 'LGBTQ+ Veterans Specialist',
+    description: 'Alex is non-binary, former RAF, who served under the ban. They understand the unique journey of LGBTQ+ veterans.',
+    avatar: '/images/alex.png',
+    color: '#ec4899'
+  },
+  {
+    name: 'Sam',
+    role: 'Forces Kids Specialist',
+    description: 'Sam was an Army wife for 15 years with three children. She understands school moves, deployments, and forces kids.',
+    avatar: '/images/sam.png',
+    color: '#f97316'
+  },
+  {
+    name: 'Kofi',
+    role: 'Commonwealth Veterans Specialist',
+    description: 'Kofi served 16 years in the Royal Logistics Corps. Originally from Ghana, he helps Commonwealth veterans claim their rights.',
+    avatar: '/images/kofi.png',
+    color: '#14b8a6'
+  },
+  {
+    name: 'James',
+    role: 'Faith & Spiritual Support',
+    description: 'James was an Army Chaplain for 20 years, serving alongside soldiers of every faith. He provides spiritual care without preaching.',
+    avatar: '/images/james.png',
+    color: '#8b5cf6'
   }
 ];
 
@@ -110,7 +151,7 @@ const features = [
   {
     icon: MessageCircle,
     title: 'AI Battle Buddies',
-    description: '9 AI companions with unique personalities, available 24/7 for a chat whenever you need it.',
+    description: '16 AI companions with unique personalities, available 24/7 for a chat whenever you need it.',
     color: 'bg-emerald-500/20 text-emerald-400'
   },
   {
@@ -147,7 +188,7 @@ const features = [
 
 const stats = [
   { value: '24/7', label: 'AI Support Available' },
-  { value: '9', label: 'AI Battle Buddies' },
+  { value: '16', label: 'AI Battle Buddies' },
   { value: '100%', label: 'Confidential' },
   { value: 'FREE', label: 'Forever' }
 ];
@@ -163,7 +204,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <img 
-                src="https://customer-assets.emergentagent.com/job_535ca64e-70e1-4fc8-813d-3b487fc07905/artifacts/14k1x3vl_logo.png"
+                src="/images/logo.png"
                 alt="Radio Check"
                 className="w-10 h-10"
               />
@@ -329,30 +370,30 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Meet the AI Team</h2>
             <p className="text-secondary text-lg max-w-2xl mx-auto">
-              9 unique AI Battle Buddies, each with their own personality and background. Available 24/7, they understand military culture and speak your language.
+              16 unique AI Battle Buddies, each with their own personality and expertise. Available 24/7, they understand military culture and speak your language.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {aiTeam.map((member, index) => (
               <div 
                 key={index}
-                className="bg-card rounded-2xl p-6 border border-border hover:border-secondary/50 transition group"
+                className="bg-card rounded-2xl p-5 border border-border hover:border-secondary/50 transition group"
               >
-                <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${member.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform mx-auto overflow-hidden`}>
-                  <span className="text-3xl font-bold text-white">{member.name[0]}</span>
+                <div 
+                  className="w-20 h-20 rounded-full overflow-hidden mb-4 group-hover:scale-105 transition-transform mx-auto ring-2 ring-offset-2 ring-offset-card"
+                  style={{ borderColor: member.color, boxShadow: `0 0 0 2px ${member.color}` }}
+                >
+                  <img 
+                    src={member.avatar} 
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
-                  <p className="text-sm text-secondary mb-3">{member.role}</p>
-                  <p className="text-secondary/80 text-sm mb-4">{member.description}</p>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {member.personality.split(', ').map((trait, i) => (
-                      <span key={i} className="px-2 py-1 bg-primary-dark rounded text-xs text-secondary">
-                        {trait}
-                      </span>
-                    ))}
-                  </div>
+                  <h3 className="text-lg font-semibold mb-1">{member.name}</h3>
+                  <p className="text-xs mb-2" style={{ color: member.color }}>{member.role}</p>
+                  <p className="text-secondary/80 text-xs">{member.description}</p>
                 </div>
               </div>
             ))}
@@ -459,16 +500,12 @@ export default function HomePage() {
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-lg font-semibold text-secondary mb-8">PROUDLY SUPPORTED BY</h3>
-          <div className="flex flex-wrap justify-center items-center gap-12">
+          <div className="flex flex-wrap justify-center items-center gap-8">
             <a href="https://www.youtube.com/@FrankiesPod" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 transition">
-              <div className="bg-card rounded-lg px-6 py-4 border border-border">
-                <span className="text-xl font-semibold">Frankie&apos;s Pod</span>
-              </div>
+              <img src="/images/frankies-pod.png" alt="Frankie's Pod" className="h-16 w-auto" />
             </a>
             <a href="https://www.standingtall.co.uk/" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 transition">
-              <div className="bg-card rounded-lg px-6 py-4 border border-border">
-                <span className="text-xl font-semibold">Standing Tall Foundation</span>
-              </div>
+              <img src="/images/standing-tall.png" alt="Standing Tall Foundation" className="h-16 w-auto" />
             </a>
           </div>
         </div>
@@ -558,7 +595,7 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <img 
-                  src="https://customer-assets.emergentagent.com/job_535ca64e-70e1-4fc8-813d-3b487fc07905/artifacts/14k1x3vl_logo.png"
+                  src="/images/logo.png"
                   alt="Radio Check"
                   className="w-10 h-10"
                 />
