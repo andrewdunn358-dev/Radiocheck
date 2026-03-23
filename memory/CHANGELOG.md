@@ -4,6 +4,80 @@ Quick reference for tracking development changes.
 
 ---
 
+## March 23, 2026
+
+### Jitsi to Agora Video Migration
+**Status:** ✅ COMPLETE
+
+Replaced Jitsi Meet integration with Agora Video SDK for more reliable video conferencing:
+- Installed `agora-rtc-sdk-ng` in portal
+- Created new `/app/portal/src/components/shared/AgoraRoom.tsx`
+- Updated EventsTab components (admin & staff) to use AgoraRoom
+- Removed old JitsiRoom.tsx
+- Added `NEXT_PUBLIC_AGORA_APP_ID` to environment
+
+### RadioCheck.me Website Migration to Vercel
+**Status:** ✅ COMPLETE
+
+Created comprehensive marketing website for radiocheck.me:
+
+**New Pages Created:**
+- Homepage (`/`) - Full landing page with hero, features, AI team, founders, portals
+- Privacy Policy (`/privacy`)
+- Terms of Service (`/terms`)
+
+**Features Implemented:**
+- Theme matching other portals (navy blue `#0f172a`, gold accents `#c9a227`)
+- All 16 AI Battle Buddies with actual avatar images from app
+- Meet the Founders section (Andrew "Frankie" Dunn, Rachel Webster, Anthony Donnelly)
+- Partner logos (Frankie's Pod, Standing Tall Foundation)
+- Portal links section (Main App, Training, Staff, Admin)
+- Crisis support info in footer
+- Mobile responsive navigation
+
+**AI Battle Buddies (from app):**
+Tommy, Bob, Frankie, Rachel, Rita, Jack, Margie, Catherine, Finch, Baz, Megan, Penny, Alex, Sam, Kofi, James
+
+### Subdomain Routing Configuration
+**Status:** ✅ COMPLETE
+
+Added Next.js middleware for subdomain routing:
+- `admin.radiocheck.me` → `/admin`
+- `staff.radiocheck.me` → `/staff`
+- `training.radiocheck.me` → `/learning`
+- `lms-admin.radiocheck.me` → `/lms-admin`
+
+**Files Created:**
+- `/app/portal/src/middleware.ts` - Handles subdomain-based routing
+
+**Vercel Configuration:**
+- All subdomains added to Vercel project
+- Rewrites configured in `next.config.js`
+
+### Admin Event Creation Fix
+**Status:** ✅ COMPLETE
+
+Fixed 422 error when creating events:
+- Added validation for required fields (title, host_name)
+- Fixed date format to proper ISO8601
+- Trim whitespace from string fields
+
+### Time Tracking Rate Update
+**Status:** ✅ COMPLETE
+
+Updated hourly rate from £35 to £40/hour across all categories:
+- Development
+- Admin Portal
+- Staff Portal
+- LMS Admin
+- LMS Learning
+- App Testing
+
+**Files Changed:**
+- `/app/backend/routers/timetracking.py` - Updated DEFAULT_HOURLY_RATE and CATEGORY_RATES
+
+---
+
 ## March 22, 2026
 
 ### BUG FIXED: Vercel Frontend Build Failure (P0)

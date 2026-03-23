@@ -38,16 +38,16 @@ CATEGORIES = [
 ]
 
 # Default hourly rate in GBP
-DEFAULT_HOURLY_RATE = 35.00
+DEFAULT_HOURLY_RATE = 40.00
 
 # Category-specific rates (optional - defaults to DEFAULT_HOURLY_RATE)
 CATEGORY_RATES = {
-    "Development": 35.00,
-    "Admin Portal": 35.00,
-    "Staff Portal": 35.00,
-    "LMS Admin": 35.00,
-    "LMS Learning": 35.00,
-    "App Testing": 35.00,
+    "Development": 40.00,
+    "Admin Portal": 40.00,
+    "Staff Portal": 40.00,
+    "LMS Admin": 40.00,
+    "LMS Learning": 40.00,
+    "App Testing": 40.00,
     "Support": 30.00,
     "Training": 30.00,
     "Documentation": 30.00,
