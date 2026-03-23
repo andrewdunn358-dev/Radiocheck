@@ -117,7 +117,7 @@ export default function TimeTrackingTab({ token, onSuccess, onError }: TimeTrack
         </div>
         <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg p-6">
           <p className="text-green-200 text-sm mb-1">Total Cost</p>
-          <p className="text-3xl font-bold">£{timeTrackingSummary?.total?.cost?.toFixed(2) || '0.00'}</p>
+          <p className="text-3xl font-bold">£{timeTrackingSummary?.total?.total_cost?.toFixed(2) || '0.00'}</p>
         </div>
         <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-6">
           <p className="text-purple-200 text-sm mb-1">Entries</p>
