@@ -189,7 +189,7 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
     const eventType = event.event_type || 'in-person';
     const isLive = isEventLive(event);
     const isUpcoming = isEventUpcoming(event);
-    const canJoinVirtually = isVirtualEvent(event) && isLive;
+    const canJoinVirtually = isVirtualEvent(event) && (isLive || isUpcoming);
 
     return (
       <div key={event.id} className={`bg-gray-700 rounded-lg p-4 ${isPast ? 'opacity-75' : ''} ${isLive ? 'ring-2 ring-green-500' : ''}`}>
@@ -233,19 +233,20 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
         </div>
         
         <div className="flex gap-2 mt-3 flex-wrap">
-          {/* Join button for live virtual/hybrid events */}
+          {/* Join button for virtual/hybrid events */}
           {canJoinVirtually && (
             <button 
               onClick={() => handleJoinEvent(event)}
-              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1"
+              className={`px-3 py-1.5 ${isLive ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'} text-white rounded text-xs font-medium flex items-center gap-1`}
+              data-testid={`admin-join-event-${event.id}`}
             >
               <Video className="w-3 h-3" />
-              Join Now
+              {isLive ? 'Join Now' : 'Join Event'}
             </button>
           )}
           
           {/* Show reminder for upcoming virtual events */}
-          {isVirtualEvent(event) && isUpcoming && (
+          {isVirtualEvent(event) && isUpcoming && !isLive && (
             <span className="px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded text-xs flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Starting {new Date(event.scheduled_for || event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -387,10 +388,10 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
                   <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
                     <div className="flex items-center gap-2 text-purple-400 text-sm">
                       <Video className="w-4 h-4" />
-                      <span>Virtual access via Jitsi Meet - no account needed</span>
+                      <span>Virtual access via Agora Video - no account needed</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
-                      Participants can join instantly when the event goes live.
+                      Participants can join from the mobile app, admin, or staff portal.
                     </p>
                   </div>
                 )}

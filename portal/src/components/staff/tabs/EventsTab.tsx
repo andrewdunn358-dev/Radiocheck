@@ -116,7 +116,7 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
           {upcomingEvents.map((event) => {
             const eventType = event.event_type || 'in-person';
             const isLive = isEventLive(event);
-            const canJoinVirtually = isVirtualEvent(event) && isLive;
+            const canJoinVirtually = isVirtualEvent(event);
             const eventDate = new Date(event.scheduled_for || event.event_date);
 
             return (
@@ -171,21 +171,22 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
                   )}
                 </div>
 
-                {/* Join button for live virtual events */}
+                {/* Join button for virtual events */}
                 {canJoinVirtually && (
                   <button 
                     onClick={() => handleJoinEvent(event)}
-                    className="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition"
+                    className={`w-full px-4 py-2.5 ${isLive ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'} text-white rounded-lg font-medium flex items-center justify-center gap-2 transition`}
+                    data-testid={`staff-join-event-${event.id}`}
                   >
                     <Video className="w-4 h-4" />
-                    Join Virtual Event
+                    {isLive ? 'Join Now' : 'Join Event'}
                   </button>
                 )}
 
-                {/* Info for upcoming virtual events */}
-                {isVirtualEvent(event) && !isLive && (
-                  <div className="w-full px-4 py-2.5 bg-purple-600/20 text-purple-400 rounded-lg text-sm text-center">
-                    Virtual access available when event goes live
+                {/* Info for non-virtual events */}
+                {!isVirtualEvent(event) && !isLive && (
+                  <div className="w-full px-4 py-2.5 bg-gray-600/20 text-gray-400 rounded-lg text-sm text-center">
+                    In-person event
                   </div>
                 )}
               </div>

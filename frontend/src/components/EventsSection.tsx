@@ -19,7 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { API_URL } from '../config/api';
-import JitsiMeetComponent from './JitsiMeetComponent';
+import AgoraMeetComponent from './AgoraMeetComponent';
 
 interface Event {
   id: string;
@@ -39,10 +39,8 @@ interface Event {
 interface JoinDetails {
   event_id: string;
   jitsi_room_name: string;
-  jitsi_domain: string;
   display_name: string;
   is_moderator: boolean;
-  config: any;
 }
 
 export default function EventsSection() {
@@ -60,8 +58,8 @@ export default function EventsSection() {
   const [displayName, setDisplayName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   
-  // Jitsi video call state
-  const [showJitsi, setShowJitsi] = useState(false);
+  // Agora video call state
+  const [showAgora, setShowAgora] = useState(false);
   const [joinDetails, setJoinDetails] = useState<JoinDetails | null>(null);
   
   // Reminders
@@ -109,7 +107,7 @@ export default function EventsSection() {
       const data: JoinDetails = await response.json();
       setJoinDetails(data);
       setShowJoinModal(false);
-      setShowJitsi(true);
+      setShowAgora(true);
     } catch (err: any) {
       alert(err.message || 'Failed to join event');
     } finally {
@@ -128,7 +126,7 @@ export default function EventsSection() {
     }
   };
 
-  const handleCloseJitsi = async () => {
+  const handleCloseAgora = async () => {
     if (joinDetails) {
       try {
         await fetch(`${API_URL}/api/events/${joinDetails.event_id}/leave`, {
@@ -138,9 +136,9 @@ export default function EventsSection() {
         console.error('Error logging leave:', err);
       }
     }
-    setShowJitsi(false);
+    setShowAgora(false);
     setJoinDetails(null);
-    fetchEvents(); // Refresh to update participant count
+    fetchEvents();
   };
 
   const formatEventTime = (dateString: string) => {
@@ -372,16 +370,14 @@ export default function EventsSection() {
         </View>
       </Modal>
 
-      {/* Jitsi Video Call Modal */}
-      <Modal visible={showJitsi} animationType="slide">
+      {/* Agora Video Call Modal */}
+      <Modal visible={showAgora} animationType="slide">
         {joinDetails && (
-          <JitsiMeetComponent
-            roomName={joinDetails.jitsi_room_name}
-            domain={joinDetails.jitsi_domain}
+          <AgoraMeetComponent
+            roomName={`event_${joinDetails.event_id}`}
             displayName={joinDetails.display_name}
-            config={joinDetails.config}
-            isModerator={joinDetails.is_moderator}
-            onClose={handleCloseJitsi}
+            eventTitle={selectedEvent?.title}
+            onClose={handleCloseAgora}
           />
         )}
       </Modal>

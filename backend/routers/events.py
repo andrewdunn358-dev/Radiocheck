@@ -72,10 +72,11 @@ class EventResponse(BaseModel):
 class JoinEventResponse(BaseModel):
     event_id: str
     jitsi_room_name: str
-    jitsi_domain: str
+    agora_channel: str
+    agora_app_id: str
     display_name: str
     is_moderator: bool
-    jwt_token: Optional[str]  # For Jitsi JWT auth if needed
+    jwt_token: Optional[str]
     config: dict
 
 
@@ -397,57 +398,26 @@ async def join_event(event_id: str, display_name: str = "Veteran", user_id: Opti
         staff = await db.staff.find_one({"user_id": user_id})
         is_moderator = staff is not None
     
-    # Jitsi configuration
-    # NOTE: prejoinPageEnabled must be FALSE to avoid the confusing "Join meeting" lobby screen
-    # that was causing users to get stuck on "Connecting..." because they didn't click the 
-    # second join button inside Jitsi's prejoin page
-    jitsi_config = {
+    # Agora configuration
+    agora_app_id = "cfd84eb3fcd7490cbe366d8cd1a4d974"
+    agora_channel = f"radiocheck_event{event_id.replace('-', '').lower()}"
+    
+    # Config for backwards compatibility
+    agora_config = {
         "startWithAudioMuted": True,
         "startWithVideoMuted": False,
-        "disableDeepLinking": True,
-        "prejoinPageEnabled": False,  # CRITICAL: Skip prejoin lobby - go directly into meeting
-        "enableClosePage": False,
-        "disableInviteFunctions": True,
-        "hideConferenceSubject": False,
         "subject": event["title"],
-        "toolbarButtons": [
-            "camera",
-            "chat",
-            "desktop",
-            "fullscreen",
-            "hangup",
-            "microphone",
-            "participants-pane",
-            "raisehand",
-            "settings",
-            "tileview",
-            "toggle-camera",
-        ],
-        "interfaceConfigOverwrite": {
-            "SHOW_JITSI_WATERMARK": False,
-            "SHOW_WATERMARK_FOR_GUESTS": False,
-            "TOOLBAR_ALWAYS_VISIBLE": True,
-            "DISABLE_JOIN_LEAVE_NOTIFICATIONS": False,
-            "MOBILE_APP_PROMO": False,
-        }
     }
-    
-    # Add moderator-only buttons
-    if is_moderator:
-        jitsi_config["toolbarButtons"].extend([
-            "mute-everyone",
-            "mute-video-everyone",
-            "security",
-        ])
     
     return {
         "event_id": event_id,
         "jitsi_room_name": event["jitsi_room_name"],
-        "jitsi_domain": "meet.jit.si",  # Public Jitsi server
+        "agora_channel": agora_channel,
+        "agora_app_id": agora_app_id,
         "display_name": display_name,
         "is_moderator": is_moderator,
-        "jwt_token": None,  # Not using JWT auth for public Jitsi
-        "config": jitsi_config
+        "jwt_token": None,
+        "config": agora_config
     }
 
 
