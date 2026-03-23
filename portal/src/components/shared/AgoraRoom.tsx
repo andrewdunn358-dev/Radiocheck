@@ -177,11 +177,15 @@ export default function AgoraRoom({ roomName, displayName, onClose, eventTitle, 
   // Play local video when track is ready and DOM is rendered (after loading clears)
   useEffect(() => {
     if (localVideoTrack && isJoined && !isVideoOff) {
-      const timer = setTimeout(() => {
+      const playVideo = (attempts = 0) => {
         if (localVideoRef.current) {
           localVideoTrack.play(localVideoRef.current);
+          console.log('[Agora] Local video playing');
+        } else if (attempts < 10) {
+          setTimeout(() => playVideo(attempts + 1), 200);
         }
-      }, 100);
+      };
+      const timer = setTimeout(() => playVideo(), 150);
       return () => clearTimeout(timer);
     }
   }, [localVideoTrack, isJoined, isVideoOff]);

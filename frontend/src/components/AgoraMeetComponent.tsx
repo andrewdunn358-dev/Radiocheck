@@ -164,12 +164,16 @@ export default function AgoraMeetComponent({
   // Play local video once joined and DOM is ready
   useEffect(() => {
     if (localVideoTrack && isJoined && !isVideoOff) {
-      // Small delay to ensure DOM element is rendered after loading state clears
-      const timer = setTimeout(() => {
+      // Retry playing video to handle slow mobile DOM rendering
+      const playVideo = (attempts = 0) => {
         if (localVideoRef.current) {
           localVideoTrack.play(localVideoRef.current);
+          console.log('[Agora] Local video playing');
+        } else if (attempts < 10) {
+          setTimeout(() => playVideo(attempts + 1), 200);
         }
-      }, 100);
+      };
+      const timer = setTimeout(() => playVideo(), 150);
       return () => clearTimeout(timer);
     }
   }, [localVideoTrack, isJoined, isVideoOff]);
