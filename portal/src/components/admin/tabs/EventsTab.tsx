@@ -81,16 +81,31 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
   const handleSubmitEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
+    
+    // Validate required fields
+    if (!newEvent.title.trim()) {
+      onError('Title is required');
+      return;
+    }
+    if (!newEvent.host_name.trim()) {
+      onError('Host name is required');
+      return;
+    }
+    
     try {
+      // Create ISO date string with timezone
+      const dateTimeString = `${newEvent.event_date}T${newEvent.event_time}:00`;
+      const eventDateTime = new Date(dateTimeString);
+      
       const eventData = {
-        title: newEvent.title,
-        description: newEvent.description,
-        event_date: `${newEvent.event_date}T${newEvent.event_time}:00`,
+        title: newEvent.title.trim(),
+        description: newEvent.description?.trim() || null,
+        event_date: eventDateTime.toISOString(),
         duration_minutes: newEvent.duration_minutes,
-        host_name: newEvent.host_name,
-        max_participants: newEvent.max_participants,
+        host_name: newEvent.host_name.trim(),
+        max_participants: newEvent.max_participants || null,
         event_type: newEvent.event_type,
-        location: newEvent.location,
+        location: newEvent.location?.trim() || null,
       };
       if (editingEvent) {
         await api.updateEvent(token, editingEvent.id, eventData);
