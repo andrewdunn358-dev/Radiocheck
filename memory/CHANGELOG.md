@@ -4,17 +4,34 @@ Quick reference for tracking development changes.
 
 ---
 
-## March 23, 2026
+## February 2026
 
-### Jitsi to Agora Video Migration
-**Status:** ✅ COMPLETE
+### Jitsi to Agora Migration - ALL Platforms
+**Status:** COMPLETE
 
-Replaced Jitsi Meet integration with Agora Video SDK for more reliable video conferencing:
-- Installed `agora-rtc-sdk-ng` in portal
-- Created new `/app/portal/src/components/shared/AgoraRoom.tsx`
-- Updated EventsTab components (admin & staff) to use AgoraRoom
-- Removed old JitsiRoom.tsx
-- Added `NEXT_PUBLIC_AGORA_APP_ID` to environment
+Replaced Jitsi Meet with Agora Video SDK on **all platforms** (mobile app + web portal):
+
+**Mobile App (`/app/frontend`):**
+- Installed `agora-rtc-sdk-ng` 
+- Created `/app/frontend/src/components/AgoraMeetComponent.tsx` (new Agora video component)
+- Updated `/app/frontend/src/components/EventsSection.tsx` to use AgoraMeetComponent
+- Deleted old `JitsiMeetComponent.tsx`
+- Added `EXPO_PUBLIC_AGORA_APP_ID` to `.env`
+
+**Admin Portal:**
+- Join button now available for ALL virtual/hybrid events (not just live ones)
+- Renamed `activeJitsiEvent` -> `activeVideoEvent` for clarity
+
+**Staff Portal:**
+- Join button now available for ALL virtual/hybrid events (not just live ones)
+- Renamed `activeJitsiEvent` -> `activeVideoEvent` for clarity
+
+**Backend (`/app/backend/routers/events.py`):**
+- Updated `/api/events/{id}/join` to return `agora_channel` and `agora_app_id`
+- Removed Jitsi-specific config from join response
+- Channel naming: `radiocheck_event{id}` (consistent across all platforms)
+
+**Testing:** 10/10 backend tests passed. Portal + Expo builds verified.
 
 ### RadioCheck.me Website Migration to Vercel
 **Status:** ✅ COMPLETE

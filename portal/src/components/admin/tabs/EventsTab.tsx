@@ -28,8 +28,8 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
   const [eventAttendance, setEventAttendance] = useState<any[]>([]);
   const [attendanceEventTitle, setAttendanceEventTitle] = useState('');
   
-  // Jitsi state
-  const [activeJitsiEvent, setActiveJitsiEvent] = useState<any>(null);
+  // Video room state
+  const [activeVideoEvent, setActiveVideoEvent] = useState<any>(null);
   
   // Form state
   const [newEvent, setNewEvent] = useState({
@@ -170,7 +170,7 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
   };
 
   const handleJoinEvent = (event: any) => {
-    setActiveJitsiEvent(event);
+    setActiveVideoEvent(event);
   };
 
   const getEventTypeBadge = (eventType: EventType) => {
@@ -283,12 +283,12 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
   return (
     <div data-testid="events-tab">
       {/* Agora Room Modal */}
-      {activeJitsiEvent && (
+      {activeVideoEvent && (
         <AgoraRoom
-          roomName={`event_${activeJitsiEvent.id}`}
+          roomName={`event_${activeVideoEvent.id}`}
           displayName={userName || 'Admin'}
-          eventTitle={activeJitsiEvent.title}
-          onClose={() => setActiveJitsiEvent(null)}
+          eventTitle={activeVideoEvent.title}
+          onClose={() => setActiveVideoEvent(null)}
         />
       )}
 

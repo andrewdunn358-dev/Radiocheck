@@ -17,7 +17,7 @@ type EventType = 'in-person' | 'virtual' | 'hybrid';
 
 export default function EventsTab({ token, userName }: EventsTabProps) {
   const [events, setEvents] = useState<any[]>([]);
-  const [activeJitsiEvent, setActiveJitsiEvent] = useState<any>(null);
+  const [activeVideoEvent, setActiveVideoEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const loadEvents = useCallback(async () => {
@@ -69,7 +69,7 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
   };
 
   const handleJoinEvent = (event: any) => {
-    setActiveJitsiEvent(event);
+    setActiveVideoEvent(event);
   };
 
   // Filter to upcoming and live events
@@ -82,12 +82,12 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
   return (
     <div data-testid="staff-events-tab">
       {/* Agora Room Modal */}
-      {activeJitsiEvent && (
+      {activeVideoEvent && (
         <AgoraRoom
-          roomName={`event_${activeJitsiEvent.id}`}
+          roomName={`event_${activeVideoEvent.id}`}
           displayName={userName || 'Staff'}
-          eventTitle={activeJitsiEvent.title}
-          onClose={() => setActiveJitsiEvent(null)}
+          eventTitle={activeVideoEvent.title}
+          onClose={() => setActiveVideoEvent(null)}
         />
       )}
 
