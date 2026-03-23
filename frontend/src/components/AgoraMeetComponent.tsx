@@ -16,7 +16,7 @@ interface AgoraMeetProps {
   eventTitle?: string;
 }
 
-const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || '';
+const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'cfd84eb3fcd7490cbe366d8cd1a4d974';
 
 export default function AgoraMeetComponent({
   roomName,

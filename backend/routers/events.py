@@ -35,7 +35,7 @@ class EventCreate(BaseModel):
     recurring: Optional[str] = Field(None)  # 'weekly', 'monthly', or None
     requires_moderation: bool = True
     waiting_room_enabled: bool = True
-    event_type: str = Field("in-person")  # 'in-person', 'virtual', 'hybrid'
+    event_type: str = Field("virtual")  # Always virtual
     location: Optional[str] = Field(None, max_length=500)
 
 
@@ -62,6 +62,7 @@ class EventResponse(BaseModel):
     host_name: str
     recurring: Optional[str]
     status: str
+    event_type: str = "virtual"
     jitsi_room_name: str
     participant_count: int
     created_at: datetime

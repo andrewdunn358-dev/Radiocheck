@@ -40,7 +40,7 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
     duration_minutes: 60,
     host_name: '',
     max_participants: 20,
-    event_type: 'in-person' as EventType,
+    event_type: 'virtual' as EventType,
     location: '',
   });
 
@@ -104,8 +104,8 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
         duration_minutes: newEvent.duration_minutes,
         host_name: newEvent.host_name.trim(),
         max_participants: newEvent.max_participants || null,
-        event_type: newEvent.event_type,
-        location: newEvent.location?.trim() || null,
+        event_type: 'virtual',
+        location: null,
       };
       if (editingEvent) {
         await api.updateEvent(token, editingEvent.id, eventData);
@@ -121,7 +121,7 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
         event_date: new Date().toISOString().split('T')[0], 
         event_time: '14:00', duration_minutes: 60, 
         host_name: '', max_participants: 20,
-        event_type: 'in-person',
+        event_type: 'virtual',
         location: '',
       });
       loadEvents();
@@ -186,17 +186,17 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
 
   // Render event card
   const renderEventCard = (event: any, isPast: boolean = false) => {
-    const eventType = event.event_type || 'in-person';
+    const eventType = event.event_type || 'virtual';
     const isLive = isEventLive(event);
     const isUpcoming = isEventUpcoming(event);
-    const canJoinVirtually = isVirtualEvent(event) && (isLive || isUpcoming);
+    const canJoin = (isLive || isUpcoming) && event.status !== 'cancelled';
 
     return (
       <div key={event.id} className={`bg-gray-700 rounded-lg p-4 ${isPast ? 'opacity-75' : ''} ${isLive ? 'ring-2 ring-green-500' : ''}`}>
         <div className="flex justify-between items-start mb-2">
           <h4 className="font-medium">{event.title}</h4>
           <div className="flex items-center gap-2">
-            {getEventTypeBadge(eventType)}
+            <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 flex items-center gap-1"><Video className="w-3 h-3" /> Virtual</span>
             {isLive && (
               <span className="px-2 py-0.5 rounded text-xs bg-green-500 text-white animate-pulse flex items-center gap-1">
                 <span className="w-2 h-2 bg-white rounded-full"></span>
@@ -215,13 +215,6 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
         
         <p className="text-sm text-gray-400 mb-2">{event.description?.substring(0, 60)}{event.description?.length > 60 ? '...' : ''}</p>
         
-        {event.location && (
-          <div className="flex items-center gap-1 text-sm text-gray-400 mb-2">
-            <MapPin className="w-3 h-3" />
-            <span>{event.location}</span>
-          </div>
-        )}
-        
         <div className="flex justify-between items-center text-sm mb-2">
           <span className="text-gray-400">
             {new Date(event.scheduled_for || event.event_date).toLocaleDateString()} at {new Date(event.scheduled_for || event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -233,8 +226,8 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
         </div>
         
         <div className="flex gap-2 mt-3 flex-wrap">
-          {/* Join button for virtual/hybrid events */}
-          {canJoinVirtually && (
+          {/* Join button */}
+          {canJoin && (
             <button 
               onClick={() => handleJoinEvent(event)}
               className={`px-3 py-1.5 ${isLive ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'} text-white rounded text-xs font-medium flex items-center gap-1`}
@@ -245,8 +238,8 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
             </button>
           )}
           
-          {/* Show reminder for upcoming virtual events */}
-          {isVirtualEvent(event) && isUpcoming && !isLive && (
+          {/* Show time for upcoming events */}
+          {isUpcoming && !isLive && (
             <span className="px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded text-xs flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Starting {new Date(event.scheduled_for || event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -340,61 +333,16 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
                   />
                 </div>
 
-                {/* Event Type Selector */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Event Type</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: 'in-person', label: 'In-Person', icon: MapPin },
-                      { value: 'virtual', label: 'Virtual', icon: Video },
-                      { value: 'hybrid', label: 'Hybrid', icon: Users },
-                    ].map((type) => {
-                      const Icon = type.icon;
-                      return (
-                        <button
-                          key={type.value}
-                          type="button"
-                          onClick={() => setNewEvent({ ...newEvent, event_type: type.value as EventType })}
-                          className={`p-3 rounded-lg border transition flex flex-col items-center gap-1 ${
-                            newEvent.event_type === type.value
-                              ? 'border-blue-500 bg-blue-500/20 text-blue-400'
-                              : 'border-gray-600 bg-gray-700 text-gray-400 hover:border-gray-500'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" />
-                          <span className="text-xs">{type.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Location field - shown for in-person and hybrid events */}
-                {(newEvent.event_type === 'in-person' || newEvent.event_type === 'hybrid') && (
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Location</label>
-                    <input
-                      type="text"
-                      value={newEvent.location}
-                      onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                      placeholder="Enter venue address"
-                    />
-                  </div>
-                )}
-
                 {/* Virtual event info */}
-                {(newEvent.event_type === 'virtual' || newEvent.event_type === 'hybrid') && (
-                  <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                    <div className="flex items-center gap-2 text-purple-400 text-sm">
-                      <Video className="w-4 h-4" />
-                      <span>Virtual access via Agora Video - no account needed</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Participants can join from the mobile app, admin, or staff portal.
-                    </p>
+                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                  <div className="flex items-center gap-2 text-purple-400 text-sm">
+                    <Video className="w-4 h-4" />
+                    <span>Virtual access via Agora Video - no account needed</span>
                   </div>
-                )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Participants can join from the mobile app, admin, or staff portal.
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -505,7 +453,7 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium">{event.title}</h4>
                       <div className="flex items-center gap-2">
-                        {getEventTypeBadge(event.event_type || 'in-person')}
+                        <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 flex items-center gap-1"><Video className="w-3 h-3" /> Virtual</span>
                         <span className="text-xs text-gray-400">{event.participant_count || 0} attended</span>
                       </div>
                     </div>

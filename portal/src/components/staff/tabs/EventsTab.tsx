@@ -24,8 +24,7 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
     if (!token) return;
     setLoading(true);
     try {
-      // Use staff API to get events - may need to add this endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com'}/api/events`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com'}/api/events/upcoming`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -116,7 +115,7 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
           {upcomingEvents.map((event) => {
             const eventType = event.event_type || 'in-person';
             const isLive = isEventLive(event);
-            const canJoinVirtually = isVirtualEvent(event);
+            const canJoin = event.status !== 'cancelled';
             const eventDate = new Date(event.scheduled_for || event.event_date);
 
             return (
@@ -136,8 +135,9 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
                   </div>
                 </div>
 
+                {/* Virtual event badge */}
                 <div className="flex items-center gap-2 mb-2">
-                  {getEventTypeBadge(eventType)}
+                  <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 flex items-center gap-1"><Video className="w-3 h-3" /> Virtual</span>
                 </div>
 
                 {event.description && (
@@ -171,8 +171,8 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
                   )}
                 </div>
 
-                {/* Join button for virtual events */}
-                {canJoinVirtually && (
+                {/* Join button for events */}
+                {canJoin && (
                   <button 
                     onClick={() => handleJoinEvent(event)}
                     className={`w-full px-4 py-2.5 ${isLive ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'} text-white rounded-lg font-medium flex items-center justify-center gap-2 transition`}
@@ -183,12 +183,6 @@ export default function EventsTab({ token, userName }: EventsTabProps) {
                   </button>
                 )}
 
-                {/* Info for non-virtual events */}
-                {!isVirtualEvent(event) && !isLive && (
-                  <div className="w-full px-4 py-2.5 bg-gray-600/20 text-gray-400 rounded-lg text-sm text-center">
-                    In-person event
-                  </div>
-                )}
               </div>
             );
           })}
