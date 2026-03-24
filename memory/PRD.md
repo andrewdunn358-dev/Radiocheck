@@ -81,6 +81,19 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 3. **Callback Banner** — Full-width banner below "Meet the AI Platoon" section
 4. **Avatar Images** — Copied to `/app/frontend/assets/images/`, `/app/frontend/public/images/`, and registered in avatar maps
 
+## Changes — 24 March 2026 (Evening Session)
+- **AI Chat Banners**: Fixed all 4 new pages — banners now at TOP of page (after back button, before hero) with real photo avatars and 24/7 badge
+- **Recommended Reads Page**: Created `/app/frontend/app/recommended-reads.tsx` — 23 curated military books/audiobooks with cover images, star ratings, category filters, format filters, Amazon + Waterstones buy buttons
+- **Live Book Search**: Open Library search API integration — search any book in-app, see results with covers, tap to buy on Amazon or Waterstones
+- **Books Added**: Escape from Kabul (Wood/Jones), Walking the Nile (Wood), Danger Close (Tootal), Operation Mayhem (Heaney), Operation Telic (Ripley)
+- **Book Covers Fixed**: Switched from unreliable ISBN lookups to verified Open Library cover IDs; placeholder icon for books without covers
+- **Homepage Tiles**: Added "Recommended Reads" tile, moved "Recommended Podcasts" to bottom
+- **AI Platoon Reordered**: Now matches tile order exactly (Tommy→Bob→Rachel→Margie→...→Reg)
+- **They Served Tile**: Changed to inclusive blue icon with three figures (man/person/woman)
+- **Growing Up Military**: Renamed page header from "Forces Kids"
+- **Crisis Support**: Added "Request a Callback" card below On-Duty Support card
+- **Time Tracked**: 3h30m Development @ £40/hr = £140
+
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions
 
