@@ -12,7 +12,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://safeguard-ai-launch.preview.emergentagent.com'))
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://safety-hardening-1.preview.emergentagent.com'))
 BASE_URL = BASE_URL.rstrip('/')
 
 # Admin credentials

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 # Get the API URL
-API_URL = os.getenv("REACT_APP_BACKEND_URL", "https://safeguard-ai-launch.preview.emergentagent.com")
+API_URL = os.getenv("REACT_APP_BACKEND_URL", "https://safety-hardening-1.preview.emergentagent.com")
 
 @dataclass
 class TestScenario:

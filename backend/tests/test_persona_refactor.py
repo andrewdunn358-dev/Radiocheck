@@ -16,7 +16,7 @@ import os
 import time
 
 # Get base URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://safeguard-ai-launch.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://safety-hardening-1.preview.emergentagent.com')
 
 # Expected characters after refactor
 EXPECTED_CHARACTERS = [
