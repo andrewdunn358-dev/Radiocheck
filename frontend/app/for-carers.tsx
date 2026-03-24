@@ -212,10 +212,10 @@ export default function ForCarers() {
 
         <View style={styles.ctaSection}>
           <Text style={styles.ctaTitle}>Need to talk?</Text>
-          <Text style={styles.ctaText}>Rita understands what families and carers go through.</Text>
-          <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/chat/rita')} data-testid="talk-to-rita-btn">
+          <Text style={styles.ctaText}>Helen understands what carers go through.</Text>
+          <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/chat/helen')} data-testid="talk-to-helen-btn">
             <Ionicons name="chatbubbles" size={20} color="#fff" />
-            <Text style={styles.ctaButtonText}>Talk to Rita</Text>
+            <Text style={styles.ctaButtonText}>Talk to Helen</Text>
           </TouchableOpacity>
         </View>
         <View style={{ height: 40 }} />

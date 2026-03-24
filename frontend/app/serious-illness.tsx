@@ -238,10 +238,10 @@ export default function SeriousIllness() {
 
         <View style={styles.ctaSection}>
           <Text style={styles.ctaTitle}>Need to talk?</Text>
-          <Text style={styles.ctaText}>Catherine can help you think clearly when emotions run high.</Text>
-          <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/chat/catherine')} data-testid="talk-to-catherine-btn">
+          <Text style={styles.ctaText}>Reg has been through it. He understands.</Text>
+          <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/chat/reg')} data-testid="talk-to-reg-btn">
             <Ionicons name="chatbubbles" size={20} color="#fff" />
-            <Text style={styles.ctaButtonText}>Talk to Catherine</Text>
+            <Text style={styles.ctaButtonText}>Talk to Reg</Text>
           </TouchableOpacity>
         </View>
         <View style={{ height: 40 }} />

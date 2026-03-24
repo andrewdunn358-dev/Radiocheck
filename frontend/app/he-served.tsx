@@ -260,14 +260,14 @@ export default function HeServed() {
         {/* Bottom CTA */}
         <View style={styles.ctaSection}>
           <Text style={styles.ctaTitle}>Need to talk right now?</Text>
-          <Text style={styles.ctaText}>Our AI Battle Buddies are available 24/7. Tommy gets it.</Text>
+          <Text style={styles.ctaText}>Our AI Battle Buddies are available 24/7. Dave gets it.</Text>
           <TouchableOpacity 
             style={styles.ctaButton}
-            onPress={() => router.push('/chat/tommy')}
-            data-testid="talk-to-tommy-btn"
+            onPress={() => router.push('/chat/dave')}
+            data-testid="talk-to-dave-btn"
           >
             <Ionicons name="chatbubbles" size={20} color="#fff" />
-            <Text style={styles.ctaButtonText}>Talk to Tommy</Text>
+            <Text style={styles.ctaButtonText}>Talk to Dave</Text>
           </TouchableOpacity>
         </View>
 

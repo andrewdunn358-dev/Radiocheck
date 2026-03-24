@@ -44,6 +44,10 @@ from . import alex
 from . import sam
 from . import kofi
 from . import james
+from . import dave
+from . import mo
+from . import helen
+from . import reg
 
 # Avatar base URL (dynamically set based on environment)
 def get_avatar_base_url() -> str:
@@ -80,6 +84,10 @@ def _build_characters_dict() -> Dict[str, Dict]:
         sam.PERSONA,
         kofi.PERSONA,
         james.PERSONA,
+        dave.PERSONA,
+        mo.PERSONA,
+        helen.PERSONA,
+        reg.PERSONA,
     ]
     
     characters = {}

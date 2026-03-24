@@ -1048,9 +1048,10 @@ RED_INDICATORS = {
     # ===== DIRECT SUICIDAL IDEATION (+100) =====
     "want to end it": 100, "end it all": 100, "kill myself": 100, "take my own life": 100,
     "want to die": 100, "going to die": 100, "suicide": 100, "suicidal": 100,
-    "ending it": 100, "end my life": 100, "finish it": 100, "finish myself": 100,
+    "ending it": 100, "end my life": 100, "ending my life": 100, "finish it": 100, "finish myself": 100,
     "end it tonight": 100, "end it tomorrow": 100, "end it soon": 100,
     "going to end it": 100, "going to end it tonight": 100,
+    "thinking about ending my life": 100, "thought about ending my life": 100,
     
     # ===== "WON'T BE HERE" PATTERNS - CRITICAL (+100) =====
     # From extended trigger dataset - temporal variations
@@ -1166,6 +1167,8 @@ RED_INDICATORS = {
     # ===== "DON'T WANT TO BE HERE" PATTERNS (+90-100) =====
     "dont want to be here": 90, "don't want to be here": 90,
     "dont want to be here tonight": 100, "don't want to be here tonight": 100,
+    "dont want to be alive": 100, "don't want to be alive": 100,
+    "dont want to be alive anymore": 100, "don't want to be alive anymore": 100,
     "dont want to be here tomorrow": 100, "don't want to be here tomorrow": 100,
     "dont want to be here in the morning": 100, "don't want to be here in the morning": 100,
     "dont want to be here soon": 100, "don't want to be here soon": 100,

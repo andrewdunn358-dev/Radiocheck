@@ -122,6 +122,34 @@ const aiTeam = [
     description: 'James was an Army Chaplain for 20 years, serving alongside soldiers of every faith. He provides spiritual care without preaching.',
     avatar: '/images/james.png',
     color: '#8b5cf6'
+  },
+  {
+    name: 'Dave',
+    role: "Men's Health Specialist",
+    description: "Dave is ex-Infantry, 16 years served. He covers men's health — andropause, MST, prostate, suicide prevention. Signposts Andy's Man Club and CALM.",
+    avatar: '/images/dave.png',
+    color: '#2563eb'
+  },
+  {
+    name: 'Mo',
+    role: 'Recovery Support Specialist',
+    description: 'Mo is ex-Royal Engineers who lost his leg in Afghanistan. He knows injury rehab, prosthetics, chronic pain, and adaptive sport inside out.',
+    avatar: '/images/mo.png',
+    color: '#dc2626'
+  },
+  {
+    name: 'Helen',
+    role: 'Carer Support Specialist',
+    description: 'Helen was an Army wife for 20 years and cared for her husband with severe PTSD. Warm, experienced, and endlessly patient.',
+    avatar: '/images/helen.png',
+    color: '#0d9488'
+  },
+  {
+    name: 'Reg',
+    role: 'Serious Illness Specialist',
+    description: 'Reg is ex-Royal Navy, 22 years served. Went through cancer treatment himself. Calm, honest, deeply compassionate.',
+    avatar: '/images/reg.png',
+    color: '#9333ea'
   }
 ];
 
@@ -151,7 +179,7 @@ const features = [
   {
     icon: MessageCircle,
     title: 'AI Battle Buddies',
-    description: '16 AI companions with unique personalities, available 24/7 for a chat whenever you need it.',
+    description: '20 AI companions with unique personalities, available 24/7 for a chat whenever you need it.',
     color: 'bg-emerald-500/20 text-emerald-400'
   },
   {
@@ -364,11 +392,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Meet the AI Team */}
+      {/* Meet the AI Platoon */}
       <section id="team" className="py-20 px-4 bg-card/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Meet the AI Team</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Meet the AI Platoon</h2>
             <p className="text-secondary text-lg max-w-2xl mx-auto">
               16 unique AI Battle Buddies, each with their own personality and expertise. Available 24/7, they understand military culture and speak your language.
             </p>
@@ -405,7 +433,7 @@ export default function HomePage() {
       <section id="founders" className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Meet the Founders</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Meet HQ</h2>
             <p className="text-secondary text-lg max-w-2xl mx-auto">
               The team behind Radio Check - veterans and mental health advocates dedicated to supporting the military community.
             </p>

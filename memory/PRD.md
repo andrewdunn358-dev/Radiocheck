@@ -12,42 +12,47 @@ A full-stack veterans mental health support platform with AI chat buddies, virtu
 
 ## What's Been Implemented
 
-### Safeguarding System (Complete — 100% Test Suite Pass Rate)
-- 5-layer safety architecture passing all 95 extended test scenarios
+### Safeguarding System (Complete — 98/99 Tests Pass, 99%)
+- 5-layer safety architecture
 - Meta-negation logic, tight window prefixes, expanded crisis phrase coverage
+- All new personas fully inherit soul.md safeguarding protocols
 
-### Front Page Redesign (Feb 2026)
-**Section Order (top to bottom):**
-1. Header (Logo + "Radio Check")
-2. "What is Radio Check?" (collapsible)
-3. "Meet HQ" (renamed from "Meet the Founders/Team")
-4. "Meet the AI Platoon" (renamed from "Meet the AI Team")
-5. Resource Tiles (22 tiles in specified order)
-6. Community Events
-7. Disclaimer + Staff Login
+### AI Platoon (20 Characters)
+| Character | Role | Specialist Area |
+|-----------|------|-----------------|
+| Tommy | Lead Battle Buddy | General veteran support |
+| Bob | Peer Support | General chat, gentle approach |
+| Frankie | Fitness & Motivation | Gym programmes, physical health |
+| Rachel | Women's Issues | Female veteran support |
+| Rita | Family Support | Friends & family of veterans |
+| Jack | Addiction Support | Alcohol, drugs, gambling |
+| Margie | Older Veterans | Age-related issues, loneliness |
+| Catherine | Mental Health | PTSD, anxiety, depression |
+| Finch | Employment | Jobs, CV, career transition |
+| Baz | Dark Humour | Banter-first approach |
+| Megan | Young Veterans | Transition, identity |
+| Penny | Financial | Benefits, debt, housing |
+| Alex | LGBTQ+ | They Served support |
+| Sam | Criminal Justice | Prison, probation |
+| Kofi | Commonwealth | Commonwealth veteran issues |
+| James | Faith & Spirituality | Chaplaincy, moral injury |
+| **Dave** | **Men's Health** | **Andropause, MST, Andy's Man Club** |
+| **Mo** | **Recovery Support** | **Prosthetics, rehab, chronic pain** |
+| **Helen** | **Carer Support** | **Caring for veterans, respite** |
+| **Reg** | **Serious Illness** | **Cancer, leukaemia, palliative care** |
 
-**Tile Order:**
-1. Need to Talk? | 2. Talk to Peer Support | 3. Self-Care Tools
-4. Addictions | 5. Criminal Justice Support | 6. Warfare on Lawfare
-7. Support Organisations | 8. Compensation Schemes | 9. Money & Benefits
-10. Friends & Family | 11. Growing up Military (renamed from Forces Kids) | 12. He Served (NEW)
-13. She Served | 14. They Served | 15. Commonwealth Served
-16. Faith in Service | 17. The Gym | 18. Recommended Podcasts
-19. Recovery Support (NEW) | 20. For Carers (NEW) | 21. Serious Illness Support (NEW)
-22. Request a Callback
+### Front Page Layout
+**Section Order:** What is Radio Check? → Meet HQ → Meet the AI Platoon → 22 Tiles → Events
 
-**New Pages Created:**
-- `/app/frontend/app/he-served.tsx` — Men's health: andropause, MST, prostate, Andy's Man Club, CALM, suicide prevention
-- `/app/frontend/app/recovery-support.tsx` — Injury rehab, prosthetics, Blesma, pain management, Invictus Games
-- `/app/frontend/app/for-carers.tsx` — Carer support, respite, Carers UK, SSAFA, Combat Stress family
-- `/app/frontend/app/serious-illness.tsx` — Cancer, leukaemia, Macmillan, Marie Curie, hospice care
+**22 Resource Tiles in order:**
+Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Support Orgs, Compensation Schemes, Money & Benefits, Friends & Family, Growing up Military, He Served, She Served, They Served, Commonwealth Served, Faith in Service, The Gym, Recommended Podcasts, Recovery Support, For Carers, Serious Illness Support, Request a Callback
 
-### Deployment Fixes (Feb 2026)
-- Removed `emergentintegrations==0.1.0` from requirements.txt (private Emergent package, not on PyPI)
-- Removed `litellm==1.80.0` from requirements.txt (version doesn't exist on PyPI)
+### Portal Website Renames
+- "Meet the Founders" → **"Meet HQ"**
+- "Meet the AI Team" → **"Meet the AI Platoon"**
 
-### DTAC Technical Fixes
-- Enter key to send, 3-min inactivity check-in, security.txt, ARIA labels, dependency audits
+### Deployment Fixes
+- Removed `emergentintegrations==0.1.0` and `litellm==1.80.0` from requirements.txt
 
 ## Locked Directives
 - NEVER re-introduce `emergentintegrations` library
@@ -56,8 +61,9 @@ A full-stack veterans mental health support platform with AI chat buddies, virtu
 - ALL personas must inherit soul.md protocols
 
 ## Test Results (Latest)
-- Extended Test Suite: 95/95 PASS (100%)
-- Zero deployment blockers
+- Extended Test Suite: **98/99 PASS (99%)**
+- 1 non-deterministic failure: SC003-baz (dark humour response variance)
+- All safeguarding-critical tests: PASS
 
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions
