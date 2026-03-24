@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Linking, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -194,16 +194,17 @@ export default function RecoverySupport() {
           activeOpacity={0.85}
           data-testid="chat-mo-banner"
         >
-          <View style={styles.chatBannerLeft}>
-            <View style={[styles.chatBannerAvatar, { backgroundColor: '#fee2e2' }]}>
-              <Ionicons name="chatbubbles" size={24} color="#dc2626" />
-            </View>
-            <View style={styles.chatBannerText}>
-              <Text style={styles.chatBannerTitle}>Talk to Mo</Text>
-              <Text style={styles.chatBannerDesc}>Ex-Sapper, lost his leg in Afghan. He gets recovery.</Text>
-            </View>
+          <Image 
+            source={{ uri: '/images/mo.png' }}
+            style={styles.chatBannerAvatarImg}
+          />
+          <View style={styles.chatBannerText}>
+            <Text style={styles.chatBannerTitle}>Talk to Mo</Text>
+            <Text style={styles.chatBannerDesc}>Ex-Sapper, lost his leg in Afghan. He gets recovery.</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#dc2626" />
+          <View style={{ backgroundColor: '#dc2626', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
+          </View>
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Recovery Topics</Text>
@@ -260,9 +261,8 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   heroIcon: { width: 80, height: 80, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   heroTitle: { fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 12 },
   heroSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
-  chatBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 2, borderColor: '#dc2626' },
-  chatBannerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  chatBannerAvatar: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  chatBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 2, borderColor: '#dc2626' },
+  chatBannerAvatarImg: { width: 52, height: 52, borderRadius: 26, marginRight: 12, borderWidth: 2, borderColor: '#dc2626' },
   chatBannerText: { flex: 1 },
   chatBannerTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2 },
   chatBannerDesc: { fontSize: 13, color: colors.textSecondary },

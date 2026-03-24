@@ -77,9 +77,9 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 
 ## Bug Fixes Verified (Feb 2026)
 1. **Chat Redirection** — Dave, Mo, Helen, Reg correctly route to their own personas (not Tommy)
-2. **Missing Chat Banners** — Recovery Support, For Carers, Serious Illness pages all have AI chat banners
+2. **AI Chat Banners with Photo Avatars** — All four new pages (He Served, Recovery Support, For Carers, Serious Illness) now have proper AI chat banners at the top with real photorealistic avatar images (not generic chat bubble icons)
 3. **Callback Banner** — Full-width banner below "Meet the AI Platoon" section
-4. **Avatar Images** — Copied to `/app/frontend/assets/images/` and registered in avatar maps
+4. **Avatar Images** — Copied to `/app/frontend/assets/images/`, `/app/frontend/public/images/`, and registered in avatar maps
 
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions
