@@ -195,16 +195,6 @@ export default function SeriousIllness() {
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
-        <View style={styles.heroSection}>
-          <View style={[styles.heroIcon, { backgroundColor: '#f3e8ff' }]}>
-            <Ionicons name="pulse" size={40} color="#9333ea" />
-          </View>
-          <Text style={styles.heroTitle}>Serious Illness Support</Text>
-          <Text style={styles.heroSubtitle}>
-            Cancer, leukaemia, and other serious conditions.{'\n'}You fought for your country. Now let others fight for you.
-          </Text>
-        </View>
-
         {/* AI Chat CTA - Top */}
         <TouchableOpacity 
           style={styles.chatBanner}
@@ -224,6 +214,16 @@ export default function SeriousIllness() {
             <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
           </View>
         </TouchableOpacity>
+
+        <View style={styles.heroSection}>
+          <View style={[styles.heroIcon, { backgroundColor: '#f3e8ff' }]}>
+            <Ionicons name="pulse" size={40} color="#9333ea" />
+          </View>
+          <Text style={styles.heroTitle}>Serious Illness Support</Text>
+          <Text style={styles.heroSubtitle}>
+            Cancer, leukaemia, and other serious conditions.{'\n'}You fought for your country. Now let others fight for you.
+          </Text>
+        </View>
 
         <Text style={styles.sectionTitle}>What You're Facing</Text>
         <View style={styles.topicsGrid}>

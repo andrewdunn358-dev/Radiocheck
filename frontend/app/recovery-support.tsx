@@ -177,16 +177,6 @@ export default function RecoverySupport() {
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
-        <View style={styles.heroSection}>
-          <View style={[styles.heroIcon, { backgroundColor: '#fee2e2' }]}>
-            <Ionicons name="medkit" size={40} color="#dc2626" />
-          </View>
-          <Text style={styles.heroTitle}>Recovery Support</Text>
-          <Text style={styles.heroSubtitle}>
-            Injury doesn't end when you leave theatre. Recovery is ongoing — and you don't have to do it alone.
-          </Text>
-        </View>
-
         {/* AI Chat CTA - Top */}
         <TouchableOpacity 
           style={styles.chatBanner}
@@ -206,6 +196,16 @@ export default function RecoverySupport() {
             <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
           </View>
         </TouchableOpacity>
+
+        <View style={styles.heroSection}>
+          <View style={[styles.heroIcon, { backgroundColor: '#fee2e2' }]}>
+            <Ionicons name="medkit" size={40} color="#dc2626" />
+          </View>
+          <Text style={styles.heroTitle}>Recovery Support</Text>
+          <Text style={styles.heroSubtitle}>
+            Injury doesn't end when you leave theatre. Recovery is ongoing — and you don't have to do it alone.
+          </Text>
+        </View>
 
         <Text style={styles.sectionTitle}>Recovery Topics</Text>
         <View style={styles.topicsGrid}>

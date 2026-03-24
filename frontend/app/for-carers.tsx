@@ -169,16 +169,6 @@ export default function ForCarers() {
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
-        <View style={styles.heroSection}>
-          <View style={[styles.heroIcon, { backgroundColor: '#ccfbf1' }]}>
-            <Ionicons name="hand-left" size={40} color="#0d9488" />
-          </View>
-          <Text style={styles.heroTitle}>For Carers</Text>
-          <Text style={styles.heroSubtitle}>
-            You look after them. But who looks after you?{'\n'}Support for the people behind the support.
-          </Text>
-        </View>
-
         {/* AI Chat CTA - Top */}
         <TouchableOpacity 
           style={styles.chatBanner}
@@ -198,6 +188,16 @@ export default function ForCarers() {
             <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
           </View>
         </TouchableOpacity>
+
+        <View style={styles.heroSection}>
+          <View style={[styles.heroIcon, { backgroundColor: '#ccfbf1' }]}>
+            <Ionicons name="hand-left" size={40} color="#0d9488" />
+          </View>
+          <Text style={styles.heroTitle}>For Carers</Text>
+          <Text style={styles.heroSubtitle}>
+            You look after them. But who looks after you?{'\n'}Support for the people behind the support.
+          </Text>
+        </View>
 
         <Text style={styles.sectionTitle}>What Carers Face</Text>
         <View style={styles.topicsGrid}>

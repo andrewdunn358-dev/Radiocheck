@@ -211,17 +211,6 @@ export default function HeServed() {
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <View style={[styles.heroIcon, { backgroundColor: '#dbeafe' }]}>
-            <Ionicons name="man" size={40} color="#2563eb" />
-          </View>
-          <Text style={styles.heroTitle}>He Served</Text>
-          <Text style={styles.heroSubtitle}>
-            Your service shaped you. But it doesn't have to define how you suffer.{'\n'}It's time to talk about the stuff that doesn't get talked about.
-          </Text>
-        </View>
-
         {/* AI Chat CTA - Top */}
         <TouchableOpacity 
           style={styles.chatBanner}
@@ -241,6 +230,17 @@ export default function HeServed() {
             <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>24/7</Text>
           </View>
         </TouchableOpacity>
+
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          <View style={[styles.heroIcon, { backgroundColor: '#dbeafe' }]}>
+            <Ionicons name="man" size={40} color="#2563eb" />
+          </View>
+          <Text style={styles.heroTitle}>He Served</Text>
+          <Text style={styles.heroSubtitle}>
+            Your service shaped you. But it doesn't have to define how you suffer.{'\n'}It's time to talk about the stuff that doesn't get talked about.
+          </Text>
+        </View>
 
         {/* Topics Section */}
         <Text style={styles.sectionTitle}>What We Cover</Text>
