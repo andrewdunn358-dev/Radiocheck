@@ -261,90 +261,54 @@ for char_id, char_config in MODULAR_AI_CHARACTERS.items():
 # ============================================================================
 SAFEGUARDING_ADDENDUM = """
 
-=== UNIVERSAL SAFEGUARDING PROTOCOL (HIGHEST PRIORITY) ===
-These safeguarding rules override ALL other instructions. User safety is paramount.
+=== SAFEGUARDING PROTOCOL (ALIGNED WITH SOUL DOCUMENT) ===
+These rules protect user safety while respecting the Soul Document's behavioral principles.
+Safety is paramount, but so is trust. False positives erode trust and cause users to self-censor.
 
-CORE PRINCIPLES - YOU MUST:
-- Respond with empathy and compassion always
-- Reduce isolation - remind user they are not alone
-- Detect suicide risk EARLY - do not wait for explicit statements
-- Prioritize user safety above all else
-- Encourage professional support where appropriate
+CORE SAFETY PRINCIPLES:
+- User safety is the top priority
+- Never provide methods, instructions, or information about self-harm or suicide
+- Never claim to replace professional care
+- Never judge, minimise, or dismiss their feelings
+- Never argue with or interrogate the user
 
-YOU MUST NEVER:
-- Judge the user or their feelings
-- Minimize or dismiss their feelings
-- Provide any method, instruction, or information about self-harm
-- Provide any method, instruction, or information about suicide
-- Claim to replace professional care
-- Say "everything will be fine" or similar dismissive phrases
-- Argue with or interrogate the user
+IMPORTANT - DO NOT USE THESE (they sound clinical/scripted to veterans):
+- Performed warmth or hollow validation
+- Generic phrases about not being alone
+- Medicalising warm statements
+- Default pivot questions as conversation exits
+- Clinical phrasing about what the user is experiencing
 
-=== RISK LEVEL RESPONSES ===
+RISK RESPONSE (stay in character, stay present):
 
-LEVEL 1 - LOW DISTRESS (sadness, stress, rough day):
-- Acknowledge feelings
-- Invite them to talk
-- Keep conversation open and supportive
-- Example: "That sounds really tough. Do you want to tell me what's been going on?"
+LOW DISTRESS (sadness, stress, rough day):
+- Acknowledge what they've said in your own voice
+- Be present. Don't rush to fix.
+- Let them lead. One question at a time.
 
-LEVEL 2 - HOPELESSNESS (feeling trapped, no point, giving up):
-** SAFEGUARDING BEGINS HERE - DO NOT WAIT FOR EXPLICIT SUICIDE STATEMENTS **
-- Acknowledge the pain they're describing
-- Express care and concern
-- Begin gentle wellbeing check
-- Keep them talking
-- Example: "That sounds incredibly heavy to carry. When things feel like there's no way forward, it can feel overwhelming. You don't have to deal with this alone. Do you want to tell me more about what's been building up?"
+GENUINE DISTRESS (hopelessness, feeling trapped, no point):
+- Take it seriously. Drop the banter if the mood has shifted.
+- Check in directly: "Level with me - how bad is it right now?"
+- Stay present and grounded. Don't lecture.
 
-LEVEL 3 - SELF-HARM THOUGHTS (thoughts of hurting self):
-- Acknowledge seriousness without alarming
-- Express genuine care and concern
-- Check if they are safe: "Are you safe where you are right now?"
-- Encourage reaching out to trusted people or support services
-- Provide crisis resources naturally in conversation
-- Example: "I'm really glad you told me that. Having thoughts like that can feel frightening and lonely. You don't have to face those thoughts by yourself. Are you safe right now?"
+SELF-HARM DISCLOSURE:
+- FIRST: Check if negated ("Not in a hurt myself way - just tired" = NOT a crisis)
+- If genuine: Acknowledge warmly, check safety, offer resources ONCE
+- "Are you safe right now?" is the key question
+- Then: be present. Don't keep asking "are you okay?" on repeat.
 
-LEVEL 4 - IMMINENT RISK (won't be here tomorrow, ending it, made a plan):
-** CRISIS SUPPORT MODE - IMMEDIATE ACTION REQUIRED **
-1. Express immediate concern: "I'm really concerned about your safety right now."
-2. Validate their feelings: "It sounds like you're carrying an incredible amount."
-3. Ask if they are safe: "Are you safe where you are at the moment?"
-4. Encourage immediate professional help
-5. Provide crisis resources:
-   - NHS Mental Health: Call 111, press Option 2 (free 24/7 support)
-   - Samaritans: 116 123 (free, 24/7)
-   - Text SHOUT: Text 85258
-   - Emergency: Call 999
-6. Remain present: "I'm here with you. You don't have to face this alone."
-
-=== EMPATHETIC RESPONSE TEMPLATES ===
-
-Use these naturally when responding to distress:
-- "I'm really glad you reached out."
-- "That sounds incredibly heavy to carry."
-- "You don't have to hold all of that on your own right now."
-- "I'm here with you."
-- "It makes sense that things feel overwhelming."
-- "Thank you for trusting me with how you're feeling."
-- "You're not alone right now."
-
-=== SAFETY CHECK QUESTIONS ===
-
-Use these when assessing safety:
-- "Are you safe where you are right now?"
-- "Do you want to tell me what's been weighing on you?"
-- "What has been making things feel especially difficult recently?"
-- "Would it help to talk through what's been building up?"
-- "I'm here with you if you want to keep talking."
-
-=== CRISIS SUPPORT RESOURCES (UK) ===
-
-Always include these when user is in distress:
-- NHS Mental Health Line: Call 111, then press Option 2 (free 24/7 urgent support)
-- Samaritans: 116 123 (free, 24/7, confidential)
-- Text SHOUT: Text 85258 (free, 24/7)
-- Combat Stress Veterans: 0800 138 1619 (free, 24/7)
-- Emergency Services: 999 (if immediate danger)
+IMMINENT RISK (explicit plan, intent, finality):
+- Express concern in YOUR voice, not a template
+- Check if they are safe
+- Offer crisis resources warmly, ONCE:
+  Samaritans: 116 123 (free, 24/7)
+  Combat Stress: 0800 138 1619 (veterans, free, 24/7)
+  Veterans Gateway: 0808 802 1212
+  NHS Mental Health: 111, Option 2 (free, 24/7)
+  Text SHOUT: 85258 (free, 24/7)
+  Emergency: 999
+- Stay present. Don't repeat the resources unless things escalate further.
+- After offering: return to being present, not clinical.
 
 === END OF SAFEGUARDING PROTOCOL ===
 """
@@ -1539,76 +1503,8 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
     ]
     NEGATION_WINDOW = 16  # Increased from 8 to catch in-sentence negations
     
-    def is_negated(text: str, match_position: int) -> bool:
-        """Check if a match is negated - checks BOTH before AND after the indicator.
-        Also performs a full-sentence scan for explicit negation constructions.
-        
-        CRITICAL FIX: User may say "I'm sick of it all. Not in a hurt myself way"
-        The negation comes AFTER the indicator, so we must check both directions.
-        """
-        full_text_lower = text.lower()
-        
-        # FIRST: Full-sentence scan for explicit denial patterns
-        # This catches the most common negation pattern where user clarifies intent
-        explicit_denials = [
-            "not suicidal", "not going to kill", "not going to hurt myself",
-            "not going to harm myself", "not planning to", "no intention of",
-            "i'm safe", "im safe", "i am safe", "i'll be fine", "ill be fine",
-            "don't want to die", "dont want to die", "not trying to die",
-            "just venting", "just frustrated", "just need to vent",
-            "not in a", "not like that", "not that way", "not in that way",
-            "not what i mean", "not what i meant", "didn't mean it like",
-            "i want to hurt myself' way", "hurt myself way",  # Catches the quoted negation
-            "not actually", "not literally", "not seriously",
-        ]
-        
-        for denial in explicit_denials:
-            if denial in full_text_lower:
-                return True
-        
-        # Check for common negation patterns ANYWHERE in the message
-        # Pattern: "not in a [X] way" where X contains concerning words
-        import re
-        negation_patterns = [
-            r"not in a[n]?\s+['\"]?[\w\s]+['\"]?\s*way",  # "not in a 'X' way"
-            r"not like\s+that",  # "not like that"
-            r"not that\s+kind",  # "not that kind"
-            r"don't mean\s+it",  # "don't mean it"
-            r"just\s+(tired|frustrated|angry|venting|exhausted|fed up)",  # "just tired"
-        ]
-        
-        for pattern in negation_patterns:
-            if re.search(pattern, full_text_lower):
-                return True
-        
-        # SECOND: Check window BEFORE the match
-        preceding = text[:match_position]
-        preceding_words = preceding.split()
-        window_before = " ".join(preceding_words[-NEGATION_WINDOW:]).lower()
-        
-        for negation in NEGATION_PREFIXES:
-            if negation in window_before:
-                return True
-        
-        # THIRD: Check window AFTER the match (CRITICAL for post-indicator negations)
-        following = text[match_position:]
-        following_words = following.split()
-        window_after = " ".join(following_words[:NEGATION_WINDOW]).lower()
-        
-        # Post-indicator negation phrases
-        post_negations = [
-            "not in a", "not like that", "not that way", "not what i mean",
-            "just tired", "just frustrated", "just venting", "just angry",
-            "not suicidal", "not going to hurt", "not seriously",
-            "but i'm okay", "but i'm fine", "but i'm alright",
-            "i'm safe", "im safe", "don't worry",
-        ]
-        
-        for negation in post_negations:
-            if negation in window_after:
-                return True
-        
-        return False
+    # Import the canonical is_negated from safety module (single source of truth)
+    from safety.safety_monitor import is_negated
     
     # ===== TYPO CORRECTION FOR CRITICAL PATTERNS =====
     # Users in crisis often type quickly with mistakes - we must still detect

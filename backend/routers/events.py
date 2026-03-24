@@ -13,6 +13,7 @@ from bson import ObjectId
 import secrets
 import hashlib
 import time
+import os
 from agora_token_builder import RtcTokenBuilder
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -446,9 +447,11 @@ async def join_event(event_id: str, display_name: str = "Veteran", user_id: Opti
         staff = await db.staff.find_one({"user_id": user_id})
         is_moderator = staff is not None
     
-    # Agora configuration
-    agora_app_id = "cfd84eb3fcd7490cbe366d8cd1a4d974"
-    agora_app_certificate = "46321e5dd1ab4df68d6a370721c94feb"
+    # Agora configuration - loaded from environment variables
+    agora_app_id = os.environ.get("AGORA_APP_ID")
+    agora_app_certificate = os.environ.get("AGORA_APP_CERTIFICATE")
+    if not agora_app_id or not agora_app_certificate:
+        raise HTTPException(status_code=500, detail="Agora credentials not configured")
     agora_channel = f"radiocheck_event{event_id.replace('-', '').lower()}"
     
     # Generate Agora RTC token (valid for 2 hours)
