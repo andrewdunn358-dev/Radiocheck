@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, TextInput, Linking } from 'react-native';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, TextInput, Linking, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -219,31 +219,82 @@ const BOOKS: Book[] = [
   },
 ];
 
+interface SearchResult {
+  title: string;
+  author: string;
+  year?: number;
+  coverId?: number;
+  isbn?: string;
+}
+
 const CATEGORIES = ['All', 'Memoir', 'Mental Health', 'Military History', 'Practical', 'Inspiration', 'Wellbeing', 'Lighter Reads'];
 
 export default function RecommendedReads() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedFormat, setSelectedFormat] = useState<'all' | 'book' | 'audiobook'>('all');
 
-  const filteredBooks = useMemo(() => {
-    return BOOKS.filter(book => {
-      const matchesSearch = searchQuery === '' ||
-        book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        book.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        book.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || book.category === selectedCategory;
-      const matchesFormat = selectedFormat === 'all' ||
-        (selectedFormat === 'audiobook' ? (book.format === 'audiobook' || book.format === 'both') : true);
-      return matchesSearch && matchesCategory && matchesFormat;
-    });
-  }, [searchQuery, selectedCategory, selectedFormat]);
+  // Live search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const openLink = (url: string) => {
-    Linking.openURL(url).catch(err => console.error('Error opening URL:', err));
+  const searchBooks = useCallback(async (query: string) => {
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setHasSearched(false);
+      return;
+    }
+    setIsSearching(true);
+    setHasSearched(true);
+    try {
+      const encoded = encodeURIComponent(query.trim());
+      const res = await fetch(`https://openlibrary.org/search.json?q=${encoded}&fields=title,author_name,first_publish_year,cover_i,isbn&limit=12`);
+      const data = await res.json();
+      const results: SearchResult[] = (data.docs || []).map((doc: any) => ({
+        title: doc.title || 'Unknown Title',
+        author: (doc.author_name || []).join(', ') || 'Unknown Author',
+        year: doc.first_publish_year,
+        coverId: doc.cover_i,
+        isbn: doc.isbn?.[0],
+      }));
+      setSearchResults(results);
+    } catch (e) {
+      console.error('Search error:', e);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleSearchInput = (text: string) => {
+    setSearchQuery(text);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (text.trim().length < 2) {
+      setSearchResults([]);
+      setHasSearched(false);
+      return;
+    }
+    searchTimeout.current = setTimeout(() => searchBooks(text), 500);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setHasSearched(false);
+  };
+
+  const openAmazon = (title: string, author: string) => {
+    const q = encodeURIComponent(`${title} ${author}`);
+    Linking.openURL(`https://www.amazon.co.uk/s?k=${q}`);
+  };
+
+  const openWaterstones = (title: string, author: string) => {
+    const q = encodeURIComponent(`${title} ${author}`);
+    Linking.openURL(`https://www.waterstones.com/category/book/term/${q}`);
   };
 
   const renderStars = (rating: number) => {
@@ -274,6 +325,15 @@ export default function RecommendedReads() {
     }
   };
 
+  const curatedBooks = useMemo(() => {
+    return BOOKS.filter(book => {
+      const matchesCategory = selectedCategory === 'All' || book.category === selectedCategory;
+      const matchesFormat = selectedFormat === 'all' ||
+        (selectedFormat === 'audiobook' ? (book.format === 'audiobook' || book.format === 'both') : true);
+      return matchesCategory && matchesFormat;
+    });
+  }, [selectedCategory, selectedFormat]);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
@@ -301,18 +361,81 @@ export default function RecommendedReads() {
           <Ionicons name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search books, authors, topics..."
+            placeholder="Search any book or audiobook..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchInput}
+            returnKeyType="search"
+            onSubmitEditing={() => searchBooks(searchQuery)}
             data-testid="search-input"
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+          {isSearching && <ActivityIndicator size="small" color="#b45309" />}
+          {searchQuery.length > 0 && !isSearching && (
+            <TouchableOpacity onPress={clearSearch}>
               <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Search Results */}
+        {hasSearched && (
+          <View style={{ marginBottom: 20 }}>
+            <Text style={[styles.searchSectionTitle, { color: colors.text }]}>
+              {isSearching ? 'Searching...' : `${searchResults.length} results found`}
+            </Text>
+            {searchResults.map((result, index) => (
+              <View
+                key={index}
+                style={[styles.searchCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                data-testid={`search-result-${index}`}
+              >
+                <View style={styles.searchRow}>
+                  {result.coverId ? (
+                    <Image
+                      source={{ uri: `https://covers.openlibrary.org/b/id/${result.coverId}-M.jpg` }}
+                      style={styles.searchCover}
+                    />
+                  ) : (
+                    <View style={[styles.searchCover, { backgroundColor: isDark ? '#374151' : '#e5e7eb', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Ionicons name="book" size={24} color={colors.textSecondary} />
+                    </View>
+                  )}
+                  <View style={styles.searchInfo}>
+                    <Text style={[styles.searchTitle, { color: colors.text }]} numberOfLines={2}>{result.title}</Text>
+                    <Text style={[styles.searchAuthor, { color: colors.textSecondary }]} numberOfLines={1}>{result.author}</Text>
+                    {result.year && <Text style={[styles.searchYear, { color: colors.textSecondary }]}>{result.year}</Text>}
+                    <View style={styles.buyButtons}>
+                      <TouchableOpacity
+                        style={[styles.buyBtn, { backgroundColor: '#ff9900' }]}
+                        onPress={() => openAmazon(result.title, result.author)}
+                        data-testid={`buy-amazon-${index}`}
+                      >
+                        <Text style={styles.buyBtnText}>Amazon</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.buyBtn, { backgroundColor: '#1d3557' }]}
+                        onPress={() => openWaterstones(result.title, result.author)}
+                        data-testid={`buy-waterstones-${index}`}
+                      >
+                        <Text style={styles.buyBtnText}>Waterstones</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
+            {!isSearching && searchResults.length === 0 && (
+              <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+                <Ionicons name="book-outline" size={36} color={colors.textSecondary} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No results found</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Try different keywords</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Our Picks Section Title */}
+        <Text style={[styles.picksTitle, { color: colors.text }]}>Our Picks</Text>
 
         {/* Format Filter */}
         <View style={styles.formatRow}>
@@ -359,25 +482,22 @@ export default function RecommendedReads() {
 
         {/* Results Count */}
         <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>
-          {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'} found
+          {curatedBooks.length} {curatedBooks.length === 1 ? 'book' : 'books'}
         </Text>
 
         {/* Book Cards */}
-        {filteredBooks.map((book, index) => {
+        {curatedBooks.map((book, index) => {
           const badge = getFormatBadge(book.format);
           return (
-            <TouchableOpacity
+            <View
               key={index}
               style={[styles.bookCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => openLink(book.amazonUrl)}
-              activeOpacity={0.85}
               data-testid={`book-card-${index}`}
             >
               <View style={styles.bookRow}>
                 <Image
                   source={{ uri: book.coverUrl }}
                   style={styles.bookCover}
-                  defaultSource={{ uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88P/BfwAJhAPk3KFb2AAAAABJRU5ErkJggg==' }}
                 />
                 <View style={styles.bookInfo}>
                   <View style={styles.bookHeader}>
@@ -402,13 +522,28 @@ export default function RecommendedReads() {
                       <Text style={[styles.categoryTagText, { color: getCategoryColor(book.category) }]}>{book.category}</Text>
                     </View>
                   </View>
+
+                  <View style={styles.buyButtons}>
+                    <TouchableOpacity
+                      style={[styles.buyBtn, { backgroundColor: '#ff9900' }]}
+                      onPress={() => openAmazon(book.title, book.author)}
+                    >
+                      <Text style={styles.buyBtnText}>Amazon</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.buyBtn, { backgroundColor: '#1d3557' }]}
+                      onPress={() => openWaterstones(book.title, book.author)}
+                    >
+                      <Text style={styles.buyBtnText}>Waterstones</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </TouchableOpacity>
+            </View>
           );
         })}
 
-        {filteredBooks.length === 0 && (
+        {curatedBooks.length === 0 && (
           <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
             <Ionicons name="search" size={48} color={colors.textSecondary} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>No books found</Text>
@@ -432,6 +567,18 @@ const styles = StyleSheet.create({
   heroSubtitle: { fontSize: 14, lineHeight: 20 },
   searchContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, gap: 10 },
   searchInput: { flex: 1, fontSize: 15 },
+  searchSectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
+  searchCard: { borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1 },
+  searchRow: { flexDirection: 'row', gap: 12 },
+  searchCover: { width: 60, height: 90, borderRadius: 6, backgroundColor: '#e5e7eb' },
+  searchInfo: { flex: 1 },
+  searchTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  searchAuthor: { fontSize: 13, marginBottom: 2 },
+  searchYear: { fontSize: 12, marginBottom: 6 },
+  buyButtons: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  buyBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 },
+  buyBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  picksTitle: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
   formatRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   formatChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, gap: 6 },
   formatChipText: { fontSize: 13, fontWeight: '600' },
