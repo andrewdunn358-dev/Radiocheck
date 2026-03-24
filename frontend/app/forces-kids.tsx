@@ -202,7 +202,7 @@ export default function ForcesKids() {
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Forces Kids</Text>
+          <Text style={styles.headerTitle}>Growing Up Military</Text>
           <Text style={styles.headerSubtitle}>Support for Service Children & Youth</Text>
         </View>
       </View>
