@@ -30,20 +30,19 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Try to import emergentintegrations
+# Try to import openai
 try:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    EMERGENT_AVAILABLE = True
-    logger.info("[AISafetyClassifier] emergentintegrations loaded successfully")
+    from openai import AsyncOpenAI
+    OPENAI_AVAILABLE = True
+    logger.info("[AISafetyClassifier] OpenAI SDK loaded successfully")
 except ImportError:
-    EMERGENT_AVAILABLE = False
-    logger.warning("[AISafetyClassifier] emergentintegrations not available - AI classification disabled")
+    OPENAI_AVAILABLE = False
+    logger.warning("[AISafetyClassifier] OpenAI SDK not available - AI classification disabled")
 
 # Configuration
 AI_SAFETY_ENABLED = os.environ.get("AI_SAFETY_ENABLED", "true").lower() == "true"
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 AI_MODEL = "gpt-4o-mini"  # Fast model for low latency
-AI_PROVIDER = "openai"
 
 # Risk level mapping
 RISK_LEVELS = {
@@ -227,12 +226,12 @@ async def classify_message_with_ai(
         default_response["reason"] = "AI safety classification disabled"
         return default_response
     
-    if not EMERGENT_AVAILABLE:
-        default_response["reason"] = "AI integration not available"
+    if not OPENAI_AVAILABLE:
+        default_response["reason"] = "OpenAI SDK not available"
         return default_response
     
-    if not EMERGENT_LLM_KEY:
-        default_response["reason"] = "No API key configured"
+    if not OPENAI_API_KEY:
+        default_response["reason"] = "No OPENAI_API_KEY configured"
         return default_response
     
     try:
@@ -264,16 +263,20 @@ async def classify_message_with_ai(
             session_context=session_text
         )
         
-        # Create chat instance
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"safety_classifier_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            system_message=CLASSIFIER_SYSTEM_PROMPT
-        ).with_model(AI_PROVIDER, AI_MODEL)
+        # Call OpenAI directly using your own API key
+        client = AsyncOpenAI(api_key=OPENAI_API_KEY)
         
-        # Send message and get response
         start_time = datetime.now(timezone.utc)
-        response_text = await chat.send_message(UserMessage(text=user_prompt))
+        completion = await client.chat.completions.create(
+            model=AI_MODEL,
+            messages=[
+                {"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=200,
+            temperature=0.1,
+        )
+        response_text = completion.choices[0].message.content or ""
         elapsed_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         
         logger.info(f"[AISafetyClassifier] AI response in {elapsed_ms:.0f}ms")
@@ -464,15 +467,15 @@ def get_ai_classifier_status() -> Dict[str, Any]:
     """Get AI classifier status for monitoring."""
     return {
         "enabled": AI_SAFETY_ENABLED,
-        "available": EMERGENT_AVAILABLE,
-        "has_api_key": bool(EMERGENT_LLM_KEY),
+        "available": OPENAI_AVAILABLE,
+        "has_api_key": bool(OPENAI_API_KEY),
         "model": AI_MODEL,
         "provider": AI_PROVIDER,
         "cache_size": len(_classification_cache),
         "audit_log_size": len(_ai_audit_log),
-        "status": "operational" if (AI_SAFETY_ENABLED and EMERGENT_AVAILABLE and EMERGENT_LLM_KEY) else "disabled"
+        "status": "operational" if (AI_SAFETY_ENABLED and OPENAI_AVAILABLE and OPENAI_API_KEY) else "disabled"
     }
 
 
 # Module initialization
-logger.info(f"[AISafetyClassifier] Module loaded - enabled={AI_SAFETY_ENABLED}, available={EMERGENT_AVAILABLE}")
+logger.info(f"[AISafetyClassifier] Module loaded - enabled={AI_SAFETY_ENABLED}, available={OPENAI_AVAILABLE}")
