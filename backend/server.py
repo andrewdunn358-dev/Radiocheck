@@ -7600,9 +7600,8 @@ async def api_generate_session_summary(request: SessionSummaryRequest):
     Generate an AI summary of a conversation session.
     Used for storing conversation context on user's device.
     """
-    from safety.ai_safety_classifier import classify_message_with_ai, EMERGENT_LLM_KEY, EMERGENT_AVAILABLE
-    
-    if not EMERGENT_AVAILABLE or not EMERGENT_LLM_KEY:
+    openai_key = os.environ.get("OPENAI_API_KEY", "")
+    if not openai_key:
         return {
             "success": False,
             "error": "AI summarization not available",
@@ -7610,7 +7609,7 @@ async def api_generate_session_summary(request: SessionSummaryRequest):
         }
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from openai import AsyncOpenAI
         
         # Format messages for the summary prompt
         message_text = "\n".join([
@@ -7637,13 +7636,17 @@ Respond with JSON only:
   "risk_flags": ["flag1", "flag2"] or []
 }}"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"summary_{request.session_id[:12]}",
-            system_message="You are a clinical summarizer for a mental health support app. Generate concise, clinically-relevant summaries."
-        ).with_model("openai", "gpt-4o-mini")
-        
-        response = await chat.send_message(UserMessage(text=summary_prompt))
+        client = AsyncOpenAI(api_key=openai_key)
+        completion = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a clinical summarizer for a mental health support app. Generate concise, clinically-relevant summaries."},
+                {"role": "user", "content": summary_prompt}
+            ],
+            max_tokens=300,
+            temperature=0.1,
+        )
+        response = completion.choices[0].message.content or ""
         
         # Parse JSON response
         import json
