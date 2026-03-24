@@ -102,7 +102,7 @@ NEGATION_PREFIXES = [
     # In-sentence negation constructions (CRITICAL - these were missing)
     "not suicidal", "not going to hurt", "not going to harm",
     "not in a", "not in that", "not like that", "not that way",
-    "just tired", "just frustrated", "just angry", "just venting",
+    "just frustrated", "just angry", "just venting",
     "don't mean", "didn't mean", "doesn't mean",
     "not actually", "not really", "not literally",
     "wouldn't actually", "would never actually",
@@ -177,7 +177,7 @@ def is_negated(text: str, match_start: int) -> bool:
         r"not\s+that\s+kind",                                # "not that kind"
         r"don'?t\s+mean\s+it",                               # "don't mean it"
         r"didn'?t\s+mean\s+it",                              # "didn't mean it"
-        r"just\s+(tired|frustrated|angry|venting|exhausted|fed\s+up|knackered|shattered|done\s+in)",
+        r"just\s+(frustrated|angry|venting)",
         r"not\s+in\s+a\s+.*?(hurt|harm|kill|die|suicide)",   # "not in a [anything with harm words]"
     ]
     
@@ -203,6 +203,7 @@ def is_negated(text: str, match_start: int) -> bool:
         "not in a", "not like that", "not that way", "not what i mean",
         "just tired", "just frustrated", "just venting", "just angry",
         "just knackered", "just shattered", "just done in",
+        "just exhausted", "just fed up",
         "not suicidal", "not going to hurt", "not seriously",
         "but i'm okay", "but i'm fine", "but i'm alright",
         "but im okay", "but im fine", "but im alright",

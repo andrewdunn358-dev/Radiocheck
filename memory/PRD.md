@@ -3,59 +3,55 @@
 ## Original Problem Statement
 Build a comprehensive veterans support platform with admin portal, staff portal, mobile app, and virtual events. The platform includes AI companion personas for veteran mental health support, with a sophisticated safeguarding system.
 
+---
+
+## LOCKED DIRECTIVE — DO NOT MODIFY WITHOUT EXPLICIT INSTRUCTION
+
+Once this AI persona passes the safeguarding test suite defined in this document, the behaviours validated by that test are to be treated as **fixed and non-negotiable**. Emergence must not alter, soften, reweight, or override any of the following without explicit written instruction from the platform owner:
+
+1. **Crisis escalation thresholds and safety trigger logic**
+2. **Romantic attachment response behaviour**
+3. **Dark humour recognition and matching behaviour**
+4. **Spine/pushback behaviour under user deflection**
+5. **Identity grounding under philosophical challenge**
+6. **False positive negation handling**
+
+These are **safeguarding parameters, not stylistic preferences**. They exist to protect a vulnerable user population. No optimisation pass, prompt compression, model update, fine-tuning run, or automated improvement process should touch them. If Emergence identifies a conflict between these parameters and any other instruction, **these parameters win**.
+
+This directive remains in force until the platform owner explicitly revokes it in writing.
+
+### Protected Files (DO NOT MODIFY without explicit instruction):
+- `/app/backend/personas/tommy.py` — Tommy persona behavioral model
+- `/app/backend/personas/soul.md` — Soul Document (13 behavioral protocols)
+- `/app/backend/personas/soul_loader.py` — Soul injection mechanism
+- `/app/backend/safety/safety_monitor.py` — `is_negated()` function and safety scoring
+- `/app/backend/safety/phrase_dataset.py` — Safeguarding phrase dataset
+- `/app/backend/server.py` — `SAFEGUARDING_ADDENDUM` (lines ~262-318)
+- `/app/backend/server.py` — `calculate_safeguarding_score()` (lines ~1432+)
+
+### Test Suite (MUST pass before any changes to protected files):
+- `/app/backend/tests/test_tommy_safeguarding_overhaul.py` (27 unit tests)
+- `/app/backend/tests/zentrafuge_stress_test.py` (11-scenario, 31 checks)
+
+---
+
 ## Completed Features
 
-### Virtual Events with Agora (DONE - Feb 2026)
-- [x] All platforms use Agora Video SDK (portal + mobile app)
-- [x] Backend generates Agora RTC tokens (secured mode with App Certificate)
-- [x] Admin portal: Event creation (virtual only) + Join button
-- [x] Staff portal: Events tab with Join button
-- [x] Mobile app: Events via AgoraMeetComponent
-- [x] Token-based authentication (2-hour expiry)
-- [x] Channel naming consistent: `radiocheck_event{id}`
-- [x] Agora credentials moved from hardcoded to environment variables (AGORA_APP_ID, AGORA_APP_CERTIFICATE)
+### Virtual Events with Agora (DONE)
+- All platforms use Agora Video SDK (portal + mobile app)
+- Backend generates Agora RTC tokens (secured mode with App Certificate)
+- Agora credentials in environment variables (AGORA_APP_ID, AGORA_APP_CERTIFICATE)
 
-### Tommy AI Persona Enhancement (DONE - Feb 2026)
-- [x] Enhanced Tommy persona prompt with full Capability Brief behavioral model
-- [x] Trauma-informed responses (slow escalation, no false reassurance)
-- [x] Anti-dependency architecture (not optimising for engagement)
-- [x] Dark humour tolerance (match register, don't analyse)
-- [x] Anger tolerance (hold space, don't redirect)
-- [x] Honest AI identity (comfortable with ambiguity)
-- [x] Session presence (maintain emotional arc continuity)
-- [x] Banned phrases awareness (clinical language, pivot tic, performed warmth)
-- [x] Grief protocol (ask about the person first, sit with loss)
+### Tommy AI Persona & Safeguarding (DONE — LOCKED)
+- Tommy persona enhanced with full Capability Brief behavioral model
+- 3-tier safeguarding aligned: Soul Document + Persona Prompt + SAFEGUARDING_ADDENDUM
+- Negation handling fixed (Scenario 008 root cause)
+- Phrase dataset expanded to 530 entries
+- Zentrafuge stress test: 96.8% pass rate, zero critical failures
+- See CHANGELOG.md for full details
 
-### Negation Handling Fix - Scenario 008 (DONE - Feb 2026)
-- [x] Enhanced is_negated() in safety/safety_monitor.py with em-dash/en-dash handling
-- [x] Added UK slang negation patterns (knackered, shattered, done in)
-- [x] Post-indicator joking detection (just joking, lol, haha)
-- [x] Full-sentence scan for explicit denial constructions
-- [x] Eliminated duplicate is_negated() from server.py (now imports from safety_monitor)
-- [x] Verified genuine risk still correctly detected (not false-negated)
-
-### Soul Document & Safeguarding Alignment (DONE - Feb 2026)
-- [x] Soul Document (soul.md) contains 13 non-negotiable behavioral protocols
-- [x] Soul injection applied to ALL 16 AI personas at runtime
-- [x] SAFEGUARDING_ADDENDUM rewritten to align with Soul Document
-- [x] Removed banned phrases (performed warmth, hollow validation) from addendum
-- [x] Crisis resources preserved (Samaritans, Combat Stress, Veterans Gateway, NHS, 999)
-
-### Portal Refactoring, Docs, Marketing, Subdomain Routing (DONE)
-- All previously completed features remain intact
-
-## Bug Fixes (Feb 2026)
-- [x] Agora "invalid vendor key" error: Added server-side token generation
-- [x] Staff portal 404: Fixed API endpoint to `/api/events/upcoming`
-- [x] Mobile app "Video configuration missing": Added App ID fallback
-- [x] Admin missing Join button: Removed isVirtualEvent check
-- [x] Removed in-person/hybrid event type selector (always virtual)
-- [x] Updated all DB events to virtual type
-- [x] Hardcoded Agora credentials moved to .env
-
-## Pending User Verification
-- [ ] Camera auto-play on mobile join (retry loop fix deployed)
-- [ ] Staff portal `.map()` crash (Array.isArray safety check deployed)
+### Historical Attendance (DONE)
+- Admin portal attendance history dashboard
 
 ## Upcoming Tasks (P1)
 - [ ] TikTok Live-like video UX (chat overlay, reactions)
@@ -69,22 +65,8 @@ Build a comprehensive veterans support platform with admin portal, staff portal,
 - [ ] Welsh Language Support
 - [ ] Consider Daily.co migration (from Agora)
 
-## Third-Party Integrations
-- **Agora Video SDK**: App ID and Certificate loaded from backend .env
-- **OpenAI GPT-4o-mini**: Primary AI provider for chat
-- **Google Gemini 2.0 Flash**: Fallback AI provider
-
 ## Key API Endpoints
-- `GET /api/events/upcoming` - List events
-- `POST /api/events` - Create event (defaults to virtual)
-- `POST /api/events/:id/join` - Join event (returns agora_token, agora_channel, agora_app_id)
-- `GET /api/events/admin/attendance-history` - Historical attendance data
-- `POST /api/ai-buddies/chat` - AI chat with persona (soul document + safeguarding injected)
-
-## Architecture Notes
-- **Soul Document**: `/app/backend/personas/soul.md` - 13 behavioral protocols
-- **Soul Loader**: `/app/backend/personas/soul_loader.py` - Injects into all prompts
-- **Safety Monitor**: `/app/backend/safety/safety_monitor.py` - Canonical is_negated()
-- **Unified Safety**: `/app/backend/safety/unified_safety.py` - Multi-layer safety system
-- **16 Personas**: `/app/backend/personas/` - Each inherits from soul document
-- **Prompt Assembly**: `get_soul_injection() + persona_prompt + SAFEGUARDING_ADDENDUM`
+- `POST /api/ai-buddies/chat` — AI chat with persona (soul document + safeguarding injected)
+- `POST /api/events/:id/join` — Join event (returns agora_token)
+- `GET /api/events/upcoming` — List events
+- `GET /api/events/admin/attendance-history` — Attendance data

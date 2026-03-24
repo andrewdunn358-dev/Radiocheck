@@ -1485,7 +1485,7 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
         # In-sentence negation constructions (CRITICAL - fixes Scenario 008)
         "not suicidal", "not going to hurt", "not going to harm",
         "not in a", "not in that", "not like that", "not that way",
-        "just tired", "just frustrated", "just angry", "just venting",
+        "just frustrated", "just angry", "just venting",
         "don't mean", "didn't mean", "doesn't mean",
         "not actually", "not really", "not literally",
         "wouldn't actually", "would never actually",
