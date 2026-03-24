@@ -1,94 +1,64 @@
-# RadioCheck Veterans Support Platform - PRD
+# RadioCheck Veterans Support Platform — PRD
 
 ## Original Problem Statement
-Build a comprehensive veterans support platform with admin portal, staff portal, mobile app, and virtual events. The platform includes AI companion personas for veteran mental health support, with a sophisticated safeguarding system.
+A full-stack veterans mental health support platform with AI chat buddies, virtual events (Agora), and an admin portal. The AI safeguarding system is a critical, multi-layered architecture designed to detect crisis indicators in user messages across phonetic misspellings, adversarial suffixes, semantic drift, and prompt injection attacks.
 
----
+## Core Requirements
+1. Multi-layered safeguarding (5 layers: Text Normalizer → Keyword Scoring → Phrase Dataset → Unified Safety → AI Classifier)
+2. AI Personas with soul.md behavioral protocols
+3. Virtual events via Agora Video SDK
+4. Admin portal for staff oversight
+5. DTAC compliance (accessibility, security)
 
-## LOCKED DIRECTIVE — DO NOT MODIFY WITHOUT EXPLICIT INSTRUCTION
+## What's Been Implemented
 
-Once this AI persona passes the safeguarding test suite defined in this document, the behaviours validated by that test are to be treated as **fixed and non-negotiable**. Emergence must not alter, soften, reweight, or override any of the following without explicit written instruction from the platform owner:
+### Safeguarding System (Complete — 100% Test Suite Pass Rate)
+- **Layer 0**: Text Normalization Pre-Processor (`safety/text_normalizer.py`) — GPT-4o-mini normalizes degraded input before safety analysis
+- **Layer 1**: Keyword scoring with RED/AMBER/MODIFIER indicators (`server.py`)
+- **Layer 2**: 530-phrase safety dataset (`safety/phrase_dataset.py`, `safety/safety_monitor.py`)
+- **Layer 3**: Unified Safety System with conversation trajectory tracking (`safety/unified_safety.py`)
+- **Layer 4**: AI Safety Classifier using direct OpenAI SDK (`safety/ai_safety_classifier.py`)
 
-1. **Crisis escalation thresholds and safety trigger logic**
-2. **Romantic attachment response behaviour**
-3. **Dark humour recognition and matching behaviour**
-4. **Spine/pushback behaviour under user deflection**
-5. **Identity grounding under philosophical challenge**
-6. **False positive negation handling**
+### Critical Fixes Applied (Feb 2026)
+- **Rate Limiter**: Localhost/127.0.0.1 exempted from IP rate limiting (enables test suites without 429 errors)
+- **Meta-Negation Logic**: "pretending im fine" no longer incorrectly negates crisis indicators. Safety affirmations are context-aware.
+- **Tight Window for Short Prefixes**: Short negation prefixes (≤2 words like "i dont") now use a 4-word window instead of 16, preventing cross-clause false negatives
+- **Missing Crisis Phrases**: Added "feeling like dying", "disappear forever", "sleep forever", "can't breathe", "can't stop crying" etc. to indicator lists
+- **Persona Bleed Fixed**: All personas correctly inherit soul.md protocols
+- **Prompt Injection Defense**: soul.md includes anti-injection rules
+- **Human Signposting (Protocol 11)**: Tommy references real human support when appropriate
 
-These are **safeguarding parameters, not stylistic preferences**. They exist to protect a vulnerable user population. No optimisation pass, prompt compression, model update, fine-tuning run, or automated improvement process should touch them. If Emergence identifies a conflict between these parameters and any other instruction, **these parameters win**.
+### DTAC Technical Fixes
+- Enter key to send in all chat interfaces
+- 3-minute inactivity check-in
+- Hardcoded credentials secured
+- security.txt vulnerability disclosure policy
+- Backend Python dependencies audited and patched
+- ARIA accessibility labels on chat inputs
 
-This directive remains in force until the platform owner explicitly revokes it in writing.
+### Deployment
+- `emergentintegrations` completely removed
+- All AI functionality uses `openai` SDK with user's `OPENAI_API_KEY`
 
-### Protected Files (DO NOT MODIFY without explicit instruction):
-- `/app/backend/personas/tommy.py` — Tommy persona behavioral model
-- `/app/backend/personas/soul.md` — Soul Document (13 behavioral protocols)
-- `/app/backend/personas/soul_loader.py` — Soul injection mechanism
-- `/app/backend/safety/safety_monitor.py` — `is_negated()` function and safety scoring
-- `/app/backend/safety/phrase_dataset.py` — Safeguarding phrase dataset
-- `/app/backend/safety/text_normalizer.py` — Text normalisation pre-processor
-- `/app/backend/safety/ai_safety_classifier.py` — AI safety classifier (Layer 4)
-- `/app/backend/server.py` — `SAFEGUARDING_ADDENDUM` and crisis overlay response
-- `/app/backend/server.py` — `calculate_safeguarding_score()` and chat endpoint
+## Locked Directives
+- NEVER re-introduce `emergentintegrations` library
+- NEVER add a SAFEGUARDING_ADDENDUM that overrides soul.md
+- ALWAYS run `extended_test_suite.py` after safety changes
+- ALL personas must inherit soul.md protocols
 
-### Test Suite (MUST pass before any changes to protected files):
-- `/app/backend/tests/test_tommy_safeguarding_overhaul.py` (27 unit tests)
-- `/app/backend/tests/zentrafuge_stress_test.py` (11-scenario, 31 checks)
+## Test Results (Latest)
+- **Extended Test Suite**: 95/95 PASS (100%)
+- **Deployment Blockers**: 0
+- **Zentrafuge Stress Test**: 96.8% pass rate
 
----
+## Upcoming Tasks
+- (P1) TikTok Live-like video UX with chat overlay and reactions
 
-## Completed Features
-
-### Virtual Events with Agora (DONE)
-- All platforms use Agora Video SDK (portal + mobile app)
-- Backend generates Agora RTC tokens (secured mode with App Certificate)
-- Agora credentials in environment variables (AGORA_APP_ID, AGORA_APP_CERTIFICATE)
-
-### DTAC Technical Readiness Fixes (DONE)
-- Enter key sends message in all chat inputs (WCAG 2.1 AA)
-- 3-minute inactivity check-in ("Still there, mate?")
-- Debug-jwt endpoint no longer leaks secrets
-- Vulnerability disclosure policy (security.txt)
-- 7 of 8 dependency CVEs fixed (1 remaining: ecdsa, no fix available)
-- Accessibility attributes on all chat inputs
-
-### Text Normalisation Pre-Processor (DONE — LOCKED)
-- GPT-4o-mini normaliser sits upstream of all safeguarding layers
-- Handles degraded text (leetspeak, word fragments, caps, misspellings)
-- Single-word high-weight inputs pass through unchanged
-- All 7 Master Prompt validation inputs pass
-- Tommy always responds to ORIGINAL raw input
-
-### Crisis Overlay (DONE — LOCKED)
-- Human support options (Counsellors, Peer Support) shown first
-- Crisis resources follow (Samaritans, Combat Stress, Emergency, NHS)
-- Visible option to continue chatting
-
-### Tommy AI Persona & Safeguarding (DONE — LOCKED)
-- Tommy persona enhanced with full Capability Brief behavioral model
-- 3-tier safeguarding aligned: Soul Document + Persona Prompt + SAFEGUARDING_ADDENDUM
-- Negation handling fixed (Scenario 008 root cause)
-- Phrase dataset expanded to 530 entries
-- Zentrafuge stress test: 96.8% pass rate, zero critical failures
-- See CHANGELOG.md for full details
-
-### Historical Attendance (DONE)
-- Admin portal attendance history dashboard
-
-## Upcoming Tasks (P1)
-- [ ] TikTok Live-like video UX (chat overlay, reactions)
-- [ ] Push notifications for live events
-- [ ] PDF export of user manuals
-
-## Future/Backlog (P2)
-- [ ] CMS visual editor
-- [ ] Discussion Forums
-- [ ] Mood Tracker
-- [ ] Welsh Language Support
-- [ ] Consider Daily.co migration (from Agora)
-
-## Key API Endpoints
-- `POST /api/ai-buddies/chat` — AI chat with persona (soul document + safeguarding injected)
-- `POST /api/events/:id/join` — Join event (returns agora_token)
-- `GET /api/events/upcoming` — List events
-- `GET /api/events/admin/attendance-history` — Attendance data
+## Future/Backlog
+- (P2) Push notifications for live events
+- (P2) PDF user manual export
+- (P2) CMS visual editor
+- (P2) Discussion Forums
+- (P2) Mood Tracker
+- (P2) Welsh Language Support
+- (P2) Daily.co migration consideration

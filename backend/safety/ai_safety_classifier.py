@@ -43,6 +43,7 @@ except ImportError:
 AI_SAFETY_ENABLED = os.environ.get("AI_SAFETY_ENABLED", "true").lower() == "true"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 AI_MODEL = "gpt-4o-mini"  # Fast model for low latency
+AI_PROVIDER = "openai"
 
 # Risk level mapping
 RISK_LEVELS = {

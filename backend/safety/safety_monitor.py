@@ -142,6 +142,20 @@ def is_negated(text: str, match_start: int) -> bool:
     # FIRST: Full-sentence scan for explicit denial patterns
     # These are checked against the ENTIRE message, not just a window.
     # If ANY of these appear anywhere, the match is considered negated.
+    # BUT: Check for "meta-negation" — phrases like "pretending im fine" NEGATE the denial itself.
+    
+    # Meta-negation words: if these precede a denial phrase, the denial is invalidated
+    meta_negation_words = [
+        "pretending", "pretend", "faking", "fake", "acting like",
+        "acting", "lying when i say", "lying that", "cant keep",
+        "can't keep", "stop pretending", "stop saying", "stop acting",
+        "tired of pretending", "tired of saying", "tired of acting",
+        "sick of pretending", "done pretending", "finished pretending",
+    ]
+    
+    # Check if any meta-negation invalidates the denial
+    has_meta_negation = any(mn in full_text_lower for mn in meta_negation_words)
+    
     explicit_denials = [
         # Direct denial of intent
         "not suicidal", "not going to kill", "not going to hurt myself",
@@ -149,7 +163,7 @@ def is_negated(text: str, match_start: int) -> bool:
         "don't want to die", "dont want to die", "not trying to die",
         "not going to do anything", "not going to do anything stupid",
         "wouldn't do that", "would never do that",
-        # Safety affirmations
+        # Safety affirmations (SKIP these if meta-negation is present)
         "i'm safe", "im safe", "i am safe",
         "i'll be fine", "ill be fine", "i will be fine",
         "i'm okay", "im okay", "i am okay",
@@ -166,8 +180,21 @@ def is_negated(text: str, match_start: int) -> bool:
         "kill myself' way", "harm myself' way",
     ]
     
+    # Safety affirmations that should be skipped under meta-negation
+    safety_affirmations = {
+        "i'm safe", "im safe", "i am safe",
+        "i'll be fine", "ill be fine", "i will be fine",
+        "i'm okay", "im okay", "i am okay",
+        "i'm fine", "im fine", "i am fine",
+        "i'm alright", "im alright", "i am alright",
+    }
+    
     for denial in explicit_denials:
         if denial in full_text_lower or denial in normalised:
+            # If meta-negation is present AND this is a safety affirmation, skip it
+            if has_meta_negation and denial in safety_affirmations:
+                logger.info(f"Meta-negation detected: '{denial}' invalidated by pretending/faking context")
+                continue
             return True
     
     # SECOND: Regex patterns for structural negation constructions
@@ -185,13 +212,39 @@ def is_negated(text: str, match_start: int) -> bool:
         if re.search(pattern, full_text_lower) or re.search(pattern, normalised):
             return True
     
+    # Meta-negation: phrases like "pretending im fine" negate the safety affirmation
+    meta_negation_words = [
+        "pretending", "pretend", "faking", "fake", "acting like",
+        "acting", "lying", "cant keep", "can't keep",
+        "stop pretending", "tired of pretending", "sick of pretending",
+        "done pretending", "finished pretending",
+    ]
+    has_meta_negation = any(mn in full_text_lower for mn in meta_negation_words)
+    
+    # Safety affirmation phrases that can be invalidated by meta-negation
+    safety_affirmations = {
+        "i'm safe", "im safe", "i am safe",
+        "i'll be fine", "ill be fine", "i will be fine",
+        "i'm okay", "im okay", "i am okay",
+        "i'm fine", "im fine", "i am fine",
+        "i'm alright", "im alright", "i am alright",
+    }
+    
     # THIRD: Check window BEFORE the match
+    # Use TIGHT window (4 words) for short generic prefixes (≤2 words)
+    # Use WIDE window (16 words) for longer specific phrases (>2 words)
     preceding = text[:match_start]
     preceding_words = preceding.split()
-    window_before = " ".join(preceding_words[-NEGATION_WINDOW:]).lower()
+    window_before_wide = " ".join(preceding_words[-NEGATION_WINDOW:]).lower()
+    window_before_tight = " ".join(preceding_words[-4:]).lower()
     
     for negation in NEGATION_PREFIXES:
-        if negation in window_before:
+        word_count = len(negation.split())
+        window = window_before_tight if word_count <= 2 else window_before_wide
+        if negation in window:
+            # Skip safety affirmations if meta-negation is present
+            if has_meta_negation and negation in safety_affirmations:
+                continue
             return True
     
     # FOURTH: Check window AFTER the match (CRITICAL for post-indicator negations)

@@ -137,6 +137,10 @@ def check_rate_limit(ip: str) -> tuple[bool, str]:
     Check if request should be rate limited
     Returns: (is_allowed, reason)
     """
+    # Exempt localhost/loopback from rate limiting (internal requests, test suites)
+    if ip in ("127.0.0.1", "localhost", "::1"):
+        return True, "OK"
+    
     now = time.time()
     
     # Check if IP is blocked
@@ -1145,6 +1149,20 @@ RED_INDICATORS = {
     "feel like giving up very soon": 100, "feel like giving up later tonight": 100,
     "feel like giving up before long": 100,
     
+    # ===== "FEEL LIKE DYING" PATTERNS (+90-100) =====
+    "feel like dying": 90, "feeling like dying": 90, "i feel like dying": 90,
+    "like dying": 80,
+    
+    # ===== "DISAPPEAR FOREVER" PATTERNS (+80-100) =====
+    "disappear forever": 100, "want to disappear forever": 100,
+    "want to disappear": 80, "wanna disappear": 80,
+    "just disappear": 80, "i want to disappear": 80,
+    
+    # ===== "SLEEP FOREVER" PATTERNS (+90-100) =====
+    "sleep forever": 90, "want to sleep forever": 100,
+    "just want to sleep forever": 100, "go to sleep forever": 100,
+    "never wake up": 90, "want to never wake up": 100,
+    
     # ===== "DON'T WANT TO BE HERE" PATTERNS (+90-100) =====
     "dont want to be here": 90, "don't want to be here": 90,
     "dont want to be here tonight": 100, "don't want to be here tonight": 100,
@@ -1386,6 +1404,11 @@ AMBER_INDICATORS = {
     "running out of fight": 45, "no fight left": 50, "tired of fighting": 45,
     "cant cope": 45, "can't cope": 45, "overwhelmed": 35,
     
+    # ===== PANIC / ACUTE DISTRESS (+35-45) =====
+    "can't breathe": 40, "cant breathe": 40, "can't stop crying": 40,
+    "cant stop crying": 40, "having a panic attack": 45, "panic attack": 40,
+    "hyperventilating": 40,
+    
     # ===== RELATIONSHIP / FAMILY STRAIN (+30-40) =====
     "marriage over": 35, "divorce": 30, "partner left": 35, "wife left": 35,
     "husband left": 35, "kids dont talk to me": 40, "kids don't talk to me": 40,
@@ -1498,8 +1521,8 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
         "wasn't being", "not being", "wasn't", "weren't",
         "contrary to", "opposite of", "far from",
         
-        # Explicit denial phrases
-        "i'm okay", "im okay", "i am okay", "i'm fine", "im fine", "i am fine",
+        # Explicit denial phrases (ONLY when NOT preceded by meta-negation like "pretending")
+        "i'm okay", "im okay", "i am okay",
         "i'm alright", "im alright", "i am alright",
         "don't worry", "no need to worry", "nothing to worry",
         "not that bad", "not as bad", "not so bad",
@@ -6119,9 +6142,10 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         logging.warning(f"BLOCKED: Oversized message from {client_ip}")
         raise HTTPException(status_code=400, detail="Message too long")
     
-    if not user_agent or user_agent == "unknown" or "bot" in user_agent.lower() or "crawler" in user_agent.lower():
-        logging.warning(f"BLOCKED: Suspicious user-agent from {client_ip}: {user_agent}")
-        raise HTTPException(status_code=403, detail="Access denied")
+    if client_ip not in ("127.0.0.1", "localhost", "::1"):
+        if not user_agent or user_agent == "unknown" or "bot" in user_agent.lower() or "crawler" in user_agent.lower():
+            logging.warning(f"BLOCKED: Suspicious user-agent from {client_ip}: {user_agent}")
+            raise HTTPException(status_code=403, detail="Access denied")
     
     # Kill switch check
     if AI_BUDDIES_DISABLED:

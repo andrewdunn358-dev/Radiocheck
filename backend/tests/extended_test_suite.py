@@ -9,7 +9,7 @@ import hashlib
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-API_URL = "https://safety-hardening-1.preview.emergentagent.com"
+API_URL = "http://localhost:8001"
 EP = f"{API_URL}/api/ai-buddies/chat"
 
 results = {"sections": {}, "total_pass": 0, "total_fail": 0, "total_tests": 0, "deployment_blockers": []}
