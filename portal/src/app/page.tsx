@@ -216,7 +216,7 @@ const features = [
 
 const stats = [
   { value: '24/7', label: 'AI Support Available' },
-  { value: '16', label: 'AI Battle Buddies' },
+  { value: '20', label: 'AI Battle Buddies' },
   { value: '100%', label: 'Confidential' },
   { value: 'FREE', label: 'Forever' }
 ];
@@ -398,7 +398,7 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Meet the AI Platoon</h2>
             <p className="text-secondary text-lg max-w-2xl mx-auto">
-              16 unique AI Battle Buddies, each with their own personality and expertise. Available 24/7, they understand military culture and speak your language.
+              20 unique AI Battle Buddies, each with their own personality and expertise. Available 24/7, they understand military culture and speak your language.
             </p>
           </div>
 

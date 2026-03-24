@@ -37,6 +37,10 @@ const AI_AVATARS: Record<string, any> = {
   '/images/sam.png': require('../assets/images/sam.png'),
   '/images/kofi.png': require('../assets/images/kofi.png'),
   '/images/james.png': require('../assets/images/james.png'),
+  '/images/dave.png': require('../assets/images/dave.png'),
+  '/images/mo.png': require('../assets/images/mo.png'),
+  '/images/helen.png': require('../assets/images/helen.png'),
+  '/images/reg.png': require('../assets/images/reg.png'),
 };
 
 // Helper function to get avatar source
@@ -122,7 +126,6 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   { title: "Recovery Support", description: "Injury rehab, prosthetics & ongoing care", icon: "medkit", color: "#dc2626", bgColor: "#fee2e2", route: "/recovery-support" },
   { title: "For Carers", description: "Supporting those who care for veterans", icon: "hand-left", color: "#0d9488", bgColor: "#ccfbf1", route: "/for-carers" },
   { title: "Serious Illness Support", description: "Cancer, leukaemia & long-term conditions", icon: "pulse", color: "#9333ea", bgColor: "#f3e8ff", route: "/serious-illness" },
-  { title: "Request a Callback", description: "We'll call you back", icon: "call", color: "#22c55e", bgColor: "#dcfce7", route: "/callback", isCallback: true },
 ];
 
 // Fallback AI Team (used when CMS is empty or unavailable)
@@ -476,6 +479,25 @@ export default function Index() {
           )}
         </View>
 
+        {/* Request a Callback - Full Width Banner */}
+        <TouchableOpacity 
+          style={styles.callbackBanner}
+          onPress={() => router.push('/callback' as any)}
+          activeOpacity={0.85}
+          data-testid="callback-banner"
+        >
+          <View style={styles.callbackBannerLeft}>
+            <View style={[styles.callbackBannerIcon, { backgroundColor: '#dcfce7' }]}>
+              <Ionicons name="call" size={28} color="#22c55e" />
+            </View>
+            <View style={styles.callbackBannerText}>
+              <Text style={styles.callbackBannerTitle}>Request a Callback</Text>
+              <Text style={styles.callbackBannerDesc}>We'll call you back at a time that suits you</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+
         {/* Main Menu Cards - 2-Column Grid Layout */}
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
@@ -760,6 +782,44 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     marginBottom: 32,
+  },
+  // Callback banner - full width
+  callbackBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#22c55e',
+  },
+  callbackBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  callbackBannerIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  callbackBannerText: {
+    flex: 1,
+  },
+  callbackBannerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  callbackBannerDesc: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   // 2-column grid card styles
   gridCard: {

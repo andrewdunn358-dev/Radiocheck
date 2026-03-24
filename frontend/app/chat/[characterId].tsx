@@ -49,6 +49,10 @@ const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
   '/images/sam.png': require('../../assets/images/sam.png'),
   '/images/kofi.png': require('../../assets/images/kofi.png'),
   '/images/james.png': require('../../assets/images/james.png'),
+  '/images/dave.png': require('../../assets/images/dave.png'),
+  '/images/mo.png': require('../../assets/images/mo.png'),
+  '/images/helen.png': require('../../assets/images/helen.png'),
+  '/images/reg.png': require('../../assets/images/reg.png'),
 };
 
 // Helper function to get avatar source (handles both local and remote images)
