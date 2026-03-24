@@ -217,6 +217,36 @@ const BOOKS: Book[] = [
     amazonUrl: "https://www.amazon.co.uk/s?k=Complete+Guide+Veterans+Benefits+Bruce+Brown",
     coverUrl: "https://covers.openlibrary.org/b/isbn/0764167510-M.jpg"
   },
+  {
+    title: "Danger Close",
+    author: "Stuart Tootal",
+    description: "The true story of Helmand from the leader of 3 PARA. A commanding officer's gripping account of the brutal 2006 deployment to Afghanistan.",
+    rating: 4.7,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Danger+Close+Stuart+Tootal",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/9781848542587-M.jpg"
+  },
+  {
+    title: "Operation Mayhem",
+    author: "Steve Heaney MC",
+    description: "The first account of X Platoon's epic mission during a bloody civil war in Africa. Raw courage, elite forces, and a story that had to be told.",
+    rating: 4.6,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Operation+Mayhem+Steve+Heaney",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/9781409148456-M.jpg"
+  },
+  {
+    title: "Operation Telic",
+    author: "Tim Ripley",
+    description: "The definitive account of the British campaign in Iraq 2003-2009. Uncensored documents, SAS operations, and the real story of Basra.",
+    rating: 4.5,
+    category: "Military History",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Operation+Telic+Tim+Ripley",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0992945801-M.jpg"
+  },
 ];
 
 interface SearchResult {
