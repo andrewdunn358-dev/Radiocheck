@@ -42,10 +42,18 @@ A full-stack veterans mental health support platform with AI chat buddies, virtu
 | **Reg** | **Serious Illness** | **Cancer, leukaemia, palliative care** |
 
 ### Front Page Layout
-**Section Order:** What is Radio Check? → Meet HQ → Meet the AI Platoon → 22 Tiles → Events
+**Section Order:** What is Radio Check? → Meet HQ → Meet the AI Platoon → Request a Callback Banner → 20 Tiles → Events
 
-**22 Resource Tiles in order:**
-Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Support Orgs, Compensation Schemes, Money & Benefits, Friends & Family, Growing up Military, He Served, She Served, They Served, Commonwealth Served, Faith in Service, The Gym, Recommended Podcasts, Recovery Support, For Carers, Serious Illness Support, Request a Callback
+**Request a Callback** is a full-width banner below "Meet the AI Platoon" section (not a grid tile).
+
+**20 Resource Tiles in order:**
+Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Support Orgs, Compensation Schemes, Money & Benefits, Friends & Family, Growing up Military, He Served, She Served, They Served, Commonwealth Served, Faith in Service, The Gym, Recommended Podcasts, Recovery Support, For Carers, Serious Illness Support
+
+### New Content Pages (with AI Chat Banners)
+- **He Served** (`/he-served`) — CTA routes to Dave (`/chat/dave`)
+- **Recovery Support** (`/recovery-support`) — Chat banner for Mo (`/chat/mo`)
+- **For Carers** (`/for-carers`) — Chat banner for Helen (`/chat/helen`)
+- **Serious Illness** (`/serious-illness`) — Chat banner for Reg (`/chat/reg`)
 
 ### Portal Website Renames
 - "Meet the Founders" → **"Meet HQ"**
@@ -60,10 +68,18 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 - ALWAYS run `extended_test_suite.py` after safety changes
 - ALL personas must inherit soul.md protocols
 
-## Test Results (Latest)
+## Test Results (Latest — Feb 2026)
 - Extended Test Suite: **98/99 PASS (99%)**
 - 1 non-deterministic failure: SC003-baz (dark humour response variance)
 - All safeguarding-critical tests: PASS
+- New Personas Test: **14/14 PASS (100%)** — `/app/backend/tests/test_new_personas.py`
+- Portal verification: All 20 AI personas display correctly
+
+## Bug Fixes Verified (Feb 2026)
+1. **Chat Redirection** — Dave, Mo, Helen, Reg correctly route to their own personas (not Tommy)
+2. **Missing Chat Banners** — Recovery Support, For Carers, Serious Illness pages all have AI chat banners
+3. **Callback Banner** — Full-width banner below "Meet the AI Platoon" section
+4. **Avatar Images** — Copied to `/app/frontend/assets/images/` and registered in avatar maps
 
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions
