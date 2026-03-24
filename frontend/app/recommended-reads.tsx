@@ -13,6 +13,7 @@ interface Book {
   category: string;
   format: 'book' | 'audiobook' | 'both';
   amazonUrl: string;
+  coverUrl: string;
 }
 
 const BOOKS: Book[] = [
@@ -23,7 +24,8 @@ const BOOKS: Book[] = [
     rating: 4.6,
     category: "Memoir",
     format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0552141275"
+    amazonUrl: "https://www.amazon.co.uk/s?k=Bravo+Two+Zero+Andy+McNab",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0552145229-M.jpg"
   },
   {
     title: "Spoken from the Front",
@@ -32,7 +34,28 @@ const BOOKS: Book[] = [
     rating: 4.7,
     category: "Memoir",
     format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0552161004"
+    amazonUrl: "https://www.amazon.co.uk/s?k=Spoken+from+the+Front+Andy+McNab",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0552161004-M.jpg"
+  },
+  {
+    title: "Escape from Kabul",
+    author: "Levison Wood & Geraint Jones",
+    description: "The gripping inside story of the 2021 Kabul evacuation. Eyewitness accounts from soldiers, interpreters and officials during the Taliban's return.",
+    rating: 4.6,
+    category: "Military History",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Escape+from+Kabul+Levison+Wood+Geraint+Jones",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/9781399718127-M.jpg"
+  },
+  {
+    title: "Walking the Nile",
+    author: "Levison Wood",
+    description: "Former British Army officer walks the entire length of the Nile. Adventure, resilience and the power of putting one foot in front of the other.",
+    rating: 4.5,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Walking+the+Nile+Levison+Wood",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1473638504-M.jpg"
   },
   {
     title: "The Body Keeps the Score",
@@ -41,124 +64,8 @@ const BOOKS: Book[] = [
     rating: 4.7,
     category: "Mental Health",
     format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0141978619"
-  },
-  {
-    title: "It Doesn't Have to Hurt to Work",
-    author: "Dave Collins & Leigh Maybury",
-    description: "Performance psychology from a former military psychologist. Practical tools for managing stress and building resilience.",
-    rating: 4.5,
-    category: "Mental Health",
-    format: "book",
-    amazonUrl: "https://www.amazon.co.uk/dp/1472976401"
-  },
-  {
-    title: "Walking with the Wounded",
-    author: "Mark McCrum",
-    description: "The inspiring story of wounded veterans who trekked to the North Pole. Incredible resilience and determination.",
-    rating: 4.5,
-    category: "Inspiration",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0751547840"
-  },
-  {
-    title: "The Unforgiving Minute",
-    author: "Craig Mullaney",
-    description: "A soldier's education from West Point to Afghanistan. Thoughtful, honest and deeply human.",
-    rating: 4.6,
-    category: "Memoir",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0143116878"
-  },
-  {
-    title: "Chickenhawk",
-    author: "Robert Mason",
-    description: "Helicopter pilot's raw memoir from Vietnam. One of the most vivid accounts of combat flying ever written.",
-    rating: 4.7,
-    category: "Memoir",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0552152536"
-  },
-  {
-    title: "Man's Search for Meaning",
-    author: "Viktor Frankl",
-    description: "Holocaust survivor and psychiatrist on finding purpose through suffering. A life-changing read for anyone facing darkness.",
-    rating: 4.7,
-    category: "Mental Health",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/1846041244"
-  },
-  {
-    title: "Apache Dawn",
-    author: "Damien Lewis",
-    description: "British forces in Afghanistan — 3 Para's bloody battle for Helmand. Gripping and brutal.",
-    rating: 4.5,
-    category: "Military History",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0751541834"
-  },
-  {
-    title: "Trauma Is Really Strange",
-    author: "Steve Haines",
-    description: "A short, illustrated guide to understanding trauma and how the body responds. Perfect introduction — not heavy reading.",
-    rating: 4.6,
-    category: "Mental Health",
-    format: "book",
-    amazonUrl: "https://www.amazon.co.uk/dp/1848192932"
-  },
-  {
-    title: "East of Croydon",
-    author: "Sue Perkins",
-    description: "Not military — but a brilliant, funny memoir about identity and belonging. Sometimes you need a laugh. Good for carers too.",
-    rating: 4.4,
-    category: "Lighter Reads",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/1405938358"
-  },
-  {
-    title: "Ant Middleton: First Man In",
-    author: "Ant Middleton",
-    description: "Former SBS point man's take on leadership, fear and resilience. Direct, no-nonsense and motivating.",
-    rating: 4.6,
-    category: "Memoir",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/0008245738"
-  },
-  {
-    title: "Wearing the Green Beret",
-    author: "Robin Childs",
-    description: "A Royal Marine Commando's journey. Honest account of service life, the bonds formed, and the challenges after.",
-    rating: 4.5,
-    category: "Memoir",
-    format: "book",
-    amazonUrl: "https://www.amazon.co.uk/dp/1399018590"
-  },
-  {
-    title: "Soldier Box",
-    author: "Joe Glenton",
-    description: "A British soldier's story of refusing to return to Afghanistan. Controversial, brave, and thought-provoking.",
-    rating: 4.3,
-    category: "Memoir",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/1781681058"
-  },
-  {
-    title: "The Complete Guide to Veterans' Benefits",
-    author: "Bruce Brown",
-    description: "Comprehensive guide to understanding and claiming all the benefits and support you're entitled to.",
-    rating: 4.4,
-    category: "Practical",
-    format: "book",
-    amazonUrl: "https://www.amazon.co.uk/dp/0764167510"
-  },
-  {
-    title: "Painting the Sand",
-    author: "Kim Hughes GC",
-    description: "Bomb disposal in Helmand by a George Cross recipient. Terrifying, gripping and deeply human.",
-    rating: 4.7,
-    category: "Memoir",
-    format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/1471156729"
+    amazonUrl: "https://www.amazon.co.uk/s?k=The+Body+Keeps+the+Score+Bessel+van+der+Kolk",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0141978619-M.jpg"
   },
   {
     title: "Complex PTSD: From Surviving to Thriving",
@@ -167,7 +74,118 @@ const BOOKS: Book[] = [
     rating: 4.7,
     category: "Mental Health",
     format: "both",
-    amazonUrl: "https://www.amazon.co.uk/dp/1492871842"
+    amazonUrl: "https://www.amazon.co.uk/s?k=Complex+PTSD+From+Surviving+to+Thriving+Pete+Walker",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1492871842-M.jpg"
+  },
+  {
+    title: "Painting the Sand",
+    author: "Kim Hughes GC",
+    description: "Bomb disposal in Helmand by a George Cross recipient. Terrifying, gripping and deeply human.",
+    rating: 4.7,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Painting+the+Sand+Kim+Hughes",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1471156729-M.jpg"
+  },
+  {
+    title: "Chickenhawk",
+    author: "Robert Mason",
+    description: "Helicopter pilot's raw memoir from Vietnam. One of the most vivid accounts of combat flying ever written.",
+    rating: 4.7,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Chickenhawk+Robert+Mason",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0552152536-M.jpg"
+  },
+  {
+    title: "Man's Search for Meaning",
+    author: "Viktor Frankl",
+    description: "Holocaust survivor and psychiatrist on finding purpose through suffering. A life-changing read for anyone facing darkness.",
+    rating: 4.7,
+    category: "Mental Health",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Mans+Search+for+Meaning+Viktor+Frankl",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1846041244-M.jpg"
+  },
+  {
+    title: "First Man In",
+    author: "Ant Middleton",
+    description: "Former SBS point man's take on leadership, fear and resilience. Direct, no-nonsense and motivating.",
+    rating: 4.6,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=First+Man+In+Ant+Middleton",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0008245738-M.jpg"
+  },
+  {
+    title: "Apache Dawn",
+    author: "Damien Lewis",
+    description: "British forces in Afghanistan — 3 Para's bloody battle for Helmand. Gripping and brutal.",
+    rating: 4.5,
+    category: "Military History",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Apache+Dawn+Damien+Lewis",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0751541834-M.jpg"
+  },
+  {
+    title: "Walking with the Wounded",
+    author: "Mark McCrum",
+    description: "The inspiring story of wounded veterans who trekked to the North Pole. Incredible resilience and determination.",
+    rating: 4.5,
+    category: "Inspiration",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Walking+with+the+Wounded+Mark+McCrum",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0751547840-M.jpg"
+  },
+  {
+    title: "The Unforgiving Minute",
+    author: "Craig Mullaney",
+    description: "A soldier's education from West Point to Afghanistan. Thoughtful, honest and deeply human.",
+    rating: 4.6,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=The+Unforgiving+Minute+Craig+Mullaney",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0143116878-M.jpg"
+  },
+  {
+    title: "Trauma Is Really Strange",
+    author: "Steve Haines",
+    description: "A short, illustrated guide to understanding trauma and how the body responds. Perfect introduction — not heavy reading.",
+    rating: 4.6,
+    category: "Mental Health",
+    format: "book",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Trauma+Is+Really+Strange+Steve+Haines",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1848192932-M.jpg"
+  },
+  {
+    title: "It Doesn't Have to Hurt to Work",
+    author: "Dave Collins & Leigh Maybury",
+    description: "Performance psychology from a former military psychologist. Practical tools for managing stress and building resilience.",
+    rating: 4.5,
+    category: "Mental Health",
+    format: "book",
+    amazonUrl: "https://www.amazon.co.uk/s?k=It+Doesnt+Have+to+Hurt+to+Work+Dave+Collins",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1472976401-M.jpg"
+  },
+  {
+    title: "Wearing the Green Beret",
+    author: "Robin Childs",
+    description: "A Royal Marine Commando's journey. Honest account of service life, the bonds formed, and the challenges after.",
+    rating: 4.5,
+    category: "Memoir",
+    format: "book",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Wearing+the+Green+Beret+Robin+Childs",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1399018590-M.jpg"
+  },
+  {
+    title: "Soldier Box",
+    author: "Joe Glenton",
+    description: "A British soldier's story of refusing to return to Afghanistan. Controversial, brave, and thought-provoking.",
+    rating: 4.3,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Soldier+Box+Joe+Glenton",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1781681058-M.jpg"
   },
   {
     title: "Losing the Plot",
@@ -176,7 +194,28 @@ const BOOKS: Book[] = [
     rating: 4.5,
     category: "Wellbeing",
     format: "book",
-    amazonUrl: "https://www.amazon.co.uk/dp/1399714023"
+    amazonUrl: "https://www.amazon.co.uk/s?k=Losing+the+Plot+Gail+Hanlon",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1399714023-M.jpg"
+  },
+  {
+    title: "East of Croydon",
+    author: "Sue Perkins",
+    description: "Not military — but a brilliant, funny memoir about identity and belonging. Sometimes you need a laugh. Good for carers too.",
+    rating: 4.4,
+    category: "Lighter Reads",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/s?k=East+of+Croydon+Sue+Perkins",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/1405938358-M.jpg"
+  },
+  {
+    title: "The Complete Guide to Veterans' Benefits",
+    author: "Bruce Brown",
+    description: "Comprehensive guide to understanding and claiming all the benefits and support you're entitled to.",
+    rating: 4.4,
+    category: "Practical",
+    format: "book",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Complete+Guide+Veterans+Benefits+Bruce+Brown",
+    coverUrl: "https://covers.openlibrary.org/b/isbn/0764167510-M.jpg"
   },
 ];
 
@@ -334,26 +373,35 @@ export default function RecommendedReads() {
               activeOpacity={0.85}
               data-testid={`book-card-${index}`}
             >
-              <View style={styles.bookHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.bookTitle, { color: colors.text }]}>{book.title}</Text>
-                  <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>by {book.author}</Text>
-                </View>
-                <View style={[styles.formatBadge, { backgroundColor: badge.bg }]}>
-                  <Ionicons name={book.format === 'book' ? 'book' : 'headset'} size={12} color={badge.color} />
-                  <Text style={[styles.formatBadgeText, { color: badge.color }]}>{badge.text}</Text>
-                </View>
-              </View>
+              <View style={styles.bookRow}>
+                <Image
+                  source={{ uri: book.coverUrl }}
+                  style={styles.bookCover}
+                  defaultSource={{ uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88P/BfwAJhAPk3KFb2AAAAABJRU5ErkJggg==' }}
+                />
+                <View style={styles.bookInfo}>
+                  <View style={styles.bookHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.bookTitle, { color: colors.text }]}>{book.title}</Text>
+                      <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>by {book.author}</Text>
+                    </View>
+                    <View style={[styles.formatBadge, { backgroundColor: badge.bg }]}>
+                      <Ionicons name={book.format === 'book' ? 'book' : 'headset'} size={12} color={badge.color} />
+                      <Text style={[styles.formatBadgeText, { color: badge.color }]}>{badge.text}</Text>
+                    </View>
+                  </View>
 
-              <Text style={[styles.bookDesc, { color: colors.textSecondary }]}>{book.description}</Text>
+                  <Text style={[styles.bookDesc, { color: colors.textSecondary }]} numberOfLines={3}>{book.description}</Text>
 
-              <View style={styles.bookFooter}>
-                <View style={styles.ratingRow}>
-                  {renderStars(book.rating)}
-                  <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{book.rating}</Text>
-                </View>
-                <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(book.category) + '20' }]}>
-                  <Text style={[styles.categoryTagText, { color: getCategoryColor(book.category) }]}>{book.category}</Text>
+                  <View style={styles.bookFooter}>
+                    <View style={styles.ratingRow}>
+                      {renderStars(book.rating)}
+                      <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{book.rating}</Text>
+                    </View>
+                    <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(book.category) + '20' }]}>
+                      <Text style={[styles.categoryTagText, { color: getCategoryColor(book.category) }]}>{book.category}</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
@@ -393,7 +441,10 @@ const styles = StyleSheet.create({
   categoryPillText: { fontSize: 13, fontWeight: '600' },
   resultsCount: { fontSize: 13, marginBottom: 12 },
   bookCard: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
-  bookHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 8 },
+  bookRow: { flexDirection: 'row', gap: 14 },
+  bookCover: { width: 70, height: 105, borderRadius: 8, backgroundColor: '#e5e7eb' },
+  bookInfo: { flex: 1 },
+  bookHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 8 },
   bookTitle: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
   bookAuthor: { fontSize: 13 },
   formatBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
