@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://video-fix-20.preview.emergentagent.com/api"
+BACKEND_URL = "https://safeguard-ai-launch.preview.emergentagent.com/api"
 
 # Test data
 TEST_EMAILS = [

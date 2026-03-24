@@ -13,7 +13,7 @@ import os
 import uuid
 
 # Use environment variable for base URL
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://video-fix-20.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://safeguard-ai-launch.preview.emergentagent.com').rstrip('/')
 
 
 class TestLMSLearnerAuthentication:

@@ -1,58 +1,51 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to refactor monolithic frontend pages, create user manuals, and integrate a Jitsi-based virtual events feature. The scope has since expanded significantly to include replacing Jitsi with Agora on the web portal, migrating the main  marketing website into the Next.js application, and resolving multiple bugs related to event creation and subdomain routing.
+The initial goal was to refactor the frontend, create user manuals, and add a Jitsi-based virtual events feature. The project has since evolved significantly. The core task is now to integrate a new, sophisticated AI persona named Tommy and overhaul the application's AI safeguarding system based on detailed specifications provided by the user in several documents.
+
+This follows the successful migration of the virtual events feature from Jitsi to Agora for both the web portal and mobile app, along with fixing numerous bugs related to event creation, API endpoints, and video call stability.
 
 **PRODUCT REQUIREMENTS:**
-1.  **(P0) Refactor Admin & Staff Portals**: Break down monolithic files. (COMPLETED)
-2.  **(P1) Create User Manuals**: Create user manuals for staff and admin. (COMPLETED)
-3.  **(P0) Virtual Events Integration**: Implement a feature for admins to create virtual events. The web portal implementation was migrated from Jitsi to Agora. The mobile app still uses Jitsi and has a critical bug preventing users from joining events. (IN PROGRESS)
-4.  **(P1) Website Migration**: Migrate  into the Next.js portal, update its theme, and add content (AI Team, Founders). (COMPLETED)
-5.  **(P1) Subdomain Routing**: Implement subdomain routing for , , , and . (COMPLETED, pending Vercel deployment verification)
-6.  **(P2) Future Features**: CMS visual editor, discussion forums, mood tracker, Welsh language support.
+1.  **(P0) Tommy AI Companion & Safeguarding Overhaul**: Implement the Tommy AI persona and a new 3-tiered safeguarding architecture as specified in the user-provided documents (, , etc.). This is the new highest priority.
+2.  **(P1) Enhance Video UX**: Implement a TikTok Live-like experience (chat overlay, reactions). (Awaiting user feedback on proposed design).
+3.  **(P2) Historical Event Attendance**: Implement a feature for admins to view historical attendance data for events. (COMPLETED).
+4.  **(P2) Future Features**: Push notifications, PDF user manuals, CMS visual editor, discussion forums, mood tracker, Welsh language support.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The project consists of a FastAPI backend, a Next.js web application (), and a React Native mobile app ().
-
-*   **Web Portal ()**: Now serves the main marketing site (), admin, staff, training, and LMS admin portals. It uses Next.js middleware for subdomain routing. Virtual events in the portal now use the **Agora Video SDK** after a full replacement of the original Jitsi implementation.
-*   **Mobile App ()**: Still uses **Jitsi Meet**. A critical bug prevents users from joining video calls.
-*   **Backend ()**: API for events, time tracking, etc. The hourly rate for time tracking has been updated to £40.
+The application is a full-stack solution with a FastAPI backend, a Next.js web portal, and a React Native (Expo) mobile app.
+-   **Virtual Events**: Both the web portal and mobile app now use the **Agora Video SDK** for virtual events. Authentication is handled via server-side token generation, requiring both an App ID and an App Certificate. The previous Jitsi implementation has been completely removed.
+-   **Event Management**: The admin portal allows for the creation of virtual events. All events are now virtual by default.
+-   **Attendance Logging**: The backend logs every time a user joins or leaves an event. A new Attendance History dashboard in the admin portal displays summary statistics (total events, unique attendees, average attendance) and detailed logs for each event.
+-   **AI Chat**: A basic AI chat feature exists, but it is pending a major overhaul to implement the Tommy persona and a new safeguarding system.
 
 **Last working item**:
--   **Last item agent was working**: The user reported that joining events on the **mobile app** is still broken, providing console logs that show the Jitsi pre-join screen is appearing (). The agent correctly identified that the focus needs to be on the mobile app's  and was about to begin fixing it. The user has expressed significant frustration that this was not addressed earlier when the web portal video SDK was being changed.
+-   **Last item agent was working**: The agent was analyzing four documents provided by the user which detail the requirements for a new AI persona (Tommy) and a complete overhaul of the AI safeguarding system. The analysis of these documents is complete, and the next step is to plan and implement this major architectural change.
 -   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Manual testing of the React Native (Expo) mobile app.
--   **User Testing Done**: Y (User reported the bug with logs).
+-   **Agent Testing Done**: N/A (The last action was document analysis).
+-   **Which testing method agent to use?**: Backend and frontend testing agents will be required after the implementation of the new AI system.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Mobile app Jitsi connection gets stuck on pre-join screen (P0)**
--   **Issue 2: Subdomain routing not working on Vercel (P1)**
+-   **Issue 1: Camera does not auto-play on mobile join (P1)**
+-   **Issue 2: Staff portal crashes with  error (P1)**
 
 **Issues Detail**:
--   **Issue 1: Mobile app Jitsi connection gets stuck on pre-join screen (P0)**
-    -   **Attempted fixes**: No fixes have been applied to the mobile app component yet. The agent previously fixed a similar issue in the (now deleted) web portal component.
-    -   **Next debug checklist**:
-        1.  View .
-        2.  In the  object, ensure  is set correctly inside the  object.
-        3.  Add other recommended Jitsi config options to reduce warnings and improve stability (e.g., , ).
-        4.  Confirm the mobile app builds and runs without errors.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical P0 bug blocking the core virtual events feature for end-users on the mobile app. Fixing it is the highest priority.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: Y (A similar issue was fixed on the web portal before the Agora migration).
+-   **Issue 1: Camera does not auto-play on mobile join (P1)**
+    -   **Attempted fixes**: The agent first added a 100ms timeout to the video play function. When the user reported the issue persisted on mobile (), the agent implemented a more robust fix: a retry loop that attempts to play the video every 200ms for up to 2 seconds. This handles potential DOM rendering delays on slower devices.
+    -   **Next debug checklist**: Await user confirmation that the latest fix (the retry loop) has solved the problem on their deployed mobile web app. If it persists, investigate potential platform-specific (Expo web on mobile browsers) rendering quirks.
+    -   **Why fix this issue and what will be achieved with the fix?**: Provides a seamless user experience, as users currently have to manually toggle their camera to make it appear.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend (Mobile App).
     -   **Blocked on other issue**: None.
 
--   **Issue 2: Subdomain routing not working on Vercel (P1)**
-    -   **Attempted fixes**: The agent first implemented rewrites in . When that didn't work as expected on Vercel, the agent switched to a more robust Next.js Middleware implementation ().
-    -   **Next debug checklist**:
-        1.  The user needs to push the latest code (containing ) to GitHub.
-        2.  Vercel should automatically redeploy.
-        3.  The user needs to confirm that all required domains (, , etc.) are added to the Vercel project settings and have a Valid Configuration.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is required for the production environment to function correctly, directing users to the right portals based on the URL.
-    -   **Status**: BLOCKED (Awaiting user action: push to GitHub and verify Vercel settings).
+-   **Issue 2: Staff portal crashes with  error (P1)**
+    -   **Attempted fixes**: The agent identified the root cause as the component attempting to call  on a non-array API response (likely an error object). The agent added safety checks () to prevent this crash in both the admin and staff portals. The agent believes the user was seeing this on a stale deployment.
+    -   **Next debug checklist**: Await user confirmation that pushing the latest code to their deployment environment has resolved the crash.
+    -   **Why fix this issue and what will be achieved with the fix?**: Prevents a critical crash in the staff portal, making the events feature usable for staff members.
+    -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Frontend (Vercel deployment).
+    -   **Should Test frontend/backend/both after fix?**: Frontend (Staff Portal).
     -   **Blocked on other issue**: None.
 
 **In progress Task List**:
@@ -60,89 +53,130 @@ The project consists of a FastAPI backend, a Next.js web application (), and a R
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
-    *   (P1) Enhance video UX with a TikTok Live-like user experience (chat overlay, reactions).
-    *   (P2) Add push notifications for when virtual events go live.
-    *   (P2) Create PDF export versions of the user manuals.
+    *   **(P0) Implement Tommy AI & Safeguarding Overhaul**: Based on the four provided documents. This involves:
+        *   **Backend Refactor**: Move all AI and safeguarding logic out of  and into a new dedicated service layer (e.g., ).
+        *   **Implement 3-Tier Safeguarding**:
+            1.  **Tier 1 (Core Prompt)**: Define Tommy's core persona, rules, and boundaries.
+            2.  **Tier 2 (Semantic Sentinel)**: Build or integrate an API for nuanced content moderation.
+            3.  **Tier 3 (Clinical Trigger)**: Implement a fast keyword-based system to trigger immediate safeguarding interventions.
+        *   **Implement Tommy Persona**: Update the chat logic to use the new behavioral model, grounded identity, and emotional response patterns described in the briefs.
+        *   **Refactor Agora Credentials**: Move the hardcoded Agora App ID and Certificate from  to environment variables.
+    *   **(P1) Enhance Video UX**: Implement a TikTok Live-like experience with a chat overlay and floating reactions. The user has seen a description and seems interested.
+
 *   **Future Tasks**:
+    *   (P2) Push notifications for when virtual events go live.
+    *   (P2) Create PDF export versions of the user manuals.
     *   (P2) Implement full CMS visual editor.
     *   (P2) Implement Discussion Forums.
     *   (P2) Implement Mood Tracker.
     *   (P2) Add Welsh Language Support.
+    *   (P2) Consider migrating from Agora to Daily.co for simpler video integration, as suggested by the user.
 
 **Completed work in this session**
--   **Jitsi → Agora Migration (Web Portal)**: Replaced the Jitsi implementation in the web portal with the Agora Video SDK. Created  and removed the old .
--   ** Website Migration**: Rebuilt the entire marketing website within the Next.js portal (), including a new theme, AI team section, founders section, and portal links.
--   **Asset Correction**: Found and implemented the correct AI companion avatars, partner logos, and founder photos from the existing mobile app assets and codebase.
--   **Event Creation Bug Fix (422 Error)**: Resolved multiple issues causing event creation to fail. Added frontend validation for required fields () and minimum values (). Improved API error message parsing to give the user clearer feedback.
--   **Subdomain Routing**: Implemented subdomain routing for , , , and  using Next.js Middleware ().
--   **Time Tracking Updates**: Updated the default hourly rate to £40 in the backend (), added multiple time entries via , and fixed a frontend display bug where  was not being read correctly.
+-   **Jitsi to Agora Migration (Mobile App)**: Successfully replaced Jitsi with the Agora SDK on the mobile app, resolving the original P0 blocker.
+-   **Agora Token Authentication**: Implemented a full token-based authentication flow for Agora. This involved adding the  library to the backend, creating a token generation mechanism in , and updating both the web portal and mobile app to fetch and use these tokens when joining an event.
+-   **Event Creation & Join Button Fixes**:
+    -   Simplified the event creation form to be virtual only.
+    -   Fixed the Join button logic in the admin and staff portals to appear for all events.
+    -   Fixed a 404 error in the staff portal by correcting the event API endpoint.
+-   **Historical Attendance Feature**:
+    -   Created a new backend endpoint () to calculate and return detailed attendance statistics.
+    -   Added a new Attendance History dashboard to the admin portal UI to display these stats.
+-   **Video Auto-Play Fix**: Implemented a robust retry mechanism in both the web and mobile Agora components to ensure the user's video appears automatically without needing a manual toggle.
 
 **Earlier issues found/mentioned but not fixed**
--   The core issue of the Jitsi pre-join screen on the **mobile app** was reported in the initial handoff and was not addressed until the very end of the session, causing significant user frustration.
+-   None in this session. All previously mentioned issues have been addressed or are noted in the pending list.
 
 **Known issue recurrence from previous fork**
--   The Jitsi pre-join screen bug. It was fixed on the web portal, but the fix was not propagated to the mobile app, causing a recurrence of the core problem on a different platform.
+-   The camera not auto-playing on join was a recurring problem that required multiple attempts to fix, culminating in the current retry-loop solution.
+-   The  crash is a recurring type of error that happens when the frontend is not resilient to unexpected API responses. Safety checks have been added.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Video SDKs**: Jitsi Meet (on mobile) vs. Agora RTC (on web).
--   **Next.js Routing**: Migrated from  rewrites to a more robust  for handling subdomains.
--   **Next.js Standalone Build**: Debugged issues where the  folder and  assets were not being copied correctly, requiring updates to the  script in .
--   **API Error Handling**: Traced a  error from a generic frontend message back to specific Pydantic validation errors in the FastAPI backend () and improved frontend error parsing to display detailed messages.
+-   **Agora Token Authentication**: The session involved a full migration to Agora's secured mode, requiring server-side token generation ( in Python) and passing the temporary token to frontend clients upon joining an event.
+-   **Frontend Race Conditions**: Debugged and fixed a video auto-play issue caused by the Agora SDK trying to render the video track before the React component's DOM element was ready. The solution evolved into a robust retry loop.
+-   **Defensive Frontend Programming**: Addressed a  crash by ensuring API response data is validated as an array () before being used in  calls.
+-   **Backend Data Aggregation**: Built a new API endpoint that uses MongoDB's aggregation pipeline to process the  collection and generate meaningful statistics (total unique attendees, average attendance per event).
+-   **AI Safeguarding Architecture (Proposed)**: Analysis of user documents introduced a sophisticated 3-tier safety model (Core Prompt, Semantic API, Clinical Trigger) which will be a major architectural shift.
 
 **key DB schema**
--   No changes made in this session.
+-   **event_attendance_log**: Records user activity in events.
+    -   
+-   **events**: Stores event information.  is now consistently 'virtual'.
+    -   
 
 **changes in tech stack**
--   **Agora RTC SDK**: Added to the  project for web-based video events. Jitsi is now only used in the mobile app.
+-   ****: Added to the Python backend to support Agora's token authentication.
+-   **Jitsi Meet**: Completely removed from the project.
 
 **All files of reference**
--    (File with the P0 bug)
--    (The new subdomain routing logic)
--    (The new marketing website homepage)
--    (Event creation form with validation fixes)
--    (Backend validation rules for events)
--    (Backend logic for hourly rates)
--    (Updated with session work)
+*   **New AI/Safeguarding Specs (CRITICAL)**:
+    *   
+    *   
+    *   
+    *   
+*   **Agora & Events Logic**:
+    *    (Backend token/attendance logic)
+    *    (Mobile video UI)
+    *    (Portal video UI)
+    *    (Admin events/attendance UI)
+    *    (Staff events UI)
+*   **Configuration**:
+    *   
+    *   
+
+**Areas that need refactoring**:
+-   **(P0) AI & Safeguarding System**: The user's documents explicitly require a major refactor. All AI-related logic must be moved from the FastAPI routers into a dedicated, modular service layer ().
+-   **(P1) Hardcoded Credentials**: The Agora App ID and App Certificate are currently hardcoded in . They **must** be moved to environment variables for security and proper configuration management.
+
+**key api endpoints**
+-   : Fetches a temporary Agora token for a user to join an event.
+-   : Fetches upcoming events for the mobile and staff portals.
+-   : **(NEW)** Fetches historical attendance data and summary statistics for all events.
 
 **Critical Info for New Agent**
--   **Your immediate P0 priority is to fix the Jitsi pre-join bug in the React Native mobile app.** The user is very frustrated this was not fixed earlier. The bug is in , and the fix is likely adding  to the Jitsi config.
--   The user's mental model is: Admins create events on the web portal (), but users join events from the mobile app (). Do not focus on the Join button in the admin portal unless asked.
--   The subdomain routing issue is likely a Vercel configuration problem. The code fix (using ) is complete. Guide the user to redeploy and check their Vercel domain settings.
--   The agent repeatedly failed to find correct assets (avatars, founder photos) until the user became frustrated. Be extra diligent in auditing existing code and assets before generating new ones.
+-   **Your P0 task is the Tommy AI & Safeguarding Overhaul.** You must begin by creating a plan based on the 4 PDF/MD documents provided by the user. This is a significant architectural change that involves refactoring the backend into a new service layer and implementing a 3-tier safety system. Do not start any other feature until this is planned and approved.
+-   **Fix hardcoded credentials first.** Before diving into the AI refactor, move the Agora App ID and Certificate from  into backend environment variables. This is a critical security and maintainability fix.
+-   Be prepared for user feedback on the camera auto-play and staff portal crash issues. While fixes have been implemented, they have not been verified by the user on the live deployment. Be ready to debug if the issues are reported again.
+-   The user has expressed interest in replacing Agora with Daily.co in the future for simplicity. Keep this in mind as a potential future task, but focus on the current Agora implementation for now.
 
 **documents and test reports created in this job**
--    (Updated)
--    (Updated)
+-   
+-    (Continuously updated)
+-   The agent analyzed 4 new user-provided documents which are now critical to the project direction.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Reports Jitsi logs from the mobile app again, showing . Expresses frustration that this should be for virtual coffee meets and that the app wasn't updated.
-2.  **Agent**: Acknowledges the logs are from Jitsi on the mobile app and confirms the pre-join issue. Clarifies the different states of the portal (Agora) and mobile app (Jitsi) and asks the user for their preferred path forward.
-3.  **User**: why wasnt the app updated this should have been obvious - Expresses frustration that the mobile app was neglected.
-4.  **Agent**: Apologizes and pivots to fixing the mobile app.
-5.  **User**: ffs we wont be using the admin to join its for the mobile app the admin portal has no join button - Corrects the agent's focus, clarifying that the primary user journey for joining events is on the mobile app.
-6.  **Agent**: Apologizes again and confirms focus on the mobile app's Jitsi component.
-7.  **User**: Provides more Jitsi logs from the mobile app.
-8.  **Agent**: Acknowledges the logs and confirms the issue is .
-9.  **User**: Provides the Pydantic validation error  must be .
-10. **Agent**: Identifies the root cause of the 422 error and adds  validation to the frontend form.
+1.  **User**: Asks where the Agora App ID needs to be stored.
+2.  **Agent**: Explains it's needed in Vercel env vars, Expo , and is currently hardcoded in the backend.
+3.  **User**: Asks what setup is needed in Agora (is it just the ID?).
+4.  **Agent**: Explains how to create a project in the Agora console with App ID only authentication.
+5.  **User**: Reports a connection error: .
+6.  **Agent**: Identifies this means the Agora project is in secured mode (requiring a token) and asks if the user can confirm this in the Agora console.
+7.  **User**: Provides a screenshot showing the Agora project has a Primary Certificate, confirming it's in secured mode.
+8.  **Agent**: Explains that token generation is now required and asks for the App Certificate to implement it.
+9.  **User**: Provides the App Certificate.
+10. **Agent**: Implements the full token generation flow on the backend and updates both frontends to use it.
 
 **Project Health Check:**
--   **Broken**: Joining virtual events from the React Native mobile app () is broken.
+-   **Broken**: No features are completely broken.
 -   **Mocked**: None.
+-   **Pending Verification**: The camera auto-play fix and the staff portal  crash fix are pending user verification on their live deployment.
 
 **3rd Party Integrations**
--   **Jitsi Meet**: Used in the React Native mobile app (). Currently has a P0 bug.
--   **Agora Video SDK**: Used in the Next.js web portal (). Replaced Jitsi.
+-   **Agora Video SDK**: Used for all virtual events. Currently configured for **App ID + Token** authentication.
+-   **Daily.co**: Mentioned by the user as a potential future alternative to Agora. Not implemented.
 
 **Testing status**
--   Testing agent used after significant changes: NO
+-   Testing agent used after significant changes: YES (once, for the initial Agora migration).
 -   Troubleshoot agent used after agent stuck in loop: NO
--   Test files created: None
--   Known regressions: The virtual event joining functionality, which was the original goal, is still broken for the primary user platform (mobile app).
+-   Test files created: None.
+-   Known regressions: None.
+
+**Credentials to test flow:**
+-   **Agora App ID**: 
+-   **Agora App Certificate**: 
 
 **What agent forgot to execute**
--   The agent failed to address the Jitsi bug on the mobile platform, focusing exclusively on the web portal, which was not the user's primary concern for the join event feature. This required multiple corrections from the user.
--   The agent repeatedly failed to find existing images and assets within the codebase, opting to generate new ones until the user became frustrated and provided explicit guidance.</analysis>
+-   The agent hardcoded the Agora App ID and App Certificate directly into . This is a security and configuration risk and should have been implemented using environment variables from the start.</analysis>
