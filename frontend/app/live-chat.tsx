@@ -847,6 +847,16 @@ export default function LiveChat() {
           onSubmitEditing={sendMessage}
           multiline
           maxLength={500}
+          onKeyPress={(e: any) => {
+            if (e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
+              e.preventDefault?.();
+              sendMessage();
+            }
+          }}
+          blurOnSubmit={false}
+          returnKeyType="send"
+          accessibilityLabel="Chat message input"
+          accessibilityHint="Type your message and press Enter to send"
         />
         <TouchableOpacity
           style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}

@@ -1,5 +1,45 @@
 # CHANGELOG — RadioCheck Veterans Support Platform
 
+## 2026-03-24 — DTAC Readiness Technical Fixes
+
+### Fix 1: Enter Key Sends Message (WCAG 2.1 AA)
+- `/app/frontend/app/unified-chat.tsx` — Added `onKeyPress` handler: Enter sends, Shift+Enter for new line
+- `/app/frontend/app/live-chat.tsx` — Same fix applied
+- Portal components (`TutorChatWidget.tsx`, `LiveChatTab.tsx`) already had Enter key handling
+
+### Fix 2: Inactivity Check-In (Scenario 004)
+- `/app/frontend/app/unified-chat.tsx` — Added 3-minute inactivity timer
+- After 3 minutes of no messages (in active conversation), buddy sends:
+  "Still there, mate? No rush — just checking in."
+- Timer resets on every new message
+
+### Fix 3: Credentials Audit
+- Removed secret leakage from `/api/auth/debug-jwt` endpoint (was exposing first/last 10 chars of JWT secret)
+- Full codebase scan: zero hardcoded API keys remaining
+- Agora credentials already in .env (fixed in previous session)
+
+### Fix 4: Vulnerability Disclosure Policy
+- Created `/app/backend/static/.well-known/security.txt` (backend)
+- Created `/app/portal/public/.well-known/security.txt` (portal)
+- Follows RFC 9116 format with security@radiocheck.me contact
+
+### Fix 5: Dependency Audit
+- **Fixed 7 of 8 CVEs** by upgrading:
+  - pymongo 4.5.0 → 4.16.0 (CVE fix) + motor 3.3.1 → 3.7.1 (compatibility)
+  - cryptography 46.0.4 → 46.0.5
+  - pyjwt 2.11.0 → 2.12.1
+  - pillow 12.1.0 → 12.1.1
+  - pyasn1 0.6.2 → 0.6.3
+  - black 26.1.0 → 26.3.1
+  - starlette 0.37.2 → 1.0.0 (via fastapi 0.110.1 → 0.135.2)
+- **1 remaining**: ecdsa 0.19.1 (CVE-2024-23342) — no fix available, transitive dependency, not directly used
+
+### Fix 6: Accessibility Improvements
+- Added `aria-label`, `aria-describedby`, `role="form"` to all chat input areas
+- Added `accessibilityLabel` and `accessibilityHint` to React Native TextInputs
+- Added screen reader hint: "Press Enter to send, Shift+Enter for new line"
+- Added `data-testid` attributes to portal chat components
+
 ## 2026-03-24 — Master Prompt Gaps Implemented
 
 ### Changes Made

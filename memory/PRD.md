@@ -44,6 +44,14 @@ This directive remains in force until the platform owner explicitly revokes it i
 - Backend generates Agora RTC tokens (secured mode with App Certificate)
 - Agora credentials in environment variables (AGORA_APP_ID, AGORA_APP_CERTIFICATE)
 
+### DTAC Technical Readiness Fixes (DONE)
+- Enter key sends message in all chat inputs (WCAG 2.1 AA)
+- 3-minute inactivity check-in ("Still there, mate?")
+- Debug-jwt endpoint no longer leaks secrets
+- Vulnerability disclosure policy (security.txt)
+- 7 of 8 dependency CVEs fixed (1 remaining: ecdsa, no fix available)
+- Accessibility attributes on all chat inputs
+
 ### Text Normalisation Pre-Processor (DONE — LOCKED)
 - GPT-4o-mini normaliser sits upstream of all safeguarding layers
 - Handles degraded text (leetspeak, word fragments, caps, misspellings)

@@ -141,7 +141,7 @@ export default function TutorChatWidget({ currentModule }: { currentModule?: str
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-border bg-card">
+          <div className="p-4 border-t border-border bg-card" role="form" aria-label="Chat input">
             <div className="flex gap-2">
               <textarea
                 value={message}
@@ -151,12 +151,16 @@ export default function TutorChatWidget({ currentModule }: { currentModule?: str
                 rows={1}
                 className="flex-1 px-4 py-2 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none resize-none text-sm"
                 data-testid="tutor-chat-input"
+                aria-label="Type your question"
+                aria-describedby="tutor-chat-hint"
               />
+              <span id="tutor-chat-hint" className="sr-only">Press Enter to send, Shift+Enter for new line</span>
               <button
                 onClick={handleSend}
                 disabled={isLoading || !message.trim()}
                 className="px-4 py-2 bg-secondary text-primary-dark rounded-lg disabled:opacity-50 hover:bg-secondary-light transition-colors"
                 data-testid="tutor-chat-send"
+                aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
               </button>

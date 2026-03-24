@@ -1,0 +1,46 @@
+# Radio Check — Vulnerability Disclosure Policy
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability in Radio Check, please report it responsibly.
+
+**Contact**: security@radiocheck.me
+**PGP Key**: Available on request
+
+## What to Report
+
+- Authentication or authorization bypass
+- Data exposure (PII, credentials, session tokens)
+- Cross-site scripting (XSS) or injection vulnerabilities
+- Server-side request forgery (SSRF)
+- AI safety system bypass or manipulation
+- Safeguarding system failures
+
+## What NOT to Report
+
+- Automated scanner output without manual verification
+- Social engineering
+- Denial of service
+- Issues in third-party services we don't control
+
+## Our Commitment
+
+- We will acknowledge receipt within 48 hours
+- We will provide an initial assessment within 5 working days
+- We will not take legal action against researchers acting in good faith
+- We will credit researchers (with permission) when a fix is released
+
+## Scope
+
+- `radiocheck.me` and all subdomains
+- The Radio Check mobile application
+- API endpoints at `api.radiocheck.me`
+
+## Safe Harbour
+
+We consider security research conducted in accordance with this policy to be:
+- Authorized under the Computer Misuse Act 1990
+- Exempt from DMCA restrictions
+- Conducted in good faith
+
+Thank you for helping keep our veteran community safe.

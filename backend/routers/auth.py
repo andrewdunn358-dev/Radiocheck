@@ -120,12 +120,10 @@ def require_role(*required_roles: str):
 
 @router.get("/debug-jwt")
 async def debug_jwt():
-    """Debug endpoint to check JWT configuration - REMOVE IN PRODUCTION"""
+    """Health check for JWT configuration — no secrets exposed"""
     secret = get_jwt_secret()
     return {
-        "secret_length": len(secret),
-        "secret_first_10": secret[:10] if len(secret) > 10 else secret,
-        "secret_last_10": secret[-10:] if len(secret) > 10 else secret,
+        "secret_configured": len(secret) > 20,
         "is_default": secret == "your-secret-key-change-in-production",
         "env_var_set": os.getenv("JWT_SECRET_KEY") is not None
     }
@@ -145,9 +143,8 @@ async def test_token():
         decoded = jwt.decode(token, secret, algorithms=[ALGORITHM])
         return {
             "success": True,
-            "token_created": token[:50] + "...",
-            "decoded_sub": decoded.get("sub"),
-            "secret_length": len(secret)
+            "token_valid": True,
+            "decoded_sub": decoded.get("sub")
         }
     except Exception as e:
         return {

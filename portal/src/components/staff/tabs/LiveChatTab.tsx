@@ -511,7 +511,7 @@ export default function LiveChatTab({
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-border" role="form" aria-label="Chat message input">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -520,11 +520,15 @@ export default function LiveChatTab({
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="Type a message..."
                   className="flex-1 px-4 py-2 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                  aria-label="Type your message"
+                  data-testid="live-chat-input"
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim()}
                   className="px-4 py-2 bg-secondary text-primary-dark rounded-lg disabled:opacity-50"
+                  aria-label="Send message"
+                  data-testid="live-chat-send"
                 >
                   <Send className="w-5 h-5" />
                 </button>

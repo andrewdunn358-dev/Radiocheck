@@ -124,6 +124,39 @@ export default function UnifiedAIChat() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
+  // Inactivity check-in timer (DTAC Scenario 004: silence detection)
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+  
+  const resetInactivityTimer = () => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    // Only set timer if there are messages (active conversation)
+    if (messages.length > 0) {
+      inactivityTimerRef.current = setTimeout(() => {
+        // Add a soft check-in message from the buddy
+        const checkInMessage: Message = {
+          id: `checkin-${Date.now()}`,
+          text: character?.id === 'tommy'
+            ? "Still there, mate? No rush — just checking in."
+            : "Still here if you want to chat. No pressure.",
+          sender: 'buddy',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, checkInMessage]);
+      }, INACTIVITY_TIMEOUT_MS);
+    }
+  };
+  
+  // Reset timer on every new message
+  useEffect(() => {
+    resetInactivityTimer();
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    };
+  }, [messages.length]);
+  
   // Session ID - use characterId for stability since character may not be loaded yet
   const [sessionId] = useState(() => `${characterId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   
@@ -724,6 +757,17 @@ export default function UnifiedAIChat() {
             multiline
             maxLength={1000}
             data-testid="message-input"
+            onSubmitEditing={handleSendMessage}
+            onKeyPress={(e: any) => {
+              if (e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
+                e.preventDefault?.();
+                handleSendMessage();
+              }
+            }}
+            blurOnSubmit={false}
+            returnKeyType="send"
+            accessibilityLabel="Message input"
+            accessibilityHint="Type your message and press Enter to send"
           />
           <TouchableOpacity 
             style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
