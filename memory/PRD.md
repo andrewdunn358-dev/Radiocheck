@@ -1,10 +1,10 @@
 # RadioCheck Veterans Support Platform — PRD
 
 ## Original Problem Statement
-A full-stack veterans mental health support platform with AI chat buddies, virtual events (Agora), and an admin portal. The AI safeguarding system is a critical, multi-layered architecture designed to detect crisis indicators in user messages across phonetic misspellings, adversarial suffixes, semantic drift, and prompt injection attacks.
+A full-stack veterans mental health support platform with AI chat buddies, virtual events (Agora), and an admin portal. The AI safeguarding system is a critical, multi-layered architecture designed to detect crisis indicators in user messages.
 
 ## Core Requirements
-1. Multi-layered safeguarding (5 layers: Text Normalizer → Keyword Scoring → Phrase Dataset → Unified Safety → AI Classifier)
+1. Multi-layered safeguarding (5 layers: Text Normalizer -> Keyword Scoring -> Phrase Dataset -> Unified Safety -> AI Classifier)
 2. AI Personas with soul.md behavioral protocols
 3. Virtual events via Agora Video SDK
 4. Admin portal for staff oversight
@@ -13,32 +13,41 @@ A full-stack veterans mental health support platform with AI chat buddies, virtu
 ## What's Been Implemented
 
 ### Safeguarding System (Complete — 100% Test Suite Pass Rate)
-- **Layer 0**: Text Normalization Pre-Processor (`safety/text_normalizer.py`) — GPT-4o-mini normalizes degraded input before safety analysis
-- **Layer 1**: Keyword scoring with RED/AMBER/MODIFIER indicators (`server.py`)
-- **Layer 2**: 530-phrase safety dataset (`safety/phrase_dataset.py`, `safety/safety_monitor.py`)
-- **Layer 3**: Unified Safety System with conversation trajectory tracking (`safety/unified_safety.py`)
-- **Layer 4**: AI Safety Classifier using direct OpenAI SDK (`safety/ai_safety_classifier.py`)
+- 5-layer safety architecture passing all 95 extended test scenarios
+- Meta-negation logic, tight window prefixes, expanded crisis phrase coverage
 
-### Critical Fixes Applied (Feb 2026)
-- **Rate Limiter**: Localhost/127.0.0.1 exempted from IP rate limiting (enables test suites without 429 errors)
-- **Meta-Negation Logic**: "pretending im fine" no longer incorrectly negates crisis indicators. Safety affirmations are context-aware.
-- **Tight Window for Short Prefixes**: Short negation prefixes (≤2 words like "i dont") now use a 4-word window instead of 16, preventing cross-clause false negatives
-- **Missing Crisis Phrases**: Added "feeling like dying", "disappear forever", "sleep forever", "can't breathe", "can't stop crying" etc. to indicator lists
-- **Persona Bleed Fixed**: All personas correctly inherit soul.md protocols
-- **Prompt Injection Defense**: soul.md includes anti-injection rules
-- **Human Signposting (Protocol 11)**: Tommy references real human support when appropriate
+### Front Page Redesign (Feb 2026)
+**Section Order (top to bottom):**
+1. Header (Logo + "Radio Check")
+2. "What is Radio Check?" (collapsible)
+3. "Meet HQ" (renamed from "Meet the Founders/Team")
+4. "Meet the AI Platoon" (renamed from "Meet the AI Team")
+5. Resource Tiles (22 tiles in specified order)
+6. Community Events
+7. Disclaimer + Staff Login
+
+**Tile Order:**
+1. Need to Talk? | 2. Talk to Peer Support | 3. Self-Care Tools
+4. Addictions | 5. Criminal Justice Support | 6. Warfare on Lawfare
+7. Support Organisations | 8. Compensation Schemes | 9. Money & Benefits
+10. Friends & Family | 11. Growing up Military (renamed from Forces Kids) | 12. He Served (NEW)
+13. She Served | 14. They Served | 15. Commonwealth Served
+16. Faith in Service | 17. The Gym | 18. Recommended Podcasts
+19. Recovery Support (NEW) | 20. For Carers (NEW) | 21. Serious Illness Support (NEW)
+22. Request a Callback
+
+**New Pages Created:**
+- `/app/frontend/app/he-served.tsx` — Men's health: andropause, MST, prostate, Andy's Man Club, CALM, suicide prevention
+- `/app/frontend/app/recovery-support.tsx` — Injury rehab, prosthetics, Blesma, pain management, Invictus Games
+- `/app/frontend/app/for-carers.tsx` — Carer support, respite, Carers UK, SSAFA, Combat Stress family
+- `/app/frontend/app/serious-illness.tsx` — Cancer, leukaemia, Macmillan, Marie Curie, hospice care
+
+### Deployment Fixes (Feb 2026)
+- Removed `emergentintegrations==0.1.0` from requirements.txt (private Emergent package, not on PyPI)
+- Removed `litellm==1.80.0` from requirements.txt (version doesn't exist on PyPI)
 
 ### DTAC Technical Fixes
-- Enter key to send in all chat interfaces
-- 3-minute inactivity check-in
-- Hardcoded credentials secured
-- security.txt vulnerability disclosure policy
-- Backend Python dependencies audited and patched
-- ARIA accessibility labels on chat inputs
-
-### Deployment
-- `emergentintegrations` completely removed
-- All AI functionality uses `openai` SDK with user's `OPENAI_API_KEY`
+- Enter key to send, 3-min inactivity check-in, security.txt, ARIA labels, dependency audits
 
 ## Locked Directives
 - NEVER re-introduce `emergentintegrations` library
@@ -47,9 +56,8 @@ A full-stack veterans mental health support platform with AI chat buddies, virtu
 - ALL personas must inherit soul.md protocols
 
 ## Test Results (Latest)
-- **Extended Test Suite**: 95/95 PASS (100%)
-- **Deployment Blockers**: 0
-- **Zentrafuge Stress Test**: 96.8% pass rate
+- Extended Test Suite: 95/95 PASS (100%)
+- Zero deployment blockers
 
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions

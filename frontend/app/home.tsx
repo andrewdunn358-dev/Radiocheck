@@ -103,21 +103,25 @@ interface MenuItem {
 const FALLBACK_MENU_ITEMS: MenuItem[] = [
   { title: "Need to Talk?", description: "Connect with support now", icon: "heart", color: "#3b82f6", bgColor: "#dbeafe", route: "/crisis-support", isPrimary: true },
   { title: "Talk to Peer Support", description: "Connect with those who understand", icon: "people", color: "#22c55e", bgColor: "#dcfce7", route: "/peer-support" },
-  { title: "She Served", description: "Your service matters. So do you.", icon: "person", color: "#a855f7", bgColor: "#f3e8ff", route: "/women-veterans" },
-  { title: "They Served", description: "LGBTQ+ veterans - proud service, proud support", icon: "rainbow", color: "#ec4899", bgColor: "#fdf2f8", route: "/they-served" },
-  { title: "Forces Kids", description: "Support for service children & youth", icon: "happy", color: "#f97316", bgColor: "#fff7ed", route: "/forces-kids" },
-  { title: "Commonwealth Comrades", description: "Support for Commonwealth veterans", icon: "globe", color: "#14b8a6", bgColor: "#ccfbf1", route: "/commonwealth-veterans" },
-  { title: "Faith & Service", description: "Spiritual support for all faiths", icon: "leaf", color: "#8b5cf6", bgColor: "#f5f3ff", route: "/faith-service" },
-  { title: "Money & Benefits", description: "UC, PIP, discounts & debt help", icon: "cash", color: "#059669", bgColor: "#d1fae5", route: "/money-benefits" },
+  { title: "Self-Care Tools", description: "Journal, grounding, breathing & more", icon: "fitness", color: "#ec4899", bgColor: "#fce7f3", route: "/self-care" },
+  { title: "Addictions", description: "Alcohol, drugs, gambling & more", icon: "heart-dislike", color: "#d97706", bgColor: "#fef3c7", route: "/substance-support" },
+  { title: "Criminal Justice Support", description: "Help for veterans in or leaving prison", icon: "shield-checkmark", color: "#4f46e5", bgColor: "#e0e7ff", route: "/criminal-justice" },
   { title: "Warfare on Lawfare", description: "Support for historical investigations", icon: "shield", color: "#6366f1", bgColor: "#e0e7ff", route: "/historical-investigations" },
   { title: "Support Organisations", description: "Directory of veteran services", icon: "list", color: "#f59e0b", bgColor: "#fef3c7", route: "/organizations" },
-  { title: "Self-Care Tools", description: "Journal, grounding, breathing & more", icon: "fitness", color: "#ec4899", bgColor: "#fce7f3", route: "/self-care" },
-  { title: "Friends & Family", description: "Worried about a veteran?", icon: "heart-circle", color: "#7c3aed", bgColor: "#ede9fe", route: "/family-friends" },
-  { title: "Addictions", description: "Alcohol, drugs, gambling & more", icon: "heart-dislike", color: "#d97706", bgColor: "#fef3c7", route: "/substance-support" },
-  { title: "The Gym", description: "Frankie's 12-week fitness programme", icon: "barbell", color: "#22c55e", bgColor: "#dcfce7", route: "/gym" },
-  { title: "Criminal Justice Support", description: "Help for veterans in or leaving prison", icon: "shield-checkmark", color: "#4f46e5", bgColor: "#e0e7ff", route: "/criminal-justice" },
   { title: "Compensation Schemes", description: "War pensions, AFCS & hearing loss claims", icon: "ribbon", color: "#0891b2", bgColor: "#cffafe", route: "/compensation-schemes" },
+  { title: "Money & Benefits", description: "UC, PIP, discounts & debt help", icon: "cash", color: "#059669", bgColor: "#d1fae5", route: "/money-benefits" },
+  { title: "Friends & Family", description: "Worried about a veteran?", icon: "heart-circle", color: "#7c3aed", bgColor: "#ede9fe", route: "/family-friends" },
+  { title: "Growing up Military", description: "Support for service children & youth", icon: "happy", color: "#f97316", bgColor: "#fff7ed", route: "/forces-kids" },
+  { title: "He Served", description: "Men's health, MST & Andy's Man Club", icon: "man", color: "#2563eb", bgColor: "#dbeafe", route: "/he-served" },
+  { title: "She Served", description: "Your service matters. So do you.", icon: "woman", color: "#a855f7", bgColor: "#f3e8ff", route: "/women-veterans" },
+  { title: "They Served", description: "LGBTQ+ veterans - proud service, proud support", icon: "rainbow", color: "#ec4899", bgColor: "#fdf2f8", route: "/they-served" },
+  { title: "Commonwealth Served", description: "Support for Commonwealth veterans", icon: "globe", color: "#14b8a6", bgColor: "#ccfbf1", route: "/commonwealth-veterans" },
+  { title: "Faith in Service", description: "Spiritual support for all faiths", icon: "leaf", color: "#8b5cf6", bgColor: "#f5f3ff", route: "/faith-service" },
+  { title: "The Gym", description: "Frankie's 12-week fitness programme", icon: "barbell", color: "#22c55e", bgColor: "#dcfce7", route: "/gym" },
   { title: "Recommended Podcasts", description: "Veteran stories & mental health support", icon: "headset", color: "#db2777", bgColor: "#fce7f3", route: "/podcasts" },
+  { title: "Recovery Support", description: "Injury rehab, prosthetics & ongoing care", icon: "medkit", color: "#dc2626", bgColor: "#fee2e2", route: "/recovery-support" },
+  { title: "For Carers", description: "Supporting those who care for veterans", icon: "hand-left", color: "#0d9488", bgColor: "#ccfbf1", route: "/for-carers" },
+  { title: "Serious Illness Support", description: "Cancer, leukaemia & long-term conditions", icon: "pulse", color: "#9333ea", bgColor: "#f3e8ff", route: "/serious-illness" },
   { title: "Request a Callback", description: "We'll call you back", icon: "call", color: "#22c55e", bgColor: "#dcfce7", route: "/callback", isCallback: true },
 ];
 
@@ -334,90 +338,6 @@ export default function Index() {
           <Text style={styles.taglineEnglish}>24/7 Mental Health & Peer Support</Text>
         </View>
 
-        {/* Our Founders Section - Collapsible like AI Team */}
-        <View style={styles.aiTeamSection}>
-          <TouchableOpacity 
-            style={styles.aiTeamHeader}
-            onPress={() => setShowFounders(!showFounders)}
-            activeOpacity={0.8}
-          >
-            <View>
-              <Text style={styles.aiTeamTitle}>Meet the Team</Text>
-              <Text style={styles.aiTeamSubtitle}>The people behind Radio Check</Text>
-            </View>
-            <View style={styles.aiTeamToggle}>
-              <Text style={styles.aiTeamToggleText}>{showFounders ? 'Hide' : 'Show'}</Text>
-              <Ionicons 
-                name={showFounders ? 'chevron-up' : 'chevron-down'} 
-                size={20} 
-                color={colors.primary} 
-              />
-            </View>
-          </TouchableOpacity>
-          
-          {showFounders && (
-            <View style={styles.foundersTopGrid}>
-              {FOUNDERS.map((founder) => (
-                <TouchableOpacity 
-                  key={founder.name}
-                  style={styles.founderTopCard}
-                  onPress={() => setSelectedFounder(founder)}
-                  activeOpacity={0.8}
-                  data-testid={`founder-top-${founder.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
-                >
-                  <Image source={{ uri: founder.avatar }} style={styles.founderTopAvatar} />
-                  <View style={styles.founderTopInfo}>
-                    <Text style={styles.founderTopName}>{founder.name}</Text>
-                    <Text style={styles.founderTopRole}>{founder.role}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Meet the AI Team Section - Right after founders */}
-        <View style={styles.aiTeamSection}>
-          <TouchableOpacity 
-            style={styles.aiTeamHeader}
-            onPress={toggleAITeam}
-            activeOpacity={0.8}
-          >
-            <View>
-              <Text style={styles.aiTeamTitle}>Meet the AI Team</Text>
-              <Text style={styles.aiTeamSubtitle}>AI companions available 24/7</Text>
-            </View>
-            <View style={styles.aiTeamToggle}>
-              <Text style={styles.aiTeamToggleText}>{showAITeam ? 'Hide' : 'Show'}</Text>
-              <Ionicons 
-                name={showAITeam ? 'chevron-up' : 'chevron-down'} 
-                size={20} 
-                color={colors.primary} 
-              />
-            </View>
-          </TouchableOpacity>
-          
-          {showAITeam && (
-            <View>
-              <View style={styles.aiTeamGrid}>
-                {aiTeam.map((member) => (
-                  <TouchableOpacity 
-                    key={member.name}
-                    style={styles.aiTeamMember}
-                    onPress={() => handleMemberPress(member)}
-                    activeOpacity={0.8}
-                    data-testid={`ai-team-${member.name.toLowerCase()}`}
-                  >
-                    <Image source={getAvatarSource(member.avatar)} style={styles.aiTeamAvatar} />
-                    <Text style={styles.aiTeamName}>{member.name}</Text>
-                    <Text style={styles.aiTeamDesc}>{member.description}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-        </View>
-
         {/* What is Radio Check - Collapsible Card */}
         <TouchableOpacity 
           style={styles.aboutCard}
@@ -468,26 +388,93 @@ export default function Index() {
           )}
         </TouchableOpacity>
 
+        {/* Meet HQ Section - Collapsible */}
+        <View style={styles.aiTeamSection}>
+          <TouchableOpacity 
+            style={styles.aiTeamHeader}
+            onPress={() => setShowFounders(!showFounders)}
+            activeOpacity={0.8}
+          >
+            <View>
+              <Text style={styles.aiTeamTitle}>Meet HQ</Text>
+              <Text style={styles.aiTeamSubtitle}>The people behind Radio Check</Text>
+            </View>
+            <View style={styles.aiTeamToggle}>
+              <Text style={styles.aiTeamToggleText}>{showFounders ? 'Hide' : 'Show'}</Text>
+              <Ionicons 
+                name={showFounders ? 'chevron-up' : 'chevron-down'} 
+                size={20} 
+                color={colors.primary} 
+              />
+            </View>
+          </TouchableOpacity>
+          
+          {showFounders && (
+            <View style={styles.foundersTopGrid}>
+              {FOUNDERS.map((founder) => (
+                <TouchableOpacity 
+                  key={founder.name}
+                  style={styles.founderTopCard}
+                  onPress={() => setSelectedFounder(founder)}
+                  activeOpacity={0.8}
+                  data-testid={`founder-top-${founder.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
+                >
+                  <Image source={{ uri: founder.avatar }} style={styles.founderTopAvatar} />
+                  <View style={styles.founderTopInfo}>
+                    <Text style={styles.founderTopName}>{founder.name}</Text>
+                    <Text style={styles.founderTopRole}>{founder.role}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Meet the AI Platoon Section */}
+        <View style={styles.aiTeamSection}>
+          <TouchableOpacity 
+            style={styles.aiTeamHeader}
+            onPress={toggleAITeam}
+            activeOpacity={0.8}
+          >
+            <View>
+              <Text style={styles.aiTeamTitle}>Meet the AI Platoon</Text>
+              <Text style={styles.aiTeamSubtitle}>AI companions available 24/7</Text>
+            </View>
+            <View style={styles.aiTeamToggle}>
+              <Text style={styles.aiTeamToggleText}>{showAITeam ? 'Hide' : 'Show'}</Text>
+              <Ionicons 
+                name={showAITeam ? 'chevron-up' : 'chevron-down'} 
+                size={20} 
+                color={colors.primary} 
+              />
+            </View>
+          </TouchableOpacity>
+          
+          {showAITeam && (
+            <View>
+              <View style={styles.aiTeamGrid}>
+                {aiTeam.map((member) => (
+                  <TouchableOpacity 
+                    key={member.name}
+                    style={styles.aiTeamMember}
+                    onPress={() => handleMemberPress(member)}
+                    activeOpacity={0.8}
+                    data-testid={`ai-team-${member.name.toLowerCase()}`}
+                  >
+                    <Image source={getAvatarSource(member.avatar)} style={styles.aiTeamAvatar} />
+                    <Text style={styles.aiTeamName}>{member.name}</Text>
+                    <Text style={styles.aiTeamDesc}>{member.description}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Main Menu Cards - 2-Column Grid Layout */}
         <View style={styles.menuContainer}>
-          {menuItems
-            .map((item, originalIndex) => {
-              // Determine priority - these items should appear first
-              const lowerTitle = item.title.toLowerCase();
-              const isNeedToTalk = lowerTitle.includes('need to talk');
-              const isPeerSupport = lowerTitle.includes('peer support') || lowerTitle.includes('peer-to-peer');
-              const isCallback = item.isCallback || lowerTitle.includes('callback');
-              
-              // Priority: 0 = Need to Talk, 1 = Peer Support, 2 = Callback, 3 = everything else
-              let priority = 3;
-              if (isNeedToTalk) priority = 0;
-              else if (isPeerSupport) priority = 1;
-              else if (isCallback) priority = 2;
-              
-              return { ...item, priority, originalIndex };
-            })
-            .sort((a, b) => a.priority - b.priority)
-            .map((item, index) => (
+          {menuItems.map((item, index) => (
             <TouchableOpacity 
               key={index}
               style={[
