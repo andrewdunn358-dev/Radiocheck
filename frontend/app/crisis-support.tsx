@@ -97,6 +97,25 @@ export default function CrisisSupport() {
           </View>
         </TouchableOpacity>
 
+        {/* Request a Callback Card */}
+        <TouchableOpacity 
+          style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          onPress={() => router.push('/callback' as any)}
+          activeOpacity={0.85}
+          data-testid="callback-card"
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#dcfce7', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
+              <Ionicons name="call" size={28} color="#22c55e" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Request a Callback</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary }}>We'll call you back at a time that suits you</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+
         {/* Section Title - Crisis Helplines */}
         <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginBottom: 16 }}>
           24/7 Crisis Helplines
