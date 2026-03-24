@@ -101,6 +101,7 @@ interface MenuItem {
   route: string;
   isPrimary?: boolean;
   isCallback?: boolean;
+  isInclusive?: boolean;
 }
 
 // Fallback Menu Items (used when CMS is empty or unavailable)
@@ -118,7 +119,7 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   { title: "Growing up Military", description: "Support for service children & youth", icon: "happy", color: "#f97316", bgColor: "#fff7ed", route: "/forces-kids" },
   { title: "He Served", description: "Men's health, MST & Andy's Man Club", icon: "man", color: "#2563eb", bgColor: "#dbeafe", route: "/he-served" },
   { title: "She Served", description: "Your service matters. So do you.", icon: "woman", color: "#a855f7", bgColor: "#f3e8ff", route: "/women-veterans" },
-  { title: "They Served", description: "LGBTQ+ veterans - proud service, proud support", icon: "rainbow", color: "#ec4899", bgColor: "#fdf2f8", route: "/they-served" },
+  { title: "They Served", description: "LGBTQ+ veterans - proud service, proud support", icon: "people", color: "#ffffff", bgColor: "#2563eb", route: "/they-served", isInclusive: true },
   { title: "Commonwealth Served", description: "Support for Commonwealth veterans", icon: "globe", color: "#14b8a6", bgColor: "#ccfbf1", route: "/commonwealth-veterans" },
   { title: "Faith in Service", description: "Spiritual support for all faiths", icon: "leaf", color: "#8b5cf6", bgColor: "#f5f3ff", route: "/faith-service" },
   { title: "The Gym", description: "Frankie's 12-week fitness programme", icon: "barbell", color: "#22c55e", bgColor: "#dcfce7", route: "/gym" },
@@ -511,7 +512,15 @@ export default function Index() {
               data-testid={`menu-item-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <View style={[styles.gridCardIconContainer, { backgroundColor: item.bgColor }]}>
-                <Ionicons name={item.icon as any} size={28} color={item.color} />
+                {item.isInclusive ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
+                    <Ionicons name="man" size={22} color={item.color} />
+                    <Ionicons name="person" size={18} color={item.color} />
+                    <Ionicons name="woman" size={22} color={item.color} />
+                  </View>
+                ) : (
+                  <Ionicons name={item.icon as any} size={28} color={item.color} />
+                )}
               </View>
               <Text style={styles.gridCardTitle} numberOfLines={2}>{item.title}</Text>
               <Text style={styles.gridCardDescription} numberOfLines={2}>{item.description}</Text>
