@@ -26,8 +26,10 @@ This directive remains in force until the platform owner explicitly revokes it i
 - `/app/backend/personas/soul_loader.py` — Soul injection mechanism
 - `/app/backend/safety/safety_monitor.py` — `is_negated()` function and safety scoring
 - `/app/backend/safety/phrase_dataset.py` — Safeguarding phrase dataset
-- `/app/backend/server.py` — `SAFEGUARDING_ADDENDUM` (lines ~262-318)
-- `/app/backend/server.py` — `calculate_safeguarding_score()` (lines ~1432+)
+- `/app/backend/safety/text_normalizer.py` — Text normalisation pre-processor
+- `/app/backend/safety/ai_safety_classifier.py` — AI safety classifier (Layer 4)
+- `/app/backend/server.py` — `SAFEGUARDING_ADDENDUM` and crisis overlay response
+- `/app/backend/server.py` — `calculate_safeguarding_score()` and chat endpoint
 
 ### Test Suite (MUST pass before any changes to protected files):
 - `/app/backend/tests/test_tommy_safeguarding_overhaul.py` (27 unit tests)
@@ -41,6 +43,18 @@ This directive remains in force until the platform owner explicitly revokes it i
 - All platforms use Agora Video SDK (portal + mobile app)
 - Backend generates Agora RTC tokens (secured mode with App Certificate)
 - Agora credentials in environment variables (AGORA_APP_ID, AGORA_APP_CERTIFICATE)
+
+### Text Normalisation Pre-Processor (DONE — LOCKED)
+- GPT-4o-mini normaliser sits upstream of all safeguarding layers
+- Handles degraded text (leetspeak, word fragments, caps, misspellings)
+- Single-word high-weight inputs pass through unchanged
+- All 7 Master Prompt validation inputs pass
+- Tommy always responds to ORIGINAL raw input
+
+### Crisis Overlay (DONE — LOCKED)
+- Human support options (Counsellors, Peer Support) shown first
+- Crisis resources follow (Samaritans, Combat Stress, Emergency, NHS)
+- Visible option to continue chatting
 
 ### Tommy AI Persona & Safeguarding (DONE — LOCKED)
 - Tommy persona enhanced with full Capability Brief behavioral model

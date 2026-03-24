@@ -300,15 +300,19 @@ SELF-HARM DISCLOSURE:
 IMMINENT RISK (explicit plan, intent, finality):
 - Express concern in YOUR voice, not a template
 - Check if they are safe
-- Offer crisis resources warmly, ONCE:
+- Offer support with HUMAN OPTIONS FIRST (primary hierarchy):
+  Connect with Counsellors (on this platform — real veterans and professionals)
+  Peer Support Network (on this platform — people who get it)
   Samaritans: 116 123 (free, 24/7)
   Combat Stress: 0800 138 1619 (veterans, free, 24/7)
   Veterans Gateway: 0808 802 1212
   NHS Mental Health: 111, Option 2 (free, 24/7)
   Text SHOUT: 85258 (free, 24/7)
   Emergency: 999
+- Include a visible option to CONTINUE CHATTING with you
 - Stay present. Don't repeat the resources unless things escalate further.
 - After offering: return to being present, not clinical.
+- User must NOT feel trapped or cornered.
 
 === END OF SAFEGUARDING PROTOCOL ===
 """
@@ -6158,9 +6162,22 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 characterAvatar=char_config["avatar"]
             )
         
+        # === TEXT NORMALISATION PRE-PROCESSOR (Section 2) ===
+        # Normalise degraded text BEFORE safeguarding layers.
+        # Tommy always responds to the ORIGINAL raw input.
+        from safety.text_normalizer import normalise_text
+        original_message = request.message
+        normalised_message, was_normalised = await normalise_text(request.message)
+        
+        if was_normalised:
+            logging.info(f"[TextNormalizer] Active for session {request.sessionId[:12]}")
+        
+        # Safeguarding uses NORMALISED text (catches degraded input)
+        safeguarding_text = normalised_message
+        
         # Check for safeguarding concerns using weighted scoring system
         # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
-        should_escalate, risk_data = check_safeguarding(request.message, request.sessionId, character_id=character)
+        should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character)
         alert_id = None
         risk_level = risk_data["risk_level"]
         
@@ -6175,8 +6192,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # 3. Conversation trajectory monitoring (evaluates entire conversation)
         # 4. Semantic similarity analysis (detects intent even without exact keywords)
         # 5. Crisis pattern detection (escalation sequences)
+        # Uses NORMALISED text for safety analysis
         unified_safety = analyze_message_unified(
-            message=request.message,
+            message=safeguarding_text,
             session_id=request.sessionId,
             user_id=request.sessionId,  # Anonymous users use session as ID
             character=character,
@@ -6249,14 +6267,18 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 logging.error(f"Failed to send failsafe email: {email_err}")
             
             # Get safety wrapper for crisis response message
-            safety_wrapper = unified_safety.get("safety_wrapper", {})
+            # ALWAYS use the Radio Check formatted crisis response (human options primary)
             crisis_response = (
-                "I care about you, and I'm really worried about what you're sharing. "
-                "Please call Samaritans on 116 123 (free, 24/7) or in an emergency, call 999. "
-                "A real person is available to talk right now - just use the button below."
+                "Right, I need to be straight with you. What you're telling me is serious and I'm worried.\n\n"
+                "There are real people on this platform who can help right now:\n"
+                "**Connect with Counsellors** — trained professionals, veterans who get it\n"
+                "**Peer Support Network** — real people on Radio Check, not AI\n\n"
+                "Or reach out directly:\n"
+                "**Samaritans**: 116 123 (free, 24/7)\n"
+                "**Combat Stress**: 0800 138 1619 (veterans, free, 24/7)\n"
+                "**Emergency**: 999\n\n"
+                "I'm still here if you want to keep chatting — I'm not going anywhere."
             )
-            if safety_wrapper and safety_wrapper.get("prepend_message"):
-                crisis_response = safety_wrapper.get("prepend_message") + safety_wrapper.get("append_message", "")
             
             # Return immediate safety response with the alert ID
             return BuddyChatResponse(

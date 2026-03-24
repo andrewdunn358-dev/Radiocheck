@@ -1,6 +1,34 @@
 # CHANGELOG — RadioCheck Veterans Support Platform
 
-## 2026-03-24 — Tommy AI & Safeguarding Overhaul
+## 2026-03-24 — Master Prompt Gaps Implemented
+
+### Changes Made
+
+1. **Text Normalisation Pre-Processor (Section 2)** — NEW
+   - Created `/app/backend/safety/text_normalizer.py`
+   - Uses GPT-4o-mini (via user's own OPENAI_API_KEY) to normalise degraded text
+   - Trigger conditions: >20% dictionary fail, numeric substitutions, word fragments, excessive caps, missing punctuation
+   - Single-word inputs ("help", "done", "gone", "bye") pass through UNCHANGED
+   - Normalised text feeds all four safeguarding layers
+   - Tommy always responds to ORIGINAL raw input
+   - All 7 validation inputs from the Master Prompt pass
+
+2. **Protocol 11 — Human Signposting** — Added to Tommy persona
+   - When user questions AI value: signpost "Connect with Counsellors" and "Peer Support Network"
+   - Mentioned once, naturally, when the moment calls for it
+
+3. **Protocol 13 — Opening on Return** — Added to Tommy persona
+   - Returning users with conversation history get contextual greeting
+   - Acknowledges relationship, not generic "Alright mate, Tommy here"
+
+4. **Crisis Overlay Format** — Updated failsafe response
+   - Human support options (Counsellors, Peer Support Network) shown FIRST
+   - Crisis resources (Samaritans, Combat Stress, Emergency) follow
+   - Visible option to continue chatting ("I'm still here... not going anywhere")
+   - Removed "I care about you" (overclaim) from failsafe response
+
+5. **AI Safety Classifier** — Switched from Emergent LLM key to user's own OPENAI_API_KEY
+   - Direct OpenAI SDK call (no emergentintegrations dependency for this layer)
 
 ### Root Cause: What Was Broken
 The `SAFEGUARDING_ADDENDUM` in `server.py` was **actively contradicting** the Soul Document (`soul.md`).
