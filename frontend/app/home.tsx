@@ -123,10 +123,11 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   { title: "Commonwealth Served", description: "Support for Commonwealth veterans", icon: "globe", color: "#14b8a6", bgColor: "#ccfbf1", route: "/commonwealth-veterans" },
   { title: "Faith in Service", description: "Spiritual support for all faiths", icon: "leaf", color: "#8b5cf6", bgColor: "#f5f3ff", route: "/faith-service" },
   { title: "The Gym", description: "Frankie's 12-week fitness programme", icon: "barbell", color: "#22c55e", bgColor: "#dcfce7", route: "/gym" },
-  { title: "Recommended Podcasts", description: "Veteran stories & mental health support", icon: "headset", color: "#db2777", bgColor: "#fce7f3", route: "/podcasts" },
   { title: "Recovery Support", description: "Injury rehab, prosthetics & ongoing care", icon: "medkit", color: "#dc2626", bgColor: "#fee2e2", route: "/recovery-support" },
   { title: "For Carers", description: "Supporting those who care for veterans", icon: "hand-left", color: "#0d9488", bgColor: "#ccfbf1", route: "/for-carers" },
   { title: "Serious Illness Support", description: "Cancer, leukaemia & long-term conditions", icon: "pulse", color: "#9333ea", bgColor: "#f3e8ff", route: "/serious-illness" },
+  { title: "Recommended Podcasts", description: "Veteran stories & mental health support", icon: "headset", color: "#db2777", bgColor: "#fce7f3", route: "/podcasts" },
+  { title: "Recommended Reads", description: "Military books & audiobooks", icon: "book", color: "#b45309", bgColor: "#fef3c7", route: "/recommended-reads" },
 ];
 
 // Fallback AI Team (used when CMS is empty or unavailable)
