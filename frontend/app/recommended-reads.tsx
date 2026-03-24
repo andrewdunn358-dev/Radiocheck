@@ -25,7 +25,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Bravo+Two+Zero+Andy+McNab",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0552145229-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/1003545-M.jpg"
   },
   {
     title: "Spoken from the Front",
@@ -35,7 +35,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Spoken+from+the+Front+Andy+McNab",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0552161004-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/6430891-M.jpg"
   },
   {
     title: "Escape from Kabul",
@@ -45,7 +45,7 @@ const BOOKS: Book[] = [
     category: "Military History",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Escape+from+Kabul+Levison+Wood+Geraint+Jones",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/9781399718127-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/14748224-M.jpg"
   },
   {
     title: "Walking the Nile",
@@ -55,7 +55,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Walking+the+Nile+Levison+Wood",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1473638504-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/8867756-M.jpg"
   },
   {
     title: "The Body Keeps the Score",
@@ -65,7 +65,7 @@ const BOOKS: Book[] = [
     category: "Mental Health",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=The+Body+Keeps+the+Score+Bessel+van+der+Kolk",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0141978619-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/8315367-M.jpg"
   },
   {
     title: "Complex PTSD: From Surviving to Thriving",
@@ -75,7 +75,7 @@ const BOOKS: Book[] = [
     category: "Mental Health",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Complex+PTSD+From+Surviving+to+Thriving+Pete+Walker",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1492871842-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/9319615-M.jpg"
   },
   {
     title: "Painting the Sand",
@@ -85,7 +85,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Painting+the+Sand+Kim+Hughes",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1471156729-M.jpg"
+    coverUrl: ""
   },
   {
     title: "Chickenhawk",
@@ -95,7 +95,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Chickenhawk+Robert+Mason",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0552152536-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/93944-M.jpg"
   },
   {
     title: "Man's Search for Meaning",
@@ -105,7 +105,7 @@ const BOOKS: Book[] = [
     category: "Mental Health",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Mans+Search+for+Meaning+Viktor+Frankl",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1846041244-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/8516506-M.jpg"
   },
   {
     title: "First Man In",
@@ -115,7 +115,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=First+Man+In+Ant+Middleton",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0008245738-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/9168494-M.jpg"
   },
   {
     title: "Apache Dawn",
@@ -125,7 +125,7 @@ const BOOKS: Book[] = [
     category: "Military History",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Apache+Dawn+Damien+Lewis",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0751541834-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/11589739-M.jpg"
   },
   {
     title: "Walking with the Wounded",
@@ -135,7 +135,7 @@ const BOOKS: Book[] = [
     category: "Inspiration",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Walking+with+the+Wounded+Mark+McCrum",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0751547840-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/8195152-M.jpg"
   },
   {
     title: "The Unforgiving Minute",
@@ -145,7 +145,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=The+Unforgiving+Minute+Craig+Mullaney",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0143116878-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/5665294-M.jpg"
   },
   {
     title: "Trauma Is Really Strange",
@@ -155,7 +155,7 @@ const BOOKS: Book[] = [
     category: "Mental Health",
     format: "book",
     amazonUrl: "https://www.amazon.co.uk/s?k=Trauma+Is+Really+Strange+Steve+Haines",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1848192932-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/13440430-M.jpg"
   },
   {
     title: "It Doesn't Have to Hurt to Work",
@@ -165,7 +165,7 @@ const BOOKS: Book[] = [
     category: "Mental Health",
     format: "book",
     amazonUrl: "https://www.amazon.co.uk/s?k=It+Doesnt+Have+to+Hurt+to+Work+Dave+Collins",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1472976401-M.jpg"
+    coverUrl: ""
   },
   {
     title: "Wearing the Green Beret",
@@ -175,7 +175,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "book",
     amazonUrl: "https://www.amazon.co.uk/s?k=Wearing+the+Green+Beret+Robin+Childs",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1399018590-M.jpg"
+    coverUrl: ""
   },
   {
     title: "Soldier Box",
@@ -185,7 +185,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Soldier+Box+Joe+Glenton",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1781681058-M.jpg"
+    coverUrl: ""
   },
   {
     title: "Losing the Plot",
@@ -195,7 +195,7 @@ const BOOKS: Book[] = [
     category: "Wellbeing",
     format: "book",
     amazonUrl: "https://www.amazon.co.uk/s?k=Losing+the+Plot+Gail+Hanlon",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1399714023-M.jpg"
+    coverUrl: ""
   },
   {
     title: "East of Croydon",
@@ -205,7 +205,7 @@ const BOOKS: Book[] = [
     category: "Lighter Reads",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=East+of+Croydon+Sue+Perkins",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/1405938358-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/10187926-M.jpg"
   },
   {
     title: "The Complete Guide to Veterans' Benefits",
@@ -215,7 +215,7 @@ const BOOKS: Book[] = [
     category: "Practical",
     format: "book",
     amazonUrl: "https://www.amazon.co.uk/s?k=Complete+Guide+Veterans+Benefits+Bruce+Brown",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0764167510-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/12550227-M.jpg"
   },
   {
     title: "Danger Close",
@@ -225,7 +225,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Danger+Close+Stuart+Tootal",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/9781848542587-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/11759009-M.jpg"
   },
   {
     title: "Operation Mayhem",
@@ -235,7 +235,7 @@ const BOOKS: Book[] = [
     category: "Memoir",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Operation+Mayhem+Steve+Heaney",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/9781409148456-M.jpg"
+    coverUrl: "https://covers.openlibrary.org/b/id/10436919-M.jpg"
   },
   {
     title: "Operation Telic",
@@ -245,7 +245,7 @@ const BOOKS: Book[] = [
     category: "Military History",
     format: "both",
     amazonUrl: "https://www.amazon.co.uk/s?k=Operation+Telic+Tim+Ripley",
-    coverUrl: "https://covers.openlibrary.org/b/isbn/0992945801-M.jpg"
+    coverUrl: ""
   },
 ];
 
@@ -525,10 +525,16 @@ export default function RecommendedReads() {
               data-testid={`book-card-${index}`}
             >
               <View style={styles.bookRow}>
-                <Image
-                  source={{ uri: book.coverUrl }}
-                  style={styles.bookCover}
-                />
+                {book.coverUrl ? (
+                  <Image
+                    source={{ uri: book.coverUrl }}
+                    style={styles.bookCover}
+                  />
+                ) : (
+                  <View style={[styles.bookCover, { backgroundColor: isDark ? '#374151' : '#e5e7eb', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Ionicons name="book" size={28} color={isDark ? '#6b7280' : '#9ca3af'} />
+                  </View>
+                )}
                 <View style={styles.bookInfo}>
                   <View style={styles.bookHeader}>
                     <View style={{ flex: 1 }}>
