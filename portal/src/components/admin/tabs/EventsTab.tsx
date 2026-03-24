@@ -27,6 +27,7 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
   const [showViewAttendanceModal, setShowViewAttendanceModal] = useState(false);
   const [eventAttendance, setEventAttendance] = useState<any[]>([]);
   const [attendanceEventTitle, setAttendanceEventTitle] = useState('');
+  const [attendanceHistory, setAttendanceHistory] = useState<any>(null);
   
   // Video room state
   const [activeVideoEvent, setActiveVideoEvent] = useState<any>(null);
@@ -481,6 +482,84 @@ export default function EventsTab({ token, onSuccess, onError, userName }: Event
             </div>
           )}
         </div>
+      </div>
+
+      {/* Attendance History Section */}
+      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 mt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Users className="w-5 h-5 text-green-400" />
+            Attendance History
+          </h3>
+          <button
+            onClick={async () => {
+              try {
+                const data = await api.getAttendanceHistory(token);
+                setAttendanceHistory(data);
+              } catch (err: any) {
+                onError('Failed to load attendance history');
+              }
+            }}
+            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs"
+            data-testid="refresh-attendance-btn"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {attendanceHistory ? (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="bg-gray-700 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-blue-400">{attendanceHistory.summary.total_events}</div>
+                <div className="text-xs text-gray-400">Total Events</div>
+              </div>
+              <div className="bg-gray-700 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-green-400">{attendanceHistory.summary.total_unique_attendees}</div>
+                <div className="text-xs text-gray-400">Total Attendees</div>
+              </div>
+              <div className="bg-gray-700 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-purple-400">{attendanceHistory.summary.average_attendance}</div>
+                <div className="text-xs text-gray-400">Avg per Event</div>
+              </div>
+            </div>
+
+            {/* Event Attendance Table */}
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full" data-testid="attendance-history-table">
+                <thead className="sticky top-0 bg-gray-800">
+                  <tr className="text-left text-sm text-gray-400 border-b border-gray-700">
+                    <th className="py-2 px-3">Event</th>
+                    <th className="py-2 px-3">Date</th>
+                    <th className="py-2 px-3">Host</th>
+                    <th className="py-2 px-3">Attendees</th>
+                    <th className="py-2 px-3">Names</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(attendanceHistory.events || []).map((evt: any) => (
+                    <tr key={evt.event_id} className="border-b border-gray-700 text-sm">
+                      <td className="py-2 px-3 font-medium">{evt.title}</td>
+                      <td className="py-2 px-3 text-gray-400">{new Date(evt.event_date).toLocaleDateString()}</td>
+                      <td className="py-2 px-3 text-gray-400">{evt.host_name}</td>
+                      <td className="py-2 px-3">
+                        <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs font-medium">
+                          {evt.total_unique_attendees}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-gray-400 text-xs">
+                        {evt.attendee_names?.join(', ') || 'No attendees'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <p className="text-gray-400 text-center py-6 text-sm">Click Refresh to load attendance history</p>
+        )}
       </div>
 
       {/* View Attendance Modal */}

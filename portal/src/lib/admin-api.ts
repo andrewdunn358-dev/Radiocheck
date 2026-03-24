@@ -244,6 +244,9 @@ export const api = {
   getEventAttendance: (token: string, eventId: string) =>
     api.fetch<any>(`/events/admin/${eventId}/attendance`, { token }),
 
+  getAttendanceHistory: (token: string) =>
+    api.fetch<any>(`/events/admin/attendance-history`, { token }),
+
   // Admin reset password
   adminResetPassword: (token: string, userId: string, newPassword: string) =>
     api.fetch<any>('/auth/admin-reset-password', {

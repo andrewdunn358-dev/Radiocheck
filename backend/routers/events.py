@@ -295,6 +295,50 @@ async def get_event_attendance(event_id: str):
     }
 
 
+@router.get("/admin/attendance-history")
+async def get_attendance_history():
+    """Get attendance history across all events for reporting"""
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+    
+    events = await db.events.find({}).sort("event_date", -1).to_list(100)
+    
+    history = []
+    for event in events:
+        attendance_log = event.get("attendance_log", [])
+        unique_users = set()
+        for entry in attendance_log:
+            if entry.get("action") == "joined":
+                unique_users.add(entry.get("display_name", "Unknown"))
+        
+        history.append({
+            "event_id": str(event["_id"]),
+            "title": event["title"],
+            "event_date": event["event_date"].isoformat() if hasattr(event["event_date"], 'isoformat') else str(event["event_date"]),
+            "host_name": event.get("host_name", "Unknown"),
+            "status": event.get("status", "scheduled"),
+            "max_participants": event.get("max_participants"),
+            "total_unique_attendees": len(unique_users),
+            "attendee_names": sorted(list(unique_users)),
+            "total_joins": len([e for e in attendance_log if e.get("action") == "joined"]),
+            "total_leaves": len([e for e in attendance_log if e.get("action") == "left"]),
+        })
+    
+    # Summary stats
+    total_events = len(history)
+    total_attendees = sum(h["total_unique_attendees"] for h in history)
+    avg_attendance = round(total_attendees / total_events, 1) if total_events > 0 else 0
+    
+    return {
+        "summary": {
+            "total_events": total_events,
+            "total_unique_attendees": total_attendees,
+            "average_attendance": avg_attendance,
+        },
+        "events": history
+    }
+
+
 # ============ USER ENDPOINTS ============
 
 @router.get("/upcoming", response_model=List[EventResponse])
