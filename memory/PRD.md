@@ -114,12 +114,18 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 - **Database**: 25 books seeded in `cms_books` collection
 
 ## CMS Phase 2 — 26 March 2026
-- **Podcasts Manager**: Full CRUD in admin portal — add, edit, delete, reorder, visibility toggle, seed 8 default podcasts, search, cover preview, listen links
-- **AI Personas Manager**: Edit bio/description, reorder, visibility toggle, seed 20 personas from backend. No delete (system-defined).
-- **Backend**: Added podcast seed endpoint, persona visibility support
-- **API Endpoints**: `GET/POST/PUT/DELETE /api/cms/admin/podcasts`, `GET/PUT /api/cms/admin/persona-bios`, reorder & seed for both
-- **Database**: `cms_podcasts` (8 seeded), `cms_persona_bios` (20 seeded)
-- **Testing**: 23/23 backend tests passed (100%) — all CRUD, visibility, reorder, seed protection, public filtering, books regression
+- **Podcasts Manager**: Full CRUD in admin portal — add, edit, delete, reorder, visibility toggle, seed 8 default podcasts with RSS/YouTube feed URLs for latest episode pulling
+- **RSS/YouTube Feed URLs**: Added `rssFeedUrl` and `youtubeFeedUrl` fields to podcast model for latest episode integration
+- **Removed duplicate**: AI Personas sub-tab removed from CMS (already exists as dedicated AIPersonasTab)
+- **Backend**: Added podcast seed endpoint, feed URL fields to models
+- **API Endpoints**: `GET/POST/PUT/DELETE /api/cms/admin/podcasts`, reorder & seed
+- **Database**: `cms_podcasts` (8 seeded with feed URLs), `cms_persona_bios` (20 seeded)
+- **Testing**: 23/23 backend tests passed (100%)
+
+## Deployment Architecture
+- **Vercel Root Directory**: Must be set to `portal` in Vercel project settings
+- **Render backend**: Auto-deploys from GitHub main branch
+- See PRD.md deployment section for full details
 
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions

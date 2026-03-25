@@ -474,6 +474,10 @@ function PodcastForm({ data, onChange, onSave, onCancel, categories }: { data: P
           Visible
         </label>
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="RSS Feed URL (for latest episodes)" value={(data as any).rssFeedUrl || ''} onChange={e => onChange({ ...data, rssFeedUrl: e.target.value } as any)} />
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="YouTube Feed URL (for latest episodes)" value={(data as any).youtubeFeedUrl || ''} onChange={e => onChange({ ...data, youtubeFeedUrl: e.target.value } as any)} />
+      </div>
       <input className="w-full bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Cover Image URL" value={data.coverUrl || ''} onChange={e => onChange({ ...data, coverUrl: e.target.value })} />
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-sm flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
