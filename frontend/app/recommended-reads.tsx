@@ -247,6 +247,26 @@ const BOOKS: Book[] = [
     amazonUrl: "https://www.amazon.co.uk/s?k=Operation+Telic+Tim+Ripley",
     coverUrl: ""
   },
+  {
+    title: "Charlie Four Kilo",
+    author: "Rich Jones",
+    description: "After events out of his control, a veteran finds himself in the criminal underworld. A true story of organised crime across Europe, life-threatening entanglements, and a 15-year prison sentence. Raw, honest, and gripping.",
+    rating: 4.5,
+    category: "Memoir",
+    format: "both",
+    amazonUrl: "https://www.amazon.co.uk/Charlie-Four-Kilo-Rich-Jones/dp/1800315414",
+    coverUrl: ""
+  },
+  {
+    title: "Conquering Dreams",
+    author: "Hari Budha Magar MBE",
+    description: "The autobiography of the first double above-knee amputee to summit Everest and complete the Seven Summits. A former Gurkha who lost both legs in Afghanistan and refused to stop climbing. Coming August 2026.",
+    rating: 0,
+    category: "Inspiration",
+    format: "book",
+    amazonUrl: "https://www.amazon.co.uk/s?k=Conquering+Dreams+Hari+Budha+Magar",
+    coverUrl: ""
+  },
 ];
 
 interface SearchResult {
@@ -551,8 +571,14 @@ export default function RecommendedReads() {
 
                   <View style={styles.bookFooter}>
                     <View style={styles.ratingRow}>
-                      {renderStars(book.rating)}
-                      <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{book.rating}</Text>
+                      {book.rating > 0 ? (
+                        <>
+                          {renderStars(book.rating)}
+                          <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{book.rating}</Text>
+                        </>
+                      ) : (
+                        <Text style={[styles.ratingText, { color: '#b45309', fontStyle: 'italic' }]}>Coming soon</Text>
+                      )}
                     </View>
                     <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(book.category) + '20' }]}>
                       <Text style={[styles.categoryTagText, { color: getCategoryColor(book.category) }]}>{book.category}</Text>
