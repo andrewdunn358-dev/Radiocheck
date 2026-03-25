@@ -468,15 +468,25 @@ function PodcastForm({ data, onChange, onSave, onCancel, categories }: { data: P
         <select className="bg-gray-600 rounded px-3 py-2 text-sm" value={data.category || 'General'} onChange={e => onChange({ ...data, category: e.target.value })}>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Listen URL (Spotify, Apple, etc.)" value={data.url || ''} onChange={e => onChange({ ...data, url: e.target.value })} />
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Focus tags (comma separated)" value={(data as any).focus ? (Array.isArray((data as any).focus) ? (data as any).focus.join(', ') : (data as any).focus) : ''} onChange={e => onChange({ ...data, focus: e.target.value.split(',').map((t: string) => t.trim()).filter(Boolean) } as any)} />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={data.visible !== false} onChange={e => onChange({ ...data, visible: e.target.checked })} />
           Visible
         </label>
       </div>
+      <p className="text-xs text-gray-400 -mb-1">Platform Links (shown as buttons in the app)</p>
       <div className="grid grid-cols-2 gap-3">
-        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="RSS Feed URL (for latest episodes)" value={(data as any).rssFeedUrl || ''} onChange={e => onChange({ ...data, rssFeedUrl: e.target.value } as any)} />
-        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="YouTube Feed URL (for latest episodes)" value={(data as any).youtubeFeedUrl || ''} onChange={e => onChange({ ...data, youtubeFeedUrl: e.target.value } as any)} />
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Spotify URL" value={(data as any).spotifyUrl || ''} onChange={e => onChange({ ...data, spotifyUrl: e.target.value } as any)} />
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Apple Podcasts URL" value={(data as any).appleUrl || ''} onChange={e => onChange({ ...data, appleUrl: e.target.value } as any)} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="YouTube Channel URL" value={(data as any).youtubeUrl || ''} onChange={e => onChange({ ...data, youtubeUrl: e.target.value } as any)} />
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Website URL" value={(data as any).websiteUrl || ''} onChange={e => onChange({ ...data, websiteUrl: e.target.value } as any)} />
+      </div>
+      <p className="text-xs text-gray-400 -mb-1">Episode Feeds (for pulling latest episodes)</p>
+      <div className="grid grid-cols-2 gap-3">
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="RSS Feed URL" value={(data as any).rssFeedUrl || ''} onChange={e => onChange({ ...data, rssFeedUrl: e.target.value } as any)} />
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="YouTube Feed URL (atom)" value={(data as any).youtubeFeedUrl || ''} onChange={e => onChange({ ...data, youtubeFeedUrl: e.target.value } as any)} />
       </div>
       <input className="w-full bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Cover Image URL" value={data.coverUrl || ''} onChange={e => onChange({ ...data, coverUrl: e.target.value })} />
       <div className="flex gap-2 justify-end">

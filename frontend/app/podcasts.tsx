@@ -35,7 +35,7 @@ interface LatestEpisode {
   type?: string;
 }
 
-const PODCASTS: Podcast[] = [
+const HARDCODED_PODCASTS: Podcast[] = [
   {
     id: 'frankies-pod',
     name: "Frankie's Pod: Uncorking the Unforgettable",
@@ -135,14 +135,43 @@ export default function PodcastsScreen() {
   const router = useRouter();
   const { colors, theme } = useTheme();
   const styles = createStyles(colors);
+  const [podcasts, setPodcasts] = useState<Podcast[]>(HARDCODED_PODCASTS);
   const [latestEpisodes, setLatestEpisodes] = useState<Record<string, LatestEpisode>>({});
   const [loadingEpisodes, setLoadingEpisodes] = useState(true);
   const [playingVideo, setPlayingVideo] = useState<{videoId: string, title: string} | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
+    fetchCMSPodcasts();
     fetchLatestEpisodes();
   }, []);
+
+  const fetchCMSPodcasts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/cms/podcasts`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.podcasts && data.podcasts.length > 0) {
+          const mapped: Podcast[] = data.podcasts.map((p: any) => ({
+            id: p.id || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            name: p.title,
+            host: p.host || '',
+            description: p.description || '',
+            focus: p.focus || [p.category || 'General'],
+            logo: p.coverUrl || '',
+            rssUrl: p.rssFeedUrl || '',
+            spotifyUrl: p.spotifyUrl || '',
+            appleUrl: p.appleUrl || '',
+            youtubeUrl: p.youtubeUrl || '',
+            websiteUrl: p.websiteUrl || '',
+          }));
+          setPodcasts(mapped);
+        }
+      }
+    } catch (error) {
+      console.log('Could not fetch CMS podcasts, using hardcoded list');
+    }
+  };
 
   const fetchLatestEpisodes = async () => {
     try {
@@ -241,7 +270,7 @@ export default function PodcastsScreen() {
 
         {/* Podcasts List */}
         <View style={styles.podcastsList}>
-          {PODCASTS.map((podcast) => {
+          {podcasts.map((podcast) => {
             const latestEp = latestEpisodes[podcast.id];
             
             // Use local logo for Frankie's Pod, remote URLs for others
