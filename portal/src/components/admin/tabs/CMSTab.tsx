@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Book, Plus, Trash2, Edit2, Save, X, Eye, EyeOff, RefreshCw, Headphones, Users, ChevronDown, ChevronUp, Search, ExternalLink, Globe } from 'lucide-react';
+import { Book, Plus, Trash2, Edit2, Save, X, Eye, EyeOff, RefreshCw, Headphones, ChevronDown, ChevronUp, Search, ExternalLink } from 'lucide-react';
 import { api } from '@/lib/admin-api';
 
 interface CMSTabProps {
@@ -10,7 +10,7 @@ interface CMSTabProps {
   onError: (message: string) => void;
 }
 
-type SubTab = 'books' | 'podcasts' | 'personas';
+type SubTab = 'books' | 'podcasts';
 
 interface BookItem {
   id: string;
@@ -38,17 +38,6 @@ interface PodcastItem {
   position: number;
 }
 
-interface PersonaItem {
-  id: string;
-  persona_id: string;
-  name: string;
-  description: string;
-  bio: string;
-  avatar: string;
-  visible: boolean;
-  position: number;
-}
-
 export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
   const [subTab, setSubTab] = useState<SubTab>('books');
 
@@ -59,7 +48,6 @@ export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
         {[
           { id: 'books' as SubTab, label: 'Books', icon: Book },
           { id: 'podcasts' as SubTab, label: 'Podcasts', icon: Headphones },
-          { id: 'personas' as SubTab, label: 'AI Personas', icon: Users },
         ].map(tab => (
           <button
             key={tab.id}
@@ -77,7 +65,6 @@ export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
 
       {subTab === 'books' && <BooksManager token={token} onSuccess={onSuccess} onError={onError} />}
       {subTab === 'podcasts' && <PodcastsManager token={token} onSuccess={onSuccess} onError={onError} />}
-      {subTab === 'personas' && <PersonasManager token={token} onSuccess={onSuccess} onError={onError} />}
     </div>
   );
 }
@@ -492,177 +479,6 @@ function PodcastForm({ data, onChange, onSave, onCancel, categories }: { data: P
         <button onClick={onCancel} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-sm flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
         <button onClick={onSave} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid="save-podcast-btn"><Save className="w-3 h-3" />Save</button>
       </div>
-    </div>
-  );
-}
-
-
-// ==================== PERSONAS MANAGER ====================
-
-function PersonasManager({ token, onSuccess, onError }: CMSTabProps) {
-  const [personas, setPersonas] = useState<PersonaItem[]>([]);
-  const [editingPersona, setEditingPersona] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<PersonaItem>>({});
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const loadPersonas = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const data = await api.getCMSPersonaBios(token);
-      setPersonas(Array.isArray(data?.personas) ? data.personas : []);
-    } catch (err: any) {
-      console.error('Failed to load personas:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => { loadPersonas(); }, [loadPersonas]);
-
-  const handleSeedPersonas = async () => {
-    try {
-      const res = await api.seedCMSPersonaBios(token);
-      onSuccess(res.message);
-      loadPersonas();
-    } catch (err: any) {
-      onError(err.message);
-    }
-  };
-
-  const handleUpdatePersona = async (id: string) => {
-    try {
-      await api.updateCMSPersonaBio(token, id, {
-        description: editForm.description,
-        bio: editForm.bio,
-      });
-      onSuccess('Persona updated');
-      setEditingPersona(null);
-      loadPersonas();
-    } catch (err: any) {
-      onError(err.message);
-    }
-  };
-
-  const handleToggleVisibility = async (persona: PersonaItem) => {
-    try {
-      await api.updateCMSPersonaBio(token, persona.id, { visible: !persona.visible });
-      loadPersonas();
-    } catch (err: any) {
-      onError(err.message);
-    }
-  };
-
-  const handleMovePersona = async (index: number, direction: 'up' | 'down') => {
-    const newPersonas = [...personas];
-    const swapIdx = direction === 'up' ? index - 1 : index + 1;
-    if (swapIdx < 0 || swapIdx >= newPersonas.length) return;
-    [newPersonas[index], newPersonas[swapIdx]] = [newPersonas[swapIdx], newPersonas[index]];
-    setPersonas(newPersonas);
-    try {
-      await api.reorderCMSPersonaBios(token, newPersonas.map(p => p.id));
-    } catch (err: any) {
-      onError(err.message);
-      loadPersonas();
-    }
-  };
-
-  const filteredPersonas = personas.filter(p =>
-    !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.persona_id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" />AI Personas ({personas.length})</h2>
-        <div className="flex gap-2">
-          {personas.length === 0 && (
-            <button onClick={handleSeedPersonas} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm" data-testid="seed-personas-btn">Seed from Backend</button>
-          )}
-          <button onClick={loadPersonas} className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded" data-testid="refresh-personas-btn">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 mb-4">
-        <Search className="w-4 h-4 text-gray-400" />
-        <input className="bg-transparent flex-1 text-sm outline-none" placeholder="Search personas..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} data-testid="search-personas-input" />
-      </div>
-
-      {/* Persona List */}
-      <div className="space-y-2">
-        {filteredPersonas.map((persona, idx) => (
-          <div key={persona.id} className={`bg-gray-800 rounded-lg border ${persona.visible !== false ? 'border-gray-700' : 'border-red-900 opacity-60'}`} data-testid={`persona-item-${persona.persona_id}`}>
-            {editingPersona === persona.id ? (
-              <div className="bg-gray-700 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-sm font-bold">
-                    {persona.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{persona.name}</p>
-                    <p className="text-xs text-gray-400">ID: {persona.persona_id}</p>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Role / Description (shown on cards)</label>
-                  <input
-                    className="w-full bg-gray-600 rounded px-3 py-2 text-sm"
-                    placeholder="e.g. Lead Battle Buddy — General veteran support"
-                    value={editForm.description || ''}
-                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Extended Bio (shown on profile pages)</label>
-                  <textarea
-                    className="w-full bg-gray-600 rounded px-3 py-2 text-sm"
-                    rows={3}
-                    placeholder="Full bio shown when users tap 'More info' on a persona..."
-                    value={editForm.bio || ''}
-                    onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setEditingPersona(null)} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-sm flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
-                  <button onClick={() => handleUpdatePersona(persona.id)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid={`save-persona-${persona.persona_id}`}><Save className="w-3 h-3" />Save</button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 p-3">
-                <div className="flex flex-col gap-0.5">
-                  <button onClick={() => handleMovePersona(idx, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
-                  <button onClick={() => handleMovePersona(idx, 'down')} disabled={idx === personas.length - 1} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold text-cyan-400">
-                  {persona.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{persona.name} <span className="text-xs text-gray-500 font-normal">({persona.persona_id})</span></p>
-                  <p className="text-xs text-gray-400 truncate">{persona.description || 'No description set'}</p>
-                  {persona.bio && <p className="text-xs text-gray-500 truncate mt-0.5">{persona.bio}</p>}
-                </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => handleToggleVisibility(persona)} className="p-1.5 hover:bg-gray-700 rounded" title={persona.visible !== false ? 'Hide' : 'Show'}>
-                    {persona.visible !== false ? <Eye className="w-3.5 h-3.5 text-green-400" /> : <EyeOff className="w-3.5 h-3.5 text-red-400" />}
-                  </button>
-                  <button onClick={() => { setEditingPersona(persona.id); setEditForm({ description: persona.description, bio: persona.bio }); }} className="p-1.5 hover:bg-gray-700 rounded" data-testid={`edit-persona-${persona.persona_id}`}><Edit2 className="w-3.5 h-3.5 text-blue-400" /></button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {personas.length === 0 && !loading && (
-        <div className="text-center py-12 text-gray-400">
-          <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>No persona bios yet. Click &quot;Seed from Backend&quot; to import all 20 AI personas from the system.</p>
-        </div>
-      )}
     </div>
   );
 }

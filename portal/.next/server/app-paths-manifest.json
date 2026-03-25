@@ -4,9 +4,9 @@
   "/page": "app/page.js",
   "/privacy/page": "app/privacy/page.js",
   "/terms/page": "app/terms/page.js",
-  "/lms-admin/page": "app/lms-admin/page.js",
-  "/learning/module/[id]/page": "app/learning/module/[id]/page.js",
   "/learning/certificate/page": "app/learning/certificate/page.js",
+  "/learning/module/[id]/page": "app/learning/module/[id]/page.js",
+  "/lms-admin/page": "app/lms-admin/page.js",
   "/learning/page": "app/learning/page.js",
   "/staff/page": "app/staff/page.js"
 }
