@@ -127,6 +127,16 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 - **Render backend**: Auto-deploys from GitHub main branch
 - See PRD.md deployment section for full details
 
+## Block-Based CMS PoC — For Carers (27 March 2026)
+- **New approach**: Replaced raw HTML CMS with typed block system for `/for-carers` page
+- **Block types**: paragraph, heading, callout, bullet_list, support_card, chat_banner, crisis_footer, divider
+- **24 blocks** seeded: Helen's chat banner, 6 "What Carers Face" callouts, 9 support resource cards (with phone/URL/tags), crisis footer
+- **CMSBlockRenderer.tsx**: New React Native component renders typed blocks with native styling (support cards with tap-to-call, chat banners linking to AI personas, crisis numbers)
+- **useCMSBlocks.ts**: New hook to fetch blocks from API
+- **Admin Portal**: Block Editor added to PagesManager — shows for block-based pages (add/edit/delete/reorder blocks + live preview panel)
+- **Backend**: `blocks` field added to PageCreate/PageUpdate models, `POST /cms/admin/pages/for-carers/seed` endpoint
+- **Test results**: 22/22 tests PASS, Expo web build PASS, regression tests PASS for all 3 existing PoC pages
+
 ## CMS Legacy Page Fix — 27 March 2026
 - **Root Cause Found**: Old `cms.py` had a `POST /cms/seed-public` endpoint that seeded 6 legacy pages (Home, Self-Care Tools, Peer Support, Organizations, Family & Friends, Substance Support) into `cms_pages`. This polluted the collection and blocked the new PoC seed.
 - **Fix**: Removed all `cms_pages` writes from `cms.py` seed-public endpoint (now only seeds sections/cards)
