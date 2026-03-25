@@ -9,9 +9,18 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import asyncio
 import logging
+import os
+import re
+from pymongo import MongoClient
 
 router = APIRouter(prefix="/podcasts", tags=["podcasts"])
 logger = logging.getLogger(__name__)
+
+# Connect to MongoDB to read CMS podcast feed URLs
+MONGO_URL = os.environ.get("MONGO_URL")
+DB_NAME = os.environ.get("DB_NAME", "radiocheck")
+_mongo_client = MongoClient(MONGO_URL)
+_db = _mongo_client[DB_NAME]
 
 # YouTube RSS feed URLs (preferred - more up to date)
 YOUTUBE_FEEDS = {
@@ -217,17 +226,44 @@ def parse_rss_latest_episode(xml_content: str) -> Optional[dict]:
     return None
 
 
+def _slug_from_title(title: str) -> str:
+    """Generate a URL-friendly slug from a podcast title."""
+    return re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+
+
 async def refresh_episode_cache():
-    """Refresh the episode cache by fetching YouTube and podcast RSS feeds"""
+    """Refresh the episode cache by fetching YouTube and podcast RSS feeds.
+    Merges hardcoded feeds with CMS database feeds."""
     global _episode_cache, _cache_timestamp
     
     new_cache = {}
+    
+    # Build combined feed maps: start with hardcoded, then layer CMS data on top
+    youtube_feeds = dict(YOUTUBE_FEEDS)
+    podcast_feeds = dict(PODCAST_FEEDS)
+    
+    # Pull feed URLs from CMS database
+    try:
+        cms_podcasts = list(_db.cms_podcasts.find({"visible": True}))
+        for p in cms_podcasts:
+            slug = _slug_from_title(p.get("title", ""))
+            if not slug:
+                continue
+            yt_feed = p.get("youtubeFeedUrl", "")
+            rss_feed = p.get("rssFeedUrl", "")
+            if yt_feed and slug not in youtube_feeds:
+                youtube_feeds[slug] = yt_feed
+            if rss_feed and slug not in podcast_feeds:
+                podcast_feeds[slug] = rss_feed
+        logger.info(f"Loaded {len(cms_podcasts)} CMS podcasts for episode fetching")
+    except Exception as e:
+        logger.warning(f"Could not load CMS podcasts for feed URLs: {e}")
     
     # First, try YouTube feeds (more up to date)
     youtube_tasks = []
     youtube_ids = []
     
-    for podcast_id, feed_url in YOUTUBE_FEEDS.items():
+    for podcast_id, feed_url in youtube_feeds.items():
         youtube_tasks.append(fetch_rss_feed(feed_url))
         youtube_ids.append(podcast_id)
     
@@ -244,7 +280,7 @@ async def refresh_episode_cache():
     podcast_tasks = []
     podcast_ids = []
     
-    for podcast_id, feed_url in PODCAST_FEEDS.items():
+    for podcast_id, feed_url in podcast_feeds.items():
         # Only fetch if not already cached from YouTube
         if podcast_id not in new_cache:
             podcast_tasks.append(fetch_rss_feed(feed_url))
