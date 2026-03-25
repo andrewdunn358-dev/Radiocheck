@@ -515,6 +515,4 @@ export const api = {
     api.fetch<any>(`/cms/admin/pages/${slug}`, { token, method: 'DELETE' }),
   toggleCMSPageStatus: (token: string, slug: string) =>
     api.fetch<any>(`/cms/admin/pages/${slug}/status`, { token, method: 'PUT' }),
-  seedCMSPages: (token: string) =>
-    api.fetch<any>('/cms/admin/pages/seed', { token, method: 'POST' }),
 };
