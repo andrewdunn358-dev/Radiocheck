@@ -35,7 +35,7 @@ const aiTeam = [
   {
     name: 'Rachel',
     role: 'Criminal Justice Support',
-    description: 'Rachel provides warm, non-judgemental support for veterans in or leaving the criminal justice system.',
+    description: 'Ex-Royal Military Police, SIB detective. Twelve years\' service. She\'s seen the full pipeline — service, trauma, the law, custody — and knows how good people end up in bad situations.',
     avatar: '/images/rachel.png',
     color: '#14b8a6'
   },
