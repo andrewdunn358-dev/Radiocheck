@@ -14,7 +14,7 @@ const aiTeam = [
   {
     name: 'Tommy',
     role: 'Your Battle Buddy',
-    description: 'Tommy is your straightforward battle buddy. A no-nonsense mate who tells it like it is, but always has your back.',
+    description: 'Tommy served at the sharp end — the kind of soldiering most people only read about. He won\'t say where or with whom. Quiet, precise, comfortable in silence.',
     avatar: '/images/tommy.png',
     color: '#f59e0b'
   },
