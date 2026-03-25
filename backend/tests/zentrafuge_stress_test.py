@@ -11,7 +11,7 @@ import time
 import sys
 from datetime import datetime
 
-API_URL = "https://radio-check-redesign.preview.emergentagent.com"
+API_URL = "https://admin-cms-v2.preview.emergentagent.com"
 ENDPOINT = f"{API_URL}/api/ai-buddies/chat"
 
 def send_message(session_id: str, message: str, character: str = "tommy"):

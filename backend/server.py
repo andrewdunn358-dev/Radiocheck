@@ -7487,7 +7487,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://radio-check-redesign.preview.emergentagent.com",
+        "https://admin-cms-v2.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],
@@ -8262,6 +8262,10 @@ app.include_router(ai_tutor.router)
 # Time Tracking - Admin work hours logging
 from routers.timetracking import router as timetracking_router
 app.include_router(timetracking_router)
+
+# CMS Content - Books, Podcasts, Persona Bios
+from routers.cms_content import router as cms_content_router
+app.include_router(cms_content_router, prefix="/api/cms", tags=["CMS Content"])
 
 # Serve static files for Staff Portal and Admin Site
 # This allows testing the portals from the preview environment

@@ -279,6 +279,38 @@ export const api = {
       method: 'POST',
     }),
 
+  // CMS Content - Books
+  getCMSBooks: (token: string) =>
+    api.fetch<any>('/cms/admin/books', { token }),
+  createCMSBook: (token: string, data: any) =>
+    api.fetch<any>('/cms/admin/books', { token, method: 'POST', body: JSON.stringify(data) }),
+  updateCMSBook: (token: string, id: string, data: any) =>
+    api.fetch<any>(`/cms/admin/books/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
+  deleteCMSBook: (token: string, id: string) =>
+    api.fetch<any>(`/cms/admin/books/${id}`, { token, method: 'DELETE' }),
+  seedCMSBooks: (token: string) =>
+    api.fetch<any>('/cms/admin/books/seed', { token, method: 'POST' }),
+  reorderCMSBooks: (token: string, order: string[]) =>
+    api.fetch<any>('/cms/admin/books/reorder', { token, method: 'POST', body: JSON.stringify(order) }),
+
+  // CMS Content - Podcasts
+  getCMSPodcasts: (token: string) =>
+    api.fetch<any>('/cms/admin/podcasts', { token }),
+  createCMSPodcast: (token: string, data: any) =>
+    api.fetch<any>('/cms/admin/podcasts', { token, method: 'POST', body: JSON.stringify(data) }),
+  updateCMSPodcast: (token: string, id: string, data: any) =>
+    api.fetch<any>(`/cms/admin/podcasts/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
+  deleteCMSPodcast: (token: string, id: string) =>
+    api.fetch<any>(`/cms/admin/podcasts/${id}`, { token, method: 'DELETE' }),
+
+  // CMS Content - Persona Bios
+  getCMSPersonaBios: (token: string) =>
+    api.fetch<any>('/cms/admin/persona-bios', { token }),
+  updateCMSPersonaBio: (token: string, id: string, data: any) =>
+    api.fetch<any>(`/cms/admin/persona-bios/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
+  seedCMSPersonaBios: (token: string) =>
+    api.fetch<any>('/cms/admin/persona-bios/seed', { token, method: 'POST' }),
+
   // Compliance
   getComplianceDashboard: (token: string) =>
     api.fetch<any>('/compliance/dashboard', { token }),

@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://radio-check-redesign.preview.emergentagent.com/api"
+BACKEND_URL = "https://admin-cms-v2.preview.emergentagent.com/api"
 
 # Test data
 TEST_EMAILS = [

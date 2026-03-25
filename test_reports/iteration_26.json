@@ -27,7 +27,7 @@
       "email": "test@example.com",
       "password": "testpass123"
     },
-    "preview_url": "https://radio-check-redesign.preview.emergentagent.com"
+    "preview_url": "https://admin-cms-v2.preview.emergentagent.com"
   },
   "seed_data_creation": "Test user test@example.com with password testpass123 already exists",
   "retest_needed": false,

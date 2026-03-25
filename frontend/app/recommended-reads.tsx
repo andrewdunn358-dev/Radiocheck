@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, TextInput, Linking, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,7 @@ interface Book {
   coverUrl: string;
 }
 
-const BOOKS: Book[] = [
+const FALLBACK_BOOKS: Book[] = [
   {
     title: "Bravo Two Zero",
     author: "Andy McNab",
@@ -279,11 +279,29 @@ interface SearchResult {
 
 const CATEGORIES = ['All', 'Memoir', 'Mental Health', 'Military History', 'Practical', 'Inspiration', 'Wellbeing', 'Lighter Reads'];
 
+const API_BASE = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+
 export default function RecommendedReads() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedFormat, setSelectedFormat] = useState<'all' | 'book' | 'audiobook'>('all');
+  const [allBooks, setAllBooks] = useState<Book[]>(FALLBACK_BOOKS);
+
+  // Fetch books from CMS API on mount, fallback to hardcoded
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/cms/books`);
+        const data = await res.json();
+        if (data.books && data.books.length > 0) {
+          setAllBooks(data.books);
+        }
+      } catch (e) {
+        // Fallback to hardcoded list silently
+      }
+    })();
+  }, []);
 
   // Live search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -376,13 +394,13 @@ export default function RecommendedReads() {
   };
 
   const curatedBooks = useMemo(() => {
-    return BOOKS.filter(book => {
+    return allBooks.filter(book => {
       const matchesCategory = selectedCategory === 'All' || book.category === selectedCategory;
       const matchesFormat = selectedFormat === 'all' ||
         (selectedFormat === 'audiobook' ? (book.format === 'audiobook' || book.format === 'both') : true);
       return matchesCategory && matchesFormat;
     });
-  }, [selectedCategory, selectedFormat]);
+  }, [selectedCategory, selectedFormat, allBooks]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>

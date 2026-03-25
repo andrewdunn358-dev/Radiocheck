@@ -83,16 +83,26 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 
 ## Changes — 24 March 2026 (Evening Session)
 - **AI Chat Banners**: Fixed all 4 new pages — banners now at TOP of page (after back button, before hero) with real photo avatars and 24/7 badge
-- **Recommended Reads Page**: Created `/app/frontend/app/recommended-reads.tsx` — 23 curated military books/audiobooks with cover images, star ratings, category filters, format filters, Amazon + Waterstones buy buttons
+- **Recommended Reads Page**: Created `/app/frontend/app/recommended-reads.tsx` — 25 curated military books/audiobooks with cover images, star ratings, category filters, format filters, Amazon + Waterstones buy buttons
 - **Live Book Search**: Open Library search API integration — search any book in-app, see results with covers, tap to buy on Amazon or Waterstones
-- **Books Added**: Escape from Kabul (Wood/Jones), Walking the Nile (Wood), Danger Close (Tootal), Operation Mayhem (Heaney), Operation Telic (Ripley)
+- **Books Added**: Escape from Kabul (Wood/Jones), Walking the Nile (Wood), Danger Close (Tootal), Operation Mayhem (Heaney), Operation Telic (Ripley), Charlie Four Kilo (Rich Jones), Conquering Dreams (Hari Budha Magar MBE)
 - **Book Covers Fixed**: Switched from unreliable ISBN lookups to verified Open Library cover IDs; placeholder icon for books without covers
 - **Homepage Tiles**: Added "Recommended Reads" tile, moved "Recommended Podcasts" to bottom
 - **AI Platoon Reordered**: Now matches tile order exactly (Tommy→Bob→Rachel→Margie→...→Reg)
 - **They Served Tile**: Changed to inclusive blue icon with three figures (man/person/woman)
 - **Growing Up Military**: Renamed page header from "Forces Kids"
 - **Crisis Support**: Added "Request a Callback" card below On-Duty Support card
-- **Time Tracked**: 3h30m Development @ £40/hr = £140
+
+## Persona Updates — 25 March 2026
+- **Tommy v2.0**: Full rewrite — SF-informed voice, extreme understatement, OpSec deflection, dark humour matching, banned phrases. No direct SF mentions, just hints.
+- **Rachel v1.0**: Criminal Justice specialist — ex-RMP/SIB detective, legal info (not advice), covers service justice, civilian courts, PTSD as mitigation, veterans in custody, release & resettlement. Legal advice boundary enforced.
+
+## CMS Phase 1 — 25 March 2026
+- **Backend**: New router `/app/backend/routers/cms_content.py` with full CRUD for books, podcasts, persona bios
+- **API Endpoints**: `GET /api/cms/books` (public), `POST/PUT/DELETE /api/cms/admin/books` (admin), reorder, seed, visibility toggle
+- **Admin Portal**: Books Manager with add/edit/delete, search, reorder (up/down), visibility toggle, cover preview. Podcasts & Personas placeholders ready.
+- **Mobile App**: `recommended-reads.tsx` now fetches from CMS API with hardcoded fallback
+- **Database**: 25 books seeded in `cms_books` collection
 
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions
