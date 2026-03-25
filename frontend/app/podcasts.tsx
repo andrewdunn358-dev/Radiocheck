@@ -152,19 +152,29 @@ export default function PodcastsScreen() {
       if (response.ok) {
         const data = await response.json();
         if (data.podcasts && data.podcasts.length > 0) {
-          const mapped: Podcast[] = data.podcasts.map((p: any) => ({
-            id: p.id || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            name: p.title,
-            host: p.host || '',
-            description: p.description || '',
-            focus: p.focus || [p.category || 'General'],
-            logo: p.coverUrl || '',
-            rssUrl: p.rssFeedUrl || '',
-            spotifyUrl: p.spotifyUrl || '',
-            appleUrl: p.appleUrl || '',
-            youtubeUrl: p.youtubeUrl || '',
-            websiteUrl: p.websiteUrl || '',
-          }));
+          // Build a lookup of hardcoded podcasts by name for fallback URLs
+          const hardcodedByName: Record<string, Podcast> = {};
+          HARDCODED_PODCASTS.forEach(p => {
+            hardcodedByName[p.name.toLowerCase()] = p;
+          });
+
+          const mapped: Podcast[] = data.podcasts.map((p: any) => {
+            // Try to find matching hardcoded podcast for fallback URLs
+            const fallback = hardcodedByName[p.title.toLowerCase()];
+            return {
+              id: fallback?.id || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              name: p.title,
+              host: p.host || fallback?.host || '',
+              description: p.description || fallback?.description || '',
+              focus: (p.focus && p.focus.length > 0) ? p.focus : (fallback?.focus || [p.category || 'General']),
+              logo: p.coverUrl || fallback?.logo || '',
+              rssUrl: p.rssFeedUrl || fallback?.rssUrl || '',
+              spotifyUrl: p.spotifyUrl || fallback?.spotifyUrl || '',
+              appleUrl: p.appleUrl || fallback?.appleUrl || '',
+              youtubeUrl: p.youtubeUrl || fallback?.youtubeUrl || '',
+              websiteUrl: p.websiteUrl || fallback?.websiteUrl || '',
+            };
+          });
           setPodcasts(mapped);
         }
       }
