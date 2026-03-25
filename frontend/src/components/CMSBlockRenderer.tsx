@@ -44,6 +44,8 @@ export function CMSBlockRenderer({ blocks, isLoading }: CMSBlockRendererProps) {
             return <SupportCardBlock key={index} {...block.props} colors={colors} isDark={isDark} />;
           case 'chat_banner':
             return <ChatBannerBlock key={index} persona={block.props?.persona} colors={colors} router={router} />;
+          case 'image':
+            return <ImageBlock key={index} url={block.props?.url} alt={block.props?.alt} />;
           case 'crisis_footer':
             return <CrisisFooterBlock key={index} colors={colors} isDark={isDark} router={router} />;
           case 'divider':
@@ -105,6 +107,17 @@ const TAG_COLORS: Record<string, { bg: string; text: string }> = {
   'Mental Health': { bg: '#ede9fe', text: '#8b5cf6' },
   'Respite': { bg: '#fef3c7', text: '#f59e0b' },
 };
+
+function ImageBlock({ url, alt }: { url: string; alt?: string }) {
+  if (!url) return null;
+  const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+  const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Image source={{ uri: fullUrl }} style={{ width: '100%', height: 200, borderRadius: 12 }} resizeMode="cover" accessibilityLabel={alt || 'Page image'} />
+    </View>
+  );
+}
 
 function SupportCardBlock({ title, description, phone, url, tag, colors, isDark }: any) {
   if (!title) return null;

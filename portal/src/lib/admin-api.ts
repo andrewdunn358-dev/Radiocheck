@@ -515,4 +515,21 @@ export const api = {
     api.fetch<any>(`/cms/admin/pages/${slug}`, { token, method: 'DELETE' }),
   toggleCMSPageStatus: (token: string, slug: string) =>
     api.fetch<any>(`/cms/admin/pages/${slug}/status`, { token, method: 'PUT' }),
+
+  // CMS Personas (for visual editor)
+  getCMSPersonas: () =>
+    api.fetch<any>('/cms/personas'),
+
+  // CMS Image Upload
+  uploadCMSImage: async (token: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_URL}/api/cms/admin/upload-image`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+    return res.json() as Promise<{ url: string }>;
+  },
 };

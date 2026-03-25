@@ -6,12 +6,12 @@ Public endpoints (no auth) for the mobile app to fetch content.
 Admin endpoints (auth required) for managing content.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timezone
 from bson import ObjectId
-import os
+import os, uuid, shutil
 from pymongo import MongoClient
 
 router = APIRouter()
@@ -533,3 +533,59 @@ async def admin_toggle_page_status(slug: str):
     new_status = "published" if page.get("status") == "draft" else "draft"
     db.cms_pages.update_one({"slug": slug}, {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}})
     return {"message": f"Page status changed to {new_status}", "status": new_status}
+
+
+# ==================== PERSONAS LIST (for visual editor) ====================
+
+@router.get("/personas")
+async def list_personas():
+    """Return all AI personas for the visual editor persona picker."""
+    from personas import AI_CHARACTERS
+    personas = []
+    for pid, p in AI_CHARACTERS.items():
+        personas.append({
+            "id": pid,
+            "name": p.get("name", pid),
+            "avatar": p.get("avatar", ""),
+            "role": p.get("role", ""),
+            "accent_color": p.get("accent_color", "#3b82f6"),
+        })
+    return {"personas": personas}
+
+
+# ==================== IMAGE UPLOAD (for visual editor) ====================
+
+CMS_UPLOAD_DIR = "/tmp/cms_uploads"
+os.makedirs(CMS_UPLOAD_DIR, exist_ok=True)
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+
+@router.post("/admin/upload-image")
+async def upload_cms_image(file: UploadFile = File(...)):
+    """Upload an image for CMS page blocks. Returns the public URL."""
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG, and WebP images are allowed")
+
+    contents = await file.read()
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="Image must be under 5MB")
+
+    ext = os.path.splitext(file.filename or "image.png")[1] or ".png"
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(CMS_UPLOAD_DIR, unique_name)
+
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    return {"url": f"/api/cms/uploads/{unique_name}"}
+
+
+@router.get("/uploads/{filename}")
+async def serve_cms_image(filename: str):
+    """Serve an uploaded CMS image."""
+    from fastapi.responses import FileResponse
+    filepath = os.path.join(CMS_UPLOAD_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(filepath)

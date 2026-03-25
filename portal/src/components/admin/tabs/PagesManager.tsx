@@ -9,6 +9,7 @@ import TiptapLink from '@tiptap/extension-link';
 import TiptapImage from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import TiptapUnderline from '@tiptap/extension-underline';
+import { VisualPageEditor } from '../VisualPageEditor';
 
 interface PagesManagerProps {
   token: string;
@@ -117,10 +118,10 @@ export default function PagesManager({ token, onSuccess, onError }: PagesManager
 
   // If editing a page, show the appropriate editor
   if (editingPage) {
-    // Block-based pages get the block editor
+    // Block-based pages get the visual inline editor
     if (editingPage.blocks && editingPage.blocks.length > 0) {
       return (
-        <BlockEditor
+        <VisualPageEditor
           token={token}
           page={editingPage}
           onSave={() => { setEditingPage(null); setShowNewPage(false); loadPages(); }}
