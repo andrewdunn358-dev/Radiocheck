@@ -89,9 +89,13 @@ export default function PagesManager({ token, onSuccess, onError }: PagesManager
   const openNewPage = () => {
     setEditingPage({
       id: '',
-      title: '',
-      slug: '',
+      title: 'New Page',
+      slug: 'new-page',
       content: '',
+      blocks: [
+        { type: 'heading', props: { text: 'New Page' } },
+        { type: 'paragraph', props: { text: 'Start adding content here.' } },
+      ],
       status: 'draft',
       is_system_page: false,
       is_migrated_from_tsx: false,
@@ -114,6 +118,7 @@ export default function PagesManager({ token, onSuccess, onError }: PagesManager
         <VisualPageEditor
           token={token}
           page={editingPage}
+          isNew={showNewPage}
           onSave={() => { setEditingPage(null); setShowNewPage(false); loadPages(); }}
           onCancel={() => { setEditingPage(null); setShowNewPage(false); }}
           onSuccess={onSuccess}

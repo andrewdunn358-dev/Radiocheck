@@ -482,6 +482,94 @@ async def admin_seed_for_carers():
     return {"message": "Seeded for-carers page with block content", "blocks": len(FOR_CARERS_BLOCKS)}
 
 
+@router.post("/admin/pages/serious-illness/seed")
+async def admin_seed_serious_illness():
+    """Seed or reset the /serious-illness page with block-based content."""
+    db.cms_pages.delete_one({"slug": "serious-illness"})
+    BLOCKS = [
+        {"type": "chat_banner", "props": {"persona": "reg"}},
+        {"type": "heading", "props": {"text": "Serious Illness Support"}},
+        {"type": "paragraph", "props": {"text": "Cancer, leukaemia, and other serious conditions. You fought for your country. Now let others fight for you."}},
+        {"type": "divider", "props": {}},
+        {"type": "heading", "props": {"text": "What You\u2019re Facing"}},
+        {"type": "callout", "props": {"text": "Facing a Diagnosis \u2014 Hearing \u2018you have cancer\u2019 or another serious diagnosis turns your world upside down. It\u2019s okay to be scared, angry, or numb. There\u2019s no wrong way to react."}},
+        {"type": "callout", "props": {"text": "Treatment & Side Effects \u2014 Chemotherapy, radiotherapy, surgery, immunotherapy \u2014 treatment is tough. Understanding what to expect and having support through it makes a real difference."}},
+        {"type": "callout", "props": {"text": "Service-Related Cancers \u2014 Some cancers may be linked to service \u2014 exposure to depleted uranium, asbestos, burn pits, chemicals. If you believe your illness is service-related, you may be entitled to compensation."}},
+        {"type": "callout", "props": {"text": "Financial Impact \u2014 Serious illness often means loss of income, increased costs, and financial stress. Military charities and the benefits system can help \u2014 don\u2019t struggle alone."}},
+        {"type": "callout", "props": {"text": "Mental Health & Illness \u2014 A serious diagnosis can trigger or worsen PTSD, depression, and anxiety. Your mental health matters alongside your physical treatment. Support is available."}},
+        {"type": "callout", "props": {"text": "Supporting Your Family \u2014 Serious illness affects the whole family. Partners, children, and parents need support too. Several charities provide family-specific services alongside patient care."}},
+        {"type": "divider", "props": {}},
+        {"type": "heading", "props": {"text": "Support & Resources"}},
+        {"type": "support_card", "props": {"title": "Macmillan Cancer Support", "description": "Macmillan provides expert information on all types of cancer, emotional support, financial guidance, and practical help. Their support line (0808 808 00 00) is free and available 7 days a week. They also have specialist benefits advisors.", "phone": "0808 808 0000", "url": "https://www.macmillan.org.uk", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "Cancer Research UK", "description": "Cancer Research UK funds research and provides comprehensive, evidence-based information about all types of cancer \u2014 diagnosis, treatment options, living with cancer, and clinical trials. Their nurses can answer your questions on 0808 800 4040.", "phone": "0808 800 4040", "url": "https://www.cancerresearchuk.org", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "Leukaemia Care", "description": "Leukaemia Care provides support for anyone affected by blood cancer \u2014 leukaemia, lymphoma, myeloma, and MDS. Their CARE Line (08088 010 444) offers emotional support, practical information, and nurse-led advice.", "phone": "08088 010 444", "url": "https://www.leukaemiacare.org.uk", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "Blood Cancer UK", "description": "Blood Cancer UK funds research and provides support for people living with blood cancer. They have patient information, peer support communities, and a support line staffed by specialist nurses.", "url": "https://bloodcancer.org.uk", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "Maggie\u2019s Centres", "description": "Maggie\u2019s provides free practical, emotional, and social support to anyone with cancer and their families. Their centres are warm, welcoming spaces where you can talk to professionals, join support groups, or just have a cup of tea.", "url": "https://www.maggies.org", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "Marie Curie", "description": "Marie Curie provides care and support for people living with a terminal illness and their families. This includes nursing care, a free support line (0800 090 2309), online community, and bereavement support.", "phone": "0800 090 2309", "url": "https://www.mariecurie.org.uk", "tag": "Respite"}},
+        {"type": "support_card", "props": {"title": "Hospice UK", "description": "Hospice UK supports a network of over 200 hospices across the UK. Hospices provide specialist palliative care \u2014 pain management, emotional support, and quality of life \u2014 for people with life-limiting illnesses. Care is free.", "url": "https://www.hospiceuk.org", "tag": "Respite"}},
+        {"type": "support_card", "props": {"title": "The Royal British Legion", "description": "The Royal British Legion can provide financial grants for veterans facing serious illness \u2014 help with travel to hospital, specialist equipment, heating bills, and family support during treatment.", "phone": "0808 802 8080", "url": "https://www.britishlegion.org.uk", "tag": "Financial"}},
+        {"type": "support_card", "props": {"title": "SSAFA", "description": "SSAFA provides practical and emotional support for serving personnel, veterans, and families dealing with serious illness. From grants to mentoring to family support, they understand the military dimension of your situation.", "url": "https://www.ssafa.org.uk", "tag": "Carer Support"}},
+        {"type": "support_card", "props": {"title": "Combat Stress", "description": "A serious illness diagnosis can trigger or worsen PTSD, anxiety, and depression. Combat Stress provides specialist mental health treatment for veterans that takes into account both your service history and your current medical situation.", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "Citizens Advice - Benefits When Ill", "description": "If you\u2019re too ill to work, you may be entitled to Employment Support Allowance, Personal Independence Payment, Attendance Allowance, or Universal Credit. Citizens Advice can help you understand and apply for what you\u2019re owed.", "url": "https://www.citizensadvice.org.uk/benefits/sick-or-disabled-people-and-carers/", "tag": "Financial"}},
+        {"type": "support_card", "props": {"title": "NHS Veteran Priority Treatment", "description": "Veterans are entitled to priority NHS treatment for service-related conditions. Ensure your GP is aware of your service history. Many hospitals now have veteran-aware accreditation and dedicated pathways.", "url": "https://veteranaware.nhs.uk", "tag": "Practical"}},
+        {"type": "divider", "props": {}},
+        {"type": "crisis_footer", "props": {}},
+    ]
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "title": "Serious Illness Support", "slug": "serious-illness", "content": "", "blocks": BLOCKS,
+        "status": "published", "is_system_page": False, "is_migrated_from_tsx": True,
+        "linked_persona": "reg", "meta_title": "Serious Illness Support - Radio Check",
+        "meta_description": "Cancer, leukaemia, and serious illness support for UK veterans",
+        "created_at": now, "updated_at": now,
+    }
+    db.cms_pages.insert_one(doc)
+    return {"message": "Seeded serious-illness page", "blocks": len(BLOCKS)}
+
+
+@router.post("/admin/pages/recovery-support/seed")
+async def admin_seed_recovery_support():
+    """Seed or reset the /recovery-support page with block-based content."""
+    db.cms_pages.delete_one({"slug": "recovery-support"})
+    BLOCKS = [
+        {"type": "chat_banner", "props": {"persona": "mo"}},
+        {"type": "heading", "props": {"text": "Recovery Support"}},
+        {"type": "paragraph", "props": {"text": "Injury doesn\u2019t end when you leave theatre. Recovery is ongoing \u2014 and you don\u2019t have to do it alone."}},
+        {"type": "divider", "props": {}},
+        {"type": "heading", "props": {"text": "Recovery Topics"}},
+        {"type": "callout", "props": {"text": "Life After Injury \u2014 Adapting to a new normal after a service injury is tough. Whether it\u2019s learning to walk again, adapting your home, or accepting help \u2014 recovery is a journey, not a destination."}},
+        {"type": "callout", "props": {"text": "Prosthetics & Mobility \u2014 Modern prosthetics are incredible, but the adjustment is real. From phantom limb pain to learning new movements, specialist support exists to help you get the most from your prosthetic."}},
+        {"type": "callout", "props": {"text": "Chronic Pain Management \u2014 Pain that doesn\u2019t go away changes everything \u2014 sleep, mood, relationships. Understanding pain science and having the right support plan can make a real difference."}},
+        {"type": "callout", "props": {"text": "Mental Health & Physical Injury \u2014 Physical wounds often come with invisible ones. PTSD, depression, grief for your old self \u2014 these are normal responses to abnormal experiences. Don\u2019t ignore the mind while treating the body."}},
+        {"type": "callout", "props": {"text": "Home Adaptations & Equipment \u2014 Grants are available to adapt your home \u2014 wet rooms, ramps, stairlifts, specialist equipment. You shouldn\u2019t have to struggle with basic daily tasks. Help is there."}},
+        {"type": "callout", "props": {"text": "Financial Support During Recovery \u2014 War Pensions, AFCS, DLA/PIP, and charity grants can all help during recovery. You\u2019ve earned these entitlements through your service. Don\u2019t be too proud to claim them."}},
+        {"type": "divider", "props": {}},
+        {"type": "heading", "props": {"text": "Support & Resources"}},
+        {"type": "support_card", "props": {"title": "Blesma - The Limbless Veterans", "description": "Blesma supports serving and ex-serving men and women who have lost limbs, or the use of limbs or eyes, in military service. They provide grants, rehabilitation support, prosthetic advice, activity programmes, and a community who understand what you\u2019re going through.", "url": "https://blesma.org", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "Help for Heroes Recovery Centre", "description": "Help for Heroes provides recovery programmes including physiotherapy, occupational therapy, psychological support, and adaptive sports. Their centres offer both residential and outpatient rehabilitation designed around the specific needs of wounded veterans.", "url": "https://www.helpforheroes.org.uk/get-support/recovery/", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "DMRC Stanford Hall", "description": "The DMRC at Stanford Hall provides world-class rehabilitation for serving personnel and veterans with complex injuries. From prosthetic fitting to intensive physiotherapy, they specialise in getting you back to the best possible function.", "url": "https://www.mod.uk/dmrc", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "The Royal British Legion", "description": "The Royal British Legion provides financial support for recovery needs \u2014 from adapting your home to specialist equipment, mobility aids, and ongoing medical costs. They can help fund what the NHS doesn\u2019t cover.", "url": "https://www.britishlegion.org.uk", "tag": "Financial"}},
+        {"type": "support_card", "props": {"title": "Blind Veterans UK", "description": "Blind Veterans UK supports ex-service men and women living with sight loss, whether from service or later in life. They provide rehabilitation, training, emotional support, and community \u2014 helping you live independently and with confidence.", "url": "https://www.blindveterans.org.uk", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "Combat Stress", "description": "Physical injuries often come with invisible wounds. Combat Stress provides specialist mental health treatment for PTSD, anxiety, depression, and adjustment difficulties that can accompany physical injury and recovery.", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "NHS Veteran-Aware Hospitals", "description": "Veterans are entitled to priority NHS treatment for service-related conditions. Over 100 NHS trusts are now \u2018Veteran Aware\u2019 and committed to understanding military injuries. Make sure your GP knows about your service history.", "url": "https://veteranaware.nhs.uk", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "SSAFA", "description": "SSAFA can provide practical support during your recovery \u2014 help with travel to hospital appointments, grants for specialist equipment, home adaptations, and emotional support for you and your family.", "url": "https://www.ssafa.org.uk", "tag": "Carer Support"}},
+        {"type": "support_card", "props": {"title": "British Pain Society", "description": "Chronic pain from service injuries can dominate your life. The British Pain Society provides patient resources to understand and manage pain \u2014 including pain management programmes, specialist referrals, and self-help strategies.", "url": "https://www.britishpainsociety.org", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "Invictus Games Foundation", "description": "The Invictus Games Foundation uses adaptive sport to support the recovery and rehabilitation of wounded, injured, and sick service personnel and veterans. Sport provides physical rehab, confidence, and community.", "url": "https://invictusgamesfoundation.org", "tag": "Practical"}},
+        {"type": "divider", "props": {}},
+        {"type": "crisis_footer", "props": {}},
+    ]
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "title": "Recovery Support", "slug": "recovery-support", "content": "", "blocks": BLOCKS,
+        "status": "published", "is_system_page": False, "is_migrated_from_tsx": True,
+        "linked_persona": "mo", "meta_title": "Recovery Support - Radio Check",
+        "meta_description": "Recovery, prosthetics, chronic pain, and rehabilitation support for UK veterans",
+        "created_at": now, "updated_at": now,
+    }
+    db.cms_pages.insert_one(doc)
+    return {"message": "Seeded recovery-support page", "blocks": len(BLOCKS)}
+
+
 # Parameterized {slug} routes below
 
 @router.get("/admin/pages/{slug}")

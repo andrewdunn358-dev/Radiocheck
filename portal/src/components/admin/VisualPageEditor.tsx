@@ -16,6 +16,7 @@ interface Block {
 interface VisualPageEditorProps {
   token: string;
   page: { title: string; slug: string; blocks?: Block[]; status: string };
+  isNew?: boolean;
   onSave: () => void;
   onCancel: () => void;
   onSuccess: (msg: string) => void;
@@ -83,9 +84,11 @@ const PERSONA_DATA: Record<string, { name: string; color: string }> = {
 };
 
 // ---- Main Component ----
-export function VisualPageEditor({ token, page, onSave, onCancel, onSuccess, onError }: VisualPageEditorProps) {
+export function VisualPageEditor({ token, page, isNew, onSave, onCancel, onSuccess, onError }: VisualPageEditorProps) {
   const [blocks, setBlocks] = useState<Block[]>(page.blocks || []);
   const [originalBlocks] = useState<Block[]>(JSON.parse(JSON.stringify(page.blocks || [])));
+  const [title, setTitle] = useState(page.title);
+  const [slug, setSlug] = useState(page.slug);
   const [saving, setSaving] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [showAddMenu, setShowAddMenu] = useState<number | null>(null); // index to insert at, or -1 for end
@@ -133,8 +136,13 @@ export function VisualPageEditor({ token, page, onSave, onCancel, onSuccess, onE
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.updateCMSPage(token, page.slug, { blocks });
-      onSuccess('Page saved');
+      if (isNew) {
+        await api.createCMSPage(token, { title, slug, blocks, status: 'draft' });
+        onSuccess('Page created');
+      } else {
+        await api.updateCMSPage(token, page.slug, { blocks });
+        onSuccess('Page saved');
+      }
       onSave();
     } catch (err: any) {
       onError(err.message || 'Save failed');
@@ -157,8 +165,17 @@ export function VisualPageEditor({ token, page, onSave, onCancel, onSuccess, onE
           <ChevronLeft className="w-5 h-5 text-gray-400" />
         </button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-base font-bold text-white truncate">{page.title}</h2>
-          <span className="text-xs text-gray-500 font-mono">/{page.slug} &middot; Visual Editor &middot; {blocks.length} blocks</span>
+          {isNew ? (
+            <div className="flex items-center gap-2">
+              <input value={title} onChange={e => { setTitle(e.target.value); setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')); }} className="bg-transparent text-base font-bold text-white outline-none border-b border-gray-600 focus:border-emerald-500 w-48" placeholder="Page title..." data-testid="new-page-title" />
+              <span className="text-xs text-gray-500 font-mono">/{slug}</span>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-base font-bold text-white truncate">{page.title}</h2>
+              <span className="text-xs text-gray-500 font-mono">/{page.slug} &middot; Visual Editor &middot; {blocks.length} blocks</span>
+            </>
+          )}
         </div>
         {hasChanges && <span className="text-xs text-amber-400 font-medium px-2 py-1 bg-amber-400/10 rounded">Unsaved changes</span>}
         <button onClick={handleDiscard} className="px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-gray-600 rounded-lg flex items-center gap-1.5">

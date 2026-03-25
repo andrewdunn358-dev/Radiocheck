@@ -13,7 +13,7 @@ PERSONA = {
     "id": "tommy",
     "name": "Tommy",
     "avatar": "/images/tommy.png",
-    "role": "Your Battle Buddy",
+    "role": "General Support",
     "accent_color": "#3b82f6",
 
     "prompt": """
