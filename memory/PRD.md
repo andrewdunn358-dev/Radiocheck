@@ -113,6 +113,14 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 - **Mobile App**: `recommended-reads.tsx` now fetches from CMS API with hardcoded fallback
 - **Database**: 25 books seeded in `cms_books` collection
 
+## CMS Phase 2 — 26 March 2026
+- **Podcasts Manager**: Full CRUD in admin portal — add, edit, delete, reorder, visibility toggle, seed 8 default podcasts, search, cover preview, listen links
+- **AI Personas Manager**: Edit bio/description, reorder, visibility toggle, seed 20 personas from backend. No delete (system-defined).
+- **Backend**: Added podcast seed endpoint, persona visibility support
+- **API Endpoints**: `GET/POST/PUT/DELETE /api/cms/admin/podcasts`, `GET/PUT /api/cms/admin/persona-bios`, reorder & seed for both
+- **Database**: `cms_podcasts` (8 seeded), `cms_persona_bios` (20 seeded)
+- **Testing**: 23/23 backend tests passed (100%) — all CRUD, visibility, reorder, seed protection, public filtering, books regression
+
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions
 
