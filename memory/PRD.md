@@ -127,6 +127,15 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 - **Render backend**: Auto-deploys from GitHub main branch
 - See PRD.md deployment section for full details
 
+## Visual Inline Page Editor — For Carers (27 March 2026)
+- **WordPress-style visual editor** for /for-carers block-based CMS page
+- **Admin clicks directly on elements** to edit inline — contenteditable text, inline forms for support cards, persona picker modal, drag-and-drop image upload
+- **Components**: VisualPageEditor.tsx (main canvas), InlineEditableBlock.tsx (hover toolbar + controls), PersonaPicker.tsx (20 personas with real avatars), ImageUpload.tsx (drag-and-drop modal)
+- **Backend**: `GET /cms/personas` (20 personas), `POST /cms/admin/upload-image` (JPG/PNG/WebP max 5MB), `GET /cms/uploads/{filename}` (serve images)
+- **Mobile app**: CMSBlockRenderer.tsx updated with `image` block type
+- **Features**: Add blocks between any blocks, reorder/delete via hover toolbar, Save/Discard with unsaved changes indicator, block type picker grid
+- **Test results**: 22/22 backend tests PASS, Expo web build PASS
+
 ## Block-Based CMS PoC — For Carers (27 March 2026)
 - **New approach**: Replaced raw HTML CMS with typed block system for `/for-carers` page
 - **Block types**: paragraph, heading, callout, bullet_list, support_card, chat_banner, crisis_footer, divider
