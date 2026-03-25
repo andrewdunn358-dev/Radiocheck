@@ -353,6 +353,7 @@ class PageCreate(BaseModel):
     title: str
     slug: str
     content: str = ""
+    blocks: Optional[List[dict]] = None
     status: str = "draft"
     is_system_page: bool = False
     is_migrated_from_tsx: bool = False
@@ -364,6 +365,7 @@ class PageUpdate(BaseModel):
     title: Optional[str] = None
     slug: Optional[str] = None
     content: Optional[str] = None
+    blocks: Optional[List[dict]] = None
     status: Optional[str] = None
     is_system_page: Optional[bool] = None
     linked_persona: Optional[str] = None
@@ -427,6 +429,57 @@ async def admin_clear_all_pages():
     """Delete ALL pages from cms_pages collection. Use before re-seeding."""
     result = db.cms_pages.delete_many({})
     return {"message": f"Deleted {result.deleted_count} pages from cms_pages"}
+
+
+@router.post("/admin/pages/for-carers/seed")
+async def admin_seed_for_carers():
+    """Seed or reset the /for-carers page with block-based content."""
+    db.cms_pages.delete_one({"slug": "for-carers"})
+
+    FOR_CARERS_BLOCKS = [
+        {"type": "chat_banner", "props": {"persona": "helen"}},
+        {"type": "heading", "props": {"text": "For Carers"}},
+        {"type": "paragraph", "props": {"text": "You look after them. But who looks after you? Support for the people behind the support."}},
+        {"type": "divider", "props": {}},
+        {"type": "heading", "props": {"text": "What Carers Face"}},
+        {"type": "callout", "props": {"text": "You Matter Too \u2014 Caring for a veteran can consume your entire life. Your needs, your health, and your wellbeing matter just as much. You can\u2019t pour from an empty cup."}},
+        {"type": "callout", "props": {"text": "Living with PTSD \u2014 When your loved one has PTSD, the whole household feels it \u2014 the nightmares, the hypervigilance, the anger, the withdrawal. Understanding what\u2019s happening is the first step to coping."}},
+        {"type": "callout", "props": {"text": "Compassion Fatigue \u2014 Caring for someone long-term can lead to emotional exhaustion, numbness, and resentment. These are normal responses to an abnormal situation. Recognising it is the first step."}},
+        {"type": "callout", "props": {"text": "Taking a Break \u2014 Respite isn\u2019t selfish \u2014 it\u2019s essential. Whether it\u2019s an afternoon off, a weekend away, or a funded respite programme, regular breaks keep you going."}},
+        {"type": "callout", "props": {"text": "Financial Support \u2014 Caring often means reduced working hours or giving up work entirely. Carer\u2019s Allowance, charity grants, and council support can help bridge the gap."}},
+        {"type": "callout", "props": {"text": "Finding Your Community \u2014 Connecting with other military carers who truly understand can make all the difference. You\u2019re not alone in this \u2014 even when it feels like it."}},
+        {"type": "divider", "props": {}},
+        {"type": "heading", "props": {"text": "Support & Resources"}},
+        {"type": "support_card", "props": {"title": "Carers UK", "description": "Carers UK provides expert advice, information, and support for carers. Their helpline covers everything from benefits to employment rights to emotional support. They also campaign for carers\u2019 rights.", "phone": "0808 808 7777", "url": "https://www.carersuk.org", "tag": "Carer Support"}},
+        {"type": "support_card", "props": {"title": "SSAFA Carers Support", "description": "SSAFA understands the unique challenges of caring for someone with military-related injuries or conditions. They provide mentoring, grants, respite funding, and connect you with other military carers who understand.", "url": "https://www.ssafa.org.uk/get-help/carers", "tag": "Carer Support"}},
+        {"type": "support_card", "props": {"title": "Help for Heroes Family Support", "description": "Help for Heroes doesn\u2019t just support veterans \u2014 they support the families too. Their family recovery programmes include counselling, peer support, social activities, and grants for carers who need a break.", "url": "https://www.helpforheroes.org.uk/get-support/family/", "tag": "Carer Support"}},
+        {"type": "support_card", "props": {"title": "Carer\u2019s Allowance", "description": "If you spend at least 35 hours a week caring for someone, you may be entitled to Carer\u2019s Allowance (currently \u00a376.75/week). It\u2019s not much, but it\u2019s your right. You can also get National Insurance credits towards your State Pension.", "url": "https://www.gov.uk/carers-allowance", "tag": "Financial"}},
+        {"type": "support_card", "props": {"title": "Carers Trust", "description": "Carers Trust works with a network of local partners to provide breaks, information, advice, and support for carers. They can connect you with services in your area and help you access the support you\u2019re entitled to.", "url": "https://carers.org", "tag": "Practical"}},
+        {"type": "support_card", "props": {"title": "Combat Stress Family Support", "description": "Living with someone with PTSD, anxiety, or depression from military service is exhausting. Combat Stress provides family support including information days, online resources, and signposting to help you cope while supporting your loved one.", "url": "https://combatstress.org.uk/get-help/family-and-carers", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "Mind - Supporting Someone Else", "description": "Mind provides practical guidance on supporting someone with mental health issues \u2014 how to start conversations, what to say, how to look after yourself while caring for them, and when to encourage professional help.", "url": "https://www.mind.org.uk/information-support/helping-someone-else/", "tag": "Mental Health"}},
+        {"type": "support_card", "props": {"title": "Respite Care Grants", "description": "Several military charities provide grants for respite care \u2014 giving you a break while ensuring your loved one is looked after. The Royal British Legion, SSAFA, and Help for Heroes all offer respite funding. You need breaks to keep going.", "url": "https://www.britishlegion.org.uk", "tag": "Respite"}},
+        {"type": "support_card", "props": {"title": "Veterans Gateway", "description": "Veterans Gateway isn\u2019t just for veterans \u2014 it\u2019s for their families too. Call 0808 802 1212 (24/7) and they\u2019ll connect you with the right support for carers, whether that\u2019s financial help, respite, or emotional support.", "phone": "0808 802 1212", "url": "https://www.veteransgateway.org.uk", "tag": "Carer Support"}},
+        {"type": "divider", "props": {}},
+        {"type": "crisis_footer", "props": {}},
+    ]
+
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "title": "For Carers",
+        "slug": "for-carers",
+        "content": "",
+        "blocks": FOR_CARERS_BLOCKS,
+        "status": "published",
+        "is_system_page": False,
+        "is_migrated_from_tsx": True,
+        "linked_persona": "helen",
+        "meta_title": "For Carers - Radio Check",
+        "meta_description": "Support for those caring for UK veterans",
+        "created_at": now,
+        "updated_at": now,
+    }
+    db.cms_pages.insert_one(doc)
+    return {"message": "Seeded for-carers page with block content", "blocks": len(FOR_CARERS_BLOCKS)}
 
 
 # Parameterized {slug} routes below
