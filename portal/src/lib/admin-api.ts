@@ -302,6 +302,10 @@ export const api = {
     api.fetch<any>(`/cms/admin/podcasts/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
   deleteCMSPodcast: (token: string, id: string) =>
     api.fetch<any>(`/cms/admin/podcasts/${id}`, { token, method: 'DELETE' }),
+  reorderCMSPodcasts: (token: string, order: string[]) =>
+    api.fetch<any>('/cms/admin/podcasts/reorder', { token, method: 'POST', body: JSON.stringify(order) }),
+  seedCMSPodcasts: (token: string) =>
+    api.fetch<any>('/cms/admin/podcasts/seed', { token, method: 'POST' }),
 
   // CMS Content - Persona Bios
   getCMSPersonaBios: (token: string) =>
@@ -310,6 +314,8 @@ export const api = {
     api.fetch<any>(`/cms/admin/persona-bios/${id}`, { token, method: 'PUT', body: JSON.stringify(data) }),
   seedCMSPersonaBios: (token: string) =>
     api.fetch<any>('/cms/admin/persona-bios/seed', { token, method: 'POST' }),
+  reorderCMSPersonaBios: (token: string, order: string[]) =>
+    api.fetch<any>('/cms/admin/persona-bios/reorder', { token, method: 'POST', body: JSON.stringify(order) }),
 
   // Compliance
   getComplianceDashboard: (token: string) =>

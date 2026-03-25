@@ -67,6 +67,7 @@ class PodcastUpdate(BaseModel):
 class PersonaBioUpdate(BaseModel):
     description: Optional[str] = None
     bio: Optional[str] = None
+    visible: Optional[bool] = None
 
 
 # ==================== HELPERS ====================
@@ -240,6 +241,33 @@ async def admin_reorder_podcasts(order: List[str]):
     for i, pid in enumerate(order):
         db.cms_podcasts.update_one({"_id": ObjectId(pid)}, {"$set": {"position": i}})
     return {"message": "Podcasts reordered"}
+
+@router.post("/admin/podcasts/seed")
+async def admin_seed_podcasts():
+    """Seed the database with the hardcoded podcast list."""
+    existing = db.cms_podcasts.count_documents({})
+    if existing > 0:
+        return {"message": f"Database already has {existing} podcasts. Delete them first or add individually."}
+
+    SEED_PODCASTS = [
+        {"title": "Frankie's Pod: Uncorking the Unforgettable", "host": "Frankie Dunn", "description": "Raw stories from British military veterans covering PTSD, resilience, and recovery after service.", "url": "https://open.spotify.com/show/7wrcVZ8zdtX5urzIvZSaUJ", "coverUrl": "", "category": "PTSD & Recovery"},
+        {"title": "Speed. Aggression. Surprise.", "host": "Tom Petch", "description": "Raw, candid conversations with military figures including SAS veterans and commanders.", "url": "https://open.spotify.com/show/0nqV8qef8CmvjurAPtV0qj", "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/55/e1/a4/55e1a412-6002-3594-3e01-3e9df23244dc/mza_2886434919509823568.jpg/600x600bb.jpg", "category": "Military History"},
+        {"title": "The Old Paratrooper Podcast", "host": "Chris Binch (ex-2 PARA)", "description": "Interviews with British Paras, SAS veterans, and special forces personnel on combat and mental health.", "url": "https://open.spotify.com/show/4jm3x1EoBBcPqQUXTwD1xc", "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/16/8a/d9/168ad914-db3f-70f8-8e1f-481b80e14183/mza_3119811594421415273.jpg/600x600bb.jpg", "category": "Special Forces"},
+        {"title": "Beyond the Barracks", "host": "RSL Victoria / Gina Allsop", "description": "Unfiltered stories from veterans covering transitions to civilian life, resilience, and recovery.", "url": "https://open.spotify.com/show/4MwejGmTY5CdDT8zsRkUTQ", "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/71/da/c3/71dac30b-6a59-30a7-d5d3-878fa678afc8/mza_11916087358722418837.png/600x600bb.jpg", "category": "Transition"},
+        {"title": "Combat Stress 100 Podcast", "host": "Combat Stress Charity", "description": "Clinical expertise combined with veteran testimonies on PTSD, depression, and substance misuse.", "url": "https://combatstress.org.uk/combat-stress-100-podcast", "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/85/7b/90/857b90f2-c285-191f-c296-4cff7e8bd158/mza_11603060415803986663.jpg/600x600bb.jpg", "category": "Clinical Support"},
+        {"title": "Military Veterans Podcast", "host": "Gavin Watson (British Army)", "description": "Veterans share experiences from before, during, and after service. Includes dedicated PTSD episodes.", "url": "https://milvetpodcast.com", "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7a/a7/f7/7aa7f7a8-a6f8-fb6d-25d7-1dbf19662230/mza_8250357024051214226.jpg/600x600bb.jpg", "category": "Peer Support"},
+        {"title": "Talking with the Wounded", "host": "Ben", "description": "Frank, often humorous conversations with physically and mentally wounded veterans about recovery.", "url": "https://open.spotify.com/show/3kP9jH6mN4vR8sT2wX5yZ1", "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/1c/62/6b/1c626bbc-1412-2ce3-3a59-1faa05092eac/mza_6205096570431111656.jpg/600x600bb.jpg", "category": "Wounded Veterans"},
+        {"title": "Stray Voltage", "host": "Veterans", "description": "By veterans, for veterans. Covering British military transitions and mental health topics.", "url": "https://open.spotify.com/show/6gyPTRjSXBuD2ImEnWGseD", "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/cd/05/66/cd056601-ed8d-18f0-dd35-bd8ddc76eb30/mza_1296788537650884352.jpg/600x600bb.jpg", "category": "Mental Health"},
+    ]
+
+    for i, podcast in enumerate(SEED_PODCASTS):
+        podcast["position"] = i
+        podcast["visible"] = True
+        podcast["created_at"] = datetime.now(timezone.utc).isoformat()
+        podcast["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    db.cms_podcasts.insert_many(SEED_PODCASTS)
+    return {"message": f"Seeded {len(SEED_PODCASTS)} podcasts"}
 
 
 # ==================== PERSONA BIOS - PUBLIC ====================

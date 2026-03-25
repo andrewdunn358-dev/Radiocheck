@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Book, Plus, Trash2, Edit2, Save, X, Eye, EyeOff, RefreshCw, Headphones, Users, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Book, Plus, Trash2, Edit2, Save, X, Eye, EyeOff, RefreshCw, Headphones, Users, ChevronDown, ChevronUp, Search, ExternalLink, Globe } from 'lucide-react';
 import { api } from '@/lib/admin-api';
 
 interface CMSTabProps {
@@ -26,8 +26,66 @@ interface BookItem {
   position: number;
 }
 
+interface PodcastItem {
+  id: string;
+  title: string;
+  host: string;
+  description: string;
+  url: string;
+  coverUrl: string;
+  category: string;
+  visible: boolean;
+  position: number;
+}
+
+interface PersonaItem {
+  id: string;
+  persona_id: string;
+  name: string;
+  description: string;
+  bio: string;
+  avatar: string;
+  visible: boolean;
+  position: number;
+}
+
 export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
   const [subTab, setSubTab] = useState<SubTab>('books');
+
+  return (
+    <div data-testid="cms-tab">
+      {/* Sub-tabs */}
+      <div className="flex gap-2 mb-6 border-b border-gray-700 pb-3">
+        {[
+          { id: 'books' as SubTab, label: 'Books', icon: Book },
+          { id: 'podcasts' as SubTab, label: 'Podcasts', icon: Headphones },
+          { id: 'personas' as SubTab, label: 'AI Personas', icon: Users },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setSubTab(tab.id)}
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+              subTab === tab.id ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+            data-testid={`cms-subtab-${tab.id}`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === 'books' && <BooksManager token={token} onSuccess={onSuccess} onError={onError} />}
+      {subTab === 'podcasts' && <PodcastsManager token={token} onSuccess={onSuccess} onError={onError} />}
+      {subTab === 'personas' && <PersonasManager token={token} onSuccess={onSuccess} onError={onError} />}
+    </div>
+  );
+}
+
+
+// ==================== BOOKS MANAGER ====================
+
+function BooksManager({ token, onSuccess, onError }: CMSTabProps) {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [editingBook, setEditingBook] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<BookItem>>({});
@@ -125,7 +183,81 @@ export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
     !searchQuery || b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.author.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const renderBookForm = (data: Partial<BookItem>, onChange: (d: Partial<BookItem>) => void, onSave: () => void, onCancel: () => void) => (
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold flex items-center gap-2"><Book className="w-5 h-5 text-amber-400" />Books ({books.length})</h2>
+        <div className="flex gap-2">
+          {books.length === 0 && (
+            <button onClick={handleSeedBooks} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm" data-testid="seed-books-btn">Seed Defaults</button>
+          )}
+          <button onClick={() => setShowAddBook(!showAddBook)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid="add-book-btn">
+            <Plus className="w-3 h-3" />Add Book
+          </button>
+          <button onClick={loadBooks} className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded" data-testid="refresh-books-btn">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 mb-4">
+        <Search className="w-4 h-4 text-gray-400" />
+        <input className="bg-transparent flex-1 text-sm outline-none" placeholder="Search books..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} data-testid="search-books-input" />
+      </div>
+
+      {/* Add Book Form */}
+      {showAddBook && (
+        <BookForm data={newBook} onChange={setNewBook} onSave={handleAddBook} onCancel={() => setShowAddBook(false)} categories={CATEGORIES} />
+      )}
+
+      {/* Book List */}
+      <div className="space-y-2 mt-4">
+        {filteredBooks.map((book, idx) => (
+          <div key={book.id} className={`bg-gray-800 rounded-lg border ${book.visible ? 'border-gray-700' : 'border-red-900 opacity-60'}`} data-testid={`book-item-${book.id}`}>
+            {editingBook === book.id ? (
+              <BookForm data={editForm} onChange={setEditForm} onSave={() => handleUpdateBook(book.id)} onCancel={() => setEditingBook(null)} categories={CATEGORIES} />
+            ) : (
+              <div className="flex items-center gap-3 p-3">
+                <div className="flex flex-col gap-0.5">
+                  <button onClick={() => handleMoveBook(idx, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
+                  <button onClick={() => handleMoveBook(idx, 'down')} disabled={idx === books.length - 1} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
+                </div>
+                {book.coverUrl ? (
+                  <img src={book.coverUrl} alt="" className="w-10 h-14 rounded object-cover bg-gray-700" />
+                ) : (
+                  <div className="w-10 h-14 rounded bg-gray-700 flex items-center justify-center"><Book className="w-4 h-4 text-gray-500" /></div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{book.title}</p>
+                  <p className="text-xs text-gray-400 truncate">{book.author} · {book.category} · {book.rating > 0 ? `${book.rating}★` : 'Coming soon'}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">{book.format}</span>
+                  <button onClick={() => handleToggleVisibility(book)} className="p-1.5 hover:bg-gray-700 rounded" title={book.visible ? 'Hide' : 'Show'}>
+                    {book.visible ? <Eye className="w-3.5 h-3.5 text-green-400" /> : <EyeOff className="w-3.5 h-3.5 text-red-400" />}
+                  </button>
+                  <button onClick={() => { setEditingBook(book.id); setEditForm(book); }} className="p-1.5 hover:bg-gray-700 rounded" data-testid={`edit-book-${book.id}`}><Edit2 className="w-3.5 h-3.5 text-blue-400" /></button>
+                  <button onClick={() => handleDeleteBook(book.id, book.title)} className="p-1.5 hover:bg-gray-700 rounded" data-testid={`delete-book-${book.id}`}><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {books.length === 0 && !loading && (
+        <div className="text-center py-12 text-gray-400">
+          <Book className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p>No books yet. Click &quot;Seed Defaults&quot; to load the curated list, or add books manually.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BookForm({ data, onChange, onSave, onCancel, categories }: { data: Partial<BookItem>; onChange: (d: Partial<BookItem>) => void; onSave: () => void; onCancel: () => void; categories: string[] }) {
+  return (
     <div className="bg-gray-700 rounded-lg p-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Title *" value={data.title || ''} onChange={e => onChange({ ...data, title: e.target.value })} />
@@ -135,7 +267,7 @@ export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
       <div className="grid grid-cols-4 gap-3">
         <input className="bg-gray-600 rounded px-3 py-2 text-sm" type="number" step="0.1" placeholder="Rating" value={data.rating || ''} onChange={e => onChange({ ...data, rating: parseFloat(e.target.value) || 0 })} />
         <select className="bg-gray-600 rounded px-3 py-2 text-sm" value={data.category || 'Memoir'} onChange={e => onChange({ ...data, category: e.target.value })}>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select className="bg-gray-600 rounded px-3 py-2 text-sm" value={data.format || 'both'} onChange={e => onChange({ ...data, format: e.target.value })}>
           <option value="book">Book</option>
@@ -153,124 +285,382 @@ export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
       </div>
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-sm flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
-        <button onClick={onSave} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1"><Save className="w-3 h-3" />Save</button>
+        <button onClick={onSave} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid="save-book-btn"><Save className="w-3 h-3" />Save</button>
       </div>
     </div>
   );
+}
+
+
+// ==================== PODCASTS MANAGER ====================
+
+function PodcastsManager({ token, onSuccess, onError }: CMSTabProps) {
+  const [podcasts, setPodcasts] = useState<PodcastItem[]>([]);
+  const [editingPodcast, setEditingPodcast] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<PodcastItem>>({});
+  const [showAddPodcast, setShowAddPodcast] = useState(false);
+  const [newPodcast, setNewPodcast] = useState<Partial<PodcastItem>>({ title: '', host: '', description: '', url: '', coverUrl: '', category: 'General', visible: true });
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const CATEGORIES = ['PTSD & Recovery', 'Military History', 'Special Forces', 'Transition', 'Clinical Support', 'Peer Support', 'Wounded Veterans', 'Mental Health', 'General'];
+
+  const loadPodcasts = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await api.getCMSPodcasts(token);
+      setPodcasts(Array.isArray(data?.podcasts) ? data.podcasts : []);
+    } catch (err: any) {
+      console.error('Failed to load podcasts:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { loadPodcasts(); }, [loadPodcasts]);
+
+  const handleSeedPodcasts = async () => {
+    try {
+      const res = await api.seedCMSPodcasts(token);
+      onSuccess(res.message);
+      loadPodcasts();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleAddPodcast = async () => {
+    if (!newPodcast.title) return onError('Title is required');
+    try {
+      await api.createCMSPodcast(token, newPodcast);
+      onSuccess('Podcast added');
+      setShowAddPodcast(false);
+      setNewPodcast({ title: '', host: '', description: '', url: '', coverUrl: '', category: 'General', visible: true });
+      loadPodcasts();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleUpdatePodcast = async (id: string) => {
+    try {
+      await api.updateCMSPodcast(token, id, editForm);
+      onSuccess('Podcast updated');
+      setEditingPodcast(null);
+      loadPodcasts();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleDeletePodcast = async (id: string, title: string) => {
+    if (!confirm(`Delete "${title}"?`)) return;
+    try {
+      await api.deleteCMSPodcast(token, id);
+      onSuccess('Podcast deleted');
+      loadPodcasts();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleToggleVisibility = async (podcast: PodcastItem) => {
+    try {
+      await api.updateCMSPodcast(token, podcast.id, { visible: !podcast.visible });
+      loadPodcasts();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleMovePodcast = async (index: number, direction: 'up' | 'down') => {
+    const newPodcasts = [...podcasts];
+    const swapIdx = direction === 'up' ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= newPodcasts.length) return;
+    [newPodcasts[index], newPodcasts[swapIdx]] = [newPodcasts[swapIdx], newPodcasts[index]];
+    setPodcasts(newPodcasts);
+    try {
+      await api.reorderCMSPodcasts(token, newPodcasts.map(p => p.id));
+    } catch (err: any) {
+      onError(err.message);
+      loadPodcasts();
+    }
+  };
+
+  const filteredPodcasts = podcasts.filter(p =>
+    !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.host.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div data-testid="cms-tab">
-      {/* Sub-tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-700 pb-3">
-        {[
-          { id: 'books' as SubTab, label: 'Books', icon: Book },
-          { id: 'podcasts' as SubTab, label: 'Podcasts', icon: Headphones },
-          { id: 'personas' as SubTab, label: 'AI Personas', icon: Users },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setSubTab(tab.id)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
-              subTab === tab.id ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
-            data-testid={`cms-subtab-${tab.id}`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold flex items-center gap-2"><Headphones className="w-5 h-5 text-purple-400" />Podcasts ({podcasts.length})</h2>
+        <div className="flex gap-2">
+          {podcasts.length === 0 && (
+            <button onClick={handleSeedPodcasts} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm" data-testid="seed-podcasts-btn">Seed Defaults</button>
+          )}
+          <button onClick={() => setShowAddPodcast(!showAddPodcast)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid="add-podcast-btn">
+            <Plus className="w-3 h-3" />Add Podcast
           </button>
+          <button onClick={loadPodcasts} className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded" data-testid="refresh-podcasts-btn">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 mb-4">
+        <Search className="w-4 h-4 text-gray-400" />
+        <input className="bg-transparent flex-1 text-sm outline-none" placeholder="Search podcasts..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} data-testid="search-podcasts-input" />
+      </div>
+
+      {/* Add Podcast Form */}
+      {showAddPodcast && (
+        <PodcastForm data={newPodcast} onChange={setNewPodcast} onSave={handleAddPodcast} onCancel={() => setShowAddPodcast(false)} categories={CATEGORIES} />
+      )}
+
+      {/* Podcast List */}
+      <div className="space-y-2 mt-4">
+        {filteredPodcasts.map((podcast, idx) => (
+          <div key={podcast.id} className={`bg-gray-800 rounded-lg border ${podcast.visible ? 'border-gray-700' : 'border-red-900 opacity-60'}`} data-testid={`podcast-item-${podcast.id}`}>
+            {editingPodcast === podcast.id ? (
+              <PodcastForm data={editForm} onChange={setEditForm} onSave={() => handleUpdatePodcast(podcast.id)} onCancel={() => setEditingPodcast(null)} categories={CATEGORIES} />
+            ) : (
+              <div className="flex items-center gap-3 p-3">
+                <div className="flex flex-col gap-0.5">
+                  <button onClick={() => handleMovePodcast(idx, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
+                  <button onClick={() => handleMovePodcast(idx, 'down')} disabled={idx === podcasts.length - 1} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
+                </div>
+                {podcast.coverUrl ? (
+                  <img src={podcast.coverUrl} alt="" className="w-12 h-12 rounded-lg object-cover bg-gray-700" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center"><Headphones className="w-5 h-5 text-gray-500" /></div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{podcast.title}</p>
+                  <p className="text-xs text-gray-400 truncate">{podcast.host} · {podcast.category}</p>
+                  {podcast.url && (
+                    <a href={podcast.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-0.5">
+                      <ExternalLink className="w-3 h-3" />Listen
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => handleToggleVisibility(podcast)} className="p-1.5 hover:bg-gray-700 rounded" title={podcast.visible ? 'Hide' : 'Show'}>
+                    {podcast.visible ? <Eye className="w-3.5 h-3.5 text-green-400" /> : <EyeOff className="w-3.5 h-3.5 text-red-400" />}
+                  </button>
+                  <button onClick={() => { setEditingPodcast(podcast.id); setEditForm(podcast); }} className="p-1.5 hover:bg-gray-700 rounded" data-testid={`edit-podcast-${podcast.id}`}><Edit2 className="w-3.5 h-3.5 text-blue-400" /></button>
+                  <button onClick={() => handleDeletePodcast(podcast.id, podcast.title)} className="p-1.5 hover:bg-gray-700 rounded" data-testid={`delete-podcast-${podcast.id}`}><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                </div>
+              </div>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Books Manager */}
-      {subTab === 'books' && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold flex items-center gap-2"><Book className="w-5 h-5 text-amber-400" />Books ({books.length})</h2>
-            <div className="flex gap-2">
-              {books.length === 0 && (
-                <button onClick={handleSeedBooks} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm">Seed Defaults</button>
-              )}
-              <button onClick={() => setShowAddBook(!showAddBook)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1">
-                <Plus className="w-3 h-3" />Add Book
-              </button>
-              <button onClick={loadBooks} className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 mb-4">
-            <Search className="w-4 h-4 text-gray-400" />
-            <input className="bg-transparent flex-1 text-sm outline-none" placeholder="Search books..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-          </div>
-
-          {/* Add Book Form */}
-          {showAddBook && renderBookForm(newBook, setNewBook, handleAddBook, () => setShowAddBook(false))}
-
-          {/* Book List */}
-          <div className="space-y-2 mt-4">
-            {filteredBooks.map((book, idx) => (
-              <div key={book.id} className={`bg-gray-800 rounded-lg border ${book.visible ? 'border-gray-700' : 'border-red-900 opacity-60'}`}>
-                {editingBook === book.id ? (
-                  renderBookForm(editForm, setEditForm, () => handleUpdateBook(book.id), () => setEditingBook(null))
-                ) : (
-                  <div className="flex items-center gap-3 p-3">
-                    {/* Reorder */}
-                    <div className="flex flex-col gap-0.5">
-                      <button onClick={() => handleMoveBook(idx, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
-                      <button onClick={() => handleMoveBook(idx, 'down')} disabled={idx === books.length - 1} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
-                    </div>
-                    {/* Cover */}
-                    {book.coverUrl ? (
-                      <img src={book.coverUrl} alt="" className="w-10 h-14 rounded object-cover bg-gray-700" />
-                    ) : (
-                      <div className="w-10 h-14 rounded bg-gray-700 flex items-center justify-center"><Book className="w-4 h-4 text-gray-500" /></div>
-                    )}
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{book.title}</p>
-                      <p className="text-xs text-gray-400 truncate">{book.author} · {book.category} · {book.rating > 0 ? `${book.rating}★` : 'Coming soon'}</p>
-                    </div>
-                    {/* Actions */}
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">{book.format}</span>
-                      <button onClick={() => handleToggleVisibility(book)} className="p-1.5 hover:bg-gray-700 rounded" title={book.visible ? 'Hide' : 'Show'}>
-                        {book.visible ? <Eye className="w-3.5 h-3.5 text-green-400" /> : <EyeOff className="w-3.5 h-3.5 text-red-400" />}
-                      </button>
-                      <button onClick={() => { setEditingBook(book.id); setEditForm(book); }} className="p-1.5 hover:bg-gray-700 rounded"><Edit2 className="w-3.5 h-3.5 text-blue-400" /></button>
-                      <button onClick={() => handleDeleteBook(book.id, book.title)} className="p-1.5 hover:bg-gray-700 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {books.length === 0 && !loading && (
-            <div className="text-center py-12 text-gray-400">
-              <Book className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No books yet. Click &quot;Seed Defaults&quot; to load the curated list, or add books manually.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Podcasts - placeholder for now */}
-      {subTab === 'podcasts' && (
+      {podcasts.length === 0 && !loading && (
         <div className="text-center py-12 text-gray-400">
           <Headphones className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium mb-2">Podcasts Manager</p>
-          <p className="text-sm">Coming soon — same interface as Books. Add, edit, reorder and manage podcast recommendations.</p>
+          <p>No podcasts yet. Click &quot;Seed Defaults&quot; to load the curated list, or add podcasts manually.</p>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Personas - placeholder for now */}
-      {subTab === 'personas' && (
+function PodcastForm({ data, onChange, onSave, onCancel, categories }: { data: Partial<PodcastItem>; onChange: (d: Partial<PodcastItem>) => void; onSave: () => void; onCancel: () => void; categories: string[] }) {
+  return (
+    <div className="bg-gray-700 rounded-lg p-4 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Podcast Title *" value={data.title || ''} onChange={e => onChange({ ...data, title: e.target.value })} />
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Host" value={data.host || ''} onChange={e => onChange({ ...data, host: e.target.value })} />
+      </div>
+      <textarea className="w-full bg-gray-600 rounded px-3 py-2 text-sm" rows={2} placeholder="Description" value={data.description || ''} onChange={e => onChange({ ...data, description: e.target.value })} />
+      <div className="grid grid-cols-3 gap-3">
+        <select className="bg-gray-600 rounded px-3 py-2 text-sm" value={data.category || 'General'} onChange={e => onChange({ ...data, category: e.target.value })}>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <input className="bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Listen URL (Spotify, Apple, etc.)" value={data.url || ''} onChange={e => onChange({ ...data, url: e.target.value })} />
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={data.visible !== false} onChange={e => onChange({ ...data, visible: e.target.checked })} />
+          Visible
+        </label>
+      </div>
+      <input className="w-full bg-gray-600 rounded px-3 py-2 text-sm" placeholder="Cover Image URL" value={data.coverUrl || ''} onChange={e => onChange({ ...data, coverUrl: e.target.value })} />
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-sm flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
+        <button onClick={onSave} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid="save-podcast-btn"><Save className="w-3 h-3" />Save</button>
+      </div>
+    </div>
+  );
+}
+
+
+// ==================== PERSONAS MANAGER ====================
+
+function PersonasManager({ token, onSuccess, onError }: CMSTabProps) {
+  const [personas, setPersonas] = useState<PersonaItem[]>([]);
+  const [editingPersona, setEditingPersona] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<PersonaItem>>({});
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const loadPersonas = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await api.getCMSPersonaBios(token);
+      setPersonas(Array.isArray(data?.personas) ? data.personas : []);
+    } catch (err: any) {
+      console.error('Failed to load personas:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { loadPersonas(); }, [loadPersonas]);
+
+  const handleSeedPersonas = async () => {
+    try {
+      const res = await api.seedCMSPersonaBios(token);
+      onSuccess(res.message);
+      loadPersonas();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleUpdatePersona = async (id: string) => {
+    try {
+      await api.updateCMSPersonaBio(token, id, {
+        description: editForm.description,
+        bio: editForm.bio,
+      });
+      onSuccess('Persona updated');
+      setEditingPersona(null);
+      loadPersonas();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleToggleVisibility = async (persona: PersonaItem) => {
+    try {
+      await api.updateCMSPersonaBio(token, persona.id, { visible: !persona.visible });
+      loadPersonas();
+    } catch (err: any) {
+      onError(err.message);
+    }
+  };
+
+  const handleMovePersona = async (index: number, direction: 'up' | 'down') => {
+    const newPersonas = [...personas];
+    const swapIdx = direction === 'up' ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= newPersonas.length) return;
+    [newPersonas[index], newPersonas[swapIdx]] = [newPersonas[swapIdx], newPersonas[index]];
+    setPersonas(newPersonas);
+    try {
+      await api.reorderCMSPersonaBios(token, newPersonas.map(p => p.id));
+    } catch (err: any) {
+      onError(err.message);
+      loadPersonas();
+    }
+  };
+
+  const filteredPersonas = personas.filter(p =>
+    !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.persona_id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" />AI Personas ({personas.length})</h2>
+        <div className="flex gap-2">
+          {personas.length === 0 && (
+            <button onClick={handleSeedPersonas} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm" data-testid="seed-personas-btn">Seed from Backend</button>
+          )}
+          <button onClick={loadPersonas} className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded" data-testid="refresh-personas-btn">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 mb-4">
+        <Search className="w-4 h-4 text-gray-400" />
+        <input className="bg-transparent flex-1 text-sm outline-none" placeholder="Search personas..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} data-testid="search-personas-input" />
+      </div>
+
+      {/* Persona List */}
+      <div className="space-y-2">
+        {filteredPersonas.map((persona, idx) => (
+          <div key={persona.id} className={`bg-gray-800 rounded-lg border ${persona.visible !== false ? 'border-gray-700' : 'border-red-900 opacity-60'}`} data-testid={`persona-item-${persona.persona_id}`}>
+            {editingPersona === persona.id ? (
+              <div className="bg-gray-700 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-sm font-bold">
+                    {persona.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">{persona.name}</p>
+                    <p className="text-xs text-gray-400">ID: {persona.persona_id}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Role / Description (shown on cards)</label>
+                  <input
+                    className="w-full bg-gray-600 rounded px-3 py-2 text-sm"
+                    placeholder="e.g. Lead Battle Buddy — General veteran support"
+                    value={editForm.description || ''}
+                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Extended Bio (shown on profile pages)</label>
+                  <textarea
+                    className="w-full bg-gray-600 rounded px-3 py-2 text-sm"
+                    rows={3}
+                    placeholder="Full bio shown when users tap 'More info' on a persona..."
+                    value={editForm.bio || ''}
+                    onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setEditingPersona(null)} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-sm flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
+                  <button onClick={() => handleUpdatePersona(persona.id)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid={`save-persona-${persona.persona_id}`}><Save className="w-3 h-3" />Save</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3">
+                <div className="flex flex-col gap-0.5">
+                  <button onClick={() => handleMovePersona(idx, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
+                  <button onClick={() => handleMovePersona(idx, 'down')} disabled={idx === personas.length - 1} className="p-0.5 hover:bg-gray-700 rounded disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold text-cyan-400">
+                  {persona.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{persona.name} <span className="text-xs text-gray-500 font-normal">({persona.persona_id})</span></p>
+                  <p className="text-xs text-gray-400 truncate">{persona.description || 'No description set'}</p>
+                  {persona.bio && <p className="text-xs text-gray-500 truncate mt-0.5">{persona.bio}</p>}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => handleToggleVisibility(persona)} className="p-1.5 hover:bg-gray-700 rounded" title={persona.visible !== false ? 'Hide' : 'Show'}>
+                    {persona.visible !== false ? <Eye className="w-3.5 h-3.5 text-green-400" /> : <EyeOff className="w-3.5 h-3.5 text-red-400" />}
+                  </button>
+                  <button onClick={() => { setEditingPersona(persona.id); setEditForm({ description: persona.description, bio: persona.bio }); }} className="p-1.5 hover:bg-gray-700 rounded" data-testid={`edit-persona-${persona.persona_id}`}><Edit2 className="w-3.5 h-3.5 text-blue-400" /></button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {personas.length === 0 && !loading && (
         <div className="text-center py-12 text-gray-400">
           <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium mb-2">AI Persona Bios</p>
-          <p className="text-sm">Coming soon — edit persona descriptions and bios shown in the app and website. Reorder the AI Platoon.</p>
+          <p>No persona bios yet. Click &quot;Seed from Backend&quot; to import all 20 AI personas from the system.</p>
         </div>
       )}
     </div>

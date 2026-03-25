@@ -3,6 +3,15 @@
 ## Original Problem Statement
 A full-stack veterans mental health support platform with AI chat buddies, virtual events (Agora), and an admin portal. The AI safeguarding system is a critical, multi-layered architecture designed to detect crisis indicators in user messages.
 
+## Deployment Architecture (DO NOT RE-ASK — READ THIS)
+- **Backend**: FastAPI on **Render** — auto-deploys from GitHub `main` branch. URL: `veterans-support-api.onrender.com`
+- **Admin Portal**: Next.js on **Vercel/separate host** — points to Render backend via `NEXT_PUBLIC_API_URL`
+- **Mobile App**: React Native (Expo) — points to Render backend via `EXPO_PUBLIC_BACKEND_URL`
+- **Code Push**: Use "Save to Github" in Emergent → triggers Render auto-deploy
+- **If Render returns 404 for new routes**: Check Render dashboard for failed deploys. The code works in Emergent's preview env.
+- **Portal API calls**: `admin-api.ts` prepends `/api` to all endpoints. All backend routes must be under `/api/`.
+- **NEVER ask the user about deployment process. It's documented here.**
+
 ## Core Requirements
 1. Multi-layered safeguarding (5 layers: Text Normalizer -> Keyword Scoring -> Phrase Dataset -> Unified Safety -> AI Classifier)
 2. AI Personas with soul.md behavioral protocols
