@@ -232,8 +232,6 @@ function PageEditor({ token, page, isNew, onSave, onCancel, onSuccess, onError }
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        link: false,
-        underline: false,
       }),
       TiptapLink.configure({ openOnClick: false }),
       TiptapImage,

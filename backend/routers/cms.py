@@ -168,40 +168,30 @@ async def reorder_cms_cards(updates: dict):
 
 # ==========================================
 # Public Seed Endpoint (No Auth Required)
+# NOTE: Page seeding has been REMOVED from this endpoint.
+# Pages are now managed exclusively by cms_content.py (POST /cms/admin/pages/seed).
+# This endpoint only seeds sections and cards for the legacy layout system.
 # ==========================================
 
 @router.post("/seed-public")
 async def seed_cms_public(force: bool = False):
-    """Public endpoint to seed CMS data (no auth required for initial setup)"""
+    """Public endpoint to seed CMS sections/cards data (no auth required for initial setup).
+    NOTE: Page seeding removed — use /cms/admin/pages/seed instead."""
     db = get_database()
     
-    # Check if already seeded
-    existing = await db.cms_pages.count_documents({})
-    if existing > 0 and not force:
-        return {"message": "CMS already seeded", "count": existing, "hint": "Add ?force=true to reseed"}
+    # Check if sections already seeded
+    existing_sections = await db.cms_sections.count_documents({})
+    if existing_sections > 0 and not force:
+        return {"message": "CMS sections already seeded", "count": existing_sections, "hint": "Add ?force=true to reseed"}
     
-    # If force, clear existing data first
-    if force and existing > 0:
-        await db.cms_pages.delete_many({})
+    # If force, clear existing sections/cards first
+    if force and existing_sections > 0:
         await db.cms_sections.delete_many({})
         await db.cms_cards.delete_many({})
     
     now = datetime.utcnow()
     
-    # Default CMS Pages
-    pages = [
-        {"id": str(uuid.uuid4()), "slug": "home", "title": "Home", "nav_order": 1, "is_published": True, "created_at": now, "updated_at": now},
-        {"id": str(uuid.uuid4()), "slug": "self-care", "title": "Self-Care Tools", "nav_order": 2, "is_published": True, "created_at": now, "updated_at": now},
-        {"id": str(uuid.uuid4()), "slug": "peer-support", "title": "Peer Support", "nav_order": 3, "is_published": True, "created_at": now, "updated_at": now},
-        {"id": str(uuid.uuid4()), "slug": "organizations", "title": "Organizations", "nav_order": 4, "is_published": True, "created_at": now, "updated_at": now},
-        {"id": str(uuid.uuid4()), "slug": "family-friends", "title": "Family & Friends", "nav_order": 5, "is_published": True, "created_at": now, "updated_at": now},
-        {"id": str(uuid.uuid4()), "slug": "substance-support", "title": "Substance Support", "nav_order": 6, "is_published": True, "created_at": now, "updated_at": now},
-    ]
-    
-    # Insert pages
-    await db.cms_pages.insert_many(pages)
-    
-    # Create default sections for each page
+    # Create default sections and cards (pages are NOT seeded here — use cms_content.py)
     sections = []
     cards = []
     
@@ -381,8 +371,7 @@ async def seed_cms_public(force: bool = False):
         await db.cms_cards.insert_many(cards)
     
     return {
-        "message": "CMS seeded successfully",
-        "pages": len(pages),
+        "message": "CMS sections/cards seeded successfully (pages must be seeded separately via /cms/admin/pages/seed)",
         "sections": len(sections),
         "cards": len(cards)
     }

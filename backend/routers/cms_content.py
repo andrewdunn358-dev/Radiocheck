@@ -395,6 +395,8 @@ async def list_pages():
 
 # ==================== PAGES - ADMIN ====================
 
+# Fixed-path routes MUST come before {slug} routes to avoid FastAPI matching them as slugs
+
 @router.get("/admin/pages")
 async def admin_list_pages():
     """Admin endpoint: list all pages with full metadata (no content body for perf)."""
@@ -402,23 +404,11 @@ async def admin_list_pages():
     return {"pages": [{"id": str(p.pop("_id")), **{k: v for k, v in p.items()}} for p in pages]}
 
 
-@router.get("/admin/pages/{slug}")
-async def admin_get_page(slug: str):
-    """Admin endpoint: fetch a single page by slug with full content."""
-    page = db.cms_pages.find_one({"slug": slug})
-    if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
-    page["id"] = str(page.pop("_id"))
-    return {"page": page}
-
-
 @router.post("/admin/pages")
 async def admin_create_page(page: PageCreate):
     """Create a new CMS page."""
-    # Check slug uniqueness
     existing = db.cms_pages.find_one({"slug": page.slug})
     if existing:
-        # Auto-append suffix
         base_slug = page.slug
         counter = 2
         while db.cms_pages.find_one({"slug": f"{base_slug}-{counter}"}):
@@ -432,6 +422,25 @@ async def admin_create_page(page: PageCreate):
     return {"message": "Page created", "page": {"id": str(result.inserted_id), "slug": doc["slug"]}}
 
 
+@router.delete("/admin/pages/clear-all")
+async def admin_clear_all_pages():
+    """Delete ALL pages from cms_pages collection. Use before re-seeding."""
+    result = db.cms_pages.delete_many({})
+    return {"message": f"Deleted {result.deleted_count} pages from cms_pages"}
+
+
+# Parameterized {slug} routes below
+
+@router.get("/admin/pages/{slug}")
+async def admin_get_page(slug: str):
+    """Admin endpoint: fetch a single page by slug with full content."""
+    page = db.cms_pages.find_one({"slug": slug})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    page["id"] = str(page.pop("_id"))
+    return {"page": page}
+
+
 @router.put("/admin/pages/{slug}")
 async def admin_update_page(slug: str, update: PageUpdate):
     """Update a CMS page by slug."""
@@ -441,7 +450,6 @@ async def admin_update_page(slug: str, update: PageUpdate):
 
     updates = {k: v for k, v in update.model_dump().items() if v is not None}
 
-    # If slug is being changed, check uniqueness
     if "slug" in updates and updates["slug"] != slug:
         if db.cms_pages.find_one({"slug": updates["slug"]}):
             raise HTTPException(status_code=409, detail="Slug already in use")
@@ -475,11 +483,16 @@ async def admin_toggle_page_status(slug: str):
 
 
 @router.post("/admin/pages/seed")
-async def admin_seed_pages():
-    """Seed the 3 proof-of-concept pages from hardcoded TSX content."""
-    existing = db.cms_pages.count_documents({})
-    if existing > 0:
-        return {"message": f"Database already has {existing} pages. Clear first or add individually."}
+async def admin_seed_pages(force: bool = False):
+    """Seed the 3 proof-of-concept pages from hardcoded TSX content.
+    Pass ?force=true to clear existing pages first."""
+    if force:
+        deleted = db.cms_pages.delete_many({})
+        print(f"[CMS SEED] Force mode: deleted {deleted.deleted_count} existing pages")
+    else:
+        existing = db.cms_pages.count_documents({})
+        if existing > 0:
+            return {"message": f"Database already has {existing} pages. Use ?force=true to clear and re-seed, or DELETE /admin/pages/clear-all first."}
 
     SEED_PAGES = [
         {
