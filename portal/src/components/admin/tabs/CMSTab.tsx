@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Book, Plus, Trash2, Edit2, Save, X, Eye, EyeOff, RefreshCw, Headphones, ChevronDown, ChevronUp, Search, ExternalLink } from 'lucide-react';
+import { Book, Plus, Trash2, Edit2, Save, X, Eye, EyeOff, RefreshCw, Headphones, ChevronDown, ChevronUp, Search, ExternalLink, FileText } from 'lucide-react';
 import { api } from '@/lib/admin-api';
+import PagesManager from './PagesManager';
 
 interface CMSTabProps {
   token: string;
@@ -10,7 +11,7 @@ interface CMSTabProps {
   onError: (message: string) => void;
 }
 
-type SubTab = 'books' | 'podcasts';
+type SubTab = 'pages' | 'books' | 'podcasts';
 
 interface BookItem {
   id: string;
@@ -39,13 +40,14 @@ interface PodcastItem {
 }
 
 export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
-  const [subTab, setSubTab] = useState<SubTab>('books');
+  const [subTab, setSubTab] = useState<SubTab>('pages');
 
   return (
     <div data-testid="cms-tab">
       {/* Sub-tabs */}
       <div className="flex gap-2 mb-6 border-b border-gray-700 pb-3">
         {[
+          { id: 'pages' as SubTab, label: 'Pages', icon: FileText },
           { id: 'books' as SubTab, label: 'Books', icon: Book },
           { id: 'podcasts' as SubTab, label: 'Podcasts', icon: Headphones },
         ].map(tab => (
@@ -63,6 +65,7 @@ export default function CMSTab({ token, onSuccess, onError }: CMSTabProps) {
         ))}
       </div>
 
+      {subTab === 'pages' && <PagesManager token={token} onSuccess={onSuccess} onError={onError} />}
       {subTab === 'books' && <BooksManager token={token} onSuccess={onSuccess} onError={onError} />}
       {subTab === 'podcasts' && <PodcastsManager token={token} onSuccess={onSuccess} onError={onError} />}
     </div>

@@ -28,90 +28,10 @@ def clean_mongo_doc(doc: dict) -> dict:
 
 
 # ==========================================
-# Pages
+# Pages — MOVED to cms_content.py (unified Page Manager)
+# Old routes removed to avoid conflicts.
+# The cms_content.py router handles all page CRUD now.
 # ==========================================
-
-@router.get("/pages")
-async def get_cms_pages():
-    """Get list of all CMS pages (basic info only)"""
-    db = get_database()
-    pages = await db.cms_pages.find({}, {"_id": 0, "sections": 0}).sort("nav_order", 1).to_list(100)
-    return pages
-
-
-@router.get("/pages/all")
-async def get_all_cms_pages():
-    """Get all CMS pages with full details"""
-    db = get_database()
-    pages = await db.cms_pages.find({}, {"_id": 0}).sort("nav_order", 1).to_list(100)
-    return pages
-
-
-@router.get("/pages/{slug}")
-async def get_cms_page(slug: str):
-    """Get a single CMS page with all sections and cards"""
-    db = get_database()
-    page = await db.cms_pages.find_one({"slug": slug}, {"_id": 0})
-    if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
-    
-    # Get sections for this page
-    sections = await db.cms_sections.find({"page_slug": slug}, {"_id": 0}).sort("order", 1).to_list(100)
-    
-    # Get cards for each section
-    for section in sections:
-        section_id = section.get("id", "")
-        cards = await db.cms_cards.find({"section_id": section_id}, {"_id": 0}).sort("order", 1).to_list(100)
-        section["cards"] = cards
-    
-    page["sections"] = sections
-    return page
-
-
-@router.post("/pages")
-async def create_cms_page(page: CMSPageCreate):
-    """Create a new CMS page"""
-    db = get_database()
-    page_data = page.dict()
-    page_data["id"] = str(uuid.uuid4())
-    page_data["created_at"] = datetime.utcnow()
-    page_data["updated_at"] = datetime.utcnow()
-    
-    await db.cms_pages.insert_one(page_data)
-    return clean_mongo_doc(page_data)
-
-
-@router.put("/pages/{slug}")
-async def update_cms_page(slug: str, updates: dict):
-    """Update a CMS page"""
-    db = get_database()
-    updates["updated_at"] = datetime.utcnow()
-    # Remove _id if present in updates
-    updates.pop("_id", None)
-    result = await db.cms_pages.update_one({"slug": slug}, {"$set": updates})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Page not found")
-    return {"success": True}
-
-
-@router.delete("/pages/{slug}")
-async def delete_cms_page(slug: str):
-    """Delete a CMS page and all its sections/cards"""
-    db = get_database()
-    # Get all sections for this page
-    sections = await db.cms_sections.find({"page_slug": slug}).to_list(100)
-    
-    # Delete all cards in those sections
-    for section in sections:
-        section_id = section.get("id", str(section.get("_id", "")))
-        await db.cms_cards.delete_many({"section_id": section_id})
-    
-    # Delete all sections
-    await db.cms_sections.delete_many({"page_slug": slug})
-    
-    # Delete the page
-    result = await db.cms_pages.delete_one({"slug": slug})
-    return {"deleted": result.deleted_count}
 
 
 # ==========================================

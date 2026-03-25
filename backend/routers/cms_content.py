@@ -17,7 +17,7 @@ from pymongo import MongoClient
 router = APIRouter()
 
 MONGO_URL = os.environ.get("MONGO_URL")
-DB_NAME = os.environ.get("DB_NAME", "radiocheck")
+DB_NAME = os.environ.get("DB_NAME", "veterans_support")
 client = MongoClient(MONGO_URL)
 db = client[DB_NAME]
 
@@ -344,3 +344,344 @@ async def admin_seed_persona_bios():
 
     db.cms_persona_bios.insert_many(bios)
     return {"message": f"Seeded {len(bios)} persona bios"}
+
+
+
+# ==================== PAGE MODELS ====================
+
+class PageCreate(BaseModel):
+    title: str
+    slug: str
+    content: str = ""
+    status: str = "draft"
+    is_system_page: bool = False
+    is_migrated_from_tsx: bool = False
+    linked_persona: Optional[str] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+
+class PageUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    content: Optional[str] = None
+    status: Optional[str] = None
+    is_system_page: Optional[bool] = None
+    linked_persona: Optional[str] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+
+
+# ==================== PAGES - PUBLIC ====================
+
+@router.get("/pages/{slug}")
+async def get_page_by_slug(slug: str):
+    """Public endpoint: fetch a published page by slug."""
+    page = db.cms_pages.find_one({"slug": slug, "status": "published"})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    page["id"] = str(page.pop("_id"))
+    return {"page": page}
+
+
+@router.get("/pages")
+async def list_pages():
+    """Public endpoint: list all published pages (title, slug only)."""
+    pages = list(db.cms_pages.find(
+        {"status": "published"},
+        {"content": 0}
+    ).sort("title", 1))
+    return {"pages": [{"id": str(p.pop("_id")), **{k: v for k, v in p.items()}} for p in pages]}
+
+
+# ==================== PAGES - ADMIN ====================
+
+@router.get("/admin/pages")
+async def admin_list_pages():
+    """Admin endpoint: list all pages with full metadata (no content body for perf)."""
+    pages = list(db.cms_pages.find({}, {"content": 0}).sort([("status", -1), ("title", 1)]))
+    return {"pages": [{"id": str(p.pop("_id")), **{k: v for k, v in p.items()}} for p in pages]}
+
+
+@router.get("/admin/pages/{slug}")
+async def admin_get_page(slug: str):
+    """Admin endpoint: fetch a single page by slug with full content."""
+    page = db.cms_pages.find_one({"slug": slug})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    page["id"] = str(page.pop("_id"))
+    return {"page": page}
+
+
+@router.post("/admin/pages")
+async def admin_create_page(page: PageCreate):
+    """Create a new CMS page."""
+    # Check slug uniqueness
+    existing = db.cms_pages.find_one({"slug": page.slug})
+    if existing:
+        # Auto-append suffix
+        base_slug = page.slug
+        counter = 2
+        while db.cms_pages.find_one({"slug": f"{base_slug}-{counter}"}):
+            counter += 1
+        page.slug = f"{base_slug}-{counter}"
+
+    doc = page.model_dump()
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = db.cms_pages.insert_one(doc)
+    return {"message": "Page created", "page": {"id": str(result.inserted_id), "slug": doc["slug"]}}
+
+
+@router.put("/admin/pages/{slug}")
+async def admin_update_page(slug: str, update: PageUpdate):
+    """Update a CMS page by slug."""
+    page = db.cms_pages.find_one({"slug": slug})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+
+    updates = {k: v for k, v in update.model_dump().items() if v is not None}
+
+    # If slug is being changed, check uniqueness
+    if "slug" in updates and updates["slug"] != slug:
+        if db.cms_pages.find_one({"slug": updates["slug"]}):
+            raise HTTPException(status_code=409, detail="Slug already in use")
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    db.cms_pages.update_one({"slug": slug}, {"$set": updates})
+    return {"message": "Page updated"}
+
+
+@router.delete("/admin/pages/{slug}")
+async def admin_delete_page(slug: str):
+    """Delete a CMS page. System pages cannot be deleted."""
+    page = db.cms_pages.find_one({"slug": slug})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    if page.get("is_system_page"):
+        raise HTTPException(status_code=403, detail="System pages cannot be deleted")
+    db.cms_pages.delete_one({"slug": slug})
+    return {"message": "Page deleted"}
+
+
+@router.put("/admin/pages/{slug}/status")
+async def admin_toggle_page_status(slug: str):
+    """Toggle page status between draft and published."""
+    page = db.cms_pages.find_one({"slug": slug})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    new_status = "published" if page.get("status") == "draft" else "draft"
+    db.cms_pages.update_one({"slug": slug}, {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    return {"message": f"Page status changed to {new_status}", "status": new_status}
+
+
+@router.post("/admin/pages/seed")
+async def admin_seed_pages():
+    """Seed the 3 proof-of-concept pages from hardcoded TSX content."""
+    existing = db.cms_pages.count_documents({})
+    if existing > 0:
+        return {"message": f"Database already has {existing} pages. Clear first or add individually."}
+
+    SEED_PAGES = [
+        {
+            "title": "About Radio Check",
+            "slug": "about",
+            "linked_persona": None,
+            "is_system_page": False,
+            "is_migrated_from_tsx": True,
+            "meta_title": "About Radio Check",
+            "meta_description": "Learn about Radio Check — AI-powered peer support for UK veterans",
+            "status": "published",
+            "content": """<h2>What Is Radio Check?</h2>
+<p>Radio Check combines peer support and AI conversation to give veterans a place to talk when it matters.</p>
+<blockquote><p>Sometimes a real person isn't available straight away. When that happens, the chat is there — so you're not carrying things alone.</p></blockquote>
+<p><strong>Talking helps. Even talking here.</strong></p>
+
+<h2>What the AI Is For</h2>
+<p>The AI is here to:</p>
+<ul>
+<li>Listen without judgement</li>
+<li>Help you slow things down</li>
+<li>Let you get things off your chest</li>
+<li>Encourage healthy coping and real-world support</li>
+</ul>
+<p><em>You're always in control of the conversation.</em></p>
+
+<h2>What the AI Is Not For</h2>
+<p>The AI does not:</p>
+<ul>
+<li>Give medical or legal advice</li>
+<li>Diagnose or treat conditions</li>
+<li>Replace professionals</li>
+<li>Handle emergencies on its own</li>
+</ul>
+<p><strong>If you're in immediate danger, human help matters most — and we'll always encourage that.</strong></p>
+
+<h2>Is This Right for Me?</h2>
+<p>Radio Check may help if you:</p>
+<ul>
+<li>Feel low, stressed, angry, or stuck</li>
+<li>Find it easier to talk in writing</li>
+<li>Don't want to feel like a burden</li>
+<li>Just need somewhere safe to talk</li>
+</ul>
+<p><strong>You don't need to be in crisis to use this.</strong></p>
+
+<h2>Safety &amp; Trust</h2>
+<ul>
+<li>Safeguarding comes first</li>
+<li>Conversations handled with care</li>
+<li>No judgement. No pressure.</li>
+<li>Your privacy matters</li>
+</ul>
+<p><em>We're upfront about what this is — and what it isn't.</em></p>
+
+<h2>The Bottom Line</h2>
+<p>If Radio Check helps you feel even a little less alone, it's doing its job.</p>
+<p><strong>Someone is on the net.</strong></p>"""
+        },
+        {
+            "title": "Criminal Justice Support",
+            "slug": "criminal-justice",
+            "linked_persona": "rachel",
+            "is_system_page": False,
+            "is_migrated_from_tsx": True,
+            "meta_title": "Criminal Justice Support for Veterans",
+            "meta_description": "Support for veterans in or leaving the criminal justice system",
+            "status": "published",
+            "content": """<h2>We Understand</h2>
+<p>Serving personnel and veterans can face unique challenges with the law, often linked to untreated PTSD, substance misuse, or difficulty adjusting to civilian life.</p>
+<p>Whether you're currently in prison, recently released, or facing charges — specialist support is available. You're not alone.</p>
+
+<blockquote><p>This section provides emotional support. For legal advice, please consult a qualified legal professional. We offer wellbeing support and signposting to specialist services.</p></blockquote>
+
+<h2>Support Organisations</h2>
+<p>Specialist services for veterans in the justice system:</p>
+<ul>
+<li><strong>NACRO</strong> — Support for people with criminal records (0300 123 1999) — <a href="https://www.nacro.org.uk">nacro.org.uk</a></li>
+<li><strong>Forces in Mind Trust</strong> — Research on veterans in justice system — <a href="https://www.fim-trust.org">fim-trust.org</a></li>
+<li><strong>Walking With The Wounded</strong> — Employment &amp; justice support — <a href="https://walkingwiththewounded.org.uk">walkingwiththewounded.org.uk</a></li>
+<li><strong>Project Nova</strong> — Armed forces personnel in the CJS (0800 917 7299) — <a href="https://www.rfea.org.uk/our-programmes/project-nova/">rfea.org.uk</a></li>
+<li><strong>Probation Services</strong> — Support after prison release (0800 464 0708) — <a href="https://www.gov.uk/guidance/probation-services">gov.uk</a></li>
+<li><strong>Veterans' Gateway</strong> — First point of contact for veterans (0808 802 1212) — <a href="https://www.veteransgateway.org.uk">veteransgateway.org.uk</a></li>
+</ul>
+
+<p><strong>Project Nova</strong> works specifically with veterans at every stage of the criminal justice system — from arrest to release.</p>"""
+        },
+        {
+            "title": "Privacy Policy",
+            "slug": "privacy-policy",
+            "linked_persona": None,
+            "is_system_page": True,
+            "is_migrated_from_tsx": True,
+            "meta_title": "Privacy Policy — Radio Check",
+            "meta_description": "How Radio Check collects, uses, and safeguards your personal information",
+            "status": "published",
+            "content": """<p><em>Last Updated: February 2026</em></p>
+
+<h2>1. Introduction</h2>
+<p>Radio Check ("we", "our", "us") is committed to protecting the privacy of UK veterans and their families. This Privacy Policy explains how we collect, use, and safeguard your personal information when you use our mobile application and services.</p>
+
+<h2>2. Information We Collect</h2>
+<h3>Account Information</h3>
+<ul>
+<li>Email address</li>
+<li>Name (optional)</li>
+<li>Password (encrypted)</li>
+<li>Service branch and regiment (optional)</li>
+</ul>
+
+<h3>Chat &amp; Communication Data</h3>
+<ul>
+<li>Messages with AI companions</li>
+<li>Messages with peer supporters (Buddy Finder)</li>
+<li>Callback requests</li>
+<li>Call logs (metadata only, calls are peer-to-peer)</li>
+</ul>
+
+<h3>Technical Data</h3>
+<ul>
+<li>Device type and operating system</li>
+<li>IP address (for security purposes)</li>
+<li>App usage statistics</li>
+</ul>
+
+<h2>3. How We Use Your Information</h2>
+<p>We use your information to:</p>
+<ul>
+<li>Provide AI-powered support and companionship</li>
+<li>Connect you with peer supporters</li>
+<li>Detect and respond to crisis situations (safeguarding)</li>
+<li>Improve our services and AI responses</li>
+<li>Send important service notifications</li>
+<li>Comply with legal obligations</li>
+</ul>
+
+<h2>4. AI Chat Processing</h2>
+<p>When you chat with our AI companions, your messages are processed by OpenAI's language models to generate supportive responses. We do not share your identity with OpenAI. Chat data is also analyzed locally to detect potential crisis situations and trigger our safeguarding protocols.</p>
+
+<h2>5. Safeguarding</h2>
+<p>Your safety is our priority. Our system automatically monitors conversations for signs of crisis, including:</p>
+<ul>
+<li>Expressions of suicidal ideation</li>
+<li>Self-harm indicators</li>
+<li>Severe distress signals</li>
+</ul>
+<p>If detected, our safeguarding team may be alerted and may reach out to offer support. In extreme cases, we may contact emergency services if we believe there is immediate risk to life.</p>
+
+<h2>6. Data Security</h2>
+<p>We implement robust security measures including:</p>
+<ul>
+<li>AES-256 encryption for sensitive data</li>
+<li>Secure password hashing (bcrypt)</li>
+<li>HTTPS for all data transmission</li>
+<li>Regular security audits</li>
+<li>Access controls and staff training</li>
+</ul>
+
+<h2>7. Data Retention</h2>
+<ul>
+<li>Account data: Retained while your account is active, plus 7 years after deletion</li>
+<li>Chat history: 7 years (for safeguarding audit purposes)</li>
+<li>Technical logs: 90 days</li>
+</ul>
+<p>You can request data deletion at any time through the app settings.</p>
+
+<h2>8. Your Rights (GDPR)</h2>
+<p>Under UK data protection law, you have the right to:</p>
+<ul>
+<li>Access your personal data</li>
+<li>Correct inaccurate data</li>
+<li>Request deletion of your data</li>
+<li>Export your data in a portable format</li>
+<li>Object to certain processing</li>
+<li>Withdraw consent</li>
+</ul>
+<p>To exercise these rights, go to Settings &gt; Privacy in the app, or contact us at privacy@radiocheck.me</p>
+
+<h2>9. Third-Party Services</h2>
+<p>We use the following third-party services:</p>
+<ul>
+<li>OpenAI: AI chat processing (USA, with Standard Contractual Clauses)</li>
+<li>MongoDB Atlas: Database hosting (UK/EU)</li>
+<li>Render: Application hosting (EU)</li>
+<li>Expo: Mobile app services</li>
+</ul>
+
+<h2>10. Children's Privacy</h2>
+<p>Radio Check is intended for adults (18+). We do not knowingly collect personal information from children under 18. If you believe a child has provided us with personal information, please contact us immediately.</p>
+
+<h2>11. Changes to This Policy</h2>
+<p>We may update this Privacy Policy from time to time. We will notify you of significant changes through the app or by email. Your continued use of the app after changes constitutes acceptance of the updated policy.</p>
+
+<h2>12. Contact Us</h2>
+<p>For privacy-related queries: <strong>privacy@radiocheck.me</strong></p>
+<p>For complaints, you may also contact the Information Commissioner's Office (ICO): <a href="https://ico.org.uk">ico.org.uk</a></p>"""
+        },
+    ]
+
+    for page in SEED_PAGES:
+        page["created_at"] = datetime.now(timezone.utc).isoformat()
+        page["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    db.cms_pages.insert_many(SEED_PAGES)
+    return {"message": f"Seeded {len(SEED_PAGES)} pages"}

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Connect to MongoDB to read CMS podcast feed URLs
 MONGO_URL = os.environ.get("MONGO_URL")
-DB_NAME = os.environ.get("DB_NAME", "radiocheck")
+DB_NAME = os.environ.get("DB_NAME", "veterans_support")
 _mongo_client = MongoClient(MONGO_URL)
 _db = _mongo_client[DB_NAME]
 

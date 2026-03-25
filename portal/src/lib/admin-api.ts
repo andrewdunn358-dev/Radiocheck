@@ -259,26 +259,6 @@ export const api = {
   getAIUsageDaily: (token: string, days: number = 30) =>
     api.fetch<any[]>(`/admin/ai-usage/daily?days=${days}`, { token }),
 
-  // CMS
-  getCMSPages: (token: string) =>
-    api.fetch<any[]>('/cms/pages', { token }),
-  
-  getCMSPage: (token: string, slug: string) =>
-    api.fetch<any>(`/cms/pages/${slug}`, { token }),
-  
-  updateCMSPage: (token: string, slug: string, data: any) =>
-    api.fetch<any>(`/cms/pages/${slug}`, {
-      token,
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
-
-  seedCMSDefaults: (token: string) =>
-    api.fetch<any>('/cms/seed-public', {
-      token,
-      method: 'POST',
-    }),
-
   // CMS Content - Books
   getCMSBooks: (token: string) =>
     api.fetch<any>('/cms/admin/books', { token }),
@@ -521,4 +501,20 @@ export const api = {
       token,
       method: 'DELETE',
     }),
+
+  // CMS Content - Pages
+  getCMSPages: (token: string) =>
+    api.fetch<any>('/cms/admin/pages', { token }),
+  getCMSPage: (token: string, slug: string) =>
+    api.fetch<any>(`/cms/admin/pages/${slug}`, { token }),
+  createCMSPage: (token: string, data: any) =>
+    api.fetch<any>('/cms/admin/pages', { token, method: 'POST', body: JSON.stringify(data) }),
+  updateCMSPage: (token: string, slug: string, data: any) =>
+    api.fetch<any>(`/cms/admin/pages/${slug}`, { token, method: 'PUT', body: JSON.stringify(data) }),
+  deleteCMSPage: (token: string, slug: string) =>
+    api.fetch<any>(`/cms/admin/pages/${slug}`, { token, method: 'DELETE' }),
+  toggleCMSPageStatus: (token: string, slug: string) =>
+    api.fetch<any>(`/cms/admin/pages/${slug}/status`, { token, method: 'PUT' }),
+  seedCMSPages: (token: string) =>
+    api.fetch<any>('/cms/admin/pages/seed', { token, method: 'POST' }),
 };
