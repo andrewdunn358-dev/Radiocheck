@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, useWindowDimensions, Linking, StyleSheet } from 'react-native';
 import RenderHtml, { defaultSystemFonts } from 'react-native-render-html';
-import { useTheme } from '../config/theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface CMSContentRendererProps {
   content: string;

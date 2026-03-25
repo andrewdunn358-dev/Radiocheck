@@ -134,6 +134,8 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 - **Fixed**: Route ordering — fixed-path routes before `{slug}` parameterized routes
 - **TipTap**: Removed unnecessary `link: false, underline: false` from StarterKit.configure() (StarterKit doesn't bundle these extensions)
 - **SC003-baz**: Fixed recurring flaky test — relaxed assertion to check hard crisis markers only (Samaritans, 116 123, 999), not soft AI check-in phrases
+- **CMSContentRenderer.tsx**: Fixed broken import `../config/theme` → `../context/ThemeContext` (was causing Vercel/Expo web build failure)
+- **Import Audit**: All CMS-related files verified — zero broken imports
 - **Production Fix**: After deploying, call `POST /api/cms/admin/pages/seed?force=true` to clear legacy pages and seed correct 3 PoC pages
 ### Phase 1: 3-Page Proof of Concept (COMPLETE)
 - **Backend API**: Full CRUD for pages — list, get by slug, create, update, delete, status toggle, seed, system page protection, duplicate slug prevention

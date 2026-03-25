@@ -1,0 +1,1 @@
+{"dependencies":[],"output":[{"data":{"code":"__d(function(g,r,i,a,m,e,d){m.exports={}.hasOwnProperty});","lineCount":1,"map":[[1,28,1,0,"module"],[1,30,1,7,"exports"],[1,38,1,17],[1,39,1,18],[1,41,1,20,"hasOwnProperty"],[1,55,1,34],[1,58]],"functionMap":{"names":["<global>"],"mappings":"AAA"},"hasCjsExports":true},"type":"js/module"}]}
