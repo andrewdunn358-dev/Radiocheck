@@ -127,6 +127,19 @@ Need to Talk, Peer Support, Self-Care, Addictions, Criminal Justice, LawFare, Su
 - **Render backend**: Auto-deploys from GitHub main branch
 - See PRD.md deployment section for full details
 
+## CMS Phase 3 — Page Manager (26 March 2026)
+### Phase 1: 3-Page Proof of Concept (COMPLETE)
+- **Backend API**: Full CRUD for pages — list, get by slug, create, update, delete, status toggle, seed, system page protection, duplicate slug prevention
+- **3 Pages Migrated**: `about`, `criminal-justice`, `privacy-policy` — content extracted to MongoDB, original TSX archived to `/frontend/archived-pages/`
+- **Mobile App Components**: `useCMSPage` hook + `CMSContentRenderer` (react-native-render-html) — pages fetch content from API with fallback
+- **Admin Portal**: TipTap WYSIWYG editor with toolbar (Bold/Italic/Underline/H1-3/Lists/Blockquote/Link/Image/Undo/Redo), split view (edit/preview), SEO fields, linked persona field, status management, system page protection
+- **Testing**: 21/21 backend tests passed (100%) — CRUD, status toggle, system page protection, public filtering, books/podcasts regression
+- **Fixed**: DB_NAME default mismatch between cms_content.py and server.py (was `radiocheck`, now `veterans_support`)
+- **Fixed**: Removed conflicting old CMS page routes from `cms.py`
+
+### Phase 2: Full 24-Page Migration (PENDING)
+- Remaining 21 pages to migrate: associations, commonwealth-veterans, compensation-schemes, crisis-support, faith-service, for-carers, forces-kids, grounding, he-served, historical-investigations, local-services, money-benefits, recovery-support, regimental-associations, safeguarding, self-care, serious-illness, substance-support, terms-of-service, they-served, women-veterans
+
 ## Upcoming Tasks
 - (P1) TikTok Live-like video UX with chat overlay and reactions
 
