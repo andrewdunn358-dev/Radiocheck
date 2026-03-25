@@ -55,16 +55,6 @@ export default function PagesManager({ token, onSuccess, onError }: PagesManager
 
   useEffect(() => { loadPages(); }, [loadPages]);
 
-  const handleSeedPages = async () => {
-    try {
-      const res = await api.seedCMSPages(token);
-      onSuccess(res.message);
-      loadPages();
-    } catch (err: any) {
-      onError(err.message);
-    }
-  };
-
   const handleToggleStatus = async (slug: string) => {
     try {
       const res = await api.toggleCMSPageStatus(token, slug);
@@ -152,9 +142,6 @@ export default function PagesManager({ token, onSuccess, onError }: PagesManager
           <FileText className="w-5 h-5 text-emerald-400" />Pages ({pages.length})
         </h2>
         <div className="flex gap-2">
-          {pages.length === 0 && (
-            <button onClick={handleSeedPages} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm" data-testid="seed-pages-btn">Seed Defaults</button>
-          )}
           <button onClick={openNewPage} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm flex items-center gap-1" data-testid="add-page-btn">
             <Plus className="w-3 h-3" />New Page
           </button>
@@ -215,7 +202,7 @@ export default function PagesManager({ token, onSuccess, onError }: PagesManager
       {pages.length === 0 && !loading && (
         <div className="text-center py-12 text-gray-400">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>No pages yet. Click &quot;Seed Defaults&quot; to load the proof-of-concept pages, or create a new page.</p>
+          <p>No pages yet. Create a new page to get started.</p>
         </div>
       )}
     </div>
