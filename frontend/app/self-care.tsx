@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
-import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
 import { safeGoBack } from '../src/utils/navigation';
 
 // Catherine's avatar URL
@@ -39,16 +38,9 @@ function getBackgroundColor(color: string | null): string {
 export default function SelfCarePage() {
   const router = useRouter();
   const { colors, theme } = useTheme();
-  const { sections, isLoading, error } = useCMSContent('self-care');
 
-  // Get CMS cards or fall back to hardcoded
-  const cardsSection = getSection(sections, 'cards');
-  const cmsCards = cardsSection?.cards || [];
-  
-  // Use CMS cards if available, otherwise fallback
-  const tools = cmsCards.length > 0 
-    ? cmsCards.filter(c => c.is_visible).sort((a, b) => a.order - b.order)
-    : FALLBACK_TOOLS;
+  // Use hardcoded tools (self-care is a functional page, not CMS-driven)
+  const tools = FALLBACK_TOOLS;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
@@ -101,14 +93,7 @@ export default function SelfCarePage() {
           </Text>
         </View>
 
-        {/* Loading State */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        )}
-
-        {/* Tools Grid - CMS-driven or fallback */}
+        {/* Tools Grid */}
         <View style={styles.toolsGrid}>
           {tools.map((tool: any) => {
             // Handle both CMS format and fallback format

@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
-import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
+
 import { API_URL } from '../src/config/api';
 
 // Fallback data (used when CMS is unavailable)
@@ -104,26 +104,10 @@ export default function FamilyFriends() {
     fetchRita();
   }, []);
   
-  // CMS Content - fetch support resources, addiction resources, and warning signs
-  const { sections } = useCMSContent('family-friends');
-  
-  // Get CMS data or fall back to hardcoded
-  const supportSection = getSection(sections, 'support_resources');
-  const addictionSection = getSection(sections, 'addiction_resources');
-  const signsSection = getSection(sections, 'warning_signs');
-  
-  // Map CMS cards to the format used in the component
-  const SUPPORT_RESOURCES = supportSection?.cards?.length 
-    ? supportSection.cards.map(c => ({ name: c.title, desc: c.description || '', phone: c.phone || '', url: c.external_url || '' }))
-    : FALLBACK_SUPPORT_RESOURCES;
-    
-  const ADDICTION_RESOURCES = addictionSection?.cards?.length
-    ? addictionSection.cards.map(c => ({ name: c.title, desc: c.description || '', phone: c.phone || '', url: c.external_url || '' }))
-    : FALLBACK_ADDICTION_RESOURCES;
-    
-  const SIGNS_OF_CHANGE = signsSection?.cards?.length
-    ? signsSection.cards.map((c, i) => ({ id: c.id || `sign-${i}`, label: c.title, icon: c.icon || 'alert' }))
-    : FALLBACK_SIGNS_OF_CHANGE;
+  // Use hardcoded data (family-friends is a functional page, not CMS-driven)
+  const SUPPORT_RESOURCES = FALLBACK_SUPPORT_RESOURCES;
+  const ADDICTION_RESOURCES = FALLBACK_ADDICTION_RESOURCES;
+  const SIGNS_OF_CHANGE = FALLBACK_SIGNS_OF_CHANGE;
   
   // Form state
   const [yourName, setYourName] = useState('');
