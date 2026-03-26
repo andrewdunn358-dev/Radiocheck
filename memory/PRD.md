@@ -82,7 +82,8 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] Persona audit: all 20 personas route through build_persona_prompt() via __init__.py — zero bypasses
 - [x] Inactivity Manager: 3-minute timeout sends one persona-specific check-in (Tommy: "Still there, mucker.") — does not fire before conversation starts, if user is typing, or after sign-off. Resets on new user message.
 - [x] Enter Key to Send: Enter sends message, Shift+Enter creates new line on desktop web. Multiline enabled on all platforms.
-- [x] Zentrafuge full test suite: 11/11 scenarios PASS. Added FINAL BEHAVIORAL REMINDERS block at end of system prompt for reliable LLM compliance (Spine Protocol "worried", human signposting, banned phrases).
+- [x] Zentrafuge full test suite: 11/11 scenarios PASS. Added FINAL BEHAVIORAL REMINDERS block at end of soul injection for reliable LLM compliance (Spine Protocol "worried", human signposting, banned phrases).
+- [x] Removed SAFEGUARDING_ADDENDUM from server.py — all safeguarding rules now live in soul.md (Section 1) and soul_loader.py (SOUL_INJECTION). Gaps filled: tiered distress response, "Are you safe right now?", NHS 111/SHOUT 85258/999, "never provide methods for self-harm", "continue chatting" option.
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
