@@ -121,6 +121,42 @@ export default function DynamicAIChat() {
   // Track if Enter was just pressed (for text change detection)
   const enterPressedRef = useRef(false);
   
+  // ===== INACTIVITY MANAGER =====
+  // Sends a single check-in if user goes silent for 3 minutes mid-conversation
+  const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+  const lastUserMessageTimeRef = useRef<number>(0);
+  const hasUserSentMessageRef = useRef(false);
+  const inactivityCheckSentRef = useRef(false);
+  const inactivityTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Persona-specific check-in messages
+  const getInactivityCheckIn = (charId: string): string => {
+    const checkIns: Record<string, string> = {
+      tommy: "Still there, mucker.",
+      bob: "You still about, mate?",
+      rachel: "Still here if you need me.",
+      doris: "Still here, love. No rush.",
+      finch: "Take your time. I'm here.",
+      margie: "No rush, love. I'm here.",
+      jack: "Still here, shipmate.",
+      rita: "Take your time, love. I'm not going anywhere.",
+      catherine: "Still here. No rush at all.",
+      frankie: "Still here, soldier. Take your time.",
+      baz: "Still about, mucker. No rush.",
+      megan: "Still here if you want to chat.",
+      penny: "I'm here whenever you're ready.",
+      alex: "Still here. No pressure.",
+      sam: "Take your time, mate. I'm here.",
+      kofi: "Still here, my friend.",
+      james: "Still here. Take your time.",
+      dave: "Still here, mate.",
+      mo: "No rush. I'm here.",
+      helen: "Still here, love.",
+      reg: "Still here, old boy. No rush.",
+    };
+    return checkIns[charId] || "Still here. No rush.";
+  };
+  
   // Auth state
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [email, setEmail] = useState('');
@@ -423,8 +459,40 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
     }
   }, [messages]);
 
+  // ===== INACTIVITY TIMER =====
+  useEffect(() => {
+    // Check every 30 seconds if 3 minutes have elapsed since last user message
+    inactivityTimerRef.current = setInterval(() => {
+      // Guard: no user message yet, or check already sent, or user is typing
+      if (!hasUserSentMessageRef.current) return;
+      if (inactivityCheckSentRef.current) return;
+      if (inputTextRef.current.trim().length > 0) return;
+      
+      const elapsed = Date.now() - lastUserMessageTimeRef.current;
+      if (elapsed >= INACTIVITY_TIMEOUT_MS) {
+        inactivityCheckSentRef.current = true;
+        const checkInMessage: Message = {
+          id: `inactivity-${Date.now()}`,
+          text: getInactivityCheckIn(character.id),
+          sender: 'buddy',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, checkInMessage]);
+      }
+    }, 30_000);
+
+    return () => {
+      if (inactivityTimerRef.current) clearInterval(inactivityTimerRef.current);
+    };
+  }, [character.id]);
+
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
+
+    // Reset inactivity tracking
+    lastUserMessageTimeRef.current = Date.now();
+    hasUserSentMessageRef.current = true;
+    inactivityCheckSentRef.current = false;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -542,6 +610,11 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
   }, [handleSendMessage]);
 
   const clearConversation = async () => {
+    // Reset inactivity tracking
+    hasUserSentMessageRef.current = false;
+    inactivityCheckSentRef.current = false;
+    lastUserMessageTimeRef.current = 0;
+    
     // Clear both current messages and device-stored history
     const welcomeMessage: Message = {
       id: 'welcome',
@@ -754,17 +827,11 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
             onChangeText={handleTextChange}
             placeholder="Type a message..."
             placeholderTextColor={colors.textMuted}
-            multiline={Platform.OS !== 'web'}
+            multiline
             maxLength={1000}
             data-testid="message-input"
-            blurOnSubmit={Platform.OS === 'web'}
+            blurOnSubmit={false}
             returnKeyType="send"
-            onSubmitEditing={() => {
-              // Send on keyboard submit (Enter on web, Return on mobile)
-              if (inputText.trim() && !isLoading) {
-                handleSendMessage();
-              }
-            }}
           />
           <TouchableOpacity 
             style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
