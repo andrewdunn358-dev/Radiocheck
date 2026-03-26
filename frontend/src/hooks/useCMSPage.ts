@@ -25,6 +25,11 @@ export function useCMSPage(slug: string) {
     const fetchPage = async () => {
       try {
         const response = await fetch(`${API_URL}/api/cms/pages/${slug}`);
+        if (response.status === 404) {
+          // Page not in CMS — stop. Do not retry.
+          if (!cancelled) { setIsLoading(false); setError('not_found'); }
+          return;
+        }
         if (!response.ok) throw new Error('Page not found');
         const data = await response.json();
         if (!cancelled && data.page) {

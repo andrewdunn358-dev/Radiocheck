@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../src/context/ThemeContext';
-import { useCMSContent, getSection, CMSCard } from '../src/hooks/useCMSContent';
 import { useAgeGateContext } from '../src/context/AgeGateContext';
 import AgeGateModal from '../src/components/AgeGateModal';
 import BetaSurvey from '../src/components/BetaSurvey';
@@ -259,43 +258,9 @@ export default function Index() {
     }
   };
   
-  // Fetch CMS content for the home page
-  const { sections, isLoading } = useCMSContent('home');
-  
-  // Get menu section from CMS
-  const menuSection = getSection(sections, 'menu');
-  const cmsMenuCards = menuSection?.cards || [];
-  
-  // Get AI team section from CMS
-  const aiTeamSection = getSection(sections, 'ai_team');
-  const cmsAICards = aiTeamSection?.cards || [];
-  
-  // Use CMS menu items if available, otherwise fall back to hardcoded
-  const menuItems: MenuItem[] = cmsMenuCards.length > 0
-    ? cmsMenuCards.map((card: CMSCard) => ({
-        title: card.title,
-        description: card.description || '',
-        icon: card.icon || 'apps',
-        color: card.color || '#3b82f6',
-        bgColor: card.bg_color || '#dbeafe',
-        route: card.route || card.external_url || '/',
-        isPrimary: card.is_primary || false,
-        isCallback: card.is_callback || false,
-      })).sort((a: MenuItem, b: MenuItem) => (a as any).order - (b as any).order)
-    : FALLBACK_MENU_ITEMS;
-  
-  // Use CMS AI team data if available, otherwise fall back to hardcoded
-  
-  // Use CMS data if available, otherwise fall back to hardcoded
-  const aiTeam: AITeamMember[] = cmsAICards.length > 0 
-    ? cmsAICards.filter(c => c.is_visible).sort((a, b) => a.order - b.order).map(c => ({
-        name: c.title,
-        avatar: c.image_url || '',
-        description: c.description || '',
-        bio: c.description || '',
-        route: c.route || ''
-      }))
-    : FALLBACK_AI_TEAM;
+  // Home page uses hardcoded content — not CMS-managed
+  const menuItems: MenuItem[] = FALLBACK_MENU_ITEMS;
+  const aiTeam: AITeamMember[] = FALLBACK_AI_TEAM;
 
   const toggleAITeam = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
