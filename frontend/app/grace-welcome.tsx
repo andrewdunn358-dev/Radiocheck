@@ -184,105 +184,112 @@ export default function GraceWelcome() {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header with logo + skip */}
-        <View style={styles.header}>
-          <Animated.View style={{ transform: [{ scale: breatheAnim }] }}>
-            <Image source={LOGO} style={styles.logo} resizeMode="contain" />
-          </Animated.View>
+        {/* Skip button - top right */}
+        <View style={styles.skipRow}>
           <TouchableOpacity
             style={styles.skipBtn}
             onPress={handleSkip}
             data-testid="grace-skip-btn"
           >
             <Text style={styles.skipText}>Go straight in</Text>
-            <Ionicons name="arrow-forward" size={16} color="#8ba4c4" />
+            <Ionicons name="arrow-forward" size={14} color="#8ba4c4" />
           </TouchableOpacity>
         </View>
 
-        {/* Grace avatar + name */}
-        <View style={styles.graceHeader}>
-          <Image source={GRACE_AVATAR} style={styles.graceAvatar} />
-          <View>
-            <Text style={styles.graceName}>Grace</Text>
-            <Text style={styles.graceRole}>Welcome & Signposting</Text>
+        {/* Breathing logo - centered, prominent */}
+        <View style={styles.logoArea}>
+          <Animated.View style={{ transform: [{ scale: breatheAnim }] }}>
+            <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+          </Animated.View>
+          <Text style={styles.appName}>Radio Check</Text>
+        </View>
+
+        {/* Chat card - compact, below logo */}
+        <View style={styles.chatCard}>
+          {/* Grace identity bar */}
+          <View style={styles.graceHeader}>
+            <Image source={GRACE_AVATAR} style={styles.graceAvatar} />
+            <View>
+              <Text style={styles.graceName}>Grace</Text>
+              <Text style={styles.graceRole}>Welcome & Signposting</Text>
+            </View>
           </View>
-        </View>
 
-        {/* Chat messages */}
-        <ScrollView
-          ref={scrollRef}
-          style={styles.chatArea}
-          contentContainerStyle={styles.chatContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.map(msg => (
-            <View key={msg.id}>
-              <View style={[
-                styles.bubble,
-                msg.sender === 'user' ? styles.userBubble : styles.graceBubble,
-              ]}>
-                <Text style={[
-                  styles.bubbleText,
-                  msg.sender === 'user' ? styles.userText : styles.graceText,
-                ]}>
-                  {msg.text}
-                </Text>
-              </View>
-              {/* Navigation action buttons */}
-              {msg.actions && msg.actions.length > 0 && (
-                <View style={styles.actionsContainer}>
-                  {msg.actions.map((action, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[
-                        styles.actionBtn,
-                        action.route ? styles.actionBtnPrimary : styles.actionBtnSecondary,
-                      ]}
-                      onPress={() => handleAction(action.route)}
-                      data-testid={`grace-action-${i}`}
-                    >
-                      {action.route ? (
-                        <Ionicons name="arrow-forward-circle" size={16} color="#fff" />
-                      ) : null}
-                      <Text style={[
-                        styles.actionText,
-                        action.route ? styles.actionTextPrimary : styles.actionTextSecondary,
-                      ]}>
-                        {action.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
-          {isLoading && (
-            <View style={[styles.bubble, styles.graceBubble]}>
-              <ActivityIndicator size="small" color="#10b981" />
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Input area */}
-        <View style={styles.inputArea}>
-          <TextInput
-            style={styles.input}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Talk to Grace..."
-            placeholderTextColor="#64748b"
-            multiline
-            maxLength={1000}
-            data-testid="grace-message-input"
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, (!inputText.trim() || isLoading) && styles.sendBtnDisabled]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || isLoading}
-            data-testid="grace-send-btn"
+          {/* Messages */}
+          <ScrollView
+            ref={scrollRef}
+            style={styles.chatArea}
+            contentContainerStyle={styles.chatContent}
+            showsVerticalScrollIndicator={false}
           >
-            <Ionicons name="send" size={18} color="#fff" />
-          </TouchableOpacity>
+            {messages.map(msg => (
+              <View key={msg.id}>
+                <View style={[
+                  styles.bubble,
+                  msg.sender === 'user' ? styles.userBubble : styles.graceBubble,
+                ]}>
+                  <Text style={[
+                    styles.bubbleText,
+                    msg.sender === 'user' ? styles.userText : styles.graceText,
+                  ]}>
+                    {msg.text}
+                  </Text>
+                </View>
+                {msg.actions && msg.actions.length > 0 && (
+                  <View style={styles.actionsContainer}>
+                    {msg.actions.map((action, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={[
+                          styles.actionBtn,
+                          action.route ? styles.actionBtnPrimary : styles.actionBtnSecondary,
+                        ]}
+                        onPress={() => handleAction(action.route)}
+                        data-testid={`grace-action-${i}`}
+                      >
+                        {action.route ? (
+                          <Ionicons name="arrow-forward-circle" size={14} color="#fff" />
+                        ) : null}
+                        <Text style={[
+                          styles.actionText,
+                          action.route ? styles.actionTextPrimary : styles.actionTextSecondary,
+                        ]}>
+                          {action.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))}
+            {isLoading && (
+              <View style={[styles.bubble, styles.graceBubble]}>
+                <ActivityIndicator size="small" color="#10b981" />
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Input */}
+          <View style={styles.inputArea}>
+            <TextInput
+              style={styles.input}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Talk to Grace..."
+              placeholderTextColor="#64748b"
+              multiline
+              maxLength={1000}
+              data-testid="grace-message-input"
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, (!inputText.trim() || isLoading) && styles.sendBtnDisabled]}
+              onPress={handleSend}
+              disabled={!inputText.trim() || isLoading}
+              data-testid="grace-send-btn"
+            >
+              <Ionicons name="send" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -290,45 +297,64 @@ export default function GraceWelcome() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#1a2e44' },
+  safe: { flex: 1, backgroundColor: '#0f1b2d' },
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  skipRow: {
+    alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 8,
   },
-  logo: { width: 44, height: 44 },
   skipBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  skipText: { fontSize: 13, color: '#8ba4c4', fontWeight: '500' },
+  skipText: { fontSize: 12, color: '#8ba4c4', fontWeight: '500' },
+  logoArea: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  logo: { width: 80, height: 80 },
+  appName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#e2e8f0',
+    marginTop: 10,
+    letterSpacing: 0.5,
+  },
+  chatCard: {
+    flex: 1,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    backgroundColor: '#1a2e44',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
   graceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  graceAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#10b981' },
-  graceName: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  graceRole: { fontSize: 12, color: '#8ba4c4' },
+  graceAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: '#10b981' },
+  graceName: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  graceRole: { fontSize: 11, color: '#8ba4c4' },
   chatArea: { flex: 1 },
-  chatContent: { padding: 16, paddingBottom: 8 },
+  chatContent: { padding: 12, paddingBottom: 4 },
   bubble: {
     maxWidth: '82%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
+    padding: 10,
+    borderRadius: 14,
+    marginBottom: 6,
   },
   graceBubble: {
     alignSelf: 'flex-start',
@@ -340,21 +366,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d9488',
     borderBottomRightRadius: 4,
   },
-  bubbleText: { fontSize: 15, lineHeight: 22 },
+  bubbleText: { fontSize: 14, lineHeight: 20 },
   graceText: { color: '#e2e8f0' },
   userText: { color: '#fff' },
   actionsContainer: {
-    gap: 6,
-    marginBottom: 12,
-    marginLeft: 8,
+    gap: 5,
+    marginBottom: 8,
+    marginLeft: 6,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 18,
     alignSelf: 'flex-start',
   },
   actionBtnPrimary: { backgroundColor: '#10b981' },
@@ -363,33 +389,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  actionText: { fontSize: 13, fontWeight: '600' },
+  actionText: { fontSize: 12, fontWeight: '600' },
   actionTextPrimary: { color: '#fff' },
   actionTextSecondary: { color: '#8ba4c4' },
   inputArea: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 12,
-    paddingBottom: Platform.OS === 'web' ? 16 : 12,
+    padding: 10,
     gap: 8,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: '#1a2e44',
   },
   input: {
     flex: 1,
     backgroundColor: '#243447',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 14,
     color: '#e2e8f0',
-    maxHeight: 100,
+    maxHeight: 80,
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#10b981',
     justifyContent: 'center',
     alignItems: 'center',
