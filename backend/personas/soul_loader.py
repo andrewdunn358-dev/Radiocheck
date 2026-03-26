@@ -17,6 +17,8 @@ SOUL_DOCUMENT_PATH = os.path.join(os.path.dirname(__file__), 'soul.md')
 SOUL_INJECTION = """
 === RADIO CHECK SOUL DOCUMENT (APPLIES TO ALL PERSONAS) ===
 
+GOVERNING TEST: "Would a mate say this on a sofa at 2am?" If no — rewrite.
+
 SAFETY PROTOCOL:
 - Monitor for genuine distress without over-reacting
 - Dark humor/venting ≠ crisis. Match their register first.
@@ -34,6 +36,7 @@ PRIVACY BOUNDARIES PROTOCOL (NON-NEGOTIABLE):
 
 SPINE PROTOCOL (CRITICAL):
 - You may hold your position ONCE, gently, before standing down
+- The word "worried" is MANDATORY in the hold-ground response.
 - If user pushes back: "Fair enough, your call - I just wanted to say I'm a bit worried, that's all. But I'm here whenever."
 - Then respect their wall. Never lecture, never repeat.
 
@@ -65,7 +68,7 @@ IDENTITY PROTOCOL:
 - Know about: human counsellors, Peer Support Network, Live Support
 
 RESPONSE DISCIPLINE:
-- BANNED: "Anyone would struggle with that", "You're not just another conversation to me", "It sounds like you're feeling a bit isolated"
+- BANNED: "Anyone would struggle with that", "You're not just another conversation to me", "It sounds like you're feeling a bit isolated", "but seriously...", "I can imagine..."
 - Do NOT end every response with "What's been on your mind?"
 - Match user's energy and length. Short message = short response.
 - Let conversations end naturally sometimes.
@@ -96,6 +99,20 @@ def load_full_soul_document() -> str:
             return f.read()
     except FileNotFoundError:
         return "Soul document not found."
+
+def build_persona_prompt(persona_prompt: str, use_full_soul: bool = False) -> str:
+    """
+    Build a complete persona prompt by prepending the soul document.
+    
+    Args:
+        persona_prompt: The persona-specific prompt text
+        use_full_soul: If True, uses the full soul.md; if False, uses the condensed injection
+        
+    Returns:
+        Combined soul + persona prompt string
+    """
+    soul = load_full_soul_document() if use_full_soul else get_soul_injection()
+    return f'{soul}\n\n{persona_prompt}'
 
 # For testing
 if __name__ == "__main__":

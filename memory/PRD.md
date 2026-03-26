@@ -76,6 +76,10 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] Copied missing avatar images to public/images/
 - [x] Fixed 10 incorrect persona assignments in CMS database
 - [x] Full audit: no non-CMS pages have CMS hooks
+- [x] Soul Document v2.0: Added 2am sofa governing test, mandatory "worried" in Spine Protocol, banned "but seriously..." and "I can imagine..."
+- [x] Soul Loader v2.0: Updated SOUL_INJECTION with new rules, added build_persona_prompt() function
+- [x] Tommy v3.1: Added banned phrases, grief follow-up instruction, romantic attachment section
+- [x] Persona audit: all 20 personas route through build_persona_prompt() via __init__.py — zero bypasses
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)

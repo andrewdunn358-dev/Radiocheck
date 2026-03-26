@@ -25,7 +25,7 @@ import os
 from typing import Dict, Optional
 
 # Import the soul document loader
-from .soul_loader import get_soul_injection
+from .soul_loader import get_soul_injection, build_persona_prompt
 
 # Import all persona modules
 from . import tommy
@@ -146,8 +146,7 @@ def get_full_prompt(character_id: str, include_soul: bool = True) -> str:
     persona_prompt = config.get("prompt", "")
     
     if include_soul:
-        soul_injection = get_soul_injection()
-        return f"{soul_injection}\n\n{persona_prompt}"
+        return build_persona_prompt(persona_prompt)
     
     return persona_prompt
 
