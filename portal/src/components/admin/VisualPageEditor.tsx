@@ -572,7 +572,7 @@ function SupportCardVisual({ title, description, phone, url, tag, onUpdate }: an
 // ---- Chat Banner ----
 function ChatBannerVisual({ persona, onClickSwap }: { persona: string; onClickSwap: () => void }) {
   const data = PERSONA_DATA[persona] || { name: persona, color: '#3b82f6', desc: 'AI Support Companion' };
-  const avatarUrl = `${API_URL}/api/images/${persona}.png`;
+  const avatarUrl = `${API_URL}/images/${persona}.png`;
 
   return (
     <div

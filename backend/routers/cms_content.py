@@ -570,6 +570,41 @@ async def admin_seed_recovery_support():
     return {"message": "Seeded recovery-support page", "blocks": len(BLOCKS)}
 
 
+@router.post("/admin/pages/batch-seed")
+async def admin_batch_seed_pages(payload: dict):
+    """Batch seed multiple CMS pages at once. Expects {"pages": [{"title": ..., "slug": ..., "blocks": [...]}]}"""
+    pages = payload.get("pages", [])
+    if not pages:
+        raise HTTPException(status_code=400, detail="No pages provided")
+
+    results = []
+    now = datetime.now(timezone.utc).isoformat()
+    for pg in pages:
+        slug = pg.get("slug")
+        if not slug:
+            continue
+        # Upsert: replace if exists, create if not
+        doc = {
+            "title": pg.get("title", slug.replace("-", " ").title()),
+            "slug": slug,
+            "content": "",
+            "blocks": pg.get("blocks", []),
+            "status": "published",
+            "is_system_page": False,
+            "is_migrated_from_tsx": True,
+            "linked_persona": pg.get("linked_persona", ""),
+            "meta_title": pg.get("meta_title", ""),
+            "meta_description": pg.get("meta_description", ""),
+            "created_at": now,
+            "updated_at": now,
+        }
+        db.cms_pages.delete_one({"slug": slug})
+        db.cms_pages.insert_one(doc)
+        results.append(slug)
+
+    return {"message": f"Seeded {len(results)} pages", "slugs": results}
+
+
 # Parameterized {slug} routes below
 
 @router.get("/admin/pages/{slug}")

@@ -1,424 +1,427 @@
+#!/usr/bin/env python3
 """
-All CMS page seed data for block-based pages.
-Each page is a dict with title, slug, blocks, persona, etc.
+Batch CMS Page Seeder
+=====================
+Generates block data for all static content pages and seeds them via the API.
+Run: python3 /app/backend/scripts/all_page_seeds.py
 """
+import requests, os, json, sys
 
-def get_all_page_seeds():
-    """Return list of all page seed definitions."""
-    return [
-        # ========== ABOUT ==========
-        {
-            "title": "About Radio Check", "slug": "about", "linked_persona": None,
-            "meta_title": "About Radio Check", "meta_description": "Learn about Radio Check",
-            "blocks": [
-                {"type": "heading", "props": {"text": "What Is Radio Check?"}},
-                {"type": "paragraph", "props": {"text": "Radio Check combines peer support and AI conversation to give veterans a place to talk when it matters."}},
-                {"type": "callout", "props": {"text": "Sometimes a real person isn\u2019t available straight away. When that happens, the chat is there \u2014 so you\u2019re not carrying things alone."}},
-                {"type": "paragraph", "props": {"text": "Talking helps. Even talking here."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "What the AI Is For"}},
-                {"type": "paragraph", "props": {"text": "The AI is here to:"}},
-                {"type": "bullet_list", "props": {"items": ["Listen without judgement", "Help you slow things down", "Let you get things off your chest", "Encourage healthy coping and real-world support"]}},
-                {"type": "paragraph", "props": {"text": "You\u2019re always in control of the conversation."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "What the AI Is Not For"}},
-                {"type": "paragraph", "props": {"text": "The AI does not:"}},
-                {"type": "bullet_list", "props": {"items": ["Give medical or legal advice", "Diagnose or treat conditions", "Replace professionals", "Handle emergencies on its own"]}},
-                {"type": "callout", "props": {"text": "If you\u2019re in immediate danger, human help matters most \u2014 and we\u2019ll always encourage that."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Is This Right for Me?"}},
-                {"type": "paragraph", "props": {"text": "Radio Check may help if you:"}},
-                {"type": "bullet_list", "props": {"items": ["Feel low, stressed, angry, or stuck", "Find it easier to talk in writing", "Don\u2019t want to feel like a burden", "Just need somewhere safe to talk"]}},
-                {"type": "paragraph", "props": {"text": "You don\u2019t need to be in crisis to use this."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Safety & Trust"}},
-                {"type": "bullet_list", "props": {"items": ["Safeguarding comes first", "Conversations handled with care", "No judgement. No pressure.", "Your privacy matters"]}},
-                {"type": "paragraph", "props": {"text": "We\u2019re upfront about what this is \u2014 and what it isn\u2019t."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "The Bottom Line"}},
-                {"type": "paragraph", "props": {"text": "If Radio Check helps you feel even a little less alone, it\u2019s doing its job."}},
-                {"type": "paragraph", "props": {"text": "Someone is on the net."}},
-            ],
-        },
-        # ========== CRIMINAL JUSTICE ==========
-        {
-            "title": "Criminal Justice Support", "slug": "criminal-justice", "linked_persona": "doris",
-            "meta_title": "Criminal Justice Support", "meta_description": "Support for veterans in or leaving the criminal justice system",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "doris"}},
-                {"type": "heading", "props": {"text": "Criminal Justice Support"}},
-                {"type": "callout", "props": {"text": "We Understand \u2014 Serving personnel and veterans can face unique challenges with the law, often linked to untreated PTSD, substance misuse, or difficulty adjusting to civilian life. Whether you\u2019re currently in prison, recently released, or facing charges \u2014 specialist support is available. You\u2019re not alone."}},
-                {"type": "callout", "props": {"text": "This section provides emotional support. For legal advice, please consult a qualified legal professional. We offer wellbeing support and signposting to specialist services."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support Organisations"}},
-                {"type": "support_card", "props": {"title": "NACRO", "description": "Support for people with criminal records", "phone": "0300 123 1999", "url": "https://www.nacro.org.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Forces in Mind Trust", "description": "Research on veterans in justice system", "url": "https://www.fim-trust.org", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Walking With The Wounded", "description": "Employment & justice support for the armed forces", "url": "https://walkingwiththewounded.org.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Project Nova", "description": "Armed forces personnel in the criminal justice system", "phone": "0800 917 7299", "url": "https://www.rfea.org.uk/our-programmes/project-nova/", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Probation Services", "description": "Support after prison release", "phone": "0800 464 0708", "url": "https://www.gov.uk/guidance/probation-services", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Veterans' Gateway", "description": "First point of contact for veterans", "phone": "0808 802 1212", "url": "https://www.veteransgateway.org.uk", "tag": "Carer Support"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== PRIVACY POLICY ==========
-        {
-            "title": "Privacy Policy", "slug": "privacy-policy", "linked_persona": None,
-            "meta_title": "Privacy Policy", "meta_description": "How Radio Check handles your data",
-            "is_system_page": True,
-            "blocks": [
-                {"type": "heading", "props": {"text": "Privacy Policy"}},
-                {"type": "paragraph", "props": {"text": "Last Updated: February 2026"}},
-                {"type": "heading", "props": {"text": "1. Introduction"}},
-                {"type": "paragraph", "props": {"text": "Radio Check (\u201cwe\u201d, \u201cour\u201d, \u201cus\u201d) is committed to protecting the privacy of UK veterans and their families. This Privacy Policy explains how we collect, use, and safeguard your personal information when you use our mobile application and services."}},
-                {"type": "heading", "props": {"text": "2. Information We Collect"}},
-                {"type": "callout", "props": {"text": "Account Information \u2014 Email address, name (optional), password (encrypted), service branch and regiment (optional)."}},
-                {"type": "callout", "props": {"text": "Chat & Communication Data \u2014 Messages with AI companions, messages with peer supporters, callback requests, call logs (metadata only)."}},
-                {"type": "callout", "props": {"text": "Technical Data \u2014 Device type and operating system, IP address (for security purposes), app usage statistics."}},
-                {"type": "heading", "props": {"text": "3. How We Use Your Information"}},
-                {"type": "bullet_list", "props": {"items": ["Provide AI-powered support and companionship", "Connect you with peer supporters", "Detect and respond to crisis situations (safeguarding)", "Improve our services and AI responses", "Send important service notifications", "Comply with legal obligations"]}},
-                {"type": "heading", "props": {"text": "4. AI Chat Processing"}},
-                {"type": "paragraph", "props": {"text": "When you chat with our AI companions, your messages are processed by OpenAI\u2019s language models to generate supportive responses. We do not share your identity with OpenAI. Chat data is also analyzed locally to detect potential crisis situations and trigger our safeguarding protocols."}},
-                {"type": "heading", "props": {"text": "5. Safeguarding"}},
-                {"type": "paragraph", "props": {"text": "Your safety is our priority. Our system automatically monitors conversations for signs of crisis, including expressions of suicidal ideation, self-harm indicators, and severe distress signals. If detected, our safeguarding team may be alerted."}},
-                {"type": "heading", "props": {"text": "6. Data Security"}},
-                {"type": "bullet_list", "props": {"items": ["AES-256 encryption for sensitive data", "Secure password hashing (bcrypt)", "HTTPS for all data transmission", "Regular security audits", "Access controls and staff training"]}},
-                {"type": "heading", "props": {"text": "7. Your Rights (GDPR)"}},
-                {"type": "bullet_list", "props": {"items": ["Access your personal data", "Correct inaccurate data", "Request deletion of your data", "Export your data in a portable format", "Object to certain processing", "Withdraw consent"]}},
-                {"type": "paragraph", "props": {"text": "To exercise these rights, go to Settings > Privacy in the app, or contact us at privacy@radiocheck.me"}},
-                {"type": "heading", "props": {"text": "12. Contact Us"}},
-                {"type": "paragraph", "props": {"text": "For privacy-related queries: privacy@radiocheck.me. For complaints, contact the Information Commissioner\u2019s Office (ICO): ico.org.uk"}},
-            ],
-        },
-        # ========== TERMS OF SERVICE ==========
-        {
-            "title": "Terms of Service", "slug": "terms-of-service", "linked_persona": None,
-            "meta_title": "Terms of Service", "meta_description": "Terms of use for Radio Check",
-            "is_system_page": True,
-            "blocks": [
-                {"type": "heading", "props": {"text": "Terms of Service"}},
-                {"type": "paragraph", "props": {"text": "Last Updated: February 2026"}},
-                {"type": "heading", "props": {"text": "1. Acceptance of Terms"}},
-                {"type": "paragraph", "props": {"text": "By downloading, accessing, or using Radio Check (\u201cthe App\u201d), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the App."}},
-                {"type": "heading", "props": {"text": "2. Service Description"}},
-                {"type": "paragraph", "props": {"text": "Radio Check is a peer support application designed for UK veterans and their families."}},
-                {"type": "bullet_list", "props": {"items": ["AI-powered companions for emotional support", "Peer-to-peer connection (Buddy Finder)", "Access to professional support resources", "WebRTC-based voice calls", "Educational resources and information"]}},
-                {"type": "heading", "props": {"text": "3. Important Disclaimers"}},
-                {"type": "callout", "props": {"text": "Not a Medical Service \u2014 Radio Check is NOT a medical, psychiatric, or therapeutic service. Our AI companions are designed to provide supportive conversation, NOT professional mental health care."}},
-                {"type": "callout", "props": {"text": "Not Emergency Services \u2014 Radio Check is NOT an emergency service. If you are in immediate danger, call 999. For crisis support, contact Samaritans (116 123) or Combat Stress (0800 138 1619)."}},
-                {"type": "callout", "props": {"text": "AI Limitations \u2014 Our AI companions may occasionally provide inaccurate information or inappropriate responses. Always verify important information with official sources."}},
-                {"type": "heading", "props": {"text": "4. User Eligibility"}},
-                {"type": "bullet_list", "props": {"items": ["At least 18 years old", "A UK resident or veteran connected to UK services", "Capable of entering into a legally binding agreement"]}},
-                {"type": "heading", "props": {"text": "5. User Conduct"}},
-                {"type": "paragraph", "props": {"text": "You agree NOT to:"}},
-                {"type": "bullet_list", "props": {"items": ["Use the App for any unlawful purpose", "Harass, abuse, or threaten other users", "Share false information about yourself", "Attempt to manipulate or exploit AI systems", "Interfere with the App\u2019s security or operation"]}},
-                {"type": "heading", "props": {"text": "6. Safeguarding"}},
-                {"type": "paragraph", "props": {"text": "Our commitment to your safety means we may monitor conversations for signs of crisis, alert our safeguarding team if concerned, contact you if we believe you need support, and in extreme cases, contact emergency services. By using the App, you consent to these safeguarding measures."}},
-                {"type": "heading", "props": {"text": "13. Contact"}},
-                {"type": "paragraph", "props": {"text": "For questions about these terms: legal@radiocheck.me"}},
-            ],
-        },
-        # ========== COMMONWEALTH VETERANS ==========
-        {
-            "title": "Commonwealth Veterans", "slug": "commonwealth-veterans", "linked_persona": "kofi",
-            "meta_title": "Commonwealth Veterans Support", "meta_description": "Immigration, settlement, and support for Commonwealth veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "kofi"}},
-                {"type": "heading", "props": {"text": "Commonwealth Veterans"}},
-                {"type": "paragraph", "props": {"text": "You served alongside British forces. Now you deserve the same support. Immigration rights, settlement, healthcare, and community."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Your Rights"}},
-                {"type": "callout", "props": {"text": "Right to Remain in UK \u2014 Commonwealth veterans who have served for at least 4 years (or been medically discharged) can apply for Indefinite Leave to Remain (ILR) without fees. This was won after years of campaigning."}},
-                {"type": "callout", "props": {"text": "Family Settlement Rights \u2014 Your spouse/partner and children under 18 can also apply for settlement. The process has been simplified for military families."}},
-                {"type": "callout", "props": {"text": "British Citizenship \u2014 After holding ILR for 12 months, you can apply for British Citizenship. Some fees may be waived for veterans."}},
-                {"type": "callout", "props": {"text": "The Turing Scheme \u2014 Named in honour of Alan Turing, this scheme waives immigration health surcharges and application fees for Commonwealth veterans and their families."}},
-                {"type": "callout", "props": {"text": "NHS Entitlement \u2014 As a veteran, you are entitled to NHS healthcare. Make sure your GP knows about your military service for priority treatment of service-related conditions."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support Organisations"}},
-                {"type": "support_card", "props": {"title": "CFFVC", "description": "Commonwealth Forces & Families Veterans Community. Founded by Commonwealth veterans, for Commonwealth veterans. They understand the unique challenges you face.", "url": "https://www.cffvc.org", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Royal British Legion", "description": "The RBL supports all veterans including Commonwealth. They can help with welfare, benefits, housing, and immigration issues.", "phone": "0808 802 8080", "url": "https://www.britishlegion.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "SSAFA", "description": "SSAFA provides support to all who serve or have served, regardless of nationality. They offer mentoring, grants, and practical help.", "url": "https://www.ssafa.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Veterans UK", "description": "Government service providing medals, pensions, compensation, and welfare support for all veterans including Commonwealth.", "phone": "0808 1914 218", "url": "https://www.gov.uk/government/organisations/veterans-uk", "tag": "Financial"}},
-                {"type": "support_card", "props": {"title": "Op COURAGE", "description": "NHS specialist mental health service designed specifically for armed forces veterans. Available to all veterans regardless of nationality.", "url": "https://www.nhs.uk/nhs-services/armed-forces-community/mental-health/veterans-reservists/", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Combat Stress", "description": "Free specialist mental health treatment for veterans. They understand military trauma including the unique experiences of Commonwealth service.", "phone": "0800 138 1619", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== COMPENSATION SCHEMES ==========
-        {
-            "title": "Compensation Schemes", "slug": "compensation-schemes", "linked_persona": "jack",
-            "meta_title": "Military Compensation Schemes", "meta_description": "AFCS, War Pension, and compensation guidance for veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "jack"}},
-                {"type": "heading", "props": {"text": "Compensation Schemes"}},
-                {"type": "paragraph", "props": {"text": "If you were injured or became ill because of your service, you may be entitled to compensation. Understanding the system is the first step."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Scheme Overview"}},
-                {"type": "callout", "props": {"text": "Armed Forces Compensation Scheme (AFCS) \u2014 The AFCS is a no-fault scheme for injuries or illness caused by service on or after 6 April 2005. It provides a tax-free lump sum and potentially a Guaranteed Income Payment (GIP) for more serious conditions."}},
-                {"type": "callout", "props": {"text": "War Pension Scheme \u2014 The War Pension Scheme provides tax-free compensation to veterans with injuries or illness caused by service before 6 April 2005. Payments are ongoing and based on the level of disability assessed."}},
-                {"type": "callout", "props": {"text": "Hearing Loss Claims (RBL) \u2014 The Royal British Legion provides free expert guidance and tribunal representation for hearing loss claims related to military service."}},
-                {"type": "callout", "props": {"text": "Matrix Agreement \u2014 Hearing Loss \u2014 The Matrix Agreement is a High Court-approved settlement scheme for military hearing loss claims. It provides a streamlined claims process."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support & Resources"}},
-                {"type": "support_card", "props": {"title": "Veterans UK", "description": "The government body that processes AFCS and War Pension claims. They also provide welfare support and guidance throughout the claims process.", "phone": "0808 1914 218", "url": "https://www.gov.uk/government/organisations/veterans-uk", "tag": "Financial"}},
-                {"type": "support_card", "props": {"title": "Royal British Legion", "description": "Free expert tribunal representation and claims guidance for veterans. They have specialist benefits advisors who can help you navigate the compensation process.", "phone": "0808 802 8080", "url": "https://www.britishlegion.org.uk", "tag": "Financial"}},
-                {"type": "support_card", "props": {"title": "Blesma - The Limbless Veterans", "description": "If your service injury involved limb loss, Blesma provides specialist support including grants, prosthetic advice, and claims guidance.", "url": "https://blesma.org", "tag": "Practical"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== CRISIS SUPPORT ==========
-        {
-            "title": "Crisis Support", "slug": "crisis-support", "linked_persona": "tommy",
-            "meta_title": "Crisis Support", "meta_description": "24/7 crisis helplines and support",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "tommy"}},
-                {"type": "heading", "props": {"text": "Crisis Support"}},
-                {"type": "callout", "props": {"text": "You\u2019re Not Alone \u2014 If you\u2019re struggling right now, help is available 24/7. Whether you need someone to talk to, professional support, or emergency help \u2014 we\u2019ve got your back. Reaching out is a sign of strength, not weakness."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "24/7 Crisis Helplines"}},
-                {"type": "support_card", "props": {"title": "NHS Mental Health", "description": "Free 24/7 urgent mental health support. Call 111, then press Option 2 to speak to trained mental health professionals.", "phone": "111", "url": "https://www.nhs.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Samaritans", "description": "Whatever you\u2019re going through, a Samaritan will face it with you. Available 24/7, 365 days a year. Free to call.", "phone": "116 123", "url": "https://www.samaritans.org", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Combat Stress", "description": "Free specialist mental health helpline for veterans. Open 24/7. Staffed by people who understand military life.", "phone": "0800 138 1619", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Veterans\u2019 Gateway", "description": "First point of contact for veterans seeking support. They\u2019ll connect you with the right service. Open 24/7.", "phone": "0808 802 1212", "url": "https://www.veteransgateway.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "SHOUT Text Service", "description": "If you can\u2019t talk, text SHOUT to 85258. Free, confidential, 24/7 text support for anyone in crisis.", "phone": "85258", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "CALM", "description": "Campaign Against Living Miserably. Helpline and webchat for anyone who needs to talk. Open 5pm\u2013midnight daily.", "phone": "0800 58 58 58", "url": "https://www.thecalmzone.net", "tag": "Mental Health"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== FAITH & SERVICE ==========
-        {
-            "title": "Faith & Service", "slug": "faith-service", "linked_persona": "james",
-            "meta_title": "Faith & Service", "meta_description": "Spiritual and faith-based support for veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "james"}},
-                {"type": "heading", "props": {"text": "Faith & Service"}},
-                {"type": "paragraph", "props": {"text": "For many who serve, faith is a source of strength. Whether you\u2019re Christian, Muslim, Jewish, Sikh, Hindu, or any other faith, support is available."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Military Chaplaincy"}},
-                {"type": "support_card", "props": {"title": "Royal Army Chaplains' Department", "description": "The Royal Army Chaplains' Department provides spiritual support for soldiers across all faiths. Chaplains serve alongside troops and provide confidential pastoral care.", "url": "https://www.army.mod.uk/who-we-are/corps-regiments-and-units/royal-army-chaplains-department/", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Naval Chaplaincy Service", "description": "Naval Chaplains serve across the Royal Navy and Royal Marines, providing pastoral and spiritual support at sea and ashore.", "url": "https://www.royalnavy.mod.uk/our-people/chaplaincy", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "RAF Chaplains Branch", "description": "RAF Chaplains provide pastoral and spiritual support across all RAF stations and deployments.", "url": "https://www.raf.mod.uk/our-people/chaplains/", "tag": "Carer Support"}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Faith Communities"}},
-                {"type": "support_card", "props": {"title": "Armed Forces Christian Union", "description": "AFCU supports Christians serving in the Armed Forces and veterans, with fellowships, retreats, and community.", "url": "https://www.afcu.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Armed Forces Muslim Association", "description": "Supporting Muslim personnel and veterans with community, representation, and faith-specific guidance.", "url": "https://afma.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "AJEX - Jewish Military Association", "description": "AJEX remembers and honours Jewish service, providing community and support for Jewish veterans.", "url": "https://ajex.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Armed Forces Sikh Association", "description": "Representing and supporting Sikh personnel and veterans in the British Armed Forces.", "url": "https://www.afsa.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Armed Forces Hindu Network", "description": "Supporting Hindu service personnel and veterans with community and faith-based guidance.", "url": "https://www.afhn.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Salvation Army", "description": "The Salvation Army provides practical, emotional, and spiritual support for all, including veterans. No faith requirement to receive help.", "url": "https://www.salvationarmy.org.uk", "tag": "Practical"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== FORCES KIDS ==========
-        {
-            "title": "Forces Kids", "slug": "forces-kids", "linked_persona": "sam",
-            "meta_title": "Forces Kids", "meta_description": "Support for children of military families",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "sam"}},
-                {"type": "heading", "props": {"text": "Forces Kids"}},
-                {"type": "paragraph", "props": {"text": "Growing up in a military family brings unique experiences and challenges. Support is available for children and young people affected by a parent\u2019s service."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support Organisations"}},
-                {"type": "support_card", "props": {"title": "Scotty's Little Soldiers", "description": "Supporting bereaved military children with activities, community, and ongoing support throughout childhood and beyond.", "url": "https://www.scottyslittlesoldiers.co.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Little Troopers", "description": "Little Troopers supports all military children, not just bereaved. Activities, resources, and community for kids with parents who serve.", "url": "https://www.littletroopers.net", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Army Families Federation", "description": "The independent voice for Army families. Information, support, and advocacy on education, housing, and wellbeing.", "url": "https://aff.org.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Naval Families Federation", "description": "Information, support, and advocacy for Royal Navy and Royal Marines families.", "url": "https://nff.org.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "RAF Families Federation", "description": "Independent voice for RAF families providing information, support, and advocacy.", "url": "https://www.raf-ff.org.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Winston's Wish", "description": "The UK\u2019s leading childhood bereavement charity. Expert support for grieving children and young people.", "phone": "08088 020 021", "url": "https://www.winstonswish.org", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Service Pupil Premium", "description": "Schools receive extra funding for children of serving or veteran parents. Make sure your child\u2019s school knows about their military connection.", "url": "https://www.gov.uk/government/publications/the-service-pupil-premium", "tag": "Financial"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== HE SERVED ==========
-        {
-            "title": "He Served", "slug": "he-served", "linked_persona": "dave",
-            "meta_title": "He Served - Men's Veteran Support", "meta_description": "Health, wellbeing, and specialist support for male veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "dave"}},
-                {"type": "heading", "props": {"text": "He Served"}},
-                {"type": "paragraph", "props": {"text": "Men\u2019s health, andropause, military sexual trauma, and veteran-specific support. It\u2019s OK to not be OK."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Topics"}},
-                {"type": "callout", "props": {"text": "The Andropause (Male Menopause) \u2014 Symptoms can include fatigue, depression, reduced libido, weight gain, and brain fog. It\u2019s real, it\u2019s common, and it\u2019s treatable. Talk to your GP."}},
-                {"type": "callout", "props": {"text": "Military Sexual Trauma \u2014 Military Sexual Trauma (MST) affects men too \u2014 and it\u2019s more common than people think. If you\u2019ve experienced MST, specialist support is available and confidential."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support & Resources"}},
-                {"type": "support_card", "props": {"title": "Andy's Man Club", "description": "Free talking groups for men, every Monday at 7pm. No sign-up, no judgement. Just turn up.", "url": "https://andysmanclub.co.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Combat Stress", "description": "Specialist mental health support for veterans. Free, confidential treatment for PTSD, anxiety, depression.", "phone": "0800 138 1619", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "CALM", "description": "Campaign Against Living Miserably. Free helpline and webchat for men who need to talk.", "phone": "0800 58 58 58", "url": "https://www.thecalmzone.net", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Movember", "description": "Funds programmes focused on mental health, suicide prevention, and prostate/testicular cancer.", "url": "https://uk.movember.com", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Prostate Cancer UK", "description": "1 in 8 men will get prostate cancer. Free specialist nurse helpline and information.", "phone": "0800 074 8383", "url": "https://prostatecanceruk.org", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "SurvivorsUK", "description": "Support for male survivors of sexual abuse and assault. Confidential helpline and counselling.", "url": "https://www.survivorsuk.org", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Veterans Gateway", "description": "First point of contact for all veteran support. Available 24/7.", "phone": "0808 802 1212", "url": "https://www.veteransgateway.org.uk", "tag": "Carer Support"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== HISTORICAL INVESTIGATIONS ==========
-        {
-            "title": "Historical Investigations", "slug": "historical-investigations", "linked_persona": "sentry",
-            "meta_title": "Historical Investigations Support", "meta_description": "Support for veterans facing historical investigations",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "sentry"}},
-                {"type": "heading", "props": {"text": "Historical Investigations"}},
-                {"type": "callout", "props": {"text": "We Understand \u2014 Being investigated for actions taken during service is one of the most stressful experiences a veteran can face. The uncertainty, the stigma, and the feeling that the system has turned against you. You are not alone."}},
-                {"type": "callout", "props": {"text": "This section provides emotional support. For legal advice, please consult a qualified legal professional."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support Options"}},
-                {"type": "support_card", "props": {"title": "Combat Stress", "description": "Specialist support for veterans dealing with investigation-related stress, anxiety, PTSD, and depression.", "phone": "0800 138 1619", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Veterans UK Welfare Service", "description": "Confidential welfare support and guidance for veterans facing investigations or legal proceedings.", "phone": "0808 1914 218", "url": "https://www.gov.uk/government/organisations/veterans-uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "SSAFA", "description": "Practical and emotional support for veterans and families during investigations. Including financial support and casework.", "url": "https://www.ssafa.org.uk", "tag": "Carer Support"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== MONEY & BENEFITS ==========
-        {
-            "title": "Money & Benefits", "slug": "money-benefits", "linked_persona": "penny",
-            "meta_title": "Money & Benefits", "meta_description": "Financial support, benefits, and money guidance for veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "penny"}},
-                {"type": "heading", "props": {"text": "Money & Benefits"}},
-                {"type": "paragraph", "props": {"text": "Financial support you may be entitled to as a veteran, plus practical guidance on benefits, discounts, and managing money."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Benefits & Entitlements"}},
-                {"type": "callout", "props": {"text": "Universal Credit \u2014 The main benefit for working-age people. If you\u2019re on a low income or unemployed, you may be entitled. Mention your veteran status as it can affect your claim."}},
-                {"type": "callout", "props": {"text": "Personal Independence Payment (PIP) \u2014 PIP helps with extra living costs if you have a long-term physical or mental health condition. Service-related conditions qualify."}},
-                {"type": "callout", "props": {"text": "War Pension / AFCS \u2014 If you have injuries or illnesses caused by service, you may be entitled to a War Pension or Armed Forces Compensation Scheme payment. Tax-free."}},
-                {"type": "callout", "props": {"text": "Council Tax Discounts \u2014 Several Council Tax discounts and exemptions are available for veterans, especially those with disabilities or on low income."}},
-                {"type": "callout", "props": {"text": "Veterans Railcard \u2014 One-third off rail fares. Available to all veterans with proof of service. \u00a321/year or \u00a361 for 3 years."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support Organisations"}},
-                {"type": "support_card", "props": {"title": "StepChange Debt Charity", "description": "Free, confidential debt advice. They can help with debt management plans, budgeting, and dealing with creditors.", "phone": "0800 138 1111", "url": "https://www.stepchange.org", "tag": "Financial"}},
-                {"type": "support_card", "props": {"title": "Citizens Advice", "description": "Free, independent advice on benefits, debt, housing, and employment rights. Available online, by phone, and face-to-face.", "url": "https://www.citizensadvice.org.uk", "tag": "Financial"}},
-                {"type": "support_card", "props": {"title": "Turn2Us Benefits Calculator", "description": "Free online tool to check what benefits you\u2019re entitled to. Takes about 10 minutes.", "url": "https://benefits-calculator.turn2us.org.uk", "tag": "Financial"}},
-                {"type": "support_card", "props": {"title": "SSAFA Emergency Grants", "description": "SSAFA can provide emergency financial grants for veterans in urgent need \u2014 help with rent, bills, food, and essential items.", "url": "https://www.ssafa.org.uk", "tag": "Financial"}},
-                {"type": "support_card", "props": {"title": "Royal British Legion", "description": "The RBL provides financial advice, emergency grants, and benefits guidance specifically for veterans and their families.", "phone": "0808 802 8080", "url": "https://www.britishlegion.org.uk", "tag": "Financial"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== THEY SERVED ==========
-        {
-            "title": "They Served", "slug": "they-served", "linked_persona": "alex",
-            "meta_title": "They Served - LGBTQ+ Veteran Support", "meta_description": "Support for LGBTQ+ veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "alex"}},
-                {"type": "heading", "props": {"text": "They Served"}},
-                {"type": "paragraph", "props": {"text": "LGBTQ+ veterans served with distinction, often in silence. You deserve the same support, respect, and recognition as every other veteran."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support & Resources"}},
-                {"type": "support_card", "props": {"title": "Fighting With Pride", "description": "The leading charity for LGBTQ+ veterans. Campaigns for recognition, provides community, and supports those dismissed under the ban.", "url": "https://fightingwithpride.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Galop", "description": "LGBT+ anti-violence charity providing support and advice for LGBTQ+ people experiencing hate crime, domestic abuse, or sexual violence.", "phone": "0800 999 5428", "url": "https://galop.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Stonewall", "description": "Leading LGBTQ+ equality charity. Information, support, and advocacy for LGBTQ+ rights and wellbeing.", "url": "https://www.stonewall.org.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Switchboard", "description": "LGBTQ+ listening service. Available 10am\u201310pm daily. Talk about anything that\u2019s on your mind.", "phone": "0300 330 0630", "url": "https://switchboard.lgbt", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "MindOut", "description": "Mental health support specifically for LGBTQ+ communities. Peer support, counselling, and advocacy.", "url": "https://mindout.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Veterans Gateway", "description": "First point of contact for all veteran support. They will connect you with LGBTQ+-friendly services.", "phone": "0808 802 1212", "url": "https://www.veteransgateway.org.uk", "tag": "Carer Support"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== WOMEN VETERANS ==========
-        {
-            "title": "Women Veterans", "slug": "women-veterans", "linked_persona": "megan",
-            "meta_title": "Women Veterans Support", "meta_description": "Specialist support for women who served",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "megan"}},
-                {"type": "heading", "props": {"text": "Women Veterans"}},
-                {"type": "paragraph", "props": {"text": "Women have served in the British Armed Forces for over a century. Your service matters, and specialist support exists for the unique challenges you face."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Support & Resources"}},
-                {"type": "support_card", "props": {"title": "Forward Assist", "description": "Dedicated charity for women who served. Provides support for MST survivors, housing, employment, and peer connection.", "url": "https://www.forward-assist.com", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Sisters in Service", "description": "Network for women in healthcare roles within the military. Community, mentoring, and peer support.", "url": "https://sistersinservice.co.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Salute Her", "description": "Organisation dedicated to recognising and supporting women veterans.", "url": "https://saluteher.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Rape Crisis", "description": "Specialist support for survivors of sexual violence. Free, confidential helpline and counselling.", "phone": "0808 500 2222", "url": "https://rapecrisis.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Women's Aid", "description": "Support for women experiencing domestic abuse. 24/7 helpline, refuges, and specialist services.", "phone": "0808 200 0247", "url": "https://www.womensaid.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Combat Stress", "description": "Free specialist mental health treatment for all veterans, with understanding of women-specific military experiences.", "phone": "0800 138 1619", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Veterans Gateway", "description": "First point of contact for all veteran support including women-specific services.", "phone": "0808 802 1212", "url": "https://www.veteransgateway.org.uk", "tag": "Carer Support"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== SELF CARE ==========
-        {
-            "title": "Self-Care Tools", "slug": "self-care", "linked_persona": "catherine",
-            "meta_title": "Self-Care Tools", "meta_description": "Mental health tools and self-care resources",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "catherine"}},
-                {"type": "heading", "props": {"text": "Self-Care Tools"}},
-                {"type": "paragraph", "props": {"text": "Practical tools to help you manage your mental health. Small steps, done consistently, make a real difference."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Your Toolkit"}},
-                {"type": "callout", "props": {"text": "Mental Health Check \u2014 PHQ-9 & GAD-7 assessments to help you understand where you are right now. Not a diagnosis \u2014 just a starting point for conversation."}},
-                {"type": "callout", "props": {"text": "My Journal \u2014 Write down your thoughts. Getting things out of your head and onto paper (or screen) helps process difficult emotions."}},
-                {"type": "callout", "props": {"text": "Daily Check-in \u2014 Track how you\u2019re feeling day to day. Patterns become visible over time, helping you understand your triggers and progress."}},
-                {"type": "callout", "props": {"text": "Grounding Tools \u2014 When anxiety or flashbacks hit, grounding techniques bring you back to the present moment. 5-4-3-2-1, box breathing, and more."}},
-                {"type": "callout", "props": {"text": "Breathing Exercises \u2014 Simple breathing exercises to calm your nervous system. Box breathing, 4-7-8, and tactical breathing used by military worldwide."}},
-                {"type": "callout", "props": {"text": "Buddy Finder \u2014 Connect with other veterans who understand. Sometimes the best support comes from someone who\u2019s been there."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Resources"}},
-                {"type": "support_card", "props": {"title": "Regimental Associations", "description": "Find your regiment\u2019s association. A community who shares your history and understands your experience.", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Find Local Support", "description": "Discover support services in your local area \u2014 from breakfast clubs to counselling to practical help.", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Resources Library", "description": "Books, podcasts, and resources recommended by veterans for veterans.", "tag": "Practical"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== SUBSTANCE SUPPORT ==========
-        {
-            "title": "Substance Support", "slug": "substance-support", "linked_persona": "margie",
-            "meta_title": "Substance Support", "meta_description": "Alcohol, drugs, and gambling support for veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "margie"}},
-                {"type": "heading", "props": {"text": "Substance Support"}},
-                {"type": "paragraph", "props": {"text": "Alcohol, drugs, and gambling. These things can creep up on anyone \u2014 especially after service. Getting help is not weakness. It\u2019s the smartest thing you\u2019ll do."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Self-Help Steps"}},
-                {"type": "callout", "props": {"text": "Track Your Behaviour \u2014 Keep a diary of when you drink, use, or gamble. Seeing patterns on paper makes them harder to ignore."}},
-                {"type": "callout", "props": {"text": "Identify Your Triggers \u2014 What situations, emotions, or times make you reach for a drink, substance, or bet? Understanding triggers is half the battle."}},
-                {"type": "callout", "props": {"text": "Build a Support Network \u2014 You can\u2019t do this alone. Tell someone you trust. Join a group. Use the buddy system."}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Alcohol Support"}},
-                {"type": "support_card", "props": {"title": "Tom Harrison House", "description": "UK\u2019s only dedicated addiction treatment centre for veterans. Residential treatment, aftercare, and family support.", "url": "https://www.tomharrisonhouse.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Combat Stress", "description": "Specialist mental health support for veterans, including addiction that co-occurs with PTSD and trauma.", "phone": "0800 138 1619", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Alcoholics Anonymous UK", "description": "Free peer support groups. Meetings across the UK, online and in person.", "phone": "0800 917 7650", "url": "https://www.alcoholics-anonymous.org.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Drinkline", "description": "Free, confidential helpline for anyone worried about their own or someone else\u2019s drinking.", "phone": "0300 123 1110", "tag": "Mental Health"}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Drug Support"}},
-                {"type": "support_card", "props": {"title": "FRANK", "description": "Free, confidential advice on drugs. Information about substances, effects, and where to get help.", "phone": "0300 123 6600", "url": "https://www.talktofrank.com", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Narcotics Anonymous UK", "description": "Free peer support for anyone affected by drug use. Regular meetings across the UK.", "phone": "0300 999 1212", "url": "https://ukna.org", "tag": "Practical"}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Gambling Support"}},
-                {"type": "support_card", "props": {"title": "GamCare", "description": "Free information, support, and counselling for problem gambling. Helpline and online chat.", "phone": "0808 802 0133", "url": "https://www.gamcare.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "GamStop", "description": "Free self-exclusion scheme. Restrict your online gambling across all UK-licensed sites.", "url": "https://www.gamstop.co.uk", "tag": "Practical"}},
-                {"type": "support_card", "props": {"title": "Gamblers Anonymous UK", "description": "Free peer support meetings for compulsive gamblers. In-person and online.", "url": "https://www.gamblersanonymous.org.uk", "tag": "Practical"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
-        # ========== ORGANIZATIONS ==========
-        {
-            "title": "Support Organisations", "slug": "organizations", "linked_persona": "baz",
-            "meta_title": "Support Organisations", "meta_description": "UK organisations supporting veterans",
-            "blocks": [
-                {"type": "chat_banner", "props": {"persona": "baz"}},
-                {"type": "heading", "props": {"text": "Support Organisations"}},
-                {"type": "paragraph", "props": {"text": "UK organisations providing support to veterans. All services are confidential."}},
-                {"type": "support_card", "props": {"title": "Veterans Breakfast Clubs", "description": "Meet fellow veterans over a brew \u2014 nationwide directory of local breakfast clubs.", "url": "https://afvbc.com/armed-forces-veterans-breakfast-clubs-directory", "tag": "Practical"}},
-                {"type": "divider", "props": {}},
-                {"type": "heading", "props": {"text": "Major Charities"}},
-                {"type": "support_card", "props": {"title": "Royal British Legion", "description": "The UK\u2019s largest armed forces charity. Benefits advice, emergency grants, employment support, and welfare.", "phone": "0808 802 8080", "url": "https://www.britishlegion.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "SSAFA", "description": "Practical and emotional support for serving personnel, veterans, and families since 1885.", "url": "https://www.ssafa.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Help for Heroes", "description": "Recovery programmes, grants, and rehabilitation support for wounded veterans.", "url": "https://www.helpforheroes.org.uk", "tag": "Carer Support"}},
-                {"type": "support_card", "props": {"title": "Combat Stress", "description": "Specialist mental health treatment for veterans. Free and confidential.", "phone": "0800 138 1619", "url": "https://combatstress.org.uk", "tag": "Mental Health"}},
-                {"type": "support_card", "props": {"title": "Veterans Gateway", "description": "First point of contact for all veteran support. Available 24/7.", "phone": "0808 802 1212", "url": "https://www.veteransgateway.org.uk", "tag": "Carer Support"}},
-                {"type": "divider", "props": {}},
-                {"type": "crisis_footer", "props": {}},
-            ],
-        },
+API_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://pages-batch-cms.preview.emergentagent.com")
+# Login
+r = requests.post(f"{API_URL}/api/auth/login", json={"email": "admin@veteran.dbty.co.uk", "password": "ChangeThisPassword123!"})
+token = r.json().get("token")
+if not token:
+    print("Login failed:", r.json())
+    sys.exit(1)
+headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+# Helper
+def sc(title, desc, phone="", url="", tag=""):
+    return {"type": "support_card", "props": {"title": title, "description": desc, "phone": phone, "url": url, "tag": tag}}
+
+def co(title, desc, icon="message-circle", color="#0d9488"):
+    return {"type": "callout", "props": {"text": f"{title} \u2014 {desc}", "icon": icon, "iconColor": color}}
+
+def h(text):
+    return {"type": "heading", "props": {"text": text}}
+
+def p(text):
+    return {"type": "paragraph", "props": {"text": text}}
+
+def bl(items):
+    return {"type": "bullet_list", "props": {"items": items}}
+
+def cb(persona):
+    return {"type": "chat_banner", "props": {"persona": persona}}
+
+def div():
+    return {"type": "divider", "props": {}}
+
+def cf():
+    return {"type": "crisis_footer", "props": {}}
+
+# =========================================================
+# PAGE DATA
+# =========================================================
+
+PAGES = []
+
+# --- ABOUT ---
+PAGES.append({
+    "title": "About Radio Check",
+    "slug": "about",
+    "linked_persona": "tommy",
+    "blocks": [
+        h("About Radio Check"),
+        co("What Is Radio Check?", "Radio Check combines peer support and AI conversation to give veterans a place to talk when it matters.", "compass", "#3b82f6"),
+        p("Sometimes a real person isn't available straight away. When that happens, the chat is there \u2014 so you're not carrying things alone."),
+        p("Talking helps. Even talking here."),
+        div(),
+        co("What the AI Is For", "The AI is here to listen without judgement, help you slow things down, let you get things off your chest, and encourage healthy coping and real-world support.", "shield", "#22c55e"),
+        p("You're always in control of the conversation."),
+        co("What the AI Is Not For", "The AI does not give medical or legal advice, diagnose or treat conditions, replace professionals, or handle emergencies on its own.", "alert-triangle", "#dc2626"),
+        p("If you're in immediate danger, human help matters most \u2014 and we'll always encourage that."),
+        div(),
+        co("Is This Right for Me?", "Radio Check may help if you feel low, stressed, angry, or stuck; find it easier to talk in writing; don't want to feel like a burden; or just need somewhere safe to talk.", "eye", "#f59e0b"),
+        p("You don't need to be in crisis to use this."),
+        co("Safety & Trust", "Safeguarding comes first. Conversations handled with care. No judgement. No pressure. Your privacy matters.", "shield", "#7c3aed"),
+        p("We're upfront about what this is \u2014 and what it isn't."),
+        div(),
+        h("The Bottom Line"),
+        p("If Radio Check helps you feel even a little less alone, it's doing its job."),
+        p("Someone is on the net."),
     ]
+})
+
+# --- CRIMINAL JUSTICE ---
+PAGES.append({
+    "title": "Criminal Justice Support",
+    "slug": "criminal-justice",
+    "linked_persona": "doris",
+    "blocks": [
+        cb("doris"),
+        h("Criminal Justice Support"),
+        co("We Understand", "Serving personnel and veterans can face unique challenges with the law, often linked to untreated PTSD, substance misuse, or difficulty adjusting to civilian life. Whether you're currently in prison, recently released, or facing charges \u2014 specialist support is available. You're not alone.", "scale", "#4f46e5"),
+        co("This Section Provides Emotional Support", "For legal advice, please consult a qualified legal professional. We offer wellbeing support and signposting to specialist services.", "alert-triangle", "#22c55e"),
+        div(),
+        h("Support Organisations"),
+        p("Specialist services for veterans in the justice system"),
+        sc("NACRO", "Support for people with criminal records", "0300 123 1999", "https://www.nacro.org.uk"),
+        sc("Forces in Mind Trust", "Research on veterans in justice system", "", "https://www.fim-trust.org"),
+        sc("Walking With The Wounded", "Employment & justice support for the armed forces", "", "https://walkingwiththewounded.org.uk"),
+        sc("Project Nova", "Armed forces personnel in the criminal justice system", "0800 917 7299", "https://www.rfea.org.uk/our-programmes/project-nova/"),
+        sc("Probation Services", "Support after prison release", "0800 464 0708", "https://www.gov.uk/guidance/probation-services"),
+        sc("Veterans' Gateway", "First point of contact for veterans", "0808 802 1212", "https://www.veteransgateway.org.uk"),
+        div(),
+        co("Tip", "Project Nova works specifically with veterans at every stage of the criminal justice system \u2014 from arrest to release.", "star", "#f59e0b"),
+        cf(),
+    ]
+})
+
+# --- CRISIS SUPPORT ---
+PAGES.append({
+    "title": "Crisis Support",
+    "slug": "crisis-support",
+    "linked_persona": "tommy",
+    "blocks": [
+        cb("tommy"),
+        h("Crisis Support"),
+        co("You're Not Alone", "If you're struggling right now, help is available 24/7. Whether you need someone to talk to, professional support, or emergency help \u2014 we've got your back. Reaching out is a sign of strength, not weakness.", "heart", "#dc2626"),
+        div(),
+        h("24/7 Crisis Helplines"),
+        sc("NHS Mental Health", "Free 24/7 urgent mental health support. Call 111, then press Option 2 to speak to trained mental health professionals.", "", "", "Mental Health"),
+        sc("Samaritans", "24/7 emotional support for anyone in distress. Free to call, always confidential.", "116 123", "https://www.samaritans.org", "Mental Health"),
+        sc("Combat Stress", "Veterans' mental health charity. Specialist support from people who understand military life. 24/7 helpline.", "0800 138 1619", "https://combatstress.org.uk", "Mental Health"),
+        sc("Veterans Gateway", "First point of contact for veterans seeking support. Connects you to the right services.", "0808 802 1212", "https://www.veteransgateway.org.uk"),
+        sc("SSAFA", "Armed Forces charity supporting serving personnel, veterans and their families since 1885.", "0800 731 4880", "https://www.ssafa.org.uk"),
+        sc("East Durham Veterans Trust", "Local North East support with counselling, peer groups, housing and benefits help. Mon-Fri 9am-4pm.", "0191 581 5677", "https://www.eastdurhamveteranstrust.org.uk"),
+        div(),
+        p("All services listed are free and confidential."),
+        cf(),
+    ]
+})
+
+# --- HE SERVED ---
+PAGES.append({
+    "title": "He Served",
+    "slug": "he-served",
+    "linked_persona": "dave",
+    "blocks": [
+        cb("dave"),
+        h("He Served"),
+        p("Your service shaped you. But it doesn't have to define how you suffer. It's time to talk about the stuff that doesn't get talked about."),
+        div(),
+        h("What We Cover"),
+        co("It's Okay to Not Be Okay", "The military taught you to push through. But bottling it up doesn't make it go away. Talking isn't weakness \u2014 it's maintenance.", "message-circle", "#3b82f6"),
+        co("The Andropause (Male Menopause)", "Testosterone drops with age \u2014 fatigue, irritability, low mood, reduced libido, weight gain. It's not 'getting old', it's a medical condition. Your GP can test and treat it.", "activity", "#f59e0b"),
+        co("Military Sexual Trauma", "MST happens to men too. More than you think. It wasn't your fault and you're not alone. Specialist support exists that understands the military context.", "shield", "#ec4899"),
+        co("Anger & Aggression", "Hyper-vigilance and aggression were survival tools in theatre. In civvy street, they destroy relationships and careers. Understanding the 'why' is the first step.", "zap", "#ef4444"),
+        co("Alcohol & Substance Use", "The drinking culture in the forces normalises heavy use. When it follows you into civilian life and starts causing problems, it's time to take stock.", "flame", "#d97706"),
+        co("Prostate & Testicular Health", "Check yourself regularly. Know the symptoms. Early detection saves lives. Don't be embarrassed \u2014 your GP has seen it all before.", "stethoscope", "#10b981"),
+        co("Isolation & Loneliness", "Going from a tight-knit unit to civilian isolation hits hard. Finding your tribe again takes effort, but groups like Andy's Man Club prove there are men who get it.", "users", "#8b5cf6"),
+        co("Suicide Prevention", "If you're having thoughts about ending it \u2014 please reach out. Veterans are at higher risk. Call CALM on 0800 58 58 58 or Samaritans on 116 123.", "heart", "#dc2626"),
+        div(),
+        h("Support & Resources"),
+        sc("Andy's Man Club", "Free talking groups for men, every Monday at 7pm. No referral needed, no sign-up \u2014 just turn up.", "", "https://andysmanclub.co.uk"),
+        sc("Combat Stress", "Specialist mental health support for veterans. 24/7 helpline: 0800 138 1619.", "0800 138 1619", "https://combatstress.org.uk", "Mental Health"),
+        sc("CALM", "Dedicated to preventing male suicide. Free helpline 0800 58 58 58, 5pm-midnight daily.", "0800 58 58 58", "https://www.thecalmzone.net", "Mental Health"),
+        sc("Movember", "Men's health \u2014 mental health, suicide prevention, prostate & testicular cancer.", "", "https://uk.movember.com"),
+        sc("Prostate Cancer UK", "Support, information and research. Specialist nurse helpline: 0800 074 8383.", "0800 074 8383", "https://prostatecanceruk.org"),
+        sc("Men's Health Forum", "Improving health for men and boys. Practical health information.", "", "https://www.menshealthforum.org.uk"),
+        sc("NHS - Male Menopause", "Understanding male hormone changes. Your GP can check testosterone levels.", "", "https://www.nhs.uk/conditions/male-menopause/"),
+        sc("The Survivors Trust (MST)", "Support for men who experienced military sexual trauma. Helpline: 0808 801 0818.", "0808 801 0818", "https://www.thesurvivorstrust.org"),
+        sc("SurvivorsUK", "Support for men who have experienced sexual violence. Counselling and online helpline.", "", "https://www.survivorsuk.org"),
+        sc("Veterans Gateway", "First point of contact for veteran support. 24/7: 0808 802 1212.", "0808 802 1212", "https://www.veteransgateway.org.uk"),
+        sc("SSAFA", "Lifelong support for Armed Forces and families.", "0800 731 4880", "https://www.ssafa.org.uk"),
+        sc("Help for Heroes", "Recovery and support for wounded veterans.", "", "https://www.helpforheroes.org.uk"),
+        div(),
+        cf(),
+    ]
+})
+
+# --- HISTORICAL INVESTIGATIONS ---
+PAGES.append({
+    "title": "Warfare on Lawfare",
+    "slug": "historical-investigations",
+    "linked_persona": "james",
+    "blocks": [
+        cb("james"),
+        h("Warfare on Lawfare"),
+        co("We Understand", "Being part of a historical investigation \u2014 whether related to Northern Ireland, Iraq, Afghanistan, or other legacy cases \u2014 can bring intense stress, anxiety, and emotional strain. You may be experiencing difficult emotions years after your service. This is a normal response to an abnormal situation.", "shield", "#6366f1"),
+        co("This Section Provides Emotional Support", "We offer wellbeing and mental health support, not legal advice. For legal matters, please consult a qualified legal professional.", "alert-triangle", "#22c55e"),
+        div(),
+        h("Support Options"),
+        p("Confidential support from those who understand"),
+        sc("Combat Stress", "Specialist support for veterans dealing with investigation-related stress and anxiety", "0191 270 4378", ""),
+        sc("Veterans UK Welfare Service", "Confidential welfare support and guidance for veterans facing investigations", "0191 270 4378", ""),
+        sc("SSAFA", "Practical and emotional support for veterans and families during difficult times", "0191 270 4378", ""),
+        div(),
+        co("Non-judgemental Support", "All support services listed here provide confidential, non-judgemental help. We make no assumptions and offer support regardless of circumstances.", "shield", "#7c3aed"),
+        p("If you feel at immediate risk of harming yourself or others, call 999 or use the crisis support page."),
+        cf(),
+    ]
+})
+
+# --- COMPENSATION SCHEMES ---
+PAGES.append({
+    "title": "Compensation Schemes",
+    "slug": "compensation-schemes",
+    "linked_persona": "jack",
+    "blocks": [
+        cb("jack"),
+        h("Compensation Schemes"),
+        co("Introduction", "If you've been injured or become ill due to military service, you may be entitled to compensation. Jack can help you understand your options, or browse the resources below.", "compass", "#059669"),
+        div(),
+        h("Official Government Schemes"),
+        p("These are the official compensation schemes administered by Veterans UK"),
+        co("Armed Forces Compensation Scheme (AFCS)", "For injuries or illness caused by service on or after 6 April 2005. Lump sum payments from \u00a31,236 to \u00a3650,000. Tax-free Guaranteed Income Payment for serious injuries. Must claim within 7 years.", "shield", "#059669"),
+        co("War Pension Scheme", "For injuries or illness caused by service before 6 April 2005. Weekly pension payments based on disablement level. No time limit on claims \u2014 you can apply many years after leaving.", "shield", "#059669"),
+        co("Tribunal Guide", "If your claim is rejected, you can appeal to an independent tribunal. Charities like RBL can represent you for free.", "scale", "#059669"),
+        div(),
+        h("Charities & Support Organisations"),
+        p("These organisations can help you with claims for free \u2014 no lawyers needed"),
+        sc("Royal British Legion", "Free claims advice and support for all veterans. Expert help with forms, medical evidence, and tribunal representation.", "", "https://www.britishlegion.org.uk/get-support/expert-guidance/money-debt/war-pensions-scheme"),
+        sc("Hearing Loss Claims (RBL)", "Royal British Legion guidance on military hearing loss claims.", "", "https://www.britishlegion.org.uk/get-support/expert-guidance/tribunal-representation/military-hearing-loss-claims"),
+        sc("Matrix Agreement - Hearing Loss", "DEADLINE EXTENDED TO 31 JULY 2026. Over 70,000 veterans may be eligible. Awards often much higher than AFCS.", "", "https://veteranswelfaregroup.co.uk/news/the-matrix-agreement-extending-the-hearing-loss-claims-deadline/"),
+        sc("Blesma - The Limbless Veterans", "Support for veterans who have lost limbs. Expert help with War Pension and AFCS claims.", "", "https://blesma.org/war-pension-scheme/"),
+        div(),
+        co("Beware of Claims Companies", "You don't need to pay a solicitor or claims company. The charities listed above offer free help. Claims companies often take 20-30% of your compensation.", "alert-triangle", "#f59e0b"),
+        cf(),
+    ]
+})
+
+# --- PRIVACY POLICY ---
+PAGES.append({
+    "title": "Privacy Policy",
+    "slug": "privacy-policy",
+    "blocks": [
+        h("Privacy Policy"),
+        p("Last Updated: February 2026"),
+        h("1. Introduction"),
+        p("Radio Check is committed to protecting the privacy of UK veterans and their families. This Privacy Policy explains how we collect, use, and safeguard your personal information when you use our mobile application and services."),
+        h("2. Information We Collect"),
+        p("Account Information: Email address, Name (optional), Password (encrypted), Service branch and regiment (optional)."),
+        p("Chat & Communication Data: Messages with AI companions, Messages with peer supporters, Callback requests, Call logs (metadata only)."),
+        p("Technical Data: Device type and operating system, IP address (for security purposes), App usage statistics."),
+        h("3. How We Use Your Information"),
+        bl(["Provide AI-powered support and companionship", "Connect you with peer supporters", "Detect and respond to crisis situations (safeguarding)", "Improve our services and AI responses", "Send important service notifications", "Comply with legal obligations"]),
+        h("4. AI Chat Processing"),
+        p("When you chat with our AI companions, your messages are processed by OpenAI's language models to generate supportive responses. We do not share your identity with OpenAI. Chat data is also analyzed locally to detect potential crisis situations."),
+        h("5. Safeguarding"),
+        p("Your safety is our priority. Our system automatically monitors conversations for signs of crisis, including expressions of suicidal ideation, self-harm indicators, and severe distress signals. If detected, our safeguarding team may be alerted."),
+        h("6. Data Security"),
+        bl(["AES-256 encryption for sensitive data", "Secure password hashing (bcrypt)", "HTTPS for all data transmission", "Regular security audits", "Access controls and staff training"]),
+        h("7. Data Retention"),
+        p("Account data: Retained while your account is active, plus 7 years after deletion. Chat history: 7 years (for safeguarding audit purposes). Technical logs: 90 days."),
+        h("8. Your Rights (GDPR)"),
+        bl(["Access your personal data", "Correct inaccurate data", "Request deletion of your data", "Export your data in a portable format", "Object to certain processing", "Withdraw consent"]),
+        p("To exercise these rights, go to Settings > Privacy in the app, or contact us at privacy@radiocheck.me"),
+        h("9. Third-Party Services"),
+        bl(["OpenAI: AI chat processing (USA, with Standard Contractual Clauses)", "MongoDB Atlas: Database hosting (UK/EU)", "Render: Application hosting (EU)", "Expo: Mobile app services"]),
+        h("10. Contact Us"),
+        p("For privacy-related queries: Email: privacy@radiocheck.me. For complaints, you may also contact the Information Commissioner's Office (ICO): ico.org.uk"),
+    ]
+})
+
+# --- TERMS OF SERVICE ---
+PAGES.append({
+    "title": "Terms of Service",
+    "slug": "terms-of-service",
+    "blocks": [
+        h("Terms of Service"),
+        p("Last Updated: February 2026"),
+        h("1. Acceptance of Terms"),
+        p("By downloading, accessing, or using Radio Check, you agree to be bound by these Terms of Service. If you do not agree, please do not use the App."),
+        h("2. Service Description"),
+        bl(["AI-powered companions for emotional support", "Peer-to-peer connection (Buddy Finder)", "Access to professional support resources", "WebRTC-based voice calls", "Educational resources and information"]),
+        h("3. Important Disclaimers"),
+        co("Not a Medical Service", "Radio Check is NOT a medical, psychiatric, or therapeutic service. Our AI companions cannot diagnose conditions, prescribe treatments, or provide therapy.", "alert-triangle", "#dc2626"),
+        co("Not Emergency Services", "If you are in immediate danger, call 999. For crisis support, contact Samaritans (116 123) or Combat Stress (0800 138 1619).", "alert-triangle", "#dc2626"),
+        h("4. User Eligibility"),
+        bl(["At least 18 years old", "A UK resident or veteran connected to UK services", "Capable of entering into a legally binding agreement"]),
+        h("5. User Conduct"),
+        p("You agree NOT to use the App for unlawful purposes, harass or threaten other users, share false information, attempt to exploit AI systems, or interfere with the App's security."),
+        h("6. Safeguarding"),
+        p("By using the App, you consent to our safeguarding measures including monitoring conversations for signs of crisis and alerting our safeguarding team when concerned."),
+        h("7. Governing Law"),
+        p("These terms are governed by the laws of England and Wales."),
+        h("8. Contact"),
+        p("For questions: support@radiocheck.me. Privacy concerns: privacy@radiocheck.me"),
+    ]
+})
+
+# --- COMMONWEALTH VETERANS ---
+PAGES.append({
+    "title": "Commonwealth Comrades",
+    "slug": "commonwealth-veterans",
+    "linked_persona": "kofi",
+    "blocks": [
+        cb("kofi"),
+        h("Commonwealth Comrades"),
+        p("From Fiji to Jamaica, Nepal to Ghana \u2014 Commonwealth citizens have served with distinction in the British Armed Forces. This page is for you."),
+        div(),
+        co("Key Rights \u2014 Know Your Entitlements", "FREE settlement (ILR) after 4+ years service. FREE settlement for your spouse & children. Same pension & compensation as UK veterans. Full NHS healthcare entitlement. Armed Forces Covenant protections.", "shield", "#14b8a6"),
+        div(),
+        h("Your Rights"),
+        co("Right to Remain in UK", "Commonwealth veterans who served 4+ years are entitled to Indefinite Leave to Remain (ILR). Since 2022, this is FREE \u2014 no immigration fees for you or your family.", "home", "#14b8a6"),
+        co("Family Settlement Rights", "Your spouse/partner and children under 18 can also apply for settlement. As of 2022, there are no fees for these applications.", "users", "#14b8a6"),
+        co("British Citizenship", "After holding ILR for 12 months, you can apply for British Citizenship. Full voting rights and a British passport.", "flag", "#14b8a6"),
+        div(),
+        h("Support Organisations"),
+        sc("CFFVC", "Commonwealth Forces Families & Veterans Council. They understand the unique challenges you face.", "", "https://cffvc.org.uk"),
+        sc("Royal British Legion", "Support for ALL veterans, regardless of nationality. Welfare services, financial support, and advocacy.", "", "https://www.britishlegion.org.uk"),
+        sc("SSAFA", "Practical, emotional, and financial support. Caseworkers help navigate UK systems.", "", "https://www.ssafa.org.uk"),
+        sc("Veterans UK", "Government support \u2014 pensions, compensation, and welfare. Contact: 0808 1914 218", "0808 1914 218", "https://www.gov.uk/government/organisations/veterans-uk"),
+        div(),
+        h("Health & Wellbeing"),
+        sc("NHS Entitlement", "You are entitled to FREE NHS healthcare. Register with a GP and mention veteran status.", "", "https://www.nhs.uk/nhs-services/armed-forces-community"),
+        sc("Op COURAGE", "NHS veterans' mental health service. Self-referral available \u2014 no GP needed.", "", "https://www.nhs.uk/nhs-services/armed-forces-community/mental-health/veterans-reservists"),
+        sc("Combat Stress", "Specialist mental health treatment. 24/7 Helpline: 0800 138 1619.", "0800 138 1619", "https://combatstress.org.uk"),
+        div(),
+        cf(),
+    ]
+})
+
+# --- FAITH & SERVICE ---
+PAGES.append({
+    "title": "Faith & Service",
+    "slug": "faith-service",
+    "linked_persona": "catherine",
+    "blocks": [
+        cb("catherine"),
+        h("Faith & Service"),
+        p("Whatever your faith \u2014 or none \u2014 spiritual support is available. Chaplains serve all personnel, and faith communities welcome veterans."),
+        co("One Team, Many Faiths", "The British Armed Forces respect and accommodate all faiths. Christians, Muslims, Sikhs, Hindus, Jews, Buddhists, and those of no faith serve side by side. Your beliefs are valued.", "globe", "#8b5cf6"),
+        div(),
+        h("Armed Forces Chaplaincy"),
+        co("Royal Army Chaplains' Department", "Pastoral care and spiritual support to soldiers of all faiths and none. Padres deploy alongside troops and provide a confidential ear.", "shield", "#4f46e5"),
+        co("Naval Chaplaincy Service", "Spiritual care at sea and shore. Support on ships, submarines, and shore establishments.", "anchor", "#4f46e5"),
+        co("RAF Chaplains Branch", "Spiritual support across all RAF stations worldwide. Available 24/7.", "compass", "#4f46e5"),
+        div(),
+        h("Faith Communities"),
+        co("Christian Support", "Armed Forces Christian Union, Forces Chaplaincy, and the Salvation Army all provide support for Christian veterans.", "book-open", "#3b82f6"),
+        co("Muslim Support", "Armed Forces Muslim Association (AFMA) supports Muslim personnel and veterans. Muslim chaplains (Imams) provide Islamic spiritual care.", "globe", "#059669"),
+        co("Jewish Support", "AJEX \u2014 Association of Jewish Ex-Servicemen represents Jewish veterans. Jewish military chaplains provide spiritual support.", "star", "#f59e0b"),
+        co("Sikh Support", "Armed Forces Sikh Association (AFSA) represents Sikhs. A proud tradition of service dating back generations.", "shield", "#ea580c"),
+        co("Hindu & Buddhist Support", "Armed Forces Hindu Network and Buddhist Society provide spiritual guidance, meditation, and community.", "leaf", "#8b5cf6"),
+        co("No Faith? That's OK Too", "Military chaplains support ALL personnel \u2014 including those with no religious faith. You don't need to be religious to talk.", "message-circle", "#6b7280"),
+        div(),
+        co("Moral Injury Support", "The deep distress from actions that violate your moral code affects many veterans. Chaplains and specialist therapists understand this.", "heart", "#ec4899"),
+        cf(),
+    ]
+})
+
+# --- SUBSTANCE SUPPORT ---
+PAGES.append({
+    "title": "Substance Support",
+    "slug": "substance-support",
+    "linked_persona": "sam",
+    "blocks": [
+        cb("sam"),
+        h("Substance Support"),
+        p("The drinking culture in the forces normalises heavy use. If it's following you into civilian life and causing problems, there's no judgement here \u2014 just support."),
+        div(),
+        h("Understanding the Issue"),
+        co("You're Not Weak", "Substance use in the military is common \u2014 alcohol especially. Using substances to cope with trauma, boredom, or the transition to civilian life doesn't make you weak. It makes you human.", "heart", "#f59e0b"),
+        co("When It Becomes a Problem", "If drinking or substance use is affecting your relationships, work, health, or mood \u2014 it's time to take stock. You don't need to hit rock bottom to ask for help.", "alert-triangle", "#ef4444"),
+        div(),
+        h("Support Services"),
+        sc("Change Grow Live", "NHS-funded drug and alcohol treatment services across England.", "", "https://www.changegrowlive.org", "Mental Health"),
+        sc("Turning Point", "Support for people affected by drug and alcohol use. Free, confidential.", "", "https://www.turning-point.co.uk"),
+        sc("Drinkline", "Free helpline for people concerned about their drinking. 0300 123 1110.", "0300 123 1110", ""),
+        sc("Alcoholics Anonymous", "Fellowship of people who share their experience to help others recover.", "0800 917 7650", "https://www.alcoholics-anonymous.org.uk"),
+        sc("FRANK", "Honest information about drugs. Free helpline: 0300 123 6600.", "0300 123 6600", "https://www.talktofrank.com"),
+        sc("Combat Stress", "Understand the link between military trauma and substance use. 24/7: 0800 138 1619.", "0800 138 1619", "https://combatstress.org.uk", "Mental Health"),
+        sc("Tom Harrison House", "Residential treatment for veterans with addiction. Military-sensitive environment.", "", "https://www.tomharrisonhouse.org.uk"),
+        div(),
+        cf(),
+    ]
+})
+
+# --- WOMEN VETERANS ---
+PAGES.append({
+    "title": "She Served Too",
+    "slug": "women-veterans",
+    "linked_persona": "rita",
+    "blocks": [
+        cb("rita"),
+        h("She Served Too"),
+        p("Women have served in the British Armed Forces with courage and distinction. Your service matters, your experiences are valid, and support is available."),
+        div(),
+        h("What We Cover"),
+        co("Recognition", "Women's military service has often been overlooked or minimised. Whether you served on the front line, in support roles, or anywhere in between \u2014 your contribution matters.", "star", "#ec4899"),
+        co("Military Sexual Trauma", "MST is a reality for too many servicewomen. It was NOT your fault. Specialist support exists and you will be believed.", "shield", "#dc2626"),
+        co("Transition Challenges", "Women veterans face unique challenges \u2014 from gender-specific health needs to finding peer support groups that understand.", "compass", "#8b5cf6"),
+        co("Mental Health", "PTSD, anxiety, and depression affect women veterans too. The symptoms may present differently, but the need for support is the same.", "heart", "#3b82f6"),
+        div(),
+        h("Support & Resources"),
+        sc("Women Veterans Network UK", "Peer support and advocacy for women who served.", "", "https://www.womensveteransnetwork.org.uk"),
+        sc("Salute Her", "Celebrating and supporting women who served in the Armed Forces.", "", "https://www.saluteher.co.uk"),
+        sc("The Survivors Trust", "Support for those affected by sexual violence. Helpline: 0808 801 0818.", "0808 801 0818", "https://www.thesurvivorstrust.org"),
+        sc("Combat Stress", "Specialist mental health support for veterans. 24/7 helpline.", "0800 138 1619", "https://combatstress.org.uk", "Mental Health"),
+        sc("SSAFA", "Practical, emotional, and financial support for all who served.", "0800 731 4880", "https://www.ssafa.org.uk"),
+        div(),
+        cf(),
+    ]
+})
+
+# --- MONEY & BENEFITS ---
+PAGES.append({
+    "title": "Money & Benefits",
+    "slug": "money-benefits",
+    "linked_persona": "jack",
+    "blocks": [
+        cb("jack"),
+        h("Money & Benefits"),
+        p("Financial worries can affect every part of your life. Veterans are entitled to specific benefits and support \u2014 make sure you're getting what you deserve."),
+        div(),
+        h("Key Entitlements"),
+        co("Armed Forces Pension", "Your military pension is a right, not a benefit. Make sure you're receiving the correct amount. Contact Veterans UK on 0808 1914 218 if unsure.", "wallet", "#059669"),
+        co("War Disability Pension", "If you were injured or became ill because of service before April 2005, you may be entitled to a War Disability Pension.", "shield", "#059669"),
+        co("Council Tax Relief", "Many councils offer council tax discounts for severely disabled veterans or their carers. Ask your local authority.", "home", "#3b82f6"),
+        div(),
+        h("Support Organisations"),
+        sc("Royal British Legion", "Free expert help with benefits, compensation claims, and financial advice.", "", "https://www.britishlegion.org.uk"),
+        sc("SSAFA", "Financial assistance and grants for those in need. Emergency funding available.", "0800 731 4880", "https://www.ssafa.org.uk", "Financial"),
+        sc("Help for Heroes", "Recovery grants and financial support for wounded veterans.", "", "https://www.helpforheroes.org.uk", "Financial"),
+        sc("Veterans UK", "Government pensions and compensation. Helpline: 0808 1914 218.", "0808 1914 218", "https://www.gov.uk/government/organisations/veterans-uk"),
+        sc("Citizens Advice", "Free, confidential advice on benefits, debt, housing, and legal issues.", "", "https://www.citizensadvice.org.uk", "Practical"),
+        sc("StepChange", "Free debt advice charity. Helping people deal with debt problems.", "0800 138 1111", "https://www.stepchange.org", "Financial"),
+        div(),
+        cf(),
+    ]
+})
+
+# =========================================================
+# SEED ALL PAGES
+# =========================================================
+
+print(f"Seeding {len(PAGES)} pages to {API_URL}...")
+r = requests.post(
+    f"{API_URL}/api/cms/admin/pages/batch-seed",
+    json={"pages": PAGES},
+    headers=headers,
+)
+print(f"Status: {r.status_code}")
+print(r.json())
