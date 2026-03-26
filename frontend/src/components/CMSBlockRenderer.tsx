@@ -37,7 +37,7 @@ export function CMSBlockRenderer({ blocks, isLoading }: CMSBlockRendererProps) {
           case 'paragraph':
             return <ParagraphBlock key={index} text={block.props?.text} colors={colors} />;
           case 'callout':
-            return <CalloutBlock key={index} text={block.props?.text} colors={colors} isDark={isDark} />;
+            return <CalloutBlock key={index} text={block.props?.text} icon={block.props?.icon} iconColor={block.props?.iconColor} colors={colors} isDark={isDark} />;
           case 'bullet_list':
             return <BulletListBlock key={index} items={block.props?.items} colors={colors} />;
           case 'support_card':
@@ -68,20 +68,64 @@ function ParagraphBlock({ text, colors }: { text: string; colors: any }) {
   return <Text style={[styles.paragraph, { color: colors.textSecondary }]}>{text}</Text>;
 }
 
-function CalloutBlock({ text, colors, isDark }: { text: string; colors: any; isDark: boolean }) {
+// Map Lucide icon names (from CMS editor) to Ionicons names (for mobile)
+const ICON_MAP: Record<string, string> = {
+  'message-circle': 'chatbubble-outline',
+  'activity': 'pulse-outline',
+  'heart': 'heart-outline',
+  'heart-pulse': 'fitness-outline',
+  'shield': 'shield-outline',
+  'home': 'home-outline',
+  'users': 'people-outline',
+  'book-open': 'book-outline',
+  'brain': 'fitness-outline',
+  'wallet': 'wallet-outline',
+  'scale': 'barbell-outline',
+  'stethoscope': 'medkit-outline',
+  'star': 'star-outline',
+  'zap': 'flash-outline',
+  'flame': 'flame-outline',
+  'eye': 'eye-outline',
+  'clock': 'time-outline',
+  'flag': 'flag-outline',
+  'target': 'locate-outline',
+  'compass': 'compass-outline',
+  'globe': 'globe-outline',
+  'leaf': 'leaf-outline',
+  'phone': 'call-outline',
+  'alert-triangle': 'warning-outline',
+  'award': 'ribbon-outline',
+  'swords': 'shield-outline',
+  'anchor': 'boat-outline',
+  'coffee': 'cafe-outline',
+};
+
+function CalloutBlock({ text, icon, iconColor, colors, isDark }: { text: string; icon?: string; iconColor?: string; colors: any; isDark: boolean }) {
   if (!text) return null;
-  const parts = text.split(' — ');
+  const parts = text.split(' \u2014 ');
   const hasTitle = parts.length > 1;
+  const ionIconName = icon ? (ICON_MAP[icon] || 'chatbubble-outline') : null;
+  const color = iconColor || '#0d9488';
+
   return (
-    <View style={[styles.callout, { backgroundColor: isDark ? '#1e293b' : '#f0fdf4', borderLeftColor: '#0d9488' }]}>
-      {hasTitle ? (
-        <>
-          <Text style={[styles.calloutTitle, { color: colors.text }]}>{parts[0]}</Text>
-          <Text style={[styles.calloutText, { color: colors.textSecondary }]}>{parts.slice(1).join(' — ')}</Text>
-        </>
-      ) : (
-        <Text style={[styles.calloutText, { color: colors.textSecondary }]}>{text}</Text>
-      )}
+    <View style={[styles.callout, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftWidth: 0, borderWidth: 1 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+        {ionIconName && (
+          <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: color + '20', justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name={ionIconName as any} size={22} color={color} />
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          {hasTitle ? (
+            <>
+              <Text style={[styles.calloutTitle, { color: colors.text }]}>{parts[0]}</Text>
+              <Text style={[styles.calloutText, { color: colors.textSecondary }]}>{parts.slice(1).join(' \u2014 ')}</Text>
+            </>
+          ) : (
+            <Text style={[styles.calloutText, { color: colors.textSecondary }]}>{text}</Text>
+          )}
+        </View>
+      </View>
     </View>
   );
 }

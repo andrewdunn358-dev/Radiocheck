@@ -76,11 +76,12 @@ interface EditableTextProps {
   value: string;
   onChange: (val: string) => void;
   className?: string;
+  style?: React.CSSProperties;
   tag?: 'p' | 'h2' | 'h3' | 'span';
   placeholder?: string;
 }
 
-export function EditableText({ value, onChange, className = '', tag = 'p', placeholder = 'Click to edit...' }: EditableTextProps) {
+export function EditableText({ value, onChange, className = '', style, tag = 'p', placeholder = 'Click to edit...' }: EditableTextProps) {
   const ref = useRef<HTMLElement>(null);
   const [focused, setFocused] = useState(false);
 
@@ -97,7 +98,8 @@ export function EditableText({ value, onChange, className = '', tag = 'p', place
       ref={ref}
       contentEditable
       suppressContentEditableWarning
-      className={`outline-none ${className} ${!value && !focused ? 'text-gray-600' : ''}`}
+      className={`outline-none ${className} ${!value && !focused ? 'opacity-40' : ''}`}
+      style={style}
       data-placeholder={placeholder}
       onFocus={() => setFocused(true)}
       onBlur={(e: React.FocusEvent<HTMLElement>) => {

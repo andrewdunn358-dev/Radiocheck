@@ -16,7 +16,7 @@ import os
 import time
 
 # Get base URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://cms-legacy-cleanup.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://pages-batch-cms.preview.emergentagent.com')
 
 # Expected characters after refactor
 EXPECTED_CHARACTERS = [

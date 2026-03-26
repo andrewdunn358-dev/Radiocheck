@@ -11,7 +11,7 @@ import os
 import uuid
 
 # Use environment variable or default to the preview URL
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cms-legacy-cleanup.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pages-batch-cms.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"

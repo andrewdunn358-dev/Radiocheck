@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timedelta
 
 # Get base URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://cms-legacy-cleanup.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://pages-batch-cms.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_CREDENTIALS = {

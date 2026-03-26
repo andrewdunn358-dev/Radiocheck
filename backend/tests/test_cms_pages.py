@@ -13,7 +13,7 @@ import os
 import time
 
 # Use the public URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://cms-legacy-cleanup.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://pages-batch-cms.preview.emergentagent.com').rstrip('/')
 
 
 class TestPagesAdminList:

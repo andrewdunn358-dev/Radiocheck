@@ -18,7 +18,7 @@ import os
 import re
 
 # Get BASE_URL from environment or use preview URL
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cms-legacy-cleanup.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pages-batch-cms.preview.emergentagent.com').rstrip('/')
 
 
 class TestStaffAuthentication:

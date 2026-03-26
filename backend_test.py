@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://cms-legacy-cleanup.preview.emergentagent.com/api"
+BACKEND_URL = "https://pages-batch-cms.preview.emergentagent.com/api"
 
 # Test data
 TEST_EMAILS = [

@@ -1,0 +1,119 @@
+{
+  "summary": "Visual Editor Dark Theme testing complete. All 23 backend tests passed. Frontend visual editor renders correctly with dark navy theme (#1a2332), icon picker modal with 28 icons and 12 colors, chat banner with persona, support cards with tags, and crisis footer with dark red styling. Save functionality works correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/images/{persona}.png",
+        "issue": "Avatar images return 404 - images are served at /images/ not /api/images/",
+        "priority": "LOW",
+        "workaround": "Fallback to UI Avatars placeholder works correctly"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Chat Banner in Visual Editor",
+        "issues": ["Avatar image shows 'HE' placeholder instead of actual Helen avatar due to incorrect URL path (/api/images/ vs /images/)"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_visual_editor_dark_theme.py",
+    "/app/test_reports/pytest/pytest_visual_editor_dark_theme.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Fix avatar URL in VisualPageEditor.tsx - change from `${API_URL}/api/images/${persona}.png` to `${API_URL}/images/${persona}.png`"
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_visual_editor_dark_theme.py"
+  ],
+  "success_rate": {
+    "backend": "100% - All 23 tests passed",
+    "frontend": "100% - All visual editor features working"
+  },
+  "test_credentials": "admin@veteran.dbty.co.uk / ChangeThisPassword123!",
+  "seed_data_creation": "for-carers page already seeded with 24 blocks",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Visual Editor Dark Theme fully tested. All features working: dark navy background (#1a2332), callout/topic cards with teal icons and titles, chat banner with persona picker, support cards with tag badges and teal phone links, icon picker modal with 28 icons and 12 colors, crisis footer with dark red styling, save button saves block changes including icon data. Minor issue: avatar images use wrong URL path but fallback works.",
+  "features_tested": {
+    "visual_editor_dark_theme": {
+      "status": "PASS",
+      "details": "Background color rgb(26, 35, 50) = #1a2332 verified"
+    },
+    "callout_topic_cards": {
+      "status": "PASS",
+      "details": "Dark surface card background (#2d3748), teal icon, bold teal title, grey description"
+    },
+    "chat_banner": {
+      "status": "PASS",
+      "details": "Circular avatar placeholder, persona name, description, 24/7 badge with colored border"
+    },
+    "support_cards": {
+      "status": "PASS",
+      "details": "Dark card background, tag badges (Mental Health, Respite, etc.), phone and URL fields with teal phone links"
+    },
+    "icon_picker_modal": {
+      "status": "PASS",
+      "details": "Opens on callout icon click, shows 28 icons and 12 color options, preview updates, selection persists"
+    },
+    "crisis_footer": {
+      "status": "PASS",
+      "details": "Dark red styling (#1c1917 background, #7f1d1d border), emergency numbers displayed"
+    },
+    "save_functionality": {
+      "status": "PASS",
+      "details": "Save button saves block changes including icon data, 'Page saved' message shown"
+    },
+    "backend_api": {
+      "status": "PASS",
+      "details": "GET /api/cms/pages/for-carers returns blocks with proper structure including icon/iconColor"
+    }
+  },
+  "tests_executed": [
+    "TestForCarersPageBlocks::test_get_for_carers_page_returns_200 - PASS",
+    "TestForCarersPageBlocks::test_for_carers_page_has_blocks_array - PASS",
+    "TestForCarersPageBlocks::test_blocks_have_type_and_props - PASS",
+    "TestForCarersPageBlocks::test_expected_block_types_exist - PASS",
+    "TestCalloutBlocksWithIcons::test_callout_blocks_exist - PASS",
+    "TestCalloutBlocksWithIcons::test_callout_blocks_have_text - PASS",
+    "TestCalloutBlocksWithIcons::test_callout_blocks_can_have_icon - PASS",
+    "TestCalloutBlocksWithIcons::test_callout_blocks_can_have_icon_color - PASS",
+    "TestChatBannerBlock::test_chat_banner_exists - PASS",
+    "TestChatBannerBlock::test_chat_banner_has_persona - PASS",
+    "TestChatBannerBlock::test_chat_banner_persona_is_helen - PASS",
+    "TestSupportCardBlocks::test_support_cards_exist - PASS",
+    "TestSupportCardBlocks::test_support_cards_have_title - PASS",
+    "TestSupportCardBlocks::test_support_cards_have_description - PASS",
+    "TestSupportCardBlocks::test_support_cards_have_tags - PASS",
+    "TestSupportCardBlocks::test_support_cards_have_valid_tags - PASS",
+    "TestCrisisFooterBlock::test_crisis_footer_exists - PASS",
+    "TestPersonasEndpoint::test_personas_endpoint_returns_200 - PASS",
+    "TestPersonasEndpoint::test_personas_returns_list - PASS",
+    "TestPersonasEndpoint::test_personas_have_required_fields - PASS",
+    "TestPersonasEndpoint::test_helen_persona_exists - PASS",
+    "TestUpdateBlocksWithIcon::test_update_callout_with_icon - PASS",
+    "TestBlockTypeCounts::test_block_type_distribution - PASS"
+  ],
+  "playwright_tests": [
+    "Login to admin portal - PASS",
+    "Navigate to CMS > Pages - PASS",
+    "Open For Carers page in visual editor - PASS",
+    "Verify dark navy background (#1a2332) - PASS",
+    "Verify chat banner with Helen persona - PASS",
+    "Verify callout cards with teal icons - PASS",
+    "Open icon picker modal - PASS",
+    "Verify 28 icons and 12 colors in picker - PASS",
+    "Select icon and color - PASS",
+    "Close icon picker modal - PASS",
+    "Verify support cards with tags - PASS",
+    "Verify crisis footer styling - PASS",
+    "Save changes - PASS",
+    "Verify 'Page saved' message - PASS"
+  ]
+}

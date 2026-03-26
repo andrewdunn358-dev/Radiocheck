@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cms-legacy-cleanup.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pages-batch-cms.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 STAFF_USER = {
