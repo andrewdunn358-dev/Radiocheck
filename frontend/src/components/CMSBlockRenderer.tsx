@@ -204,11 +204,26 @@ function SupportCardBlock({ title, description, phone, url, tag, colors, isDark 
 
 const PERSONA_DATA: Record<string, { name: string; desc: string; color: string; avatar: string }> = {
   helen: { name: 'Helen', desc: 'Army wife for 20 years, cared for her husband with PTSD.', color: '#0d9488', avatar: '/images/helen.png' },
-  tommy: { name: 'Tommy', desc: 'Lead Battle Buddy — general veteran support.', color: '#3b82f6', avatar: '/images/tommy.png' },
+  tommy: { name: 'Tommy', desc: 'Lead Battle Buddy \u2014 general veteran support.', color: '#3b82f6', avatar: '/images/tommy.png' },
   rachel: { name: 'Rachel', desc: 'Criminal justice specialist.', color: '#f59e0b', avatar: '/images/rachel.png' },
-  mo: { name: 'Mo', desc: 'Recovery support — prosthetics, rehab, chronic pain.', color: '#8b5cf6', avatar: '/images/mo.png' },
-  reg: { name: 'Reg', desc: 'Serious illness — cancer, palliative care.', color: '#ef4444', avatar: '/images/reg.png' },
-  dave: { name: 'Dave', desc: "Men's health — andropause, MST.", color: '#059669', avatar: '/images/dave.png' },
+  doris: { name: 'Rachel', desc: 'Criminal justice specialist.', color: '#f59e0b', avatar: '/images/doris.png' },
+  mo: { name: 'Mo', desc: 'Recovery support \u2014 prosthetics, rehab, chronic pain.', color: '#8b5cf6', avatar: '/images/mo.png' },
+  reg: { name: 'Reg', desc: 'Serious illness \u2014 cancer, palliative care.', color: '#ef4444', avatar: '/images/reg.png' },
+  dave: { name: 'Dave', desc: "Men's health \u2014 andropause, MST.", color: '#059669', avatar: '/images/dave.png' },
+  jack: { name: 'Jack', desc: 'Housing & benefits specialist.', color: '#1e40af', avatar: '/images/hugo.png' },
+  kofi: { name: 'Kofi', desc: 'Commonwealth veteran support.', color: '#14b8a6', avatar: '/images/tommy.png' },
+  catherine: { name: 'Catherine', desc: 'Faith & spirituality support.', color: '#0891b2', avatar: '/images/catherine.png' },
+  sam: { name: 'Sam', desc: 'Substance misuse support.', color: '#f97316', avatar: '/images/tommy.png' },
+  rita: { name: 'Rita', desc: 'Female veteran support.', color: '#7c3aed', avatar: '/images/rita.png' },
+  james: { name: 'James', desc: 'Historical investigations support.', color: '#8b5cf6', avatar: '/images/tommy.png' },
+  baz: { name: 'Baz', desc: 'Veteran peer support.', color: '#059669', avatar: '/images/tommy.png' },
+  bob: { name: 'Bob', desc: 'General support companion.', color: '#8b5cf6', avatar: '/images/bob.png' },
+  frankie: { name: 'Frankie', desc: 'Podcast host, veteran stories.', color: '#22c55e', avatar: '/images/frankie.png' },
+  margie: { name: 'Margie', desc: 'Older veteran support.', color: '#f59e0b', avatar: '/images/margie.png' },
+  megan: { name: 'Megan', desc: 'Young veteran support.', color: '#8b5cf6', avatar: '/images/megan.png' },
+  penny: { name: 'Penny', desc: 'Family support specialist.', color: '#22c55e', avatar: '/images/penny.png' },
+  alex: { name: 'Alex', desc: 'LGBTQ+ veteran support.', color: '#ec4899', avatar: '/images/tommy.png' },
+  finch: { name: 'Finch', desc: 'App safeguarding AI.', color: '#6366f1', avatar: '/images/finch.png' },
 };
 
 function ChatBannerBlock({ persona, colors, router }: { persona: string; colors: any; router: any }) {
