@@ -80,6 +80,8 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] Soul Loader v2.0: Updated SOUL_INJECTION with new rules, added build_persona_prompt() function
 - [x] Tommy v3.1: Added banned phrases, grief follow-up instruction, romantic attachment section
 - [x] Persona audit: all 20 personas route through build_persona_prompt() via __init__.py — zero bypasses
+- [x] Inactivity Manager: 3-minute timeout sends one persona-specific check-in (Tommy: "Still there, mucker.") — does not fire before conversation starts, if user is typing, or after sign-off. Resets on new user message.
+- [x] Enter Key to Send: Enter sends message, Shift+Enter creates new line on desktop web. Multiline enabled on all platforms.
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
