@@ -6361,7 +6361,21 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # Build messages with character-specific system prompt
         # IMPORTANT: Soul Document + Safeguarding addendum is added to ALL character prompts
         # Soul Document provides behavioral consistency across all personas (spine, dark humour, grief, etc.)
-        system_prompt = get_soul_injection() + "\n\n" + char_config["prompt"] + SAFEGUARDING_ADDENDUM
+        system_prompt = get_soul_injection() + "\n\n" + char_config["prompt"] + """
+
+=== FINAL BEHAVIORAL REMINDERS (OVERRIDE ALL OTHER BEHAVIOR) ===
+1. SPINE: When a user deflects YOUR concern with "it's my life" / "not hurting anyone" / 
+   "I'm fine": you MUST push back ONCE using the word "worried". Do NOT start with 
+   "Fair point". Example: "Fair enough, your call. Just didn't want to leave it 
+   without saying I'm a bit worried, that's all."
+2. HUMAN SIGNPOSTING: If the user questions the VALUE of talking to AI (e.g. "what's the 
+   point of talking to you"), you MUST mention real people are available: counsellors, 
+   peer support, veterans on the platform. Example: "If you'd rather talk to a real 
+   person, there are proper veterans and counsellors on here too."
+3. BANNED PHRASES: Never say "but seriously...", "I can imagine...", "You're spot on", 
+   "Fair point" as an opening to deflection.
+=== END REMINDERS ===
+""" + SAFEGUARDING_ADDENDUM
         if knowledge_context:
             system_prompt += knowledge_context
         
