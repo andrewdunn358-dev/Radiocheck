@@ -21,7 +21,7 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 ### CMS Pages (16 total, all published)
 | Slug | Title | Persona | Blocks |
 |------|-------|---------|--------|
-| about | About Radio Check | tommy | 18 |
+| about | About Radio Check | tommy | 19 |
 | for-carers | For Carers | helen | 24 |
 | criminal-justice | Criminal Justice Support | doris | 16 |
 | crisis-support | Crisis Support | tommy | 14 |
@@ -49,6 +49,8 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - `family-friends.tsx` — Complex forms
 - `peer-support.tsx` — Complex API interactions
 - `your-data-rights.tsx` — Complex forms
+- `self-care.tsx` — Interactive tools grid with fallback data
+- `home.tsx` — System/functional page
 
 ### Visual Editor Features
 - Dark navy theme matching mobile app (#1a2332 background, #2d3748 cards)
@@ -66,8 +68,14 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] VisualPageEditor with dark navy theme
 - [x] Icon support on callout blocks (editor + mobile)
 - [x] Bulk page seed script and batch-seed endpoint
-- [x] 13 pages migrated to CMS (16 total including 3 previous)
+- [x] 16 pages migrated to CMS (all published)
 - [x] All .tsx files updated to use CMSBlockRenderer
+- [x] Fixed infinite 404 loop on home.tsx, self-care.tsx
+- [x] Removed rogue CMS hooks from non-CMS pages (self-care, family-friends)
+- [x] Fixed all persona avatar paths in PERSONA_DATA (jack, kofi, sam, james, baz, alex)
+- [x] Copied missing avatar images to public/images/
+- [x] Fixed 10 incorrect persona assignments in CMS database
+- [x] Full audit: no non-CMS pages have CMS hooks
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
