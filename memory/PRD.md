@@ -84,6 +84,7 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] Enter Key to Send: Enter sends message, Shift+Enter creates new line on desktop web. Multiline enabled on all platforms.
 - [x] Zentrafuge full test suite: 11/11 scenarios PASS. Added FINAL BEHAVIORAL REMINDERS block at end of soul injection for reliable LLM compliance (Spine Protocol "worried", human signposting, banned phrases).
 - [x] Removed SAFEGUARDING_ADDENDUM from server.py — all safeguarding rules now live in soul.md (Section 1) and soul_loader.py (SOUL_INJECTION). Gaps filled: tiered distress response, "Are you safe right now?", NHS 111/SHOUT 85258/999, "never provide methods for self-harm", "continue chatting" option.
+- [x] Grace Front Page Greeter — persona #21 (grace.py), admin toggle on Beta Testing tab, grace-welcome.tsx screen with breathing logo, chat, navigation actions, skip button. Toggle defaults OFF — when ON users see Grace first.
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
