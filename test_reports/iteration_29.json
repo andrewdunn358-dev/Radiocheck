@@ -31,7 +31,7 @@
   "seed_data_creation": "N/A - used existing test user",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "Staff Portal migration testing complete. The Next.js portal runs on localhost:3001 (development) and is accessed via /staff route. Key verified features: 1) Login with profile matching - profile.user_id must match logged-in user.id, 2) Status buttons disabled when no profile linked, 3) Warning banners appear appropriately, 4) AI Characters sorted by order field, 5) WebRTC socket connects via Socket.IO path /api/socket.io, 6) Twilio phone device registers for browser calling. The preview URL (https://pages-batch-cms.preview.emergentagent.com) runs the Expo frontend which redirects staff to external portal at staff.radiocheck.me. The portal directory /app/portal is separate Next.js app deployed to Vercel.",
+  "context_for_next_testing_agent": "Staff Portal migration testing complete. The Next.js portal runs on localhost:3001 (development) and is accessed via /staff route. Key verified features: 1) Login with profile matching - profile.user_id must match logged-in user.id, 2) Status buttons disabled when no profile linked, 3) Warning banners appear appropriately, 4) AI Characters sorted by order field, 5) WebRTC socket connects via Socket.IO path /api/socket.io, 6) Twilio phone device registers for browser calling. The preview URL (https://block-cms-hotfix.preview.emergentagent.com) runs the Expo frontend which redirects staff to external portal at staff.radiocheck.me. The portal directory /app/portal is separate Next.js app deployed to Vercel.",
   "features_tested": {
     "staff_login": {
       "status": "PASS",

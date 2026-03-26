@@ -14,7 +14,7 @@ from datetime import datetime
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://pages-batch-cms.preview.emergentagent.com"
+    BASE_URL = "https://block-cms-hotfix.preview.emergentagent.com"
 
 # Admin credentials for testing
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"

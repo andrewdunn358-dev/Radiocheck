@@ -1,147 +1,142 @@
-<analysis>**original_problem_statement:**
-- Build CMS Phase 2 (Podcasts & AI Personas manager) in the admin portal.
-- Extend the CMS to manage all platform pages. 
-- *CRITICAL PIVOT DURING SESSION:* The initial raw HTML (TipTap) CMS approach was aborted because it stripped native mobile styling (avatars, tap-to-call, etc.). The user demanded a rollback. A new **Typed Block-Based CMS** with a WordPress-style Visual Inline Editor was built instead.
-
-**PRODUCT REQUIREMENTS:**
+<analysis>**original_problem_statement**: 
 - (P0) Migrate the remaining 16 static content pages to the new Block-Based CMS.
-- (P1) Enhance Video UX: Implement a TikTok Live-like experience.
+- Fix the Admin Portal Visual Editor to match the actual app design perfectly (Dark navy theme, teal accents, specific icon placement).
+
+**PRODUCT REQUIREMENTS**:
+- Implement full visual fidelity in  to match the  dark theme.
+- Support an icon picker for callout/topic cards.
+- Migrate static pages without breaking existing AI persona assignments or introducing regressions.
 
 **User's preferred language**: English (Next agent MUST respond in English)
 
-**what currently exists?**
-Full-stack app with Expo React Native frontend, Next.js admin portal, and FastAPI backend. The CMS has undergone a major refactor. Raw HTML pages are abandoned. The app now uses a **Block-Based CMS** where pages consist of typed blocks (, , , , etc.). The mobile app natively renders these blocks via  to preserve UI fidelity. The admin portal features a  allowing admins to edit these blocks inline. Currently, , , and  are live on this new system.
+**what currently exists?** 
+Full-stack app with Expo React Native frontend, Next.js admin portal, and FastAPI backend. A Typed Block-Based CMS is implemented. 13 static pages were just bulk-migrated to the CMS, alongside 3 previously migrated pages. The Visual Editor was successfully restyled to match the dark app UI. **However, the migration introduced severe regressions on the live app:** AI chat banners displayed the wrong personas, infinite 404 API loops were triggered on non-CMS pages (crashing performance), and specific persona avatars (Jack, Kofi) are currently broken. The user is highly frustrated.
 
 **Last working item**:
-- **Last item agent was working**: Writing a bulk extraction and seeding script () to migrate 16 remaining static content pages to the new Block CMS.
-  *Reasoning:* The agent identified 16 pure content pages (e.g., , , ). To avoid doing them one by one, the agent created a Python script to generate all the block data in one go and create a bulk seed endpoint. The agent had just created the file when the session ended.
+- **Last item agent was working**: Investigating the user's furious bug report regarding an infinite 404 loop on the  page and broken/incorrect avatars for the Jack and Kofi personas on the live app.
 - **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: backend testing agent (for the seed API) + screenshot tool (to verify rendered pages on frontend)
+- **Which testing method agent to use?**: manual testing by curl & screenshot tool (Agent must visually verify the avatars render correctly and use terminal/logs to ensure the 404 loop is stopped).
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Complete the Bulk Migration Script & Frontend Update (P0)
-     - Attempted fixes: Agent created  but hasn't populated it yet.
+  - Issue 1: Fix infinite 404 loop on  and  pages (P0)
+     - Attempted fixes: The previous agent fixed an identical loop on  by removing the  hook, and added a 404 stop-check in . However, the user's console logs show  and  are still looping.
      - Next debug checklist: 
-        1. Finish writing  to generate block data for the 16 pages (refer to the  grep logs in the history for page content details).
-        2. Create a bulk backend seed endpoint to insert these pages into .
-        3. Update the corresponding 16  files in  to use the  instead of hardcoded UI.
-        *Note: Skip interactive pages (, , ) as they have complex forms/APIs.*
-     - Why fix this issue and what will be achieved with the fix?: Completes the user's primary request to make all standard content editable via the new Visual CMS.
+        1. Check  and  (or any other files shown in the recent grep).
+        2. If they are hardcoded pages that should *not* be in the CMS, remove the  or  hooks entirely.
+        3. Double-check that the 404 exit logic in  is actually preventing infinite re-renders. 
+     - Why fix this issue and what will be achieved with the fix?: It is currently spamming the live production server with hundreds of requests, degrading performance.
      - Status: IN PROGRESS
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix?: both
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix?: frontend
+     - Blocked on other issue: None
+     
+  - Issue 2: Fix missing Jack avatar and incorrect Kofi avatar (P0)
+     - Attempted fixes: Agent updated the  dictionary in  to include all 21 personas. However, the image paths or object mapping for Jack and Kofi are incorrect.
+     - Next debug checklist: 
+        1. View  line ~70 where  is defined.
+        2. Check the  path for Jack and Kofi.
+        3. Verify the actual filenames inside  or  (e.g., is it ? Is Jack's image missing or misnamed?).
+        4. Fix the paths/data in  to match the exact original files.
+     - Why fix this issue and what will be achieved with the fix?: Resolves immediate user anger over broken UI and incorrect representation of support characters.
+     - Status: IN PROGRESS
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix?: frontend (Use screenshot tool on  and  to verify avatars).
      - Blocked on other issue: None
 
-**In progress Task List**:
-  - Task 1: Complete Phase 2 CMS Migration (P0)
-     - Where to resume: Finish the  implementation mentioned in Issue 1. 
-     - What will be achieved with this?: All static text/resource pages will be manageable via the portal without dev deployments.
-     - Status: IN PROGRESS
-     - Should Test frontend/backend/both after fix?: both
-     - Blocked on something: None
+**In progress Task List**: None (Current focus is entirely on bug fixing regressions).
 
 **Upcoming and Future Tasks**
-Upcoming Tasks:
-- (P1) Enhance Video UX: Implement a TikTok Live-like experience with chat overlay and floating reactions.
-
-Future Tasks:
-- (P2) Push notifications for live events.
-- (P2) PDF user manual export.
-- (P2) Implement Discussion Forums.
-- (P2) Implement Mood Tracker.
-- (P2) Add Welsh Language Support.
-- (P2) Consider migrating from Agora to Daily.co.
+  Upcoming Tasks:
+  - (P1) Enhance Video UX: Implement a TikTok Live-like experience with chat overlay and floating reactions.
+  
+  Future Tasks:
+  - (P2) Push notifications for live events.
+  - (P2) PDF user manual export.
+  - (P2) Implement Discussion Forums.
+  - (P2) Implement Mood Tracker.
+  - (P2) Add Welsh Language Support.
+  - (P2) Consider migrating from Agora to Daily.co.
 
 **Completed work in this session**
-- Removed legacy CMS seed endpoint ( in ) that was polluting the database (DONE).
-- Fixed  flaky test by relaxing the exact string match assertion (DONE).
-- Fixed Vercel Web Build error by updating incorrect  imports (DONE).
-- Rolled back , , and  to native code after user rejected the HTML/TipTap rendering (DONE).
-- Built new typed Block CMS schema (blocks: , , , , , , , ) (DONE).
-- Built  for React Native to parse blocks dynamically (DONE).
-- Built  in the Next.js admin portal for inline block editing (DONE).
-- Added  and  endpoints (DONE).
-- Migrated , , and  to Block CMS (DONE).
-- Fixed Vercel build error by removing dead  method from API client (DONE).
-- Updated Tommy's persona role to General Support (DONE).
+- Restyled Admin  to match app's dark navy theme (#1a2332) (DONE).
+- Added icon picker to CMS visual editor for callout blocks (DONE).
+- Created bulk CMS seed script  (DONE).
+- Migrated 13 static content pages to Block-based CMS via bulk seed (DONE).
+- Fixed infinite 404 loop on  (DONE).
+- Added 15 missing AI personas to  in  (DONE).
+- Corrected 5 wrongly mapped personas in the production database (DONE).
 
 **Earlier issues found/mentioned but not fixed**
-- None. All user complaints (wrong pages, lost styling, build errors) were addressed before the session ended.
+- None missed, but the current regressions are severe and highly sensitive. Do not ignore any detail in the user's last message.
 
 **Known issue recurrence from previous fork**
-- Issue recurrence in previous fork: TipTap/HTML CMS approach destroying native styling. 
-- Recurrence count: 1 (Resolved by pivoting to Block CMS).
-- Status: RESOLVED (Do not attempt to use  for full pages again).
+  - Issue recurrence in previous fork: Infinite 404 loops from frontend hooks calling missing CMS pages.
+  - Recurrence count: 2 (, now ).
+  - Status: IN PROGRESS
+  Note: Be extremely diligent about cleaning up rogue API hooks on non-CMS pages.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Block-Based CMS**: Instead of storing raw HTML,  now stores a  array. Each block has a  (string) and  (dict). This allows the mobile app to render actual native components (like a styled  for a support card) using the data.
-- **Visual Inline Editor**: The Next.js portal maps over the  array and renders them inside  divs or form inputs, allowing admins to edit the page exactly as it looks.
+- **Block-Based CMS**: Frontend uses  to dynamically map JSON blocks to native React Native components.
+- **Persona Mapping**:  holds a hardcoded dictionary () mapping persona IDs to names, descriptions, colors, and local image paths.
 
 **key DB schema**
-- : , , , ,  (Array of dicts).
+- : ,  (Array of dicts).
 
 **changes in tech stack**
-- Deprecated  for full page layout.
-- Removed TipTap WYSIWYG editor from  in favor of custom .
+- None.
 
 **All files of reference**
--  (Script currently being written)
--  (Reference for block types)
-- 
-- 
+-  (Needs fix for Jack/Kofi avatars)
+-  (Needs fix for infinite 404 loop)
+-  (Review loop prevention logic)
 
-**Areas that need refactoring**:
-- : Contains old section/card logic that might eventually be replaced completely by the new  block logic, but currently leave it alone to prevent regressions.
+**Areas that need refactoring**: 
+-  mapping in  is currently fragile. Hardcoded local avatar paths easily break if filenames mismatch.
 
 **key api endpoints**
--  (Accepts )
--  (Creates new page with empty blocks array)
--  (Returns list of available AI personas for chat banners)
--  (Handles CMS image uploads)
+- 
+- 
 
 **Critical Info for New Agent**
-- **DO NOT USE HTML:** The user vehemently rejected converting  pages to raw HTML because it loses native styling (avatars, specific tap targets, colored boxes). You MUST use the  and block data structures for any CMS page migration.
-- **INTERACTIVE PAGES:** Do not attempt to migrate , , or  to the CMS. These pages contain complex API calls and logic forms that cannot be represented by static CMS blocks.
-- **NEW PAGES:** The  has been updated so that when a user clicks New Page, it defaults to an empty  array and automatically routes to the .
+- **USER TONE WARNING:** The user is incredibly angry due to multiple regressions breaking the live application (wrong personas, broken images, looping API requests). **Proceed with extreme caution, double-check your work, and do not introduce new features until these bugs are squashed.**
+- **Production Credentials:** The production admin password is .
+- **Avatar Issue:** Avatars are served from . You must ensure  and  (or whatever their actual filenames are) match the paths in  perfectly. Check the  and  folders.
+- **Loop Issue:** The user explicitly stated: The home page is a system/functional page that should never be in the CMS. The same applies to  and likely . If a page is functional/interactive, remove the CMS hook from it completely.
 
 **documents and test reports created in this job**
--  (Block CMS Core Tests)
--  (Visual Editor & Persona API Tests)
+- 
+- 
+- 
 
-**Last 10 User Messages and any pending HUMAN messages**
-1. **User**: Angry that  lost its styling. Demanded pages be put back as they were, and instructed agent to test block CMS *only* on .
-2. **Agent**: Rolled back the 3 pages to original . Built the new Block CMS and Visual Editor specifically for .
-3. **User**: Complained they still saw old pages in portal.
-4. **Agent**: Realized old pages were stuck in the DB. Deleted them and removed their seed endpoint.
-5. **User**: Provided a document to upgrade to a Visual Inline Editor for the block CMS.
-6. **Agent**: Built  and related backend APIs.
-7. **User**: Asked why it wasn't on production.
-8. **Agent**: Explained user needed to push to Github for Vercel deploy.
-9. **User**: Pushed, but got a Vercel build error ( not found).
-10. **Agent**: Fixed the build error by removing dead code.
-11. **User**: Instructed agent to migrate 2 more pages (, ), fix Tommy's persona role, and then do the rest of the pages.
-*(Pending: Agent needs to finish the bulk migration of the remaining 16 static pages)*
+**Last 10 User Messages and any pending HUMAN messages** 
+1. **User**: Confirmed plan to fix Visual Editor and do bulk migration.
+2. **User**: Provided production admin password to run the seed script.
+3. **User**: Complained that chat banners were entirely missing on the newly migrated pages on the live app.
+4. **User**: Furiously complained that the *wrong* AI personas were assigned to pages (e.g., James instead of Finch).
+5. **User**: Reported a CRITICAL infinite 404 retry loop on the  page spamming the console.
+6. **User (Pending)**: Furiously reported that  and  are still caught in infinite 404 loops, Jack's avatar image is missing, and Kofi has the wrong avatar image applied. Demanded immediate fixes.
 
 **Project Health Check:**
-- All tests passing. Vercel build passing.
+- Broken (Live app is suffering from infinite 404 API loops and broken images/UI elements).
 
 **3rd Party Integrations**
-- OpenAI GPT-4o-mini — uses Emergent LLM Key.
-- Agora Video SDK — requires User API Key.
+- OpenAI GPT-4o-mini — uses Emergent LLM Key
+- Agora Video SDK — requires User API Key
 
 **Testing status**
-- Testing agent used after significant changes: YES (iteration 38 and 39)
+- Testing agent used after significant changes: YES (Iterations 40 & 41 for CMS features, but failed to catch live app hook regressions).
 - Troubleshoot agent used after agent stuck in loop: NO
 - Test files created: None
-- Known regressions: None
+- Known regressions: [Infinite 404 loop on , Broken Jack avatar, Incorrect Kofi avatar].
 
 **Credentials to test flow:**
-None required; use preview URL or standard admin token headers.
+Production admin password: 
 
 **What agent forgot to execute**
-- The agent was mid-thought creating the  script to migrate the remaining 16 pages but ran out of context before populating the script or creating the endpoint.</analysis>
+- The agent failed to thoroughly grep and audit *all* non-CMS pages for rogue  hooks, leaving  and  to crash.
+- The agent failed to manually verify the actual image file paths for Jack and Kofi when quickly typing out the  dictionary mapping.</analysis>

@@ -8,7 +8,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://pages-batch-cms.preview.emergentagent.com")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://block-cms-hotfix.preview.emergentagent.com")
 
 # All 16 expected pages
 EXPECTED_PAGES = [

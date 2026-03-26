@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 
 # Use the internal preview URL (same as frontend uses)
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pages-batch-cms.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://block-cms-hotfix.preview.emergentagent.com')
 
 # Test credentials
 TEST_EMAIL = "test@staff.com"
