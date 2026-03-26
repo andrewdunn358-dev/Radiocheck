@@ -3726,6 +3726,28 @@ async def update_settings(
     
     return {"message": "Settings updated successfully"}
 
+# ============ GRACE FRONT PAGE TOGGLE ============
+
+@api_router.get("/settings/grace-greeter")
+async def get_grace_greeter_setting():
+    """Get the Grace front page greeter toggle state."""
+    setting = await db.settings.find_one({"_id": "grace_greeter"}, {"_id": 0})
+    return {"enabled": setting.get("enabled", False) if setting else False}
+
+@api_router.put("/settings/grace-greeter")
+async def update_grace_greeter_setting(
+    body: dict,
+    current_user: User = Depends(require_role("admin"))
+):
+    """Toggle the Grace front page greeter on/off (admin only)."""
+    enabled = body.get("enabled", False)
+    await db.settings.update_one(
+        {"_id": "grace_greeter"},
+        {"$set": {"enabled": enabled}},
+        upsert=True
+    )
+    return {"enabled": enabled, "message": f"Grace greeter {'enabled' if enabled else 'disabled'}"}
+
 # ============ CALLBACK REQUEST ENDPOINTS ============
 
 async def send_callback_confirmation_email(email: str, name: str, request_type: str):

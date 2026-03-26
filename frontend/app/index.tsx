@@ -21,9 +21,40 @@ export default function SplashScreen() {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showAgeGateModal, setShowAgeGateModal] = useState(false);
   const [hasCheckedModals, setHasCheckedModals] = useState(false);
+  const [graceEnabled, setGraceEnabled] = useState<boolean | null>(null);
   
   // Age gate context
   const { isAgeVerified, isLoading: ageLoading, setDateOfBirth } = useAgeGateContext();
+
+  // Check if Grace greeter is enabled (fires once on load)
+  useEffect(() => {
+    const checkGrace = async () => {
+      try {
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        const resp = await fetch(`${backendUrl}/api/settings/grace-greeter`);
+        const data = await resp.json();
+        setGraceEnabled(data.enabled || false);
+      } catch {
+        setGraceEnabled(false);
+      }
+    };
+    checkGrace();
+  }, []);
+
+  // Redirect to Grace if enabled and all gates are passed
+  useEffect(() => {
+    if (
+      graceEnabled === true &&
+      hasCheckedModals &&
+      !showCookieNotice &&
+      !showPermissionModal &&
+      !showAgeGateModal &&
+      !ageLoading &&
+      isAgeVerified
+    ) {
+      router.replace('/grace-welcome');
+    }
+  }, [graceEnabled, hasCheckedModals, showCookieNotice, showPermissionModal, showAgeGateModal, ageLoading, isAgeVerified]);
 
   const checkCookieConsent = async () => {
     try {

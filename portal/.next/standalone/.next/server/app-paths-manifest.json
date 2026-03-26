@@ -1,11 +1,11 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/admin/page": "app/admin/page.js",
   "/page": "app/page.js",
   "/privacy/page": "app/privacy/page.js",
+  "/admin/page": "app/admin/page.js",
   "/terms/page": "app/terms/page.js",
-  "/learning/certificate/page": "app/learning/certificate/page.js",
   "/learning/page": "app/learning/page.js",
+  "/learning/certificate/page": "app/learning/certificate/page.js",
   "/learning/module/[id]/page": "app/learning/module/[id]/page.js",
   "/lms-admin/page": "app/lms-admin/page.js",
   "/staff/page": "app/staff/page.js"

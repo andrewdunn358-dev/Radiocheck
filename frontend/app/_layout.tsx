@@ -39,6 +39,7 @@ function AppContent() {
         <Stack.Screen name="mood" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="resources" />
+        <Stack.Screen name="grace-welcome" />
       </Stack>
     </ResponsiveWrapper>
   );

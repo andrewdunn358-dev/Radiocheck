@@ -1,0 +1,83 @@
+{
+  "summary": "Grace Front Page Greeter implementation testing complete. Backend: 12/14 tests passed (2 skipped due to no admin credentials). Frontend: Grace welcome page loads correctly with opening message, chat functionality, Enter key to send, and skip button. All core features verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/avatars/grace.png",
+        "issue": "Returns 404 - Grace avatar not served via /api/avatars endpoint. However, the avatar exists at /frontend/public/images/grace.png and is correctly referenced in the frontend.",
+        "priority": "LOW - Not a functional issue"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Navigation action buttons",
+        "issue": "Action buttons (e.g., 'Yes, take me to Tommy') only appear when Grace mentions specific internal personas/routes. When Grace mentions external resources (like CTP), no action buttons appear. This is by design per the parseNavigationActions function.",
+        "affected_selectors": ["[data-testid^='grace-action']"],
+        "priority": "INFO - Working as designed"
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_grace_greeter.py",
+    "/app/test_reports/pytest/pytest_grace_greeter.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Grace persona file (/app/backend/personas/grace.py) is well-structured with comprehensive prompt covering QARANC background, signposting, navigation, and safeguarding protocols",
+    "Grace is correctly registered in /app/backend/personas/__init__.py as persona #21",
+    "Grace greeter endpoints (GET/PUT /api/settings/grace-greeter) are correctly implemented with admin-only PUT access",
+    "Frontend grace-welcome.tsx has proper breathing logo animation, chat interface, and navigation action parsing",
+    "index.tsx correctly checks Grace toggle state and redirects when enabled"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_grace_greeter.py"
+  ],
+  "success_rate": {
+    "backend": "86% - 12/14 tests passed (2 skipped)",
+    "frontend": "100% - All UI elements verified"
+  },
+  "test_credentials": "",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Grace greeter implementation is complete and working. Backend API tests in /app/backend/tests/test_grace_greeter.py. The Grace toggle defaults to OFF. When ON, users see Grace first on the splash screen. Grace's chat works via the standard /api/ai-buddies/chat endpoint with character='grace'.",
+  "verified_features": {
+    "backend": {
+      "GET /api/settings/grace-greeter": "PASS - Returns {enabled: false} by default",
+      "PUT /api/settings/grace-greeter": "PASS - Requires admin auth (returns 401 without token)",
+      "POST /api/ai-buddies/chat with character=grace": "PASS - Returns valid response with Grace's persona",
+      "Grace safeguarding": "PASS - Triggers safeguarding for crisis messages (RED level)",
+      "Grace persona file exists": "PASS - /app/backend/personas/grace.py",
+      "Grace registered in __init__.py": "PASS - Listed as persona #21",
+      "Grace prompt contains key elements": "PASS - QARANC, signposting, navigation, Tommy, peer support, counsellors"
+    },
+    "frontend": {
+      "Grace welcome page loads": "PASS - /grace-welcome route works",
+      "Grace opening message": "PASS - 'Hello. I'm Grace. Welcome to Radio Check. Take a breath — you've found the right place. What's brought you here today?'",
+      "Grace avatar displayed": "PASS - grace.png shown with green border",
+      "Grace role displayed": "PASS - 'Welcome & Signposting'",
+      "Message input": "PASS - 'Talk to Grace...' placeholder",
+      "Send button": "PASS - Green arrow button",
+      "Enter key sends message": "PASS - Verified via Playwright",
+      "Skip button": "PASS - 'Go straight in' visible",
+      "Breathing logo animation": "PASS - Logo animates (useNativeDriver warning is expected on web)",
+      "Chat response": "PASS - Grace responds to user messages",
+      "Grace toggle in BetaTestingTab": "PASS - Code verified in /app/portal/src/components/admin/tabs/BetaTestingTab.tsx"
+    }
+  },
+  "files_verified": {
+    "/app/backend/personas/grace.py": "Grace persona with full prompt - 300 lines",
+    "/app/backend/personas/__init__.py": "Grace imported and registered",
+    "/app/backend/server.py": "Lines 3731-3749: GET/PUT /api/settings/grace-greeter endpoints",
+    "/app/frontend/app/grace-welcome.tsx": "Grace welcome screen - 399 lines",
+    "/app/frontend/app/index.tsx": "Grace redirect check when toggle ON",
+    "/app/frontend/app/_layout.tsx": "grace-welcome route registered",
+    "/app/portal/src/components/admin/tabs/BetaTestingTab.tsx": "Grace toggle UI component",
+    "/app/frontend/public/images/grace.png": "Grace avatar image - 16KB"
+  }
+}

@@ -1,0 +1,7 @@
+# Radio Check — Vulnerability Disclosure Policy
+
+Contact: mailto:security@radiocheck.me
+Preferred-Languages: en
+Canonical: https://radiocheck.me/.well-known/security.txt
+Policy: https://radiocheck.me/security-policy
+Expires: 2027-03-24T00:00:00.000Z
