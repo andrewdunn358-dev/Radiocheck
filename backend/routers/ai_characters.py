@@ -92,31 +92,33 @@ async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(secu
 async def get_all_characters():
     """Get all AI characters (public endpoint for app)"""
     try:
-        # Try database first
-        characters = await db.ai_characters.find(
+        # Get database characters
+        db_characters = await db.ai_characters.find(
             {"is_enabled": True},
-            {"_id": 0, "prompt": 0}  # Don't expose prompts publicly
+            {"_id": 0, "prompt": 0}
         ).sort("order", 1).to_list(50)
         
-        if characters:
-            return {"characters": characters, "source": "database"}
+        # Build a set of DB character IDs
+        db_ids = {c["id"] for c in db_characters}
         
-        # Fallback to hardcoded
-        fallback_chars = []
+        # Merge: start with DB characters, add any fallback chars not already in DB
+        merged = list(db_characters)
         for char_id, char_data in AI_CHARACTERS_FALLBACK.items():
-            fallback_chars.append({
-                "id": char_id,
-                "name": char_data["name"],
-                "description": get_character_description(char_id),
-                "avatar": char_data["avatar"],
-                "is_enabled": True,
-                "order": get_character_order(char_id)  # Include order for sorting
-            })
+            if char_id not in db_ids:
+                merged.append({
+                    "id": char_id,
+                    "name": char_data["name"],
+                    "description": get_character_description(char_id),
+                    "avatar": char_data["avatar"],
+                    "is_enabled": True,
+                    "order": get_character_order(char_id)
+                })
         
-        # Sort by order before returning
-        fallback_chars.sort(key=lambda x: x.get("order", 99))
+        # Sort by order
+        merged.sort(key=lambda x: x.get("order", 99))
         
-        return {"characters": fallback_chars, "source": "fallback"}
+        source = "database" if db_characters else "fallback"
+        return {"characters": merged, "source": source}
     except Exception as e:
         logging.error(f"Error fetching characters: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch characters")

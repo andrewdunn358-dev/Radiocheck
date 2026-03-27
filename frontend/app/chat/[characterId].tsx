@@ -63,7 +63,8 @@ const getAvatarSource = (avatar: string): ImageSourcePropType => {
   // For CMS/remote images, use URI
   return { uri: avatar };
 };
-import { getCharacter, AICharacter } from '../../src/config/ai-characters';
+import { getCharacter as getHardcodedCharacter, AICharacter } from '../../src/config/ai-characters';
+import { getCharacter as fetchCharacterFromAPI } from '../../src/services/characterService';
 import AIConsentModal from '../../src/components/AIConsentModal';
 import { useAgeGateContext } from '../../src/context/AgeGateContext';
 import { useLocationPermission } from '../../src/context/LocationPermissionContext';
@@ -93,8 +94,26 @@ export default function DynamicAIChat() {
   // Location permission context - for safeguarding GPS
   const { requestLocation, locationCoords, hasLocationPermission } = useLocationPermission();
   
-  // Get character config
-  const character = useMemo(() => getCharacter(characterId), [characterId]);
+  // Get character config — start with hardcoded, then overlay API data
+  const [character, setCharacter] = useState<AICharacter>(() => getHardcodedCharacter(characterId));
+  
+  // Fetch latest character data from API (reflects admin portal edits)
+  useEffect(() => {
+    let cancelled = false;
+    fetchCharacterFromAPI(characterId).then(apiChar => {
+      if (cancelled || !apiChar) return;
+      // Merge API data over hardcoded — API fields override, hardcoded fills gaps
+      setCharacter(prev => ({
+        ...prev,
+        ...apiChar,
+        // Keep hardcoded fields that the API may not return
+        welcomeMessage: apiChar.welcomeMessage || prev.welcomeMessage,
+        accentColor: apiChar.accentColor || apiChar.accent_color || prev.accentColor,
+        consentKey: prev.consentKey,
+      }));
+    });
+    return () => { cancelled = true; };
+  }, [characterId]);
   
   // Create dynamic styles - use fallback color if character not found
   const styles = useMemo(() => createStyles(colors, isDark, character?.accentColor || '#3b82f6'), [colors, isDark, character?.accentColor]);
