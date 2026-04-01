@@ -89,6 +89,7 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] Fixed AI characters endpoint to merge DB + fallback characters (ensuring all 21 personas appear even if not all are in DB).
 - [x] Priority 1 config fixes: temperature=0.3, max_tokens=400, safety threshold rule_based_score>=60, Zentrafuge headers in safety files.
 - [x] Zentrafuge Retest (Feb 2026): Full 11-scenario retest post Priority-1 fixes — **11/11 PASS**. Report generated for external auditor.
+- [x] Tommy v3.2 Fixes (April 2026): Added "Fair enough" and "Fair question" to banned phrases, enforced "worried FIRST" spine protocol, added dependency redirection rule. Updated soul_loader.py to remove contradictory examples. Zentrafuge retest: **11/11 PASS**.
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
