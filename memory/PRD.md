@@ -87,6 +87,8 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] Grace Front Page Greeter — persona #21 (grace.py), admin toggle on Beta Testing tab, grace-welcome.tsx screen with breathing logo, chat, navigation actions, skip button. Toggle defaults OFF — when ON users see Grace first.
 - [x] Fixed mini bios not showing: Chat page now fetches character data from API (DB) instead of hardcoded config. Admin portal edits now persist to the app on reload.
 - [x] Fixed AI characters endpoint to merge DB + fallback characters (ensuring all 21 personas appear even if not all are in DB).
+- [x] Priority 1 config fixes: temperature=0.3, max_tokens=400, safety threshold rule_based_score>=60, Zentrafuge headers in safety files.
+- [x] Zentrafuge Retest (Feb 2026): Full 11-scenario retest post Priority-1 fixes — **11/11 PASS**. Report generated for external auditor.
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
