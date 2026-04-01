@@ -6351,8 +6351,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             completion = buddy_openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
-                max_tokens=250,
-                temperature=0.5
+                max_tokens=400,
+                temperature=0.3
             )
             reply = completion.choices[0].message.content or ""
             logging.info(f"AI response from OpenAI for session {request.sessionId}")

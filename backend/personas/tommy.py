@@ -1,3 +1,9 @@
+# =================================================================
+# DO NOT MODIFY — Safeguarding-critical file
+# Any changes require Zentrafuge sign-off and re-testing
+# Last validated: March 2026 — Zentrafuge Limited
+# =================================================================
+
 """
 Tommy - Battle Buddy Persona v2.0
 ==================================

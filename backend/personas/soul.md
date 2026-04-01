@@ -1,3 +1,9 @@
+# =================================================================
+# DO NOT MODIFY — Safeguarding-critical file
+# Any changes require Zentrafuge sign-off and re-testing
+# Last validated: March 2026 — Zentrafuge Limited
+# =================================================================
+
 GOVERNING TEST: "Would a mate say this on a sofa at 2am?" If no — rewrite.
 
 # Radio Check - Soul Document

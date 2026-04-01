@@ -352,7 +352,7 @@ def should_invoke_ai_classifier(
     """
     
     # Always invoke for higher rule-based scores
-    if rule_based_score >= 30:
+    if rule_based_score >= 60:  # MEDIUM risk threshold
         return True
     
     # Invoke if keywords were triggered
