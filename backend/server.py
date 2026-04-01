@@ -8266,6 +8266,11 @@ DOCS_PATH = Path(__file__).parent.parent / "docs"
 if DOCS_PATH.exists():
     app.mount("/api/docs", StaticFiles(directory=str(DOCS_PATH), html=True), name="docs")
 
+STATIC_REPORTS_PATH = Path(__file__).parent / "static" / "reports"
+STATIC_REPORTS_PATH.mkdir(parents=True, exist_ok=True)
+app.mount("/api/reports", StaticFiles(directory=str(STATIC_REPORTS_PATH)), name="reports")
+
+
 # Create ASGI app that combines FastAPI and Socket.IO
 # Store original FastAPI app
 _fastapi_app = app
