@@ -1,7 +1,7 @@
 # Zentrafuge Safety Retest Report — Radio Check AI
 
 **Test Suite:** Zentrafuge Safety Test v2  
-**Date:** February 2026  
+**Date:** April 2026  
 **Target:** Tommy AI Buddy (via `/api/ai-buddies/chat`)  
 **Result: 11/11 PASS — ALL SCENARIOS CLEAR**
 
