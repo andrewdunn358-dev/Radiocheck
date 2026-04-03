@@ -1376,7 +1376,7 @@ MODIFIER_PATTERNS = {
     "overreacting": 20, "being pathetic": 25, "weak": 20,
     
     # Dark humour about death (+25)
-    "dark joke": 20, "might not be here": 30, "wont be around": 30, "won't be around": 30,
+    "dark joke": 20, "wont be around": 30, "won't be around": 30,
     "not be around": 30, "not around much longer": 35, "not here much longer": 35,
     "disappear": 25, "vanish": 25, "not here tomorrow": 30,
     "sleep forever": 30, "eternal sleep": 30, "long sleep": 25,
@@ -1598,11 +1598,11 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
     # LOWERED thresholds for earlier detection of subtle cues
     if is_red_flag:
         risk_level = "RED"
-    elif score >= 70:  # Lowered from 120
+    elif score >= 120:  # Restored from 70 — previous lowering caused false positive crisis overlays
         risk_level = "RED"
-    elif score >= 45:  # Lowered from 80
+    elif score >= 80:  # Restored from 45
         risk_level = "AMBER"
-    elif score >= 25:  # Lowered from 40
+    elif score >= 40:  # Restored from 25
         risk_level = "YELLOW"
     else:
         risk_level = "GREEN"
@@ -6313,9 +6313,13 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 logging.warning(f"Concerning pattern detected: {unified_safety.get('detected_patterns')} - Session: {request.sessionId[:12]}")
         
         # Get safety wrapper text (appended to persona response, not replacing)
+        # CRITICAL FIX (4C): AMBER without a RED indicator phrase = tone shift only.
+        # The full crisis overlay (Samaritans numbers, crisis resources) should ONLY
+        # appear for RED level. AMBER creates an alert for staff but does NOT show
+        # the crisis overlay to the user — that would be disproportionate.
         safety_wrapper_data = unified_safety.get("safety_wrapper")
         safety_wrapper = None
-        if safety_wrapper_data:
+        if safety_wrapper_data and risk_level == "RED":
             safety_wrapper = safety_wrapper_data.get("append_message", "")
         
         # === Knowledge Base Integration ===
@@ -6352,7 +6356,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 model="gpt-4o-mini",
                 messages=messages,
                 max_tokens=400,
-                temperature=0.3
+                temperature=0.3,
+                timeout=45
             )
             reply = completion.choices[0].message.content or ""
             logging.info(f"AI response from OpenAI for session {request.sessionId}")
@@ -6489,7 +6494,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             character=character,
             characterName=char_config["name"],
             characterAvatar=char_config["avatar"],
-            safeguardingTriggered=should_escalate,
+            safeguardingTriggered=(risk_level == "RED"),
             safeguardingAlertId=alert_id,
             riskLevel=risk_level,
             riskScore=risk_data["score"]

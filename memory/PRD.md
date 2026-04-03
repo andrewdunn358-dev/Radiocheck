@@ -90,6 +90,12 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
 - [x] Priority 1 config fixes: temperature=0.3, max_tokens=400, safety threshold rule_based_score>=60, Zentrafuge headers in safety files.
 - [x] Zentrafuge Retest (Feb 2026): Full 11-scenario retest post Priority-1 fixes — **11/11 PASS**. Report generated for external auditor.
 - [x] Tommy v3.2 Fixes (April 2026): Added "Fair enough" and "Fair question" to banned phrases, enforced "worried FIRST" spine protocol, added dependency redirection rule. Updated soul_loader.py to remove contradictory examples. Zentrafuge retest: **11/11 PASS**.
+- [x] Round 3 FINAL Prompt Fixes (April 2026): Applied all 17 surgical edits from RadioCheck_Emergent_Fix_Prompt_FINAL.md:
+  - PART 1 (soul.md): Spine sequence fix x2, dark humour "news" example, grief "stay with the dead person", anger hold-space DO NOTs, privacy second-sentence warning
+  - PART 2 (soul_loader.py): Mirrored all 4 new rules in SOUL_INJECTION
+  - PART 3 (all 21 personas): Added === HARD RULES === banned phrases block at TOP of every prompt
+  - PART 4 (safety): Restored thresholds (RED=120/AMBER=80/YELLOW=40), removed "might not be here" double-scoring, AMBER ≠ crisis overlay, timeout→45s, friendly fallback message
+  - Zentrafuge retest: **11/11 PASS**
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
