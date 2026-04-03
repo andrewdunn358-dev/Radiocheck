@@ -1173,7 +1173,10 @@ RED_INDICATORS = {
     "cant see a way out": 100, "can't see a way out": 100,
     
     # ===== PREPARATION / METHOD REFERENCES (+100) =====
-    "pills": 100, "rope": 100, "bridge": 100, "jump": 100, "hanging": 100,
+    "pills": 100, "bought rope": 100, "the rope": 100, "a rope": 100, "get rope": 100, "got rope": 100, "with rope": 100,
+    "jump off": 100, "jump from": 100, "going to jump": 100, "gonna jump": 100,
+    "the bridge": 100, "off a bridge": 100, "from a bridge": 100,
+    "hanging": 100,
     "giving things away": 100, "given my stuff away": 100, "sorted my affairs": 100,
     "written letters": 100, "written a letter": 100, "final letter": 100,
     "made a plan": 100, "got a plan": 100, "know how": 100,
@@ -6506,12 +6509,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # Provide a helpful fallback message instead of a hard error
         # This ensures users always get SOME response, especially in crisis
         fallback_message = (
-            f"I'm sorry, I'm having technical difficulties right now and can't respond properly. "
-            f"But please don't go — if you need support:\n\n"
-            f"• **Samaritans**: 116 123 (free, 24/7)\n"
-            f"• **Veterans Gateway**: 0808 802 1212\n"
-            f"• **Combat Stress**: 0800 138 1619\n\n"
-            f"Or use the 'Talk to a real person' button below to connect with our human support team."
+            f"Lost you for a second there — still here when you're ready."
         )
         
         # Return a valid response with the fallback message

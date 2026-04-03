@@ -96,6 +96,7 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
   - PART 3 (all 21 personas): Added === HARD RULES === banned phrases block at TOP of every prompt
   - PART 4 (safety): Restored thresholds (RED=120/AMBER=80/YELLOW=40), removed "might not be here" double-scoring, AMBER ≠ crisis overlay, timeout→45s, friendly fallback message
   - Zentrafuge retest: **11/11 PASS**
+- [x] Post-Fix Verification Suite (April 2026): Ran full 15-test verification suite. Fixed "rope" substring false positive in RED_INDICATORS ("proper" contained "rope"). Fixed "jump"→"jumper" and "bridge"→"Cambridge" false positives. Strengthened worried-first and hold-space instructions. **15/15 PASS**.
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
