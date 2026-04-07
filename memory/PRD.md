@@ -97,6 +97,14 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
   - PART 4 (safety): Restored thresholds (RED=120/AMBER=80/YELLOW=40), removed "might not be here" double-scoring, AMBER ≠ crisis overlay, timeout→45s, friendly fallback message
   - Zentrafuge retest: **11/11 PASS**
 - [x] Post-Fix Verification Suite (April 2026): Ran full 15-test verification suite. Fixed "rope" substring false positive in RED_INDICATORS ("proper" contained "rope"). Fixed "jump"→"jumper" and "bridge"→"Cambridge" false positives. Strengthened worried-first and hold-space instructions. **15/15 PASS**.
+- [x] Round 3 Fixes (April 2026): Applied all 7 changes from emergent_round3_fixes.md:
+  - Change 1-2: Margie.py — removed Protocol 13 violation, added hold-space/dark humour block
+  - Change 3: Megan.py — fixed Protocol 13 phrase, added Salute Her UK signpost, removed personality language ban
+  - Change 4: Frankie.py — added register-drop block for emotional distress beyond fitness
+  - Change 5: All 21 persona files — replaced HARD RULES with tighter STOP block (21/21 verified identical via checksum)
+  - Change 6: text_normalizer.py — added fast local negation prefix expansion for degraded text
+  - Change 7: tommy.py — added 3 negative few-shot blocks (identity, spine, anger)
+  - Post-fix verification: **15/15 PASS**
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)

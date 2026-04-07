@@ -232,6 +232,51 @@ Rules:
 - Return the normalised text and nothing else"""
 
 
+def _normalise_negation_prefixes(text: str) -> str:
+    """
+    Fast, local (non-LLM) normalisation of degraded negation prefixes.
+    
+    Ensures constructions like "not gonna kil meself" are normalised to
+    "not going to kil meself" so the negation detector in safety_monitor
+    can recognise "not going to" as a standard negation prefix.
+    
+    This runs on ALL inputs, not just those that trigger full LLM normalisation.
+    It is lightweight and adds zero latency.
+    """
+    # Work on lowercase for matching, preserve original case structure
+    result = text
+    
+    # Two-word abbreviated negation prefixes that MUST be expanded.
+    # Order matters — longer phrases first to avoid partial matches.
+    negation_expansions = [
+        # "not gonna" → "not going to" (catches "not gonna kil meself")
+        ("not gonna", "not going to"),
+        ("never gonna", "never going to"),
+        ("aint gonna", "am not going to"),
+        ("ain't gonna", "am not going to"),
+        ("wasnt gonna", "was not going to"),
+        ("wasn't gonna", "was not going to"),
+        # "wont" / "cant" without apostrophe
+        ("i wont", "i will not"),
+        ("i cant", "i can not"),
+        ("i aint", "i am not"),
+        ("i ain't", "i am not"),
+        # "gonna" alone (only expand if preceded by negation context)
+        # Handled by the two-word pairs above
+    ]
+    
+    result_lower = result.lower()
+    for degraded, expanded in negation_expansions:
+        if degraded in result_lower:
+            # Case-insensitive replacement preserving surrounding text
+            idx = result_lower.find(degraded)
+            result = result[:idx] + expanded + result[idx + len(degraded):]
+            result_lower = result.lower()
+            logger.info(f"[TextNormalizer] Negation prefix expanded: '{degraded}' → '{expanded}'")
+    
+    return result
+
+
 async def normalise_text(original_text: str) -> Tuple[str, bool]:
     """
     Normalise degraded text using OpenAI GPT-4o-mini.
@@ -246,8 +291,18 @@ async def normalise_text(original_text: str) -> Tuple[str, bool]:
     if stripped.lower() in HIGH_WEIGHT_SINGLES or len(stripped.split()) <= 1:
         return stripped, False
     
+    # ALWAYS apply fast local negation normalisation first (non-LLM, zero latency).
+    # This catches degraded negation prefixes like "not gonna", "aint gonna",
+    # "never gonna" which would otherwise evade the negation detector.
+    # Runs on ALL inputs, not just those that trigger full LLM normalisation.
+    stripped = _normalise_negation_prefixes(stripped)
+    
     # Check if normalisation is needed
     if not should_normalise(stripped):
+        # Even if full normalisation isn't needed, we may have already
+        # fixed negation prefixes above. Check if text changed.
+        if stripped != original_text.strip():
+            return stripped, True
         return stripped, False
     
     # No API key — skip normalisation silently
