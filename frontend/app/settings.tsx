@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearAllStoredData } from '../src/services/conversationStorage';
 import { useTheme } from '../src/context/ThemeContext';
 import { safeGoBack } from '../src/utils/navigation';
 
@@ -24,7 +25,7 @@ export default function Settings() {
   const handleClearData = () => {
     Alert.alert(
       'Clear All Data',
-      'This will delete all your local data including journal entries, mood history, and favorites. This cannot be undone.',
+      'This will delete all your local data including conversation history, journal entries, mood history, and favorites. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -32,6 +33,20 @@ export default function Settings() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Clear conversation history, summaries, and session data
+              await clearAllStoredData();
+              
+              // Clear all radiocheck storage keys (encryption key, cleanup timestamps, opt-out)
+              await AsyncStorage.multiRemove([
+                'radiocheck_conversations',
+                'radiocheck_summaries',
+                'radiocheck_last_sync',
+                'radiocheck_storage_opt_out',
+                'radiocheck_enc_key',
+                'radiocheck_last_cleanup',
+              ]);
+              
+              // Clear journal, mood, and favorites
               await AsyncStorage.multiRemove([
                 '@veterans_journal_entries',
                 '@veterans_mood_entries',
@@ -39,7 +54,8 @@ export default function Settings() {
                 '@veterans_favorite_counsellors',
                 '@veterans_favorite_peers',
               ]);
-              Alert.alert('Data Cleared', 'All local data has been deleted.');
+              
+              Alert.alert('Data Cleared', 'All local data has been deleted. You are starting fresh.');
             } catch (error) {
               Alert.alert('Error', 'Failed to clear data. Please try again.');
             }

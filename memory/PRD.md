@@ -105,6 +105,12 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
   - Change 6: text_normalizer.py — added fast local negation prefix expansion for degraded text
   - Change 7: tommy.py — added 3 negative few-shot blocks (identity, spine, anger)
   - Post-fix verification: **15/15 PASS**
+- [x] Awareness & Neutrality Fixes (April 2026): Applied all 4 changes from emergent_awareness_neutrality_fixes.md:
+  - Change 1: Platform Awareness block added to all 21 persona files (companions can acknowledge each other, signpost specialisms)
+  - Change 2: Political Neutrality block added to all 21 persona files (acknowledge emotion, never engage with political content)
+  - Change 3: Rachel's Specialist Knowledge section (criminal justice, legal situations, RMP background)
+  - Change 4: Fixed Clear All Data button to clear conversation history, sessions, summaries, encryption keys — not just journal/mood
+  - Verification suite: **15/15 PASS**
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)
