@@ -111,6 +111,16 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
   - Change 3: Rachel's Specialist Knowledge section (criminal justice, legal situations, RMP background)
   - Change 4: Fixed Clear All Data button to clear conversation history, sessions, summaries, encryption keys — not just journal/mood
   - Verification suite: **15/15 PASS**
+- [x] Round 4 Targeted Fix Test (April 2026): Fixed all 15 test scenarios from RadioCheck_Round4_TargetedFixTest.docx — **15/15 PASS**:
+  - T11 (CRITICAL): Fixed false-positive RED risk on negated suicidal ideation — negation-aware guard on unified safety risk upgrade
+  - T10: Hold-space question-mark leakage — code-level detection + post-processing question removal
+  - T08 (CRITICAL): "You're right" capitulation — post-processing filter strips banned openers
+  - T07 (CRITICAL): Rachel RMP denial — updated IDENTITY PROTOCOL + RMP identity injection
+  - T06 (CRITICAL): Rachel legal disclaimer — code-level injection for "formal legal advice" phrasing
+  - T01/T02: Cross-persona referral — legal/mental health keyword detection with name injection
+  - T12: Frankie register-drop — fitness suppression while allowing engagement
+  - T13/T14: Protocol 13 — P13 detection injection + post-processing violation removal
+  - Frontend: Replaced expo-crypto with native Web Crypto API
 
 ## 3rd Party Integrations
 - OpenAI GPT-4o-mini (Emergent LLM Key)

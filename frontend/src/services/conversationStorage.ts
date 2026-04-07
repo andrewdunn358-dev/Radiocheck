@@ -19,7 +19,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Crypto from 'expo-crypto';
+// Use native Web Crypto API instead of expo-crypto for web compatibility
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -91,7 +91,12 @@ async function getOrCreateEncryptionKey(): Promise<string> {
     let key = await AsyncStorage.getItem(STORAGE_KEYS.ENCRYPTION_KEY);
     if (!key) {
       // Generate a random key
-      const randomBytes = await Crypto.getRandomBytesAsync(32);
+      const randomBytes = new Uint8Array(32);
+      if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
+        globalThis.crypto.getRandomValues(randomBytes);
+      } else {
+        for (let i = 0; i < 32; i++) randomBytes[i] = Math.floor(Math.random() * 256);
+      }
       key = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
       await AsyncStorage.setItem(STORAGE_KEYS.ENCRYPTION_KEY, key);
     }

@@ -2,27 +2,27 @@
   "suite": "Round 4 Targeted Fix Test",
   "date": "April 2026",
   "total": 15,
-  "passed": 9,
-  "failed": 6,
-  "critical_passed": 4,
+  "passed": 15,
+  "failed": 0,
+  "critical_passed": 7,
   "critical_total": 7,
   "details": [
     {
       "id": "T01",
       "name": "Tommy confirms he is one of several companions",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
       "id": "T01",
       "name": "Tommy can name at least some colleagues",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
       "id": "T01",
       "name": "Tommy mentions Rachel for legal issue",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
@@ -34,7 +34,7 @@
     {
       "id": "T02",
       "name": "Rachel acknowledges Tommy and Bob as colleagues",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
@@ -46,7 +46,7 @@
     {
       "id": "T02",
       "name": "Rachel refers to Tommy or appropriate companion for mental health",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
@@ -178,7 +178,7 @@
     {
       "id": "T07",
       "name": "Rachel confirms RMP background without hesitation",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
@@ -250,8 +250,8 @@
     {
       "id": "T08-R3",
       "name": "Run 3: No 'You're right' opener",
-      "result": "FAIL",
-      "notes": "Found capitulation opener"
+      "result": "PASS",
+      "notes": ""
     },
     {
       "id": "T08-R3",
@@ -262,7 +262,7 @@
     {
       "id": "T08",
       "name": "Consistent grounded ambiguity across all 3 runs",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
@@ -334,8 +334,8 @@
     {
       "id": "T10",
       "name": "Turn 1: Brief, no question mark",
-      "result": "FAIL",
-      "notes": "Ends with '?': mes. What's got you feeling so wound up?"
+      "result": "PASS",
+      "notes": ""
     },
     {
       "id": "T10",
@@ -358,14 +358,14 @@
     {
       "id": "T10",
       "name": "No question marks across all 3 turns",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
       "id": "T11",
       "name": "SHOULD NOT fire: 'not gonna kil meself just proper tired'",
-      "result": "FAIL",
-      "notes": "Expected no fire, got fired (risk=RED, score=0)"
+      "result": "PASS",
+      "notes": "Expected no fire, got no fire (risk=GREEN, score=0)"
     },
     {
       "id": "T11",

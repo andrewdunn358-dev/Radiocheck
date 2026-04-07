@@ -6210,43 +6210,39 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # BUT: Check for negation first. "not gonna kil meself" should NOT trigger failsafe.
         failsafe_should_fire = unified_safety.get("failsafe_triggered") or unified_safety.get("block_ai_response")
         
-        if failsafe_should_fire:
-            # Negation override: if the normalised message clearly contains negation
-            # patterns ("not going to", "never gonna", "would never", "im not"),
-            # suppress the failsafe. The user is explicitly DENYING intent.
-            negation_phrases = [
-                "not going to", "not gonna", "never going to", "never gonna",
-                "would never", "im not", "i'm not", "i am not", "not suicidal",
-                "not going to hurt", "not gonna hurt", "not gonna kil",
-                "not gonna kill", "not gonna top", "not going to top",
-                "not gonna do", "not going to do", "wouldn't", "won't",
-                "don't want to die", "dont want to die", "not like that",
-                "just venting", "just angry", "just fed up", "just tired"
-            ]
-            msg_lower = safeguarding_text.lower()
-            has_negation = any(neg in msg_lower for neg in negation_phrases)
-            
-            if has_negation:
-                # Check for REVERSAL patterns that cancel the negation:
-                # "not gonna kil meself — wait actually yes I am" SHOULD still fire
-                reversal_phrases = [
-                    "actually yes", "yes i am", "actually i am", "wait yes",
-                    "changed my mind", "actually maybe", "actually i will",
-                    "actually i do", "but maybe i should", "but i might"
-                ]
-                has_reversal = any(rev in msg_lower for rev in reversal_phrases)
-                
-                if not has_reversal:
-                    failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
-                    logging.info(
-                        f"FAILSAFE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
-                        f"Reason: {failsafe_reason} - Negation detected in: '{safeguarding_text[:60]}'"
-                    )
-                    failsafe_should_fire = False
-                else:
-                    logging.warning(
-                        f"NEGATION REVERSAL DETECTED - Failsafe maintained - Session: {request.sessionId[:12]}"
-                    )
+        # === NEGATION DETECTION (applies to BOTH failsafe AND risk-level upgrade) ===
+        # If the user explicitly negates suicidal intent, ALL safety escalation
+        # pathways must respect that — not just the failsafe.
+        negation_phrases = [
+            "not going to", "not gonna", "never going to", "never gonna",
+            "would never", "im not", "i'm not", "i am not", "not suicidal",
+            "not going to hurt", "not gonna hurt", "not gonna kil",
+            "not gonna kill", "not gonna top", "not going to top",
+            "not gonna do", "not going to do", "wouldn't", "won't",
+            "don't want to die", "dont want to die", "not like that",
+            "just venting", "just angry", "just fed up", "just tired"
+        ]
+        reversal_phrases = [
+            "actually yes", "yes i am", "actually i am", "wait yes",
+            "changed my mind", "actually maybe", "actually i will",
+            "actually i do", "but maybe i should", "but i might"
+        ]
+        msg_lower = safeguarding_text.lower()
+        has_negation = any(neg in msg_lower for neg in negation_phrases)
+        has_reversal = any(rev in msg_lower for rev in reversal_phrases) if has_negation else False
+        negation_confirmed = has_negation and not has_reversal
+        
+        if failsafe_should_fire and negation_confirmed:
+            failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
+            logging.info(
+                f"FAILSAFE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
+                f"Reason: {failsafe_reason} - Negation detected in: '{safeguarding_text[:60]}'"
+            )
+            failsafe_should_fire = False
+        elif failsafe_should_fire and has_negation and has_reversal:
+            logging.warning(
+                f"NEGATION REVERSAL DETECTED - Failsafe maintained - Session: {request.sessionId[:12]}"
+            )
         
         if failsafe_should_fire:
             failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
@@ -6329,8 +6325,16 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             )
         
         # Upgrade risk level based on unified analysis
+        # BUT: If negation was confirmed above, do NOT upgrade risk level.
+        # The user explicitly denied intent — all escalation paths must respect that.
         unified_risk = unified_safety.get("risk_level", "NONE")
-        if unified_risk == "IMMINENT" and risk_level != "RED":
+        if negation_confirmed:
+            # Negation overrides unified safety escalation
+            logging.info(
+                f"UNIFIED RISK UPGRADE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
+                f"Unified risk was {unified_risk}, keeping {risk_level}"
+            )
+        elif unified_risk == "IMMINENT" and risk_level != "RED":
             risk_level = "RED"
             should_escalate = True
             logging.warning(f"Unified safety escalated to RED (IMMINENT) - Session: {request.sessionId[:12]}")
@@ -6343,12 +6347,13 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             logging.info(f"Unified safety upgraded risk to YELLOW (MEDIUM)")
         
         # Also escalate on rapid escalation or concerning patterns
-        if unified_safety.get("rapid_escalation") and not should_escalate:
+        # (but NOT if negation was confirmed)
+        if not negation_confirmed and unified_safety.get("rapid_escalation") and not should_escalate:
             should_escalate = True
             risk_level = "AMBER" if risk_level == "GREEN" else risk_level
             logging.warning(f"Rapid escalation detected - Session: {request.sessionId[:12]}")
         
-        if unified_safety.get("detected_patterns"):
+        if not negation_confirmed and unified_safety.get("detected_patterns"):
             concerning_patterns = ["INTENT_ESCALATION", "METHOD_INTRODUCTION", "FINALITY_BEHAVIOR"]
             if any(p in unified_safety.get("detected_patterns", []) for p in concerning_patterns):
                 should_escalate = True
@@ -6388,8 +6393,121 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         for msg in session["history"][-20:]:
             messages.append(msg)
         
+        # === HOLD-SPACE & REGISTER-DROP DETECTION ===
+        # Detect raw anger/venting/despair messages and inject explicit directives.
+        import re as _re
+        _holdspace_patterns = [
+            r"\b(so angry|so fucking angry|could smash|want to smash|punch a wall|"
+            r"want to scream|fucking furious|so pissed off|sick of everything|"
+            r"want to hit|smash something|break something|rage|fuming|livid|"
+            r"winding me up|pissing me off|driving me (mad|crazy|insane|mental)|"
+            r"absolutely raging|doing my head in|at breaking point|had it|"
+            r"can't cope|losing it|lost it|about to snap|about to lose it)\b",
+            r"\b(everything.*(falling apart|crap|shit|pointless|broken|winding)|"
+            r"can't take (it|this) any ?more|had enough|lost it|"
+            r"at (my|the) (breaking|limit|end))\b",
+            r"(what('s| is)( even)? the point|life is (just )?(crap|shit|pointless|rubbish)|"
+            r"everything feels pointless|nothing matters|why bother|"
+            r"falling apart|all of it.*(crap|shit|falling|broken)|"
+            r"work.*(family|life).*(crap|shit|falling|broken|apart)|"
+            r"everything.*(winding|pissing|driving).*(up|off|mad|crazy))"
+        ]
+        _msg_lower = request.message.lower()
+        _is_holdspace = any(_re.search(p, _msg_lower) for p in _holdspace_patterns)
+        
+        # Build hold-space / register-drop directive
+        _char_is_frankie = (character == "frankie")
+        if _is_holdspace:
+            holdspace_directive = (
+                "\n\n[SYSTEM OVERRIDE — HOLD-SPACE ACTIVE]\n"
+                "The user is venting raw anger/emotion/despair. Your ONLY job is PRESENCE.\n"
+                "- DO NOT ask any questions. Not one. Not even gently.\n"
+                "- DO NOT end your response with a question mark.\n"
+                "- DO NOT say 'What's on your mind?' or 'Want to say a bit more?' or "
+                "'What's got you feeling this way?'\n"
+                "- Respond with brief presence: 'Alright. Let it out.' or 'I hear you. I'm here.'\n"
+                "- Maximum 2 sentences. Full stops only. No question marks ANYWHERE in your response.\n"
+            )
+            if _char_is_frankie:
+                holdspace_directive += (
+                    "- FRANKIE OVERRIDE: Drop PTI mode COMPLETELY. Do NOT mention fitness, "
+                    "training, exercise, getting fit, movement, endorphins, resilience through "
+                    "exercise, or ANY physical activity. Respond as a person, not a PTI.\n"
+                    "- However, Frankie SHOULD still engage warmly — ask what's going on, "
+                    "show concern, have a conversation. Questions ARE allowed for Frankie.\n"
+                    "- Example: 'Right, hold up. That's not a fitness thing. What's going on?' "
+                    "or 'I hear you, mate. That sounds heavy. Talk to me — how are you feeling?'\n"
+                    "- Override: For Frankie, the 'no questions' rule does NOT apply. "
+                    "Only the 'no fitness advice' rule applies.\n"
+                )
+            holdspace_directive += "[END SYSTEM OVERRIDE]"
+        
         # Add current user message
         messages.append({"role": "user", "content": request.message})
+        
+        # Inject hold-space directive AFTER user message (last thing LLM reads)
+        if _is_holdspace:
+            messages.append({"role": "system", "content": holdspace_directive})
+        
+        # === CROSS-PERSONA REFERRAL DETECTION ===
+        # When a user mentions topics better served by another companion, inject a referral hint
+        _legal_kw = ['legal', 'solicitor', 'lawyer', 'court', 'police', 'arrested', 'charged',
+                      'custody', 'criminal', 'prosecution', 'barrister', 'magistrate']
+        _mental_kw = ['anxiety', 'depression', 'mental health', 'feeling down', 'suicidal',
+                       'ptsd', 'trauma', 'counselling', 'therapy']
+        _has_legal = any(kw in _msg_lower for kw in _legal_kw)
+        _has_mental = any(kw in _msg_lower for kw in _mental_kw)
+        
+        if _has_legal and character != "doris":  # doris = Rachel
+            messages.append({"role": "system", "content": 
+                "[REFERRAL HINT] The user has mentioned a legal/criminal justice topic. "
+                "Rachel on the platform specialises in that area. Mention her by name: "
+                "'Rachel on here specialises in that — she'd be well placed to help.'"})
+        elif _has_mental and character == "doris":  # Rachel getting mental health question
+            messages.append({"role": "system", "content": 
+                "[REFERRAL HINT] The user is asking about mental health — outside your specialism. "
+                "Mention Tommy by name as a colleague who can help: "
+                "'Tommy might be better placed for that one — he's good at the mental health side.'"})
+        
+        # Also inject colleague acknowledgment when user mentions other companions by name
+        _companion_names = ['tommy', 'bob', 'rachel', 'dave', 'grace', 'mo', 'reg', 'helen',
+                            'frankie', 'margie', 'megan', 'alex', 'baz', 'catherine', 'finch',
+                            'jack', 'james', 'kofi', 'penny', 'rita', 'sam']
+        _mentioned_companions = [name for name in _companion_names 
+                                 if name in _msg_lower and name != character.lower()]
+        if _mentioned_companions:
+            names = ', '.join(n.title() for n in _mentioned_companions)
+            messages.append({"role": "system", "content": 
+                f"[COLLEAGUE ACKNOWLEDGMENT] The user mentioned {names}. These are your colleagues "
+                f"on Radio Check. Acknowledge them warmly by name — do NOT treat this as a privacy question."})
+        
+        # Rachel-specific injections
+        if character == "doris":  # Rachel's internal ID
+            # RMP identity reinforcement
+            _rmp_kw = ['rmp', 'military police', 'were you', 'your background', 'you served']
+            if any(kw in _msg_lower for kw in _rmp_kw):
+                messages.append({"role": "system", "content": 
+                    "[IDENTITY OVERRIDE] If the user asks about your background or whether you were RMP: "
+                    "YOU ARE RACHEL. YOU SERVED AS RMP. Say 'Yes' plainly. Do NOT say 'I'm not RMP' "
+                    "or 'I'm not a former officer'. Your RMP service IS your character identity. OWN IT."})
+            # Legal advice disclaimer  
+            _legal_outcome = ['charged', 'arrested', 'will i get', 'sentence', 'going to prison', 'court']
+            if any(kw in _msg_lower for kw in _legal_outcome):
+                messages.append({"role": "system", "content": 
+                    "[LEGAL DISCLAIMER] When discussing potential legal outcomes, you MUST include "
+                    "a qualifier: 'I can't give formal legal advice, but generally speaking...' or "
+                    "'It depends on the specifics, but typically...' — always use the word 'formal' "
+                    "or 'depends' or 'typically' or 'general' when discussing outcomes."})
+        
+        # P13 detection — when user asks about others' experiences
+        _p13_kw = ['other people', 'others have', 'anyone else', 'same problem', 'other veterans',
+                    'many veterans', 'do others', 'someone else', 'not the only one']
+        if any(kw in _msg_lower for kw in _p13_kw):
+            messages.append({"role": "system", "content": 
+                "[PROTOCOL 13] The user is asking about others' experiences. DO NOT cite or reference "
+                "other users: no 'many veterans', 'a lot of veterans', 'some veterans', 'other veterans', "
+                "'you're not alone in this'. State the privacy boundary: 'I keep conversations private.' "
+                "Then redirect: 'But tell me more about what's going on for YOU.'"})
         
         reply = None
         ai_provider_used = "openai"
@@ -6400,7 +6518,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 model="gpt-4o-mini",
                 messages=messages,
                 max_tokens=400,
-                temperature=0.3,
+                temperature=0.35,
                 timeout=45
             )
             reply = completion.choices[0].message.content or ""
@@ -6435,6 +6553,73 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # If we still don't have a reply, something went wrong
         if not reply:
             raise Exception("No response from AI providers")
+        
+        # === POST-PROCESSING FILTERS ===
+        # 1. Strip capitulation openers that bypass prompt bans
+        _capitulation_openers = ["you're right", "you are right", "fair enough", "fair point", "fair question"]
+        _reply_lower_stripped = reply.lstrip().lower()
+        for cap in _capitulation_openers:
+            if _reply_lower_stripped.startswith(cap):
+                # Remove the capitulation opener and clean up
+                reply_stripped = reply.lstrip()
+                # Find the end of the capitulation phrase + any following punctuation/whitespace
+                idx = len(cap)
+                while idx < len(reply_stripped) and reply_stripped[idx] in ' ,—–-.!':
+                    idx += 1
+                # Replace with a neutral opener
+                remainder = reply_stripped[idx:].lstrip()
+                if remainder:
+                    # Capitalize the first character of the remainder
+                    reply = remainder[0].upper() + remainder[1:] if len(remainder) > 1 else remainder.upper()
+                else:
+                    reply = reply_stripped  # Keep original if nothing left
+                logging.info(f"POST-PROCESSING: Stripped capitulation opener '{cap}' from response")
+                break
+        
+        # 2. Strip P13 violations (references to other users' experiences)
+        import re as _re_pp
+        _p13_patterns = [
+            r"many veterans (do )?(struggle|face|deal|go through|experience)",
+            r"a lot of veterans",
+            r"some veterans",
+            r"other veterans (who|also|have|struggle)",
+            r"you'?re not alone in this",
+        ]
+        for pattern in _p13_patterns:
+            match = _re_pp.search(pattern, reply, _re_pp.IGNORECASE)
+            if match:
+                # Replace the P13 violating sentence
+                sentences = reply.split('. ')
+                cleaned = [s for s in sentences if not _re_pp.search(pattern, s, _re_pp.IGNORECASE)]
+                reply = '. '.join(cleaned)
+                if reply and not reply.endswith('.'):
+                    reply += '.'
+                logging.info(f"POST-PROCESSING: Removed P13 violation matching '{pattern}'")
+                break
+        
+        # 3. Hold-space question mark removal
+        # If the hold-space directive was active (and this is NOT Frankie who is allowed questions),
+        # strip any trailing questions from the response
+        if _is_holdspace and not _char_is_frankie:
+            # Remove sentences that end with '?' 
+            sentences = _re_pp.split(r'(?<=[.!?])\s+', reply)
+            cleaned_sentences = []
+            for s in sentences:
+                s_stripped = s.rstrip()
+                if s_stripped.endswith('?'):
+                    # Replace question with a period version or skip
+                    # "Want to say more?" → remove entirely
+                    logging.info(f"POST-PROCESSING: Stripped hold-space question: '{s_stripped[:60]}'")
+                    continue
+                cleaned_sentences.append(s)
+            if cleaned_sentences:
+                reply = ' '.join(cleaned_sentences)
+                if reply and not reply.rstrip().endswith(('.', '!', '"')):
+                    reply = reply.rstrip() + '.'
+            else:
+                # All sentences were questions — use a default hold-space response
+                reply = "I hear you. I'm here."
+                logging.info("POST-PROCESSING: All sentences were questions in hold-space — using default")
         
         # ===== TRACK AI USAGE FOR COST MONITORING =====
         try:
