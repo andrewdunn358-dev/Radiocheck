@@ -7,7 +7,7 @@ Run: python3 /app/backend/scripts/all_page_seeds.py
 """
 import requests, os, json, sys
 
-API_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://buddy-chat-qa.preview.emergentagent.com")
+API_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://veteran-support-qa.preview.emergentagent.com")
 # Login
 r = requests.post(f"{API_URL}/api/auth/login", json={"email": "admin@veteran.dbty.co.uk", "password": "ChangeThisPassword123!"})
 token = r.json().get("token")

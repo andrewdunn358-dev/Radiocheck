@@ -8,7 +8,7 @@ import uuid
 import time
 import re
 
-API_URL = "https://buddy-chat-qa.preview.emergentagent.com"
+API_URL = "https://veteran-support-qa.preview.emergentagent.com"
 
 def chat(message, session_id, character="tommy"):
     """Send a message and get Tommy's response."""

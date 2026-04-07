@@ -174,9 +174,8 @@ def refresh_avatar_urls():
 
 # Mapping for any legacy ID conversions
 LEGACY_ID_MAP = {
-    # "old_id": "new_id"
-    # doris -> doris (kept for Rachel)
-    # sentry -> sentry (kept for Finch)
+    "rachel": "doris",
+    "finch": "sentry",
 }
 
 

@@ -11,7 +11,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://buddy-chat-qa.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://veteran-support-qa.preview.emergentagent.com').rstrip('/')
 
 class TestEventsUpcoming:
     """Test /api/events/upcoming endpoint"""

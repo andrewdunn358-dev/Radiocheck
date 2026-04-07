@@ -34,5 +34,5 @@ When forking a session, agents sometimes change these URLs to the preview enviro
 
 ## Preview Environment (Emergent)
 
-- Preview URL: `https://buddy-chat-qa.preview.emergentagent.com`
+- Preview URL: `https://veteran-support-qa.preview.emergentagent.com`
 - This is for testing ONLY - changes here don't affect production until deployed

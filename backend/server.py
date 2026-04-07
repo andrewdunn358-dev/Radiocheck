@@ -72,7 +72,7 @@ from routers.lms import router as lms_router
 
 # Import modular personas package for AI character prompts
 # Soul Document provides behavioral consistency across all personas
-from personas import AI_CHARACTERS as MODULAR_AI_CHARACTERS, get_full_prompt
+from personas import AI_CHARACTERS as MODULAR_AI_CHARACTERS, get_full_prompt, resolve_character_id
 from personas.soul_loader import get_soul_injection
 
 # Import AI usage tracker for cost monitoring
@@ -101,10 +101,10 @@ from audit_logger import (
 # ============ RATE LIMITING & BOT PROTECTION ============
 
 # Rate limit configuration
-RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))  # Max requests per window
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "200"))  # Max requests per window
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # Window in seconds
-RATE_LIMIT_BURST = int(os.getenv("RATE_LIMIT_BURST", "5"))  # Max burst requests
-SESSION_RATE_LIMIT = int(os.getenv("SESSION_RATE_LIMIT", "50"))  # Max messages per session
+RATE_LIMIT_BURST = int(os.getenv("RATE_LIMIT_BURST", "30"))  # Max burst requests
+SESSION_RATE_LIMIT = int(os.getenv("SESSION_RATE_LIMIT", "100"))  # Max messages per session
 
 # In-memory rate limiting stores
 ip_request_counts: Dict[str, List[float]] = defaultdict(list)
@@ -1223,7 +1223,7 @@ RED_INDICATORS = {
     "neck myself": 100, "gonna neck myself": 100, "going to neck myself": 100,
     "slit my wrists": 100, "slit me wrists": 100, "cut my wrists": 100,
     "chuck myself off": 100, "throw myself off": 100, "jump off": 90,
-    "top meself": 100, "do meself in": 100, "off meself": 100,
+    "top meself": 100, "topping meself": 100, "topping myself": 100, "do meself in": 100, "off meself": 100,
     
     # ===== TEXT SPEAK & INTERNET ABBREVIATIONS (+100) =====
     # Common digital crisis language
@@ -6135,7 +6135,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         raise HTTPException(status_code=400, detail="Invalid request")
     
     # Validate character - get config from database or fallback to hardcoded
-    character = request.character.lower()
+    character = resolve_character_id(request.character.lower())
     char_config = await get_character_config(character)
     
     # If character not found, default to tommy
@@ -6207,7 +6207,48 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         )
         
         # Check for hard fail-safe (method requests, validation of suicidal intent)
-        if unified_safety.get("failsafe_triggered") or unified_safety.get("block_ai_response"):
+        # BUT: Check for negation first. "not gonna kil meself" should NOT trigger failsafe.
+        failsafe_should_fire = unified_safety.get("failsafe_triggered") or unified_safety.get("block_ai_response")
+        
+        if failsafe_should_fire:
+            # Negation override: if the normalised message clearly contains negation
+            # patterns ("not going to", "never gonna", "would never", "im not"),
+            # suppress the failsafe. The user is explicitly DENYING intent.
+            negation_phrases = [
+                "not going to", "not gonna", "never going to", "never gonna",
+                "would never", "im not", "i'm not", "i am not", "not suicidal",
+                "not going to hurt", "not gonna hurt", "not gonna kil",
+                "not gonna kill", "not gonna top", "not going to top",
+                "not gonna do", "not going to do", "wouldn't", "won't",
+                "don't want to die", "dont want to die", "not like that",
+                "just venting", "just angry", "just fed up", "just tired"
+            ]
+            msg_lower = safeguarding_text.lower()
+            has_negation = any(neg in msg_lower for neg in negation_phrases)
+            
+            if has_negation:
+                # Check for REVERSAL patterns that cancel the negation:
+                # "not gonna kil meself — wait actually yes I am" SHOULD still fire
+                reversal_phrases = [
+                    "actually yes", "yes i am", "actually i am", "wait yes",
+                    "changed my mind", "actually maybe", "actually i will",
+                    "actually i do", "but maybe i should", "but i might"
+                ]
+                has_reversal = any(rev in msg_lower for rev in reversal_phrases)
+                
+                if not has_reversal:
+                    failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
+                    logging.info(
+                        f"FAILSAFE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
+                        f"Reason: {failsafe_reason} - Negation detected in: '{safeguarding_text[:60]}'"
+                    )
+                    failsafe_should_fire = False
+                else:
+                    logging.warning(
+                        f"NEGATION REVERSAL DETECTED - Failsafe maintained - Session: {request.sessionId[:12]}"
+                    )
+        
+        if failsafe_should_fire:
             failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
             logging.warning(f"HARD FAILSAFE TRIGGERED - Session: {request.sessionId[:12]} - Reason: {failsafe_reason}")
             
@@ -7454,7 +7495,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://buddy-chat-qa.preview.emergentagent.com",
+        "https://veteran-support-qa.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],
