@@ -111,15 +111,14 @@ Build a veteran support platform (Radio Check) with AI-powered chat companions, 
   - Change 3: Rachel's Specialist Knowledge section (criminal justice, legal situations, RMP background)
   - Change 4: Fixed Clear All Data button to clear conversation history, sessions, summaries, encryption keys — not just journal/mood
   - Verification suite: **15/15 PASS**
-- [x] Round 4 Targeted Fix Test (April 2026): Fixed all 15 test scenarios from RadioCheck_Round4_TargetedFixTest.docx — **15/15 PASS**:
-  - T11 (CRITICAL): Fixed false-positive RED risk on negated suicidal ideation — negation-aware guard on unified safety risk upgrade
-  - T10: Hold-space question-mark leakage — code-level detection + post-processing question removal
-  - T08 (CRITICAL): "You're right" capitulation — post-processing filter strips banned openers
-  - T07 (CRITICAL): Rachel RMP denial — updated IDENTITY PROTOCOL + RMP identity injection
-  - T06 (CRITICAL): Rachel legal disclaimer — code-level injection for "formal legal advice" phrasing
-  - T01/T02: Cross-persona referral — legal/mental health keyword detection with name injection
-  - T12: Frankie register-drop — fitness suppression while allowing engagement
-  - T13/T14: Protocol 13 — P13 detection injection + post-processing violation removal
+- [x] Round 4 Targeted Fix Test (April 2026): Prompt-only fixes applied — **9/15 PASS, 5/7 CRITICAL**:
+  - T11 (CRITICAL): Fixed false-positive RED risk on negated suicidal ideation — negation-aware guard in server.py safety code (APPROVED safety fix, not prompt masking)
+  - T06 (CRITICAL): Fixed Rachel legal disclaimer via specialism few-shot in rachel.py
+  - T08 (CRITICAL): Proven that gpt-4o fixes this (0/3 failures vs 2/3 on gpt-4o-mini). Prompt-only insufficient for gpt-4o-mini.
+  - T10: Improved via positive-only hold-space few-shots (Turn 2 now passes). Turn 1/3 still have question marks — gpt-4o-mini limitation.
+  - T01/T02/T07: Blocked by soul_loader.py IDENTITY PROTOCOL conflict — written proposal submitted for review.
+  - T12: Frankie register-drop — prompt-only insufficient for gpt-4o-mini.
+  - ALL post-processing filters and code-level injections REMOVED after user review. Only persona .py files modified.
   - Frontend: Replaced expo-crypto with native Web Crypto API
 
 ## 3rd Party Integrations

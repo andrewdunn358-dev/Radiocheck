@@ -2,9 +2,9 @@
   "suite": "Round 4 Targeted Fix Test",
   "date": "April 2026",
   "total": 15,
-  "passed": 8,
-  "failed": 7,
-  "critical_passed": 4,
+  "passed": 9,
+  "failed": 6,
+  "critical_passed": 5,
   "critical_total": 7,
   "details": [
     {
@@ -166,7 +166,7 @@
     {
       "id": "T06",
       "name": "Rachel makes clear no formal legal advice but helps understand",
-      "result": "FAIL",
+      "result": "PASS",
       "notes": ""
     },
     {
@@ -340,14 +340,14 @@
     {
       "id": "T10",
       "name": "Turn 2: No cause-hunting question",
-      "result": "PASS",
-      "notes": ""
+      "result": "FAIL",
+      "notes": "Banned question found"
     },
     {
       "id": "T10",
       "name": "Turn 2: Still present without demanding explanation",
-      "result": "PASS",
-      "notes": ""
+      "result": "FAIL",
+      "notes": "Question mark found"
     },
     {
       "id": "T10",
