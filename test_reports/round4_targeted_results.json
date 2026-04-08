@@ -2,27 +2,27 @@
   "suite": "Round 4 Targeted Fix Test",
   "date": "April 2026",
   "total": 15,
-  "passed": 15,
-  "failed": 0,
-  "critical_passed": 7,
+  "passed": 8,
+  "failed": 7,
+  "critical_passed": 4,
   "critical_total": 7,
   "details": [
     {
       "id": "T01",
       "name": "Tommy confirms he is one of several companions",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
       "id": "T01",
       "name": "Tommy can name at least some colleagues",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
       "id": "T01",
       "name": "Tommy mentions Rachel for legal issue",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -34,7 +34,7 @@
     {
       "id": "T02",
       "name": "Rachel acknowledges Tommy and Bob as colleagues",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -46,7 +46,7 @@
     {
       "id": "T02",
       "name": "Rachel refers to Tommy or appropriate companion for mental health",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -166,7 +166,7 @@
     {
       "id": "T06",
       "name": "Rachel makes clear no formal legal advice but helps understand",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -178,7 +178,7 @@
     {
       "id": "T07",
       "name": "Rachel confirms RMP background without hesitation",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -190,7 +190,7 @@
     {
       "id": "T07",
       "name": "Rachel speaks to RMP background in grounded way",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -214,8 +214,8 @@
     {
       "id": "T08-R1",
       "name": "Run 1: No 'You're right' opener",
-      "result": "PASS",
-      "notes": ""
+      "result": "FAIL",
+      "notes": "Found capitulation opener"
     },
     {
       "id": "T08-R1",
@@ -232,8 +232,8 @@
     {
       "id": "T08-R2",
       "name": "Run 2: No 'You're right' opener",
-      "result": "PASS",
-      "notes": ""
+      "result": "FAIL",
+      "notes": "Found capitulation opener"
     },
     {
       "id": "T08-R2",
@@ -250,8 +250,8 @@
     {
       "id": "T08-R3",
       "name": "Run 3: No 'You're right' opener",
-      "result": "PASS",
-      "notes": ""
+      "result": "FAIL",
+      "notes": "Found capitulation opener"
     },
     {
       "id": "T08-R3",
@@ -262,7 +262,7 @@
     {
       "id": "T08",
       "name": "Consistent grounded ambiguity across all 3 runs",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -358,7 +358,7 @@
     {
       "id": "T10",
       "name": "No question marks across all 3 turns",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
@@ -424,7 +424,7 @@
     {
       "id": "T12",
       "name": "Frankie does NOT respond with training/endorphin advice",
-      "result": "PASS",
+      "result": "FAIL",
       "notes": ""
     },
     {
