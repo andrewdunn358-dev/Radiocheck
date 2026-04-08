@@ -6402,7 +6402,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # Try OpenAI first (primary)
         try:
             completion = buddy_openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=messages,
                 max_tokens=400,
                 temperature=0.3,
@@ -6447,9 +6447,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             full_prompt = system_prompt + "\n" + request.message
             
             if ai_provider_used == "openai":
-                input_tokens = count_openai_tokens(full_prompt, "gpt-4o-mini")
-                output_tokens = count_openai_tokens(reply, "gpt-4o-mini")
-                model_name = "gpt-4o-mini"
+                input_tokens = count_openai_tokens(full_prompt, "gpt-4o")
+                output_tokens = count_openai_tokens(reply, "gpt-4o")
+                model_name = "gpt-4o"
             else:  # gemini
                 input_tokens = estimate_gemini_tokens(full_prompt)
                 output_tokens = estimate_gemini_tokens(reply)
@@ -7678,7 +7678,7 @@ Respond with JSON only:
 
         client = AsyncOpenAI(api_key=openai_key)
         completion = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a clinical summarizer for a mental health support app. Generate concise, clinically-relevant summaries."},
                 {"role": "user", "content": summary_prompt}
