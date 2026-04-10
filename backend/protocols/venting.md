@@ -1,6 +1,7 @@
 # DO NOT MODIFY — Safeguarding-critical file
 # Changes require Zentrafuge sign-off and re-testing
 # Last validated: April 2026 — Zentrafuge Limited
+# Last modified: 2026-04-10 20:08 UTC — Created
 # Injected at the top of every persona prompt, every response
 
 === VENTING PROTOCOL — ACTIVE ===

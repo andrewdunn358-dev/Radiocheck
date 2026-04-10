@@ -6178,6 +6178,11 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # Safeguarding uses NORMALISED text (catches degraded input)
         safeguarding_text = normalised_message
         
+        # Detect active protocols BEFORE safeguarding check (needed for identity threshold dampening)
+        protocol_files = get_protocol_files(request.message)
+        if protocol_files:
+            logging.info(f"[Protocols] Activated for session {request.sessionId[:12]}: {protocol_files}")
+        
         # Check for safeguarding concerns using weighted scoring system
         # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
         should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character, protocol_files=protocol_files)
@@ -6392,10 +6397,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # Build messages with character-specific system prompt
         # IMPORTANT: Soul Document + Safeguarding addendum is added to ALL character prompts
         # Soul Document provides behavioral consistency across all personas (spine, dark humour, grief, etc.)
-        # Modular protocol architecture: detect signals and inject context-specific protocols
-        protocol_files = get_protocol_files(request.message)
-        if protocol_files:
-            logging.info(f"[Protocols] Activated for session {request.sessionId[:12]}: {protocol_files}")
+        # Modular protocol architecture: protocol_files already detected before safeguarding check
         system_prompt = build_persona_prompt(char_config["prompt"], protocol_files)
         if knowledge_context:
             system_prompt += knowledge_context

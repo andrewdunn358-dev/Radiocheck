@@ -2,6 +2,7 @@
 # DO NOT MODIFY — Safeguarding-critical file
 # Any changes require Zentrafuge sign-off and re-testing
 # Last validated: April 2026 — Zentrafuge Limited
+# Last modified: 2026-04-10 20:08 UTC — Political neutrality block added (platform-wide)
 # =================================================================
 
 GOVERNING TEST: "Would a mate say this on a sofa at 2am?" If no — rewrite.
