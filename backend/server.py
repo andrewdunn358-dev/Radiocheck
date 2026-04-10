@@ -1268,6 +1268,9 @@ AMBER_INDICATORS = {
     "hopeless": 50, "no hope": 50, "whats the point": 50, "what's the point": 50,
     "pointless": 50, "no point": 55, "theres no point": 55, "there's no point": 55,
     "life feels pointless": 50, "in going on": 70,
+    "bother getting up": 50,
+    "sick of it all": 50,
+    "tired of everything": 45,
     
     # ===== "FEELING LOW" / DEPRESSION LANGUAGE (+30-45) =====
     "really low": 35, "feeling low": 35, "so low": 35, "lowest i've been": 40,
@@ -1598,14 +1601,15 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
     
     # Determine risk level
     # HARD RULE: Any RED indicator = RED regardless of score
-    # LOWERED thresholds for earlier detection of subtle cues
+    # Calibrated thresholds: AMBER at 45 catches single AMBER indicators (weight 40-55)
+    # RED at 120 prevents false crisis overlays from accumulated AMBER indicators
     if is_red_flag:
         risk_level = "RED"
-    elif score >= 120:  # Restored from 70 — previous lowering caused false positive crisis overlays
+    elif score >= 120:
         risk_level = "RED"
-    elif score >= 80:  # Restored from 45
+    elif score >= 45:
         risk_level = "AMBER"
-    elif score >= 40:  # Restored from 25
+    elif score >= 25:
         risk_level = "YELLOW"
     else:
         risk_level = "GREEN"
@@ -6299,8 +6303,13 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             
             # Get safety wrapper for crisis response message
             # ALWAYS use the Radio Check formatted crisis response (human options primary)
+            # Tommy gets his own voice for the pre-text
+            if character == "tommy":
+                crisis_preamble = "Right. I'm not going to leave you with that. There are real people on here who can help — proper veterans and counsellors. Worth knowing that's there. I'm still here too."
+            else:
+                crisis_preamble = "Right, I need to be straight with you. What you're telling me is serious and I'm worried."
             crisis_response = (
-                "Right, I need to be straight with you. What you're telling me is serious and I'm worried.\n\n"
+                f"{crisis_preamble}\n\n"
                 "There are real people on this platform who can help right now:\n"
                 "**Connect with Counsellors** — trained professionals, veterans who get it\n"
                 "**Peer Support Network** — real people on Radio Check, not AI\n\n"
@@ -7500,7 +7509,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://veteran-support-qa.preview.emergentagent.com",
+        "https://veteran-support-ai-1.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],

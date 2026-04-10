@@ -33,28 +33,7 @@ export default function Settings() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Clear conversation history, summaries, and session data
               await clearAllStoredData();
-              
-              // Clear all radiocheck storage keys (encryption key, cleanup timestamps, opt-out)
-              await AsyncStorage.multiRemove([
-                'radiocheck_conversations',
-                'radiocheck_summaries',
-                'radiocheck_last_sync',
-                'radiocheck_storage_opt_out',
-                'radiocheck_enc_key',
-                'radiocheck_last_cleanup',
-              ]);
-              
-              // Clear journal, mood, and favorites
-              await AsyncStorage.multiRemove([
-                '@veterans_journal_entries',
-                '@veterans_mood_entries',
-                '@veterans_last_checkin',
-                '@veterans_favorite_counsellors',
-                '@veterans_favorite_peers',
-              ]);
-              
               Alert.alert('Data Cleared', 'All local data has been deleted. You are starting fresh.');
             } catch (error) {
               Alert.alert('Error', 'Failed to clear data. Please try again.');

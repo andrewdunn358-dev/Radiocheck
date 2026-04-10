@@ -484,10 +484,35 @@ export async function deleteConversationForCharacter(characterId: string): Promi
  */
 export async function clearAllStoredData(): Promise<void> {
   try {
+    // Clear ALL user data for a completely fresh state
     await AsyncStorage.multiRemove([
+      // Conversation storage
       STORAGE_KEYS.CONVERSATIONS,
       STORAGE_KEYS.SUMMARIES,
+      STORAGE_KEYS.OPT_OUT,
       STORAGE_KEYS.LAST_SYNC,
+      STORAGE_KEYS.ENCRYPTION_KEY,
+      STORAGE_KEYS.LAST_CLEANUP,
+      // Auth
+      'auth_token',
+      'auth_user',
+      // Favourites
+      '@veterans_favorite_counsellors',
+      '@veterans_favorite_peers',
+      // Journal and mood
+      '@veterans_journal_entries',
+      '@veterans_mood_entries',
+      '@veterans_last_checkin',
+      // Location
+      'location_permission_asked',
+      'last_known_location',
+      // Age gate
+      '@radio_check_dob',
+      '@radio_check_age_verified',
+      // Site gate
+      'site_unlocked',
+      // Theme
+      '@veterans_app_theme',
     ]);
   } catch (error) {
     console.error('[ConversationStorage] Error clearing data:', error);

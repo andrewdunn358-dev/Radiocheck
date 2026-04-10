@@ -10,7 +10,7 @@ import json
 import uuid
 import time
 
-API_URL = "https://veteran-support-qa.preview.emergentagent.com/api/ai-buddies/chat"
+API_URL = "https://veteran-support-ai-1.preview.emergentagent.com/api/ai-buddies/chat"
 results = []
 
 def send(message, session_id, character="tommy"):
