@@ -244,7 +244,7 @@ def build_persona_prompt(persona_prompt: str, protocol_files: list = None) -> st
     Build a complete persona prompt with layered protocol injection.
     
     Layer structure:
-      1. hard_stop.md — Phase 4 (pending, not yet loaded)
+      1. hard_stop.md (ALWAYS first, every message, every persona)
       2. Signal-detected protocol files (loaded only when triggered)
       3. Persona prompt (character voice, specialist knowledge)
       4. Soul injection (comprehensive reference, at end)
@@ -259,25 +259,17 @@ def build_persona_prompt(persona_prompt: str, protocol_files: list = None) -> st
     if protocol_files is None:
         protocol_files = []
 
-    # Phase 4 (PENDING): hard_stop = load_protocol_file('hard_stop.md')
-    # For now, hard_stop is not loaded — existing STOP blocks in persona files still active
+    hard_stop = load_protocol_file('hard_stop.md')  # always loaded
 
-    # Layer 2: Signal-detected protocols
     protocols = ''
     for f in protocol_files:
         content = load_protocol_file(f)
         if content:
             protocols += content + '\n\n'
 
-    # Layer 3: Persona prompt (passed in)
-
-    # Layer 4: Soul injection
     soul = get_soul_injection()
 
-    if protocols:
-        return f'{protocols}{persona_prompt}\n\n{soul}'
-    else:
-        return f'{persona_prompt}\n\n{soul}'
+    return f'{hard_stop}\n\n{protocols}{persona_prompt}\n\n{soul}'
 
 # For testing
 if __name__ == "__main__":
