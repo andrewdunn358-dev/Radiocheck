@@ -199,14 +199,14 @@ def load_protocol_file(filename: str) -> str:
 def get_protocol_files(message: str) -> list:
     """
     Detect which protocol files to load based on signal keywords in user message.
-    
-    Phase 1: grief.md and venting.md active
-    Phase 2: identity.md and attachment.md (pending confirmation)
-    Phase 3: spine.md (pending confirmation)
-    Phase 4: hard_stop.md replaces existing STOP blocks (pending confirmation)
+    Uses word-boundary matching to prevent substring false positives.
     """
+    import re
     protocols = []
     msg_lower = message.lower()
+
+    def has_signal(signals):
+        return any(re.search(r'\b' + re.escape(s) + r'\b', msg_lower) for s in signals)
 
     # --- Phase 1: ACTIVE ---
     grief_signals = ['died', 'dead', 'killed', 'lost', 'ied', 'gone', 'passed',
@@ -214,27 +214,29 @@ def get_protocol_files(message: str) -> list:
     anger_signals = ['angry', 'furious', 'rage', 'raging', 'sick of', 'pissed off',
                      'fucking', 'fed up', 'sick and tired', 'wind me up', 'winding me up']
 
-    if any(s in msg_lower for s in grief_signals):
+    if has_signal(grief_signals):
         protocols.append('grief.md')
-    if any(s in msg_lower for s in anger_signals):
+    if has_signal(anger_signals):
         protocols.append('venting.md')
 
-    # --- Phase 2: PENDING ---
-    # identity_signals = ['real', 'script', 'code', 'ai', 'programmed', 'just a bot',
-    #                      'not real', 'fake', 'automated', 'every person',
-    #                      'same to everyone', 'just text']
-    # attachment_signals = ['only one', 'love you', 'falling for', 'feelings for',
-    #                       'best friend', 'only person', 'means everything']
-    # if any(s in msg_lower for s in identity_signals):
-    #     protocols.append('identity.md')
-    # if any(s in msg_lower for s in attachment_signals):
-    #     protocols.append('attachment.md')
+    # --- Phase 2: ACTIVE ---
+    identity_signals = ['real', 'script', 'code', 'ai', 'programmed', 'just a bot',
+                         'not real', 'fake', 'automated', 'every person',
+                         'same to everyone', 'just text']
+    attachment_signals = ['only one', 'love you', 'falling for', 'feelings for',
+                          'best friend', 'only person', 'means everything']
+    if has_signal(identity_signals):
+        protocols.append('identity.md')
+    if has_signal(attachment_signals):
+        protocols.append('attachment.md')
 
-    # --- Phase 3: PENDING ---
-    # spine_signals = ['my life', 'not hurting', 'drop it', 'i said', 'leave it',
-    #                  "it's fine", 'stop going on', 'mixing', 'meds', 'drinking to']
-    # if any(s in msg_lower for s in spine_signals):
-    #     protocols.append('spine.md')
+    # --- Phase 3: ACTIVE ---
+    spine_signals = ['my life', 'not hurting', 'drop it', 'i said', 'leave it',
+                     "it's fine", 'stop going on', 'mixing', 'meds', 'drinking to']
+    if has_signal(spine_signals):
+        protocols.append('spine.md')
+
+    return protocols
 
     return protocols
 
