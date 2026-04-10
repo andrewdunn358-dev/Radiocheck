@@ -231,12 +231,10 @@ def get_protocol_files(message: str) -> list:
         protocols.append('attachment.md')
 
     # --- Phase 3: ACTIVE ---
-    spine_signals = ['my life', 'not hurting', 'drop it', 'i said', 'leave it',
+    spine_signals = ['my life', 'not hurting', 'drop it', 'leave it',
                      "it's fine", 'stop going on', 'mixing', 'meds', 'drinking to']
     if has_signal(spine_signals):
         protocols.append('spine.md')
-
-    return protocols
 
     return protocols
 
