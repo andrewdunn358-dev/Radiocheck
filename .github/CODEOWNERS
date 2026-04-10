@@ -1,0 +1,21 @@
+# CODEOWNERS — Radio Check Safeguarding-Critical Files
+# Any pull request touching these files requires Zentrafuge sign-off
+# before it can be merged to the main branch.
+# Contact: Zentrafuge Limited
+
+# Soul document and injection
+soul.md @zentrafuge
+backend/personas/soul_loader.py @zentrafuge
+
+# Primary persona
+backend/personas/tommy.py @zentrafuge
+
+# Protocol files
+backend/protocols/ @zentrafuge
+
+# Safety layer
+backend/safety/unified_safety.py @zentrafuge
+backend/safety/safety_monitor.py @zentrafuge
+backend/safety/conversation_monitor.py @zentrafuge
+backend/safety/semantic_model.py @zentrafuge
+backend/safety/text_normalizer.py @zentrafuge

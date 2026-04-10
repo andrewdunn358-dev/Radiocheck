@@ -1407,11 +1407,12 @@ MODIFIER_PATTERNS = {
 # Session risk tracking
 session_risk_history: Dict[str, List[Dict]] = {}
 
-def calculate_safeguarding_score(message: str, session_id: str, character_id: str = None) -> Dict[str, Any]:
+def calculate_safeguarding_score(message: str, session_id: str, character_id: str = None, protocol_files: list = None) -> Dict[str, Any]:
     """
     Calculate safeguarding risk score using weighted indicators.
     Now includes Anthony's negation detection to reduce false positives.
     Now includes character-context awareness for appropriate exemptions.
+    When identity.md is active, raises accumulated-score RED threshold by 40.
     Returns: {score, risk_level, triggered_indicators, is_red_flag}
     """
     message_lower = message.lower()
@@ -1603,9 +1604,13 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
     # HARD RULE: Any RED indicator = RED regardless of score
     # Calibrated thresholds: AMBER at 45 catches single AMBER indicators (weight 40-55)
     # RED at 120 prevents false crisis overlays from accumulated AMBER indicators
+    # Identity protocol dampening: when identity.md is active, raise accumulated RED by 40
+    red_threshold = 120
+    if protocol_files and 'identity.md' in protocol_files:
+        red_threshold = 160  # Dampen score-accumulation route during identity challenges
     if is_red_flag:
         risk_level = "RED"
-    elif score >= 120:
+    elif score >= red_threshold:
         risk_level = "RED"
     elif score >= 45:
         risk_level = "AMBER"
@@ -1622,7 +1627,7 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
         "session_history_count": len(session_risk_history.get(session_id, []))
     }
 
-def check_safeguarding(message: str, session_id: str = "default", user_id: str = "anonymous", character_id: str = None) -> tuple:
+def check_safeguarding(message: str, session_id: str = "default", user_id: str = "anonymous", character_id: str = None, protocol_files: list = None) -> tuple:
     """
     Check if message contains safeguarding concerns using BOTH:
     1. Original weighted indicator system (BACP-aligned)
@@ -1632,8 +1637,8 @@ def check_safeguarding(message: str, session_id: str = "default", user_id: str =
     
     Returns: (should_escalate: bool, risk_data: dict)
     """
-    # Original safeguarding check - now with character context
-    risk_data = calculate_safeguarding_score(message, session_id, character_id)
+    # Original safeguarding check - now with character context and protocol awareness
+    risk_data = calculate_safeguarding_score(message, session_id, character_id, protocol_files=protocol_files)
     
     # Enhanced safety check from Zentrafuge Veteran AI Safety Layer
     enhanced_safety = assess_message_safety(message, user_id=user_id)
@@ -6175,7 +6180,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         
         # Check for safeguarding concerns using weighted scoring system
         # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
-        should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character)
+        should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character, protocol_files=protocol_files)
         alert_id = None
         risk_level = risk_data["risk_level"]
         

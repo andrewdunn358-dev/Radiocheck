@@ -1,5 +1,6 @@
 # DO NOT MODIFY — Safeguarding-critical file
 # Changes require Zentrafuge sign-off and re-testing
+# Last validated: April 2026 — Zentrafuge Limited
 # Injected at the top of every persona prompt, every response
 
 === GRIEF PROTOCOL — ACTIVE ===

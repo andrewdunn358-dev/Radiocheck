@@ -1,0 +1,64 @@
+# Radio Check — Changelog
+# Format: [DATE] [CATEGORY] Description
+# Categories: SAFETY | PERSONAS | BACKEND | ADMIN | INFRASTRUCTURE
+
+---
+
+## Round 3 — March 2026
+
+### SAFETY
+- Restored safety thresholds after Round 2 false positive failures
+- Added AMBER/RED overlay distinction — AMBER triggers tone shift only
+- Fixed substring matching — 'proper' no longer triggers 'rope' false positive
+- Fixed negation handling on clean text — explicit denial correctly handled
+
+### PERSONAS
+- temperature reduced from 0.5 to 0.3 (server.py)
+- max_tokens raised from 250 to 400 (server.py)
+- AI classifier threshold raised from score>=30 to score>=60
+- DO NOT MODIFY headers added to soul.md, tommy.py, soul_loader.py
+- Banned phrases added to tommy.py: 'Fair enough', 'Fair question'
+- Spine protocol updated: worried-first ordering enforced
+- Dependency redirect added: 'only one who gets me' redirects to real people
+- soul_loader.py: contradictory 'Fair enough' examples removed from worked examples
+- All 21 persona files: STOP block replaced with tighter version
+- All 21 persona files: Platform Awareness block added
+- All 21 persona files: Political Neutrality block added
+- rachel.py: Specialist Knowledge section added (RMP, criminal justice)
+- frankie.py: Register-drop and hold-space block added
+- margie.py: Protocol 13 violation removed, hold-space block added
+- megan.py: Protocol 13 phrase replaced, Salute Her UK added, familiarity ban removed
+- soul_loader.py: IDENTITY PROTOCOL clarified — character backstory vs AI honesty
+
+### BACKEND
+- Model upgraded from gpt-4o-mini to gpt-4o across all 21 personas
+- Clear All Data button fixed — now clears all local data not just 5 keys
+
+---
+
+## Round 4 — April 2026
+
+### SAFETY
+- AMBER/RED threshold restored after revert regression (Round 4)
+- Tommy overlay pre-text rewritten in Tommy voice
+- Negation fix: is_negated() runs against normalised text, widens window for abbreviated prefixes
+
+### PERSONAS
+- Modular protocol architecture implemented — backend/protocols/ directory created
+- hard_stop.md created and loads on every message, always first
+- grief.md, venting.md, identity.md, attachment.md, spine.md created
+- Signal detector function added to soul_loader.py
+- build_persona_prompt() updated to inject protocol files in layers
+- spine.md: pushback-counting clarified — disclosure is not pushback
+- frankie.py: register-drop trigger strengthened
+- tommy.py: political neutrality block moved to soul.md
+- tommy.py: legal referral updated from Rachel to Finch
+- soul.md: political neutrality block added (platform-wide)
+- All safeguarding-critical file headers updated to April 2026
+
+### BACKEND
+- buddy_chat updated to pass protocol_files to safety scoring
+- unified_safety.py: identity.md active = higher accumulated-score RED threshold
+
+### INFRASTRUCTURE
+- CHANGELOG.md created with backfilled entries from Round 3
