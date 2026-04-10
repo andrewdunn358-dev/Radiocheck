@@ -484,6 +484,10 @@ export async function deleteConversationForCharacter(characterId: string): Promi
  */
 export async function clearAllStoredData(): Promise<void> {
   try {
+    // Get ALL keys to find any chat_history_* keys
+    const allKeys = await AsyncStorage.getAllKeys();
+    const chatHistoryKeys = allKeys.filter(k => k.startsWith('chat_history_'));
+    
     // Clear ALL user data for a completely fresh state
     await AsyncStorage.multiRemove([
       // Conversation storage
@@ -513,6 +517,8 @@ export async function clearAllStoredData(): Promise<void> {
       'site_unlocked',
       // Theme
       '@veterans_app_theme',
+      // Chat history per character
+      ...chatHistoryKeys,
     ]);
   } catch (error) {
     console.error('[ConversationStorage] Error clearing data:', error);

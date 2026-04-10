@@ -23,25 +23,40 @@ export default function Settings() {
   };
 
   const handleClearData = () => {
-    Alert.alert(
-      'Clear All Data',
-      'This will delete all your local data including conversation history, journal entries, mood history, and favorites. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearAllStoredData();
-              Alert.alert('Data Cleared', 'All local data has been deleted. You are starting fresh.');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to clear data. Please try again.');
-            }
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        'This will delete all your local data including conversation history, journal entries, mood history, and favorites. This cannot be undone.\n\nAre you sure?'
+      );
+      if (confirmed) {
+        clearAllStoredData()
+          .then(() => {
+            window.alert('All local data has been deleted. You are starting fresh.');
+          })
+          .catch(() => {
+            window.alert('Failed to clear data. Please try again.');
+          });
+      }
+    } else {
+      Alert.alert(
+        'Clear All Data',
+        'This will delete all your local data including conversation history, journal entries, mood history, and favorites. This cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Clear All',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await clearAllStoredData();
+                Alert.alert('Data Cleared', 'All local data has been deleted. You are starting fresh.');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to clear data. Please try again.');
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleContact = () => {
