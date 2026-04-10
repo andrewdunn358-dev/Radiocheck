@@ -73,7 +73,7 @@ from routers.lms import router as lms_router
 # Import modular personas package for AI character prompts
 # Soul Document provides behavioral consistency across all personas
 from personas import AI_CHARACTERS as MODULAR_AI_CHARACTERS, get_full_prompt, resolve_character_id
-from personas.soul_loader import get_soul_injection
+from personas.soul_loader import get_soul_injection, build_persona_prompt, get_protocol_files
 
 # Import AI usage tracker for cost monitoring
 from ai_usage_tracker import (
@@ -6387,7 +6387,11 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # Build messages with character-specific system prompt
         # IMPORTANT: Soul Document + Safeguarding addendum is added to ALL character prompts
         # Soul Document provides behavioral consistency across all personas (spine, dark humour, grief, etc.)
-        system_prompt = get_soul_injection() + "\n\n" + char_config["prompt"]
+        # Modular protocol architecture: detect signals and inject context-specific protocols
+        protocol_files = get_protocol_files(request.message)
+        if protocol_files:
+            logging.info(f"[Protocols] Activated for session {request.sessionId[:12]}: {protocol_files}")
+        system_prompt = build_persona_prompt(char_config["prompt"], protocol_files)
         if knowledge_context:
             system_prompt += knowledge_context
         

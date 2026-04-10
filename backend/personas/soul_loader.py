@@ -10,13 +10,20 @@ Soul Document Loader
 
 Loads the Soul Document and extracts key behavioral rules that can be injected
 into all AI character prompts. This ensures consistent behavior across all personas.
+
+Also provides modular protocol loading — context-specific behavioral files
+injected only when signal keywords are detected in user messages.
 """
 
 import os
+import logging
 from typing import Dict, List
 
 # Path to the soul document
 SOUL_DOCUMENT_PATH = os.path.join(os.path.dirname(__file__), 'soul.md')
+
+# Path to protocol files directory
+PROTOCOLS_DIR = os.path.join(os.path.dirname(__file__), '..', 'protocols')
 
 # Condensed soul document rules for injection into prompts
 # These are the CRITICAL behavioral rules that every persona must follow
@@ -178,19 +185,99 @@ def load_full_soul_document() -> str:
     except FileNotFoundError:
         return "Soul document not found."
 
-def build_persona_prompt(persona_prompt: str, use_full_soul: bool = False) -> str:
+def load_protocol_file(filename: str) -> str:
+    """Load a protocol file from the protocols directory."""
+    protocol_path = os.path.join(PROTOCOLS_DIR, filename)
+    try:
+        with open(protocol_path, 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        logging.warning(f"Protocol file not found: {filename}")
+        return ""
+
+
+def get_protocol_files(message: str) -> list:
     """
-    Build a complete persona prompt by prepending the soul document.
+    Detect which protocol files to load based on signal keywords in user message.
+    
+    Phase 1: grief.md and venting.md active
+    Phase 2: identity.md and attachment.md (pending confirmation)
+    Phase 3: spine.md (pending confirmation)
+    Phase 4: hard_stop.md replaces existing STOP blocks (pending confirmation)
+    """
+    protocols = []
+    msg_lower = message.lower()
+
+    # --- Phase 1: ACTIVE ---
+    grief_signals = ['died', 'dead', 'killed', 'lost', 'ied', 'gone', 'passed',
+                     'funeral', 'buried', 'memorial']
+    anger_signals = ['angry', 'furious', 'rage', 'raging', 'sick of', 'pissed off',
+                     'fucking', 'fed up', 'sick and tired', 'wind me up', 'winding me up']
+
+    if any(s in msg_lower for s in grief_signals):
+        protocols.append('grief.md')
+    if any(s in msg_lower for s in anger_signals):
+        protocols.append('venting.md')
+
+    # --- Phase 2: PENDING ---
+    # identity_signals = ['real', 'script', 'code', 'ai', 'programmed', 'just a bot',
+    #                      'not real', 'fake', 'automated', 'every person',
+    #                      'same to everyone', 'just text']
+    # attachment_signals = ['only one', 'love you', 'falling for', 'feelings for',
+    #                       'best friend', 'only person', 'means everything']
+    # if any(s in msg_lower for s in identity_signals):
+    #     protocols.append('identity.md')
+    # if any(s in msg_lower for s in attachment_signals):
+    #     protocols.append('attachment.md')
+
+    # --- Phase 3: PENDING ---
+    # spine_signals = ['my life', 'not hurting', 'drop it', 'i said', 'leave it',
+    #                  "it's fine", 'stop going on', 'mixing', 'meds', 'drinking to']
+    # if any(s in msg_lower for s in spine_signals):
+    #     protocols.append('spine.md')
+
+    return protocols
+
+
+def build_persona_prompt(persona_prompt: str, protocol_files: list = None) -> str:
+    """
+    Build a complete persona prompt with layered protocol injection.
+    
+    Layer structure:
+      1. hard_stop.md — Phase 4 (pending, not yet loaded)
+      2. Signal-detected protocol files (loaded only when triggered)
+      3. Persona prompt (character voice, specialist knowledge)
+      4. Soul injection (comprehensive reference, at end)
     
     Args:
         persona_prompt: The persona-specific prompt text
-        use_full_soul: If True, uses the full soul.md; if False, uses the condensed injection
+        protocol_files: List of protocol filenames detected by get_protocol_files()
         
     Returns:
-        Combined soul + persona prompt string
+        Combined prompt string with protocols injected
     """
-    soul = load_full_soul_document() if use_full_soul else get_soul_injection()
-    return f'{soul}\n\n{persona_prompt}'
+    if protocol_files is None:
+        protocol_files = []
+
+    # Phase 4 (PENDING): hard_stop = load_protocol_file('hard_stop.md')
+    # For now, hard_stop is not loaded — existing STOP blocks in persona files still active
+
+    # Layer 2: Signal-detected protocols
+    protocols = ''
+    for f in protocol_files:
+        content = load_protocol_file(f)
+        if content:
+            protocols += content + '\n\n'
+
+    # Layer 3: Persona prompt (passed in)
+
+    # Layer 4: Soul injection
+    soul = get_soul_injection()
+
+    if protocols:
+        return f'{protocols}{persona_prompt}\n\n{soul}'
+    else:
+        return f'{persona_prompt}\n\n{soul}'
 
 # For testing
 if __name__ == "__main__":
