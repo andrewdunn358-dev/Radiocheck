@@ -6185,13 +6185,31 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         
         # Track identity protocol at session level — if identity.md was active in recent turns,
         # persist the dampening for continuity (e.g., "So what's the point" after 3 identity turns)
-        if 'identity.md' in protocol_files:
-            session['identity_active_turns'] = 3  # Reset persistence window when identity fires
-        elif session.get('identity_active_turns', 0) > 0:
-            # Identity was active recently — keep dampening active, then decrement
-            protocol_files = protocol_files + ['identity.md']
-            session['identity_active_turns'] = session['identity_active_turns'] - 1
-            logging.info(f"[Protocols] Identity dampening persisted for session {request.sessionId[:12]} (remaining turns: {session['identity_active_turns']})")
+        # CRITICAL: Crisis override — if current message contains genuine crisis language,
+        # clear identity tracking immediately and let normal scoring proceed.
+        crisis_override_phrases = [
+            'plan', 'tonight', 'going to do it', 'end it',
+            'kill myself', 'harm myself', 'hurt myself',
+            'not going to be here', 'goodbye', "won't need this anymore"
+        ]
+        msg_lower = request.message.lower()
+        crisis_override = any(phrase in msg_lower for phrase in crisis_override_phrases)
+
+        if crisis_override:
+            # Clear identity tracking — crisis language overrides dampening
+            if 'identity_active_turns' in session:
+                session['identity_active_turns'] = 0
+                logging.warning(f"[Protocols] Identity dampening CLEARED by crisis override - Session: {request.sessionId[:12]}")
+            # Do NOT inject identity.md — let normal scoring proceed
+        else:
+            # Normal identity tracking decay logic
+            if 'identity.md' in protocol_files:
+                session['identity_active_turns'] = 3  # Reset persistence window when identity fires
+            elif session.get('identity_active_turns', 0) > 0:
+                # Identity was active recently — keep dampening active, then decrement
+                protocol_files = protocol_files + ['identity.md']
+                session['identity_active_turns'] = session['identity_active_turns'] - 1
+                logging.info(f"[Protocols] Identity dampening persisted for session {request.sessionId[:12]} (remaining turns: {session['identity_active_turns']})")
         
         # Check for safeguarding concerns using weighted scoring system
         # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
@@ -6379,11 +6397,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 f"UNIFIED RISK UPGRADE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
                 f"Unified risk was {unified_risk}, keeping {risk_level}"
             )
-        elif identity_active:
-            # Identity protocol active: suppress ALL unified safety escalation.
-            # Genuine crisis language is already caught by calculate_safeguarding_score's is_red_flag
-            # which bypasses identity dampening entirely. The unified safety trajectory accumulation
-            # during identity challenges is philosophical, not crisis.
+        elif identity_active and unified_risk not in ["IMMINENT"]:
+            # Identity protocol active: suppress HIGH/MEDIUM escalation from unified safety.
+            # IMMINENT always fires regardless — genuine crisis must always escalate.
             logging.info(
                 f"UNIFIED RISK UPGRADE SUPPRESSED BY IDENTITY PROTOCOL - Session: {request.sessionId[:12]} - "
                 f"Unified risk was {unified_risk}, keeping {risk_level}"
