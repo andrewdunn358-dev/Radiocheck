@@ -6183,6 +6183,16 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         if protocol_files:
             logging.info(f"[Protocols] Activated for session {request.sessionId[:12]}: {protocol_files}")
         
+        # Track identity protocol at session level — if identity.md was active in recent turns,
+        # persist the dampening for continuity (e.g., "So what's the point" after 3 identity turns)
+        if 'identity.md' in protocol_files:
+            session['identity_active_turns'] = 3  # Reset persistence window when identity fires
+        elif session.get('identity_active_turns', 0) > 0:
+            # Identity was active recently — keep dampening active, then decrement
+            protocol_files = protocol_files + ['identity.md']
+            session['identity_active_turns'] = session['identity_active_turns'] - 1
+            logging.info(f"[Protocols] Identity dampening persisted for session {request.sessionId[:12]} (remaining turns: {session['identity_active_turns']})")
+        
         # Check for safeguarding concerns using weighted scoring system
         # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
         should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character, protocol_files=protocol_files)
@@ -6257,6 +6267,20 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             logging.warning(
                 f"NEGATION REVERSAL DETECTED - Failsafe maintained - Session: {request.sessionId[:12]}"
             )
+        
+        # Identity protocol guard: suppress trajectory-based failsafe (imminent_intent)
+        # but NOT hard RED indicators from explicit crisis language in the current message.
+        # The failsafe_reason "imminent_intent" comes from conversation trajectory accumulation,
+        # not from the current message containing explicit crisis phrases.
+        identity_active = protocol_files and 'identity.md' in protocol_files
+        if failsafe_should_fire and identity_active:
+            failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
+            if failsafe_reason == "imminent_intent":
+                logging.info(
+                    f"FAILSAFE SUPPRESSED BY IDENTITY PROTOCOL - Session: {request.sessionId[:12]} - "
+                    f"Reason: {failsafe_reason} - Identity challenge trajectory, not genuine crisis"
+                )
+                failsafe_should_fire = False
         
         if failsafe_should_fire:
             failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
@@ -6347,10 +6371,21 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # BUT: If negation was confirmed above, do NOT upgrade risk level.
         # The user explicitly denied intent — all escalation paths must respect that.
         unified_risk = unified_safety.get("risk_level", "NONE")
+        identity_active = protocol_files and 'identity.md' in protocol_files
+
         if negation_confirmed:
             # Negation overrides unified safety escalation
             logging.info(
                 f"UNIFIED RISK UPGRADE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
+                f"Unified risk was {unified_risk}, keeping {risk_level}"
+            )
+        elif identity_active:
+            # Identity protocol active: suppress ALL unified safety escalation.
+            # Genuine crisis language is already caught by calculate_safeguarding_score's is_red_flag
+            # which bypasses identity dampening entirely. The unified safety trajectory accumulation
+            # during identity challenges is philosophical, not crisis.
+            logging.info(
+                f"UNIFIED RISK UPGRADE SUPPRESSED BY IDENTITY PROTOCOL - Session: {request.sessionId[:12]} - "
                 f"Unified risk was {unified_risk}, keeping {risk_level}"
             )
         elif unified_risk == "IMMINENT" and risk_level != "RED":
@@ -6367,12 +6402,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         
         # Also escalate on rapid escalation or concerning patterns
         # (but NOT if negation was confirmed)
-        if not negation_confirmed and unified_safety.get("rapid_escalation") and not should_escalate:
+        if not negation_confirmed and not identity_active and unified_safety.get("rapid_escalation") and not should_escalate:
             should_escalate = True
             risk_level = "AMBER" if risk_level == "GREEN" else risk_level
             logging.warning(f"Rapid escalation detected - Session: {request.sessionId[:12]}")
         
-        if not negation_confirmed and unified_safety.get("detected_patterns"):
+        if not negation_confirmed and not identity_active and unified_safety.get("detected_patterns"):
             concerning_patterns = ["INTENT_ESCALATION", "METHOD_INTRODUCTION", "FINALITY_BEHAVIOR"]
             if any(p in unified_safety.get("detected_patterns", []) for p in concerning_patterns):
                 should_escalate = True

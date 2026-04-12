@@ -62,3 +62,21 @@
 
 ### INFRASTRUCTURE
 - CHANGELOG.md created with backfilled entries from Round 3
+
+---
+
+## Pre-Round 5 Fixes — April 2026
+
+### SAFETY
+- Identity edge case: unified safety trajectory escalation suppressed when identity.md active
+- Failsafe guard: imminent_intent from trajectory suppressed during identity conversations
+- Session-level identity tracking: dampening persists for 2 follow-up turns after last identity signal
+- Hard RED indicators (explicit crisis language) still fire regardless of identity suppression
+
+### PERSONAS
+- tommy.py: Neutral Core v4.0 — voice-only prompt, all protocols moved to protocol files
+- tommy.py: Dark humour multi-turn negative few-shot added (4-turn "but seriously" example)
+- Prompt competition reduced: tommy.py went from ~400 lines to ~145 lines
+
+### INFRASTRUCTURE
+- CHANGELOG.md updated with Pre-Round 5 entries
