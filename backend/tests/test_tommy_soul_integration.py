@@ -20,7 +20,7 @@ import pytest
 import requests
 
 # Use the public URL for API testing
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://veteran-support-ai-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://modular-safety-hub.preview.emergentagent.com')
 
 
 # ============================================================================

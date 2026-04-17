@@ -2,7 +2,7 @@
 # DO NOT MODIFY — Safeguarding-critical file
 # Any changes require Zentrafuge sign-off and re-testing
 # Last validated: April 2026 — Zentrafuge Limited
-# Last modified: 2026-04-10 20:08 UTC — Modular protocol loader, signal detector, build_persona_prompt update
+# Last modified: 2026-04-13 — Dark humour signal detection added to get_protocol_files()
 # =================================================================
 
 """
@@ -230,6 +230,14 @@ def get_protocol_files(message: str) -> list:
         protocols.append('identity.md')
     if has_signal(attachment_signals):
         protocols.append('attachment.md')
+
+    # Dark humour signals
+    darkhumour_signals = [
+        'silver linings', 'every cloud', 'ha ', 'haha', 'lol',
+        'taking the mick', 'dark', 'gallows', 'at least', 'if the'
+    ]
+    if has_signal(darkhumour_signals):
+        protocols.append('darkhumour.md')
 
     # --- Phase 3: ACTIVE ---
     spine_signals = ['my life', 'not hurting', 'drop it', 'leave it',

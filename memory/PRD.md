@@ -52,6 +52,10 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - [Feb 2026] Fixed Frankie register-drop (added negative few-shot for "Training's meant to..." pattern)
 - [Feb 2026] Fixed spine protocol pushback counting (explicit disclosure vs pushback distinction)
 - [Feb 2026] Fixed signal detector substring false positives (word-boundary regex)
+- [Feb 2026] Fixed `send_concern_notification()` — `find_one({})` → `find_one({"_id": "site_settings"})`
+- [Feb 2026] Fixed `send_shift_notification_email()` — sync call wrapped with `asyncio.to_thread()`
+- [Feb 2026] Standardized all email templates to "Radio Check" branding
+- [Feb 2026] Updated SiteSettings defaults and root API endpoint to "Radio Check"
 
 ## Test Results — Modular Architecture Suite
 - Overall: 39/41 PASS (95%)

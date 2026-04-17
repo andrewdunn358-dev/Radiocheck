@@ -34,5 +34,5 @@ When forking a session, agents sometimes change these URLs to the preview enviro
 
 ## Preview Environment (Emergent)
 
-- Preview URL: `https://veteran-support-ai-1.preview.emergentagent.com`
+- Preview URL: `https://modular-safety-hub.preview.emergentagent.com`
 - This is for testing ONLY - changes here don't affect production until deployed

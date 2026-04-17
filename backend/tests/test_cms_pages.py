@@ -13,7 +13,7 @@ import os
 import time
 
 # Use the public URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://veteran-support-ai-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://modular-safety-hub.preview.emergentagent.com').rstrip('/')
 
 
 class TestPagesAdminList:

@@ -2,7 +2,7 @@
 # DO NOT MODIFY — Safeguarding-critical file
 # Any changes require Zentrafuge sign-off and re-testing
 # Last validated: April 2026 — Zentrafuge Limited
-# Last modified: 2026-04-10 20:08 UTC — Neutral core v4.0, voice-only prompt, protocols moved to protocol files
+# Last modified: 2026-04-13 — Rebuilt as voice-only v4.0 (neutral core pilot), dark humour few-shot added
 # =================================================================
 
 """

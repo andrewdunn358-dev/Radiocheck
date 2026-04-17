@@ -80,3 +80,14 @@
 
 ### INFRASTRUCTURE
 - CHANGELOG.md updated with Pre-Round 5 entries
+
+---
+
+## Pre-Round 6 Fixes — April 2026
+
+### ADMIN
+- Fixed `send_concern_notification()`: `find_one({})` changed to `find_one({"_id": "site_settings"})` — was fetching wrong document
+- Fixed `send_shift_notification_email()`: sync `resend.Emails.send()` wrapped with `await asyncio.to_thread()` — was blocking event loop
+- Email branding standardized: all "Veterans Support Team/System" replaced with "Radio Check Team" across password reset, callback, panic alert, peer registration, and concern notification emails
+- SiteSettings model and GET /settings default changed from "Veterans Support" to "Radio Check"
+- Root API endpoint updated to "Radio Check API"

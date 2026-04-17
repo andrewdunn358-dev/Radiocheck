@@ -1728,7 +1728,7 @@ async def send_reset_email(email: str, reset_token: str):
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #1a2332;">Password Reset Request</h2>
-            <p>You have requested to reset your password for the Veterans Support portal.</p>
+            <p>You have requested to reset your password for the Radio Check portal.</p>
             <p>Click the button below to reset your password:</p>
             <p style="text-align: center; margin: 30px 0;">
                 <a href="{reset_link}" style="background-color: #4a90d9; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">Reset Password</a>
@@ -1737,7 +1737,7 @@ async def send_reset_email(email: str, reset_token: str):
             <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
             <p style="color: #666; font-size: 14px;">If you did not request this, please ignore this email.</p>
             <br>
-            <p style="color: #1a2332;">Veterans Support Team</p>
+            <p style="color: #1a2332;">Radio Check Team</p>
         </body>
         </html>
         """
@@ -1745,7 +1745,7 @@ async def send_reset_email(email: str, reset_token: str):
         params = {
             "from": SENDER_EMAIL,
             "to": [email],
-            "subject": "Password Reset - Veterans Support",
+            "subject": "Password Reset - Radio Check",
             "html": html_content
         }
         
@@ -1911,7 +1911,7 @@ async def send_shift_notification_email(shift_data: dict, staff_email: str, noti
             "html": html_content,
         }
         
-        resend.Emails.send(params)
+        await asyncio.to_thread(resend.Emails.send, params)
         logging.info(f"Shift notification email sent to {staff_email}")
         return True
     except Exception as e:
@@ -3696,7 +3696,7 @@ async def _seed_resources_internal():
 
 class SiteSettings(BaseModel):
     logo_url: Optional[str] = None
-    site_name: Optional[str] = "Veterans Support"
+    site_name: Optional[str] = "Radio Check"
     peer_registration_notification_email: Optional[str] = None  # Email to notify when someone registers for peer support
     admin_notification_email: Optional[str] = None  # Email for safeguarding alerts
     cso_email: Optional[str] = None  # Clinical Safety Officer email for governance notifications
@@ -3707,7 +3707,7 @@ async def get_settings():
     settings = await db.settings.find_one({"_id": "site_settings"}, {"_id": 0})
     return settings or {
         "logo_url": None, 
-        "site_name": "Veterans Support",
+        "site_name": "Radio Check",
         "peer_registration_notification_email": None,
         "admin_notification_email": None,
         "cso_email": None
@@ -3785,7 +3785,7 @@ async def send_callback_confirmation_email(email: str, name: str, request_type: 
             </ul>
             <p>You matter, and help is on the way.</p>
             <br>
-            <p style="color: #1a2332;">Veterans Support Team</p>
+            <p style="color: #1a2332;">Radio Check Team</p>
         </body>
         </html>
         """
@@ -3793,7 +3793,7 @@ async def send_callback_confirmation_email(email: str, name: str, request_type: 
         params = {
             "from": SENDER_EMAIL,
             "to": [email],
-            "subject": f"Callback Request Received - Veterans Support",
+            "subject": f"Callback Request Received - Radio Check",
             "html": html_content
         }
         
@@ -3838,7 +3838,7 @@ async def send_callback_notification_to_staff(callback: dict, staff_type: str):
             </div>
             <p>Please log into the portal to take control of this request.</p>
             <br>
-            <p style="color: #1a2332;">Veterans Support System</p>
+            <p style="color: #1a2332;">Radio Check Team</p>
         </body>
         </html>
         """
@@ -3846,7 +3846,7 @@ async def send_callback_notification_to_staff(callback: dict, staff_type: str):
         params = {
             "from": SENDER_EMAIL,
             "to": staff_emails,
-            "subject": f"[ACTION REQUIRED] New Callback Request - Veterans Support",
+            "subject": f"[ACTION REQUIRED] New Callback Request - Radio Check",
             "html": html_content
         }
         
@@ -4400,7 +4400,7 @@ async def send_panic_alert_to_counsellors(alert: dict):
             <p style="font-size: 16px;"><strong>Please take immediate action.</strong></p>
             <p>Log into the portal to acknowledge this alert.</p>
             <br>
-            <p style="color: #1a2332;">Veterans Support Emergency System</p>
+            <p style="color: #1a2332;">Radio Check Emergency Team</p>
         </body>
         </html>
         """
@@ -6882,7 +6882,7 @@ async def send_peer_registration_notification(email: str, registration_time: dat
             </div>
             <p>You can view all registrations in the admin portal under "Peer Support Registrations".</p>
             <br>
-            <p style="color: #1a2332;">Veterans Support System</p>
+            <p style="color: #1a2332;">Radio Check Team</p>
         </body>
         </html>
         """
@@ -6890,7 +6890,7 @@ async def send_peer_registration_notification(email: str, registration_time: dat
         params = {
             "from": SENDER_EMAIL,
             "to": [notification_email],
-            "subject": "New Peer Support Registration - Veterans Support",
+            "subject": "New Peer Support Registration - Radio Check",
             "html": html_content
         }
         
@@ -7012,7 +7012,7 @@ async def send_concern_notification(concern: Concern):
         return False
     
     try:
-        settings = await db.settings.find_one({})
+        settings = await db.settings.find_one({"_id": "site_settings"})
         admin_email = settings.get("admin_notification_email", "") if settings else ""
         
         if not admin_email:
@@ -7161,7 +7161,7 @@ async def initialize_system():
 
 @api_router.get("/")
 async def root():
-    return {"message": "UK Veterans Support API - Admin System Active"}
+    return {"message": "Radio Check API - Admin System Active"}
 
 
 # ============ SYSTEM MONITORING ENDPOINTS ============
@@ -7571,7 +7571,7 @@ app.add_middleware(
         "https://veteran.dbty.co.uk",
         "https://www.veteran.dbty.co.uk",
         "https://veterans-support-api.onrender.com",
-        "https://veteran-support-ai-1.preview.emergentagent.com",
+        "https://modular-safety-hub.preview.emergentagent.com",
     ],
     allow_origin_regex=r"https://.*\.emergentagent\.com|https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.radiocheck\.me",
     allow_methods=["*"],
