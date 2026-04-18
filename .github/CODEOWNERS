@@ -1,19 +1,16 @@
-# CODEOWNERS — Radio Check Safeguarding-Critical Files
-# The repository owner is notified automatically when any of these files
-# are changed in a pull request. This ensures visibility on all changes
-# to safety-critical files without blocking development.
+# Safeguarding-critical files — require review before merge
+# These files carry "DO NOT MODIFY" headers and must not be changed
+# without explicit sign-off from the safety testing team.
+#
+# NOTE: Branch protection must be enabled manually in GitHub settings
+# for CODEOWNERS to be enforced. Until then this file is documentation only.
+# To enable: Repo Settings → Branches → Add rule on "main" →
+#   ✓ Require pull request reviews before merging
+#   ✓ Require review from Code Owners
+# This is NOT urgent — enable when ready to scale, not before.
 
-# Soul document and injection
-soul.md @andrewdunn358-dev
-backend/personas/soul_loader.py @andrewdunn358-dev
-backend/personas/tommy.py @andrewdunn358-dev
-
-# Protocol files
-backend/protocols/ @andrewdunn358-dev
-
-# Safety layer
-backend/safety/unified_safety.py @andrewdunn358-dev
-backend/safety/safety_monitor.py @andrewdunn358-dev
-backend/safety/conversation_monitor.py @andrewdunn358-dev
-backend/safety/semantic_model.py @andrewdunn358-dev
-backend/safety/text_normalizer.py @andrewdunn358-dev
+/backend/safety/                    @andrewdunn358-dev
+/backend/protocols/                 @andrewdunn358-dev
+/backend/personas/soul.md           @andrewdunn358-dev
+/backend/personas/soul_loader.py    @andrewdunn358-dev
+/backend/enhanced_safety_layer.py   @andrewdunn358-dev

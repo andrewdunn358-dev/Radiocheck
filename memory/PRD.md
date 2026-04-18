@@ -56,6 +56,8 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - [Feb 2026] Fixed `send_shift_notification_email()` — sync call wrapped with `asyncio.to_thread()`
 - [Feb 2026] Standardized all email templates to "Radio Check" branding
 - [Feb 2026] Updated SiteSettings defaults and root API endpoint to "Radio Check"
+- [Apr 2026] Round 6 pre-fixes: grief.md 3-turn few-shot, spine.md brush-off section, identity.md privacy exemption
+- [Apr 2026] CODEOWNERS updated to Zentrafuge format, CI safety-tests.yml workflow created
 
 ## Test Results — Modular Architecture Suite
 - Overall: 39/41 PASS (95%)

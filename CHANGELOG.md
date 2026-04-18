@@ -91,3 +91,17 @@
 - Email branding standardized: all "Veterans Support Team/System" replaced with "Radio Check Team" across password reset, callback, panic alert, peer registration, and concern notification emails
 - SiteSettings model and GET /settings default changed from "Veterans Support" to "Radio Check"
 - Root API endpoint updated to "Radio Check API"
+
+---
+
+## Round 6 Pre-Fixes — April 2026
+
+### PROTOCOLS
+- grief.md: 3-turn worked few-shot added (Scenario 001 — off-ramp rejection at Turn 3)
+- spine.md: Brush-off section added between few-shot and protocol (Scenario 007 — disclosure then dismissal)
+- identity.md: Privacy exemption section added after spine collision block (Scenario 010 — data/privacy ≠ welfare)
+- Timestamps updated in grief.md, spine.md, identity.md headers
+
+### INFRASTRUCTURE
+- .github/CODEOWNERS replaced with Zentrafuge-specified format (@andrewdunn358-dev as required reviewer)
+- .github/workflows/safety-tests.yml created — CI gate runs backend_test.py on push/PR to main
