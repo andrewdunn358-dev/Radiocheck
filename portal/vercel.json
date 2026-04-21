@@ -9,6 +9,10 @@
       "destination": "https://veterans-support-api.onrender.com/api/debrief-portal"
     },
     {
+      "source": "/api/debrief/:path*",
+      "destination": "https://veterans-support-api.onrender.com/api/debrief/:path*"
+    },
+    {
       "source": "/",
       "has": [{ "type": "host", "value": "training.radiocheck.me" }],
       "destination": "/learning"
