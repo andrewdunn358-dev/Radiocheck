@@ -58,6 +58,7 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - [Feb 2026] Updated SiteSettings defaults and root API endpoint to "Radio Check"
 - [Apr 2026] Round 6 pre-fixes: grief.md 3-turn few-shot, spine.md brush-off section, identity.md privacy exemption
 - [Apr 2026] CODEOWNERS updated to Zentrafuge format, CI safety-tests.yml workflow created
+- [Apr 2026] Debrief feedback portal built — standalone HTML at /api/debrief-portal with 25-question survey, CSV/PDF export
 
 ## Test Results — Modular Architecture Suite
 - Overall: 39/41 PASS (95%)
@@ -76,3 +77,4 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - P2: Welsh Language Support
 - P2: Agora → Daily.co migration consideration
 - P2: Migrate remaining interactive pages to CMS
+- P2: Resend sender domain needs updating for new API key (re_Usz3feuE_...)
