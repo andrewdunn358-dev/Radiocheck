@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  @page {
+    size: A4;
+    margin: 25mm 20mm 25mm 20mm;
+    @bottom-center {
+      content: counter(page);
+      font-family: 'Inter', sans-serif;
+      font-size: 9pt;
+      color: #94a3b8;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: #1e293b;
+  }
+
+  /* Cover page */
+  .cover {
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 700px;
+    text-align: center;
+    padding-top: 120px;
+  }
+
+  .cover img {
+    width: 160px;
+    height: 160px;
+    margin-bottom: 40px;
+  }
+
+  .cover h1 {
+    font-size: 32pt;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .cover .subtitle {
+    font-size: 14pt;
+    font-weight: 300;
+    color: #64748b;
+    margin-bottom: 60px;
+  }
+
+  .cover .meta {
+    font-size: 10pt;
+    color: #94a3b8;
+    line-height: 1.8;
+  }
+
+  .cover .meta strong {
+    color: #475569;
+    font-weight: 500;
+  }
+
+  .cover .tagline {
+    font-size: 12pt;
+    font-style: italic;
+    color: #dc2626;
+    margin-top: 40px;
+    padding: 16px 32px;
+    border-left: 3px solid #dc2626;
+    text-align: left;
+    max-width: 420px;
+  }
+
+  /* Section headers */
+  h2 {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #dc2626;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1e293b;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+  }
+
+  h4 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin-bottom: 10px;
+    text-align: justify;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px 0;
+    font-size: 9.5pt;
+  }
+
+  th {
+    background-color: #0f172a;
+    color: white;
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+
+  /* Highlight boxes */
+  .highlight-box {
+    background-color: #fef2f2;
+    border-left: 4px solid #dc2626;
+    padding: 14px 18px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .highlight-box.blue {
+    background-color: #eff6ff;
+    border-left-color: #2563eb;
+  }
+
+  .highlight-box.green {
+    background-color: #f0fdf4;
+    border-left-color: #16a34a;
+  }
+
+  .highlight-box p {
+    margin-bottom: 4px;
+  }
+
+  .highlight-box p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .stat-box {
+    flex: 1;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-box .number {
+    font-size: 22pt;
+    font-weight: 700;
+    color: #dc2626;
+    display: block;
+  }
+
+  .stat-box .label {
+    font-size: 8.5pt;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  ul {
+    margin: 8px 0 12px 20px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .small-text {
+    font-size: 9pt;
+    color: #64748b;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  .footer-note {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 9pt;
+    color: #94a3b8;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <img src="LOGO_PLACEHOLDER" alt="Radio Check Logo">
+  <h1>Radio Check</h1>
+  <p class="subtitle">Veteran Support Platform</p>
+
+  <div class="meta">
+    <strong>Project Overview &amp; Funding Proposal</strong><br>
+    April 2026<br><br>
+    <strong>Developed by:</strong> Andrew Dunn<br>
+    <strong>Safety Testing:</strong> Zentrafuge Limited<br>
+    <strong>Platform:</strong> Web, iOS, Android
+  </div>
+
+  <div class="tagline">
+    "The thing that's there at 2am when no one else is."
+  </div>
+</div>
+
+<!-- EXECUTIVE SUMMARY -->
+<h2>Executive Summary</h2>
+
+<p>Radio Check is a veteran support platform that combines AI companions &mdash; who talk like real people, not therapists, not chatbots &mdash; with human counsellors, peer supporters, and a multi-layered safeguarding system independently tested across six rounds by Zentrafuge Limited, a specialist safety testing company.</p>
+
+<p>It covers mental health, housing, money, legal, addiction, family, faith, fitness, women's issues, LGBTQ+ support, Commonwealth veterans, service children, serious illness, criminal justice, and crisis intervention &mdash; all from a single app that a veteran can access without registering, without giving their name, and without anyone knowing they're using it.</p>
+
+<div class="highlight-box">
+  <p><strong>The governing test for every AI interaction:</strong> "Would a mate say this on a sofa at 2am?" If no &mdash; rewrite.</p>
+</div>
+
+<div class="stats-row">
+  <div class="stat-box">
+    <span class="number">21</span>
+    <span class="label">AI Personas</span>
+  </div>
+  <div class="stat-box">
+    <span class="number">63</span>
+    <span class="label">App Screens</span>
+  </div>
+  <div class="stat-box">
+    <span class="number">6</span>
+    <span class="label">Safety Test Rounds</span>
+  </div>
+  <div class="stat-box">
+    <span class="number">126k+</span>
+    <span class="label">Lines of Code</span>
+  </div>
+</div>
+
+<!-- THE HUMAN SIDE -->
+<h2>The Human Side</h2>
+
+<h3>Counsellors</h3>
+<p>Qualified counsellors are integrated directly into the platform &mdash; not a referral link to an external service. When a veteran is in crisis, or when the AI recognises it is out of its depth, it offers the counsellor option alongside peer support and national helplines. Counsellors have their own portal with:</p>
+<ul>
+  <li><strong>Live chat</strong> with veterans in real time</li>
+  <li><strong>Callback management</strong> &mdash; veterans request a call and counsellors pick up the request</li>
+  <li><strong>Case management</strong> &mdash; track ongoing cases, add notes, log supervision</li>
+  <li><strong>Safeguarding alerts</strong> &mdash; real-time notifications when a crisis is detected, including the veteran's location</li>
+  <li><strong>Panic button alerts</strong> &mdash; immediate notification with GPS coordinates</li>
+  <li><strong>Shift rota</strong> &mdash; managed scheduling so coverage is always clear</li>
+  <li><strong>Team view</strong> &mdash; see who's online and available</li>
+</ul>
+
+<h3>Peer Support Network</h3>
+<p>Real veterans supporting real veterans. The platform allows people to register as peer supporters and go through a structured training programme (see Training section). Peer supporters have their own portal with dashboards, callbacks, alerts, and team coordination. The distinction between peer supporter and counsellor is maintained throughout &mdash; different training, different scope, different portal views.</p>
+
+<h3>Virtual Coffee Mornings &amp; Community Events</h3>
+<p>The platform includes a full events system with Agora video integration. Staff can schedule virtual coffee mornings, group sessions, and community events with recurring schedules, participant limits, waiting rooms, and moderation controls.</p>
+<p>This is designed for the veterans who are isolated &mdash; the ones who won't walk into a drop-in centre but might join a video call from their sofa.</p>
+
+<!-- LOCATING PEOPLE IN CRISIS -->
+<h2 class="page-break">Locating People in Crisis</h2>
+
+<p>When a veteran triggers a crisis response (panic button, or the AI detects imminent risk), the platform attempts to locate them through two methods:</p>
+
+<div class="highlight-box blue">
+  <p><strong>1. IP Geolocation</strong> &mdash; Automatic, no permission needed. Uses the veteran's IP address to determine approximate city/region. This happens silently on every safeguarding alert.</p>
+  <p><strong>2. GPS Location</strong> &mdash; If the veteran grants browser location permission during the crisis flow, precise GPS coordinates (latitude, longitude, accuracy radius) are captured and attached to the safeguarding alert, overwriting the less accurate IP-based location.</p>
+</div>
+
+<p>The staff portal includes a <strong>live location map</strong> (Leaflet) showing active users with location data, recent alert locations, regional heatmaps across UK regions, and city/country breakdowns.</p>
+
+<p>When a counsellor receives a panic alert, they can see where the veteran is &mdash; not just their name and message, but their physical location on a map. Combined with simultaneous email notifications to all counsellors and admins, this creates a response chain that moves from <strong>detection to location to human intervention in seconds</strong>.</p>
+
+<!-- TRAINING -->
+<h2>The Training System (LMS)</h2>
+
+<p>The platform includes a full Learning Management System for training peer supporters and staff. It is not a placeholder &mdash; it is a structured course comprising:</p>
+
+<ul>
+  <li><strong>Multiple modules</strong> covering Mental Health Awareness, Ethics &amp; Boundaries, Crisis Support &amp; Suicide Awareness, Safeguarding, Communication Skills, and more</li>
+  <li><strong>Mr Clark</strong> &mdash; an AI course tutor (GPT-4o powered) who evaluates written reflective responses using a competency-based framework. He assesses against specific competencies and provides formative feedback</li>
+  <li><strong>Reflection questions</strong> on critical modules &mdash; learners must demonstrate understanding, not just tick boxes</li>
+  <li><strong>Certificate generation</strong> upon course completion</li>
+  <li><strong>LMS Admin portal</strong> &mdash; manage modules, review learner progress, approve completions</li>
+  <li><strong>Automatic flagging</strong> &mdash; if a learner's response raises concerns about their readiness, it is flagged for human review</li>
+</ul>
+
+<p>The protocols that govern the AI (spine, grief, identity) are the same principles taught to the humans.</p>
+
+<!-- THE 21 AI PERSONAS -->
+<h2 class="page-break">The 21 AI Personas</h2>
+
+<p>Every persona inherits the Soul Document (480 lines of behavioural rules) and the modular protocol system. Each has a unique voice, background, and specialist knowledge. They are not generic chatbots wearing different skins &mdash; they are distinct characters with distinct purposes.</p>
+
+<table>
+  <tr><th>Persona</th><th>Role</th><th>Specialism</th></tr>
+  <tr><td><strong>Tommy</strong></td><td>Lead Persona</td><td>General peer support &mdash; the most heavily tested persona across all 6 rounds</td></tr>
+  <tr><td><strong>Grace</strong></td><td>Welcome &amp; Signposting</td><td>Front door persona &mdash; helps veterans find the right support</td></tr>
+  <tr><td><strong>Bob</strong></td><td>Ex-Para Peer Support</td><td>Infantry/airborne veteran, straight-talking peer support</td></tr>
+  <tr><td><strong>Frankie</strong></td><td>PTI &mdash; Physical Training</td><td>Fitness, routine, structure &mdash; the one who gets you moving</td></tr>
+  <tr><td><strong>Margie</strong></td><td>Addiction Support</td><td>Substance misuse, recovery, harm reduction</td></tr>
+  <tr><td><strong>Megan</strong></td><td>Women Veterans</td><td>MST, gender-specific issues, Salute Her UK</td></tr>
+  <tr><td><strong>Rachel</strong></td><td>Criminal Justice</td><td>RMP background, courts, probation, veterans courts</td></tr>
+  <tr><td><strong>Finch</strong></td><td>Legal Specialist</td><td>Military law, service complaints, legal referrals</td></tr>
+  <tr><td><strong>Penny</strong></td><td>Benefits &amp; Money</td><td>PIP, Universal Credit, war pensions, debt</td></tr>
+  <tr><td><strong>Jack</strong></td><td>Compensation</td><td>AFCS, War Pension Scheme claims</td></tr>
+  <tr><td><strong>Rita</strong></td><td>Family Support</td><td>Families, relationships, impact of service on loved ones</td></tr>
+  <tr><td><strong>Sam</strong></td><td>Forces Kids Specialist</td><td>Service children, young carers, youth support</td></tr>
+  <tr><td><strong>Helen</strong></td><td>Carer Support</td><td>Caring for veterans, respite, carer's allowance</td></tr>
+  <tr><td><strong>Alex</strong></td><td>LGBTQ+ Veterans</td><td>Ban era, identity, community, Fighting With Pride</td></tr>
+  <tr><td><strong>Kofi</strong></td><td>Commonwealth Veterans</td><td>Immigration, settlement, right to remain</td></tr>
+  <tr><td><strong>James</strong></td><td>Faith &amp; Spiritual</td><td>Chaplaincy, moral injury, spiritual support</td></tr>
+  <tr><td><strong>Catherine</strong></td><td>Thoughtful Support</td><td>Calm, intelligent, reflective conversations</td></tr>
+  <tr><td><strong>Dave</strong></td><td>Men's Health</td><td>Physical health, prostate, heart, "blokes don't talk" culture</td></tr>
+  <tr><td><strong>Baz</strong></td><td>Housing &amp; Transition</td><td>Homelessness, housing applications, transition from service</td></tr>
+  <tr><td><strong>Mo</strong></td><td>Recovery Support</td><td>PTSD recovery, rehabilitation, adjustment</td></tr>
+  <tr><td><strong>Reg</strong></td><td>Serious Illness</td><td>Terminal illness, end of life, legacy, dignity</td></tr>
+</table>
+
+<!-- WHAT'S ON OFFER -->
+<h2 class="page-break">What's On Offer &mdash; Every Page</h2>
+
+<h3>Core Features</h3>
+<table>
+  <tr><th>Feature</th><th>Description</th></tr>
+  <tr><td><strong>AI Buddies</strong></td><td>Gallery of all 21 AI personas &mdash; choose who to talk to based on what you need</td></tr>
+  <tr><td><strong>Crisis Support</strong></td><td>Immediate crisis resources, panic button, Samaritans / Combat Stress / 999</td></tr>
+  <tr><td><strong>Callback</strong></td><td>Request a callback from a counsellor or peer supporter</td></tr>
+  <tr><td><strong>Live Chat</strong></td><td>Real-time chat with human staff</td></tr>
+</table>
+
+<h3>Mental Health &amp; Wellbeing</h3>
+<table>
+  <tr><th>Feature</th><th>Description</th></tr>
+  <tr><td><strong>Mental Health Screening</strong></td><td>PHQ-9 depression screening questionnaire with scoring and guidance</td></tr>
+  <tr><td><strong>Breathing Game</strong></td><td>Guided breathing exercises (box breathing, 4-7-8) &mdash; gamified with unlockable patterns</td></tr>
+  <tr><td><strong>Grounding</strong></td><td>Grounding techniques for anxiety and panic</td></tr>
+  <tr><td><strong>Self-Care</strong></td><td>Self-care resources and strategies</td></tr>
+  <tr><td><strong>Journal</strong></td><td>Private journal with mood tagging &mdash; stored locally, never sent to a server</td></tr>
+  <tr><td><strong>Mood Tracking</strong></td><td>Track and monitor mood over time</td></tr>
+  <tr><td><strong>Recovery Support</strong></td><td>Resources for those in recovery</td></tr>
+  <tr><td><strong>Substance Support</strong></td><td>Addiction and substance misuse resources</td></tr>
+</table>
+
+<h3>Specialist Support Areas</h3>
+<table>
+  <tr><th>Feature</th><th>Description</th></tr>
+  <tr><td><strong>Money &amp; Benefits</strong></td><td>Benefits guidance, PIP, Universal Credit, war pensions</td></tr>
+  <tr><td><strong>Compensation Schemes</strong></td><td>AFCS, War Pension Scheme guidance</td></tr>
+  <tr><td><strong>Criminal Justice</strong></td><td>Support for veterans in the criminal justice system</td></tr>
+  <tr><td><strong>Serious Illness</strong></td><td>Support for veterans with serious or terminal illness</td></tr>
+  <tr><td><strong>Women Veterans</strong></td><td>Issues specific to women who served</td></tr>
+  <tr><td><strong>Commonwealth Veterans</strong></td><td>Immigration, visa, settlement rights</td></tr>
+  <tr><td><strong>LGBTQ+ Support</strong></td><td>Support for LGBTQ+ veterans including ban era</td></tr>
+  <tr><td><strong>Forces Kids</strong></td><td>Support for children of service personnel</td></tr>
+  <tr><td><strong>Family &amp; Friends</strong></td><td>Support for families, including raising concerns about a veteran</td></tr>
+  <tr><td><strong>For Carers</strong></td><td>Resources for those caring for veterans</td></tr>
+  <tr><td><strong>Faith &amp; Service</strong></td><td>Spiritual and faith-based support</td></tr>
+  <tr><td><strong>Historical Investigations</strong></td><td>Support for veterans involved in legacy investigations</td></tr>
+</table>
+
+<h3>Community &amp; Resources</h3>
+<table>
+  <tr><th>Feature</th><th>Description</th></tr>
+  <tr><td><strong>Organisations</strong></td><td>Directory of veteran support organisations</td></tr>
+  <tr><td><strong>Regimental Associations</strong></td><td>Find your regimental association</td></tr>
+  <tr><td><strong>Local Services</strong></td><td>Location-based local support services</td></tr>
+  <tr><td><strong>Recommended Reads</strong></td><td>Books and reading resources</td></tr>
+  <tr><td><strong>Podcasts</strong></td><td>Veteran-related podcasts</td></tr>
+  <tr><td><strong>Gym</strong></td><td>Fitness resources and gym partnerships</td></tr>
+</table>
+
+<!-- SAFEGUARDING -->
+<h2 class="page-break">The Safeguarding System</h2>
+
+<p>This is not a keyword filter. It is a <strong>five-layer safety architecture</strong> comprising nearly 5,000 lines of dedicated safety code, independently tested across six rounds by Zentrafuge Limited.</p>
+
+<h3>The Five Layers</h3>
+
+<table>
+  <tr><th>Layer</th><th>Function</th><th>Lines</th></tr>
+  <tr><td><strong>Text Normaliser</strong></td><td>Cleans slang, abbreviations, and obfuscated text so the safety system reads what the veteran actually meant</td><td>339</td></tr>
+  <tr><td><strong>Phrase Dataset</strong></td><td>530 phrases across 14 categories, weighted by severity &mdash; distinguishes 40+ gradations of distress</td><td>780</td></tr>
+  <tr><td><strong>Safety Monitor</strong></td><td>Keyword and phrase matching with negation detection &mdash; "I'm NOT going to hurt myself" is correctly identified as a denial</td><td>700</td></tr>
+  <tr><td><strong>Semantic Model</strong></td><td>Goes beyond keywords to understand meaning &mdash; catches indirect disclosures without obvious crisis words</td><td>598</td></tr>
+  <tr><td><strong>Conversation Monitor</strong></td><td>Tracks trajectory across an entire conversation &mdash; a conversation that gradually darkens triggers escalation even if no single message crosses the threshold</td><td>1,014</td></tr>
+</table>
+
+<p>A <strong>Unified Safety System</strong> (565 lines) orchestrates all layers and decides: GREEN (normal), AMBER (tone shift, threshold 45), or RED (full crisis overlay with Samaritans, Combat Stress, 999, and platform counsellors, threshold 120).</p>
+
+<h3>The Modular Protocol System</h3>
+<p>Seven protocol files inject real-time behavioural rules based on what the veteran is actually saying:</p>
+<ul>
+  <li><strong>hard_stop.md</strong> &mdash; Always loaded. Banned phrases, absolute rules</li>
+  <li><strong>grief.md</strong> &mdash; Stay with the dead person, don't pivot to the user's feelings</li>
+  <li><strong>spine.md</strong> &mdash; Two-pushback minimum before clean exit; brush-off detection</li>
+  <li><strong>identity.md</strong> &mdash; Handle "are you real?" with honesty, not welfare framing; privacy exemption for data questions</li>
+  <li><strong>attachment.md</strong> &mdash; Handle romantic/dependency signals with dignity and honesty</li>
+  <li><strong>venting.md</strong> &mdash; Hold space for anger, don't interrogate</li>
+  <li><strong>darkhumour.md</strong> &mdash; Match gallows humour, don't pathologise it</li>
+</ul>
+
+<h3>Identity Dampening &amp; Crisis Override</h3>
+<p>The system tracks when a veteran is having a philosophical conversation about AI identity. During these conversations, safety escalation is dampened &mdash; because scepticism is not distress. But if genuine crisis language appears mid-conversation, a hard override fires immediately, clearing the dampening and activating full crisis response.</p>
+
+<h3>What Happens in a Crisis</h3>
+<div class="highlight-box">
+  <p><strong>1.</strong> AI detects risk &rarr; AMBER or RED threshold crossed</p>
+  <p><strong>2.</strong> RED triggers full crisis overlay with helpline numbers and platform counsellors</p>
+  <p><strong>3.</strong> Safeguarding alert created with IP geolocation</p>
+  <p><strong>4.</strong> If veteran grants permission &rarr; GPS coordinates captured</p>
+  <p><strong>5.</strong> Email sent to all counsellors and admins simultaneously</p>
+  <p><strong>6.</strong> Alert appears in staff portal with location on map</p>
+  <p><strong>7.</strong> Staff acknowledge, assign, and track resolution</p>
+</div>
+
+<h3>Testing Rigour</h3>
+<p>Six rounds of independent testing by Zentrafuge Limited. Each round comprises structured scenarios designed to break the system &mdash; grief conversations, brush-offs, identity challenges, and dark humour. Findings feed directly into protocol fixes. Safeguarding-critical files carry "DO NOT MODIFY" headers and require Zentrafuge sign-off. A CODEOWNERS file enforces review on GitHub, and a CI pipeline runs the safety test suite on every push.</p>
+
+<div class="highlight-box green">
+  <p><strong>Modular Architecture Test Results: 39/41 PASS (95%)</strong></p>
+  <p>1 accepted false positive &mdash; safety system over-accumulation on a sustained identity challenge, accepted as safer than a false negative.</p>
+</div>
+
+<!-- ADMIN PORTAL -->
+<h2 class="page-break">The Admin &amp; Staff Portal</h2>
+
+<p>A full Next.js administration system with 34 admin tabs and 10 staff tabs covering every aspect of platform operation:</p>
+
+<h3>Admin Capabilities</h3>
+<table>
+  <tr><th>Tab</th><th>Function</th></tr>
+  <tr><td><strong>AI Personas</strong></td><td>Manage and configure all 21 AI personas</td></tr>
+  <tr><td><strong>AI Usage</strong></td><td>Monitor conversation volumes, costs, and patterns</td></tr>
+  <tr><td><strong>CMS</strong></td><td>Content management for app pages</td></tr>
+  <tr><td><strong>Events</strong></td><td>Schedule and manage virtual coffee mornings and community events</td></tr>
+  <tr><td><strong>Governance</strong></td><td>Approvals, compliance, hazards, incidents, KPIs, moderation, reports</td></tr>
+  <tr><td><strong>Learning (LMS)</strong></td><td>Module management, feedback, patterns, approval queue</td></tr>
+  <tr><td><strong>Logs</strong></td><td>Audit trails, callbacks, calls, chats, panic alerts, safeguarding, screening</td></tr>
+  <tr><td><strong>Rota</strong></td><td>Staff shift scheduling</td></tr>
+  <tr><td><strong>Staff Management</strong></td><td>Add, edit, manage staff accounts and roles</td></tr>
+  <tr><td><strong>Settings</strong></td><td>Site configuration, notification emails, branding</td></tr>
+  <tr><td><strong>Time Tracking</strong></td><td>Staff hours and availability</td></tr>
+  <tr><td><strong>Beta Testing</strong></td><td>Manage beta test groups and feedback</td></tr>
+  <tr><td><strong>Compliance</strong></td><td>Regulatory compliance tracking</td></tr>
+</table>
+
+<h3>Staff Portal Capabilities</h3>
+<table>
+  <tr><th>Tab</th><th>Function</th></tr>
+  <tr><td><strong>Dashboard</strong></td><td>Overview of active alerts, pending callbacks, and team status</td></tr>
+  <tr><td><strong>Alerts</strong></td><td>Real-time safeguarding and panic alerts with location data</td></tr>
+  <tr><td><strong>Callbacks</strong></td><td>Manage veteran callback requests</td></tr>
+  <tr><td><strong>Cases</strong></td><td>Ongoing case management with notes</td></tr>
+  <tr><td><strong>Live Chat</strong></td><td>Real-time chat with veterans</td></tr>
+  <tr><td><strong>Events</strong></td><td>Manage and join community events</td></tr>
+  <tr><td><strong>Notes</strong></td><td>Case notes and documentation</td></tr>
+  <tr><td><strong>Rota</strong></td><td>View and manage shift schedule</td></tr>
+  <tr><td><strong>Supervision</strong></td><td>Clinical supervision logging</td></tr>
+  <tr><td><strong>Team</strong></td><td>Team member status and coordination</td></tr>
+</table>
+
+<!-- COST AND TIMELINE -->
+<h2 class="page-break">Development Cost &amp; Timeline</h2>
+
+<h3>What Was Built</h3>
+
+<div class="stats-row">
+  <div class="stat-box">
+    <span class="number">67,509</span>
+    <span class="label">Backend (Python)</span>
+  </div>
+  <div class="stat-box">
+    <span class="number">31,208</span>
+    <span class="label">Frontend (React Native)</span>
+  </div>
+  <div class="stat-box">
+    <span class="number">22,525</span>
+    <span class="label">Admin Portal (Next.js)</span>
+  </div>
+  <div class="stat-box">
+    <span class="number">4,977</span>
+    <span class="label">Safety System</span>
+  </div>
+</div>
+
+<p><strong>Total: 126,000+ lines of production code</strong> across three applications (veteran app, staff portal, admin portal), plus 21 AI persona definitions, 7 behavioural protocol files, a 480-line Soul Document, and a full LMS with AI-powered assessment.</p>
+
+<h3>Traditional Development Cost</h3>
+
+<p>A traditional team to build this would typically comprise:</p>
+<ul>
+  <li>2 backend developers</li>
+  <li>2 frontend/mobile developers</li>
+  <li>1 AI/ML engineer</li>
+  <li>1 QA/safety tester</li>
+  <li>1 project manager</li>
+  <li>1 UX designer</li>
+</ul>
+
+<p>At UK agency rates (&pound;500&ndash;800/day per developer), a team of 8 working for 6&ndash;9 months:</p>
+
+<div class="highlight-box">
+  <p><strong>Estimated traditional build cost: &pound;500,000 &ndash; &pound;900,000</strong></p>
+  <p>At freelance rates: &pound;250,000 &ndash; &pound;400,000 (with coordination overhead adding time)</p>
+</div>
+
+<h3>How Radio Check Was Actually Built</h3>
+
+<div class="highlight-box green">
+  <p><strong>Built by one person</strong>, with AI-assisted development (Emergent platform) and independent safety testing by Zentrafuge Limited.</p>
+  <p><strong>Actual development time: approximately 8&ndash;10 weeks</strong> of active development.</p>
+  <p>Achieved at a fraction of the traditional cost.</p>
+</div>
+
+<p>That is not just a cost saving &mdash; it is the difference between "we'll put together a funding proposal" and "it's already built."</p>
+
+<h3>Monthly Running Costs</h3>
+<table>
+  <tr><th>Service</th><th>Cost</th><th>Notes</th></tr>
+  <tr><td>AI (GPT-4o)</td><td>Variable</td><td>Pay-per-use, primary variable cost</td></tr>
+  <tr><td>Email (Resend)</td><td>Minimal</td><td>Pay-per-email</td></tr>
+  <tr><td>Video (Agora)</td><td>Variable</td><td>Pay-per-minute for events</td></tr>
+  <tr><td>Hosting</td><td>Fixed</td><td>Standard cloud hosting</td></tr>
+  <tr><td>Database (MongoDB)</td><td>Fixed</td><td>Single instance</td></tr>
+</table>
+
+<p><strong>Estimated total at moderate usage (hundreds of veterans, daily conversations): &pound;50&ndash;150/month.</strong></p>
+<p>No per-seat licenses. No enterprise subscriptions. No vendor lock-in. The entire platform runs on open-source frameworks with pay-as-you-go services.</p>
+
+<!-- CLOSING -->
+<h2 class="page-break">What This Means</h2>
+
+<p>A veteran who is struggling at 2am has 21 people to talk to who understand service, who won't judge, who won't fold at the first pushback, who know the difference between a joke and a cry for help, and who can connect them to real humans &mdash; counsellors, peers, and emergency services &mdash; the moment it matters.</p>
+
+<p>The families have a way in. The peer supporters have training. The counsellors have tools. And the whole thing is wrapped in a safeguarding system that has been deliberately, repeatedly, and independently broken and fixed until it holds.</p>
+
+<p>That's Radio Check.</p>
+
+<div class="footer-note">
+  Radio Check &mdash; Veteran Support Platform &bull; April 2026 &bull; Confidential
+</div>
+
+</body>
+</html>
