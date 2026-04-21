@@ -7235,7 +7235,7 @@ async def get_peer_support_registrations(current_user: User = Depends(require_ro
 async def raise_concern(input: ConcernCreate):
     """Raise a concern about a veteran (public - for family/friends)"""
     try:
-        concern = Concern(**input.dict())
+        concern = Concern(**{k: v for k, v in input.dict().items() if v is not None})
         await db.concerns.insert_one(concern.dict())
         logging.info(f"Concern raised by {input.your_name} ({input.relationship}) - Urgency: {input.urgency}")
         
