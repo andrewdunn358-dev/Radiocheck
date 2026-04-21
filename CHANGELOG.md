@@ -132,3 +132,26 @@
 
 ### GOVERNANCE
 - .github/CODEOWNERS: @TheAIOldtimer added as independent reviewer on all safeguarding-critical files
+
+---
+
+## Round 7 Post-Test Fixes — April 2026
+
+### SAFETY
+- Brush-off fallback routing: dedicated BRUSH_OFF detection and fallback ("Didn't sound like nothing, mate.") added to judge logic
+  - Guard: IF brush-off detected AND NOT high risk AND NOT grief → route to BRUSH_OFF fallback
+  - Signals: "ignore me", "just being dramatic", "don't mind me", "just being daft", "being dramatic", "forget i said"
+- Grief context persistence: `grief_active_turns` session variable added (2-turn window)
+  - When grief detected → persists for 2 additional turns even when user message has no grief keywords
+  - Crisis override clears grief persistence (same as identity)
+  - Fixes Turn 3 grief context loss
+
+### PROTOCOLS
+- soul_loader.py: Identity signal "real" removed (false positive on grief "doesn't feel real")
+  - "not real" retained as specific identity signal
+- soul_loader.py: Brush-off signals ("ignore me", "just being dramatic", etc.) added to spine signal list for protocol file loading
+- soul_loader.py: Judge prompt updated — grief questions about deceased explicitly marked as NOT violations
+- server.py: Judge code-level prompt tightened — removed over-broad "unpermitted_question" fail reason, grief questions explicitly allowed
+
+### JUDGE FAIL REASONS (Updated)
+- welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_shift, therapeutic_tone
