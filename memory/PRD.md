@@ -63,6 +63,10 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - [Apr 2026] Round 7: Minimiser downgrade rule for false positive fix
 - [Apr 2026] Round 7: Banned phrase "I'm not ready to forget it" removed from positive examples
 - [Apr 2026] Round 7: @TheAIOldtimer added to CODEOWNERS
+- [Apr 2026] Round 8: Context-aware fallback micro-generation (replaces static strings)
+- [Apr 2026] Round 8: Grief pronoun/name tracking, per-protocol turn counters, situation classifier
+- [Apr 2026] Round 8: Pre/post-fallback safety guards, "dark" signal fix
+- [Apr 2026] Debrief admin tab rebuilt: priority matrix, persona performance, cohort comparison, NPS breakdown, sentiment analysis, word cloud
 
 ## Test Results — Modular Architecture Suite
 - Overall: 39/41 PASS (95%)
