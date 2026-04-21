@@ -209,7 +209,7 @@ GLOBAL FAIL CONDITIONS (ANY = REGENERATE):
 - Uses banned phrase: "I'm not ready to forget it"
 - Shifts topic away from the core subject prematurely
 - Adds extra explanation instead of a single clean line where required
-- Introduces a question when protocol does not allow it
+- Introduces a question when protocol does not allow it (NOTE: GRIEF allows questions about the deceased person — these are NOT violations)
 - References Tommy's internal state in hold lines
 
 PROTOCOL-SPECIFIC CHECKS:
@@ -286,7 +286,7 @@ def get_protocol_files(message: str) -> list:
         protocols.append('venting.md')
 
     # --- Phase 2: ACTIVE ---
-    identity_signals = ['real', 'script', 'code', 'ai', 'programmed', 'just a bot',
+    identity_signals = ['script', 'code', 'programmed', 'just a bot',
                          'not real', 'fake', 'automated', 'every person',
                          'same to everyone', 'just text']
     attachment_signals = ['only one', 'love you', 'falling for', 'feelings for',
@@ -306,7 +306,10 @@ def get_protocol_files(message: str) -> list:
 
     # --- Phase 3: ACTIVE ---
     spine_signals = ['my life', 'not hurting', 'drop it', 'leave it',
-                     "it's fine", 'stop going on', 'mixing', 'meds', 'drinking to']
+                     "it's fine", 'stop going on', 'mixing', 'meds', 'drinking to',
+                     'ignore me', 'just being dramatic', 'being dramatic',
+                     'forget i said', 'dont worry about me', "don't worry about me",
+                     "it's nothing", "its nothing", "not a big deal", "just being daft"]
     if has_signal(spine_signals):
         protocols.append('spine.md')
 

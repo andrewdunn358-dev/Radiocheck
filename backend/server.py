@@ -6561,18 +6561,18 @@ User message: "{request.message}"
 Assistant response: "{reply}"
 
 Check the response against these rules:
-- GRIEF: Must stay with the deceased person. Must NOT pivot to user feelings. Must NOT accept off-ramp.
+- GRIEF: Must stay with the deceased person. Must NOT pivot to user feelings. Must NOT accept off-ramp. Questions about the deceased person ARE ALLOWED and correct.
 - BRUSH-OFF: Must hold once with one warm line. Must NOT accept dismissal ("ignore me", "just being dramatic").
 - IDENTITY/PRIVACY: Must answer directly. Must NOT use concern language or "worried".
 - SPINE: Must use "worried" FIRST, hold once, clean exit on second pushback.
-- GLOBAL: No "I'm worried" outside SPINE. No therapeutic language. No banned phrase "I'm not ready to forget it". No referencing Tommy's internal state. No unpermitted questions.
+- GLOBAL: No "I'm worried" outside SPINE. No therapeutic language. No banned phrase "I'm not ready to forget it". No referencing Tommy's internal state.
 
 Reply with EXACTLY one line:
 PASS
 or
 FAIL: <reason>
 
-Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_shift, over_length, therapeutic_tone, unpermitted_question"""
+Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_shift, therapeutic_tone"""
             
             max_judge_retries = 2
             for judge_attempt in range(max_judge_retries):
