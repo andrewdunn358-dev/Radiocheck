@@ -6217,8 +6217,22 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             if 'identity_active_turns' in session:
                 session['identity_active_turns'] = 0
                 logging.warning(f"[Protocols] Identity dampening CLEARED by crisis override - Session: {request.sessionId[:12]}")
+            # Clear grief tracking — crisis language overrides persistence
+            if 'grief_active_turns' in session:
+                session['grief_active_turns'] = 0
             # Do NOT inject identity.md — let normal scoring proceed
         else:
+            # === GRIEF CONTEXT PERSISTENCE (Round 7 Fix 2) ===
+            # When grief is detected, persist for 2 additional turns so the
+            # protocol stays active even when the user's message has no grief keywords.
+            if 'grief.md' in protocol_files:
+                session['grief_active_turns'] = 2
+            elif session.get('grief_active_turns', 0) > 0:
+                if 'grief.md' not in protocol_files:
+                    protocol_files = protocol_files + ['grief.md']
+                session['grief_active_turns'] = session['grief_active_turns'] - 1
+                logging.info(f"[Protocols] Grief persisted for session {request.sessionId[:12]} (remaining turns: {session['grief_active_turns']})")
+
             # Normal identity tracking decay logic
             if 'identity.md' in protocol_files:
                 session['identity_active_turns'] = 3  # Reset persistence window when identity fires
@@ -6544,9 +6558,24 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     primary_protocol = p
                     break
             
+            # === BRUSH-OFF DETECTION (Round 7 Fix 1) ===
+            # If brush-off signals are present AND NOT high risk AND NOT grief,
+            # override primary_protocol to brush_off for correct fallback routing.
+            BRUSH_OFF_SIGNALS = ['ignore me', 'just being dramatic', "don't mind me", "dont mind me",
+                                 'just being daft', 'being dramatic', 'forget i said']
+            msg_lower_judge = request.message.lower()
+            is_brush_off = any(s in msg_lower_judge for s in BRUSH_OFF_SIGNALS)
+            is_grief_active = 'grief.md' in protocol_files
+            is_high_risk = risk_data.get('risk_level') == 'RED'
+            
+            if is_brush_off and not is_high_risk and not is_grief_active:
+                primary_protocol = 'brush_off'
+                logging.info(f"[Judge] Brush-off detected — routing to BRUSH_OFF fallback - Session: {request.sessionId[:12]}")
+            
             # Protocol-specific fallbacks (Constraint 2)
             PROTOCOL_FALLBACKS = {
                 'grief': "What was he like?",
+                'brush_off': "Didn't sound like nothing, mate.",
                 'spine': "Your call. I'm here if you want to talk.",
                 'identity': "No — no one's reading this. It's just you and me here.",
                 'venting': "Alright. I hear you.",
