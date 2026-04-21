@@ -155,3 +155,23 @@
 
 ### JUDGE FAIL REASONS (Updated)
 - welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_shift, therapeutic_tone
+
+---
+
+## Round 8 Implementation — April 2026
+
+### ARCHITECTURE: CONTEXT-AWARE FALLBACK (Replaces Static Strings)
+- Protocol state object built from session: protocol, turn, name, pronoun, situation
+- Micro-generation via GPT-4o (max 50 tokens, temp 0.2) replaces static fallback dictionary
+- Situation classifier: grief_opening/grief_mid/grief_offramp, brush_off, spine_entry/hold/exit, dependency/abandonment, privacy_question
+- Pre-fallback safety guard: high risk → spine entry override
+- Post-fallback safety filter: banter/humour detected → spine entry override
+- Repetition prevention: tracks last_fallback_question in session
+
+### SESSION TRACKING
+- grief_turn_count, spine_turn_count, brush_off_turn_count: per-protocol turn tracking
+- grief_name, grief_pronoun: extracted at first grief detection (name via capitalised words, pronoun via gendered language)
+
+### SIGNAL FIXES
+- "dark" removed from darkhumour signals (false positive on "dark thoughts" = welfare, not humour)
+- Replaced with "dark humour" / "dark humor" (explicit phrase match only)

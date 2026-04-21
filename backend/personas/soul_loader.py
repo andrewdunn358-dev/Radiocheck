@@ -299,7 +299,7 @@ def get_protocol_files(message: str) -> list:
     # Dark humour signals
     darkhumour_signals = [
         'silver linings', 'every cloud', 'ha ', 'haha', 'lol',
-        'taking the mick', 'dark', 'gallows', 'at least', 'if the'
+        'taking the mick', 'dark humour', 'dark humor', 'gallows', 'at least', 'if the'
     ]
     if has_signal(darkhumour_signals):
         protocols.append('darkhumour.md')

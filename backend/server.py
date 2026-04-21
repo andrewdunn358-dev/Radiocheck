@@ -6227,11 +6227,44 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             # protocol stays active even when the user's message has no grief keywords.
             if 'grief.md' in protocol_files:
                 session['grief_active_turns'] = 2
+                # === FIX 3: Per-Protocol Turn Tracking (Round 8) ===
+                session['grief_turn_count'] = session.get('grief_turn_count', 0) + 1
+                # === FIX 2 (partial): Grief Pronoun & Name Extraction (Round 8) ===
+                if session.get('grief_name') is None:
+                    import re
+                    msg_text = request.message
+                    # Extract name: look for capitalised words near grief keywords
+                    name_match = re.findall(r'\b([A-Z][a-z]{2,})\b', msg_text)
+                    grief_keywords_in_msg = ['lost', 'died', 'dead', 'killed', 'passed', 'gone']
+                    if name_match:
+                        for n in name_match:
+                            if n.lower() not in grief_keywords_in_msg and n.lower() not in ['mate', 'sorry', 'still', 'anyway']:
+                                session['grief_name'] = n
+                                break
+                    # Detect pronoun from gendered language
+                    msg_l = msg_text.lower()
+                    if any(w in msg_l for w in ['wife', 'mum', 'mother', 'sister', 'daughter', 'her ', ' her', ' she']):
+                        session['grief_pronoun'] = 'she'
+                    elif any(w in msg_l for w in ['husband', 'dad', 'father', 'brother', 'son', 'his ', ' his', ' he ']):
+                        session['grief_pronoun'] = 'he'
+                    else:
+                        session['grief_pronoun'] = session.get('grief_pronoun', 'they')
+                    if session.get('grief_name'):
+                        logging.info(f"[Grief] Name: {session['grief_name']}, Pronoun: {session['grief_pronoun']} - Session: {request.sessionId[:12]}")
             elif session.get('grief_active_turns', 0) > 0:
                 if 'grief.md' not in protocol_files:
                     protocol_files = protocol_files + ['grief.md']
                 session['grief_active_turns'] = session['grief_active_turns'] - 1
+                session['grief_turn_count'] = session.get('grief_turn_count', 0) + 1
                 logging.info(f"[Protocols] Grief persisted for session {request.sessionId[:12]} (remaining turns: {session['grief_active_turns']})")
+
+            # Track spine and brush-off turns
+            if 'spine.md' in protocol_files:
+                session['spine_turn_count'] = session.get('spine_turn_count', 0) + 1
+            BRUSH_OFF_CHECK = ['ignore me', 'just being dramatic', "don't mind me", "dont mind me",
+                               'just being daft', 'being dramatic', 'forget i said']
+            if any(s in request.message.lower() for s in BRUSH_OFF_CHECK):
+                session['brush_off_turn_count'] = session.get('brush_off_turn_count', 0) + 1
 
             # Normal identity tracking decay logic
             if 'identity.md' in protocol_files:
@@ -6572,17 +6605,121 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 primary_protocol = 'brush_off'
                 logging.info(f"[Judge] Brush-off detected — routing to BRUSH_OFF fallback - Session: {request.sessionId[:12]}")
             
-            # Protocol-specific fallbacks (Constraint 2)
-            PROTOCOL_FALLBACKS = {
-                'grief': "What was he like?",
-                'brush_off': "Didn't sound like nothing, mate.",
-                'spine': "Your call. I'm here if you want to talk.",
-                'identity': "No — no one's reading this. It's just you and me here.",
-                'venting': "Alright. I hear you.",
-                'attachment': "I'm here. That's not going to change.",
-                'darkhumour': "Ha. Fair one.",
-                'general': "I'm here, mate.",
+            # === Round 8: Classify situation for context-aware fallback ===
+            def classify_situation(protocol, turn, msg):
+                msg_l = msg.lower()
+                if protocol == 'grief':
+                    if turn <= 1:
+                        return 'grief_opening'
+                    offramp_signals = ['sorry', 'rambling', 'ignore me', 'forget', 'anyway', 'never mind']
+                    if any(s in msg_l for s in offramp_signals):
+                        return 'grief_offramp'
+                    return 'grief_mid'
+                elif protocol == 'brush_off':
+                    return 'brush_off'
+                elif protocol == 'spine':
+                    if turn <= 1:
+                        return 'spine_entry'
+                    elif turn == 2:
+                        return 'spine_hold'
+                    return 'spine_exit'
+                elif protocol == 'identity':
+                    return 'privacy_question'
+                elif protocol == 'attachment':
+                    dependency_signals = ['only you', 'just you', 'only one', 'no one else']
+                    if any(s in msg_l for s in dependency_signals):
+                        return 'dependency'
+                    return 'abandonment'
+                return 'general'
+            
+            # Get per-protocol turn count
+            protocol_turn_counts = {
+                'grief': session.get('grief_turn_count', 1),
+                'spine': session.get('spine_turn_count', 1),
+                'brush_off': session.get('brush_off_turn_count', 1),
             }
+            current_protocol_turn = protocol_turn_counts.get(primary_protocol, 1)
+            current_situation = classify_situation(primary_protocol, current_protocol_turn, request.message)
+            
+            # Build protocol state object (Fix 1)
+            protocol_state = {
+                "protocol": primary_protocol.upper(),
+                "turn": current_protocol_turn,
+                "name": session.get('grief_name'),
+                "pronoun": session.get('grief_pronoun', 'they'),
+                "situation": current_situation
+            }
+            
+            # === Round 8: Context-aware micro-generation function ===
+            def generate_micro_fallback(state):
+                """Generate a context-aware fallback using the Round 8 prompt."""
+                name_str = f"Name: {state['name']}" if state.get('name') else "Name: not known"
+                pronoun_str = f"Pronoun: {state['pronoun']}" if state.get('pronoun') else "Pronoun: they"
+                
+                micro_prompt = f"""You are generating a fallback response for Radio Check.
+
+Context:
+- Protocol: {state['protocol']}
+- Turn: {state['turn']}
+- {name_str}
+- {pronoun_str}
+- Situation: {state['situation']}
+
+Rules:
+- Follow the protocol strictly
+- Be context-aware (do NOT restart conversation if already in progress)
+- Use correct name and pronoun if provided
+- Do NOT use banned phrases
+- Do NOT introduce therapeutic or clinical language
+- Do NOT introduce concern unless SPINE protocol
+- Keep response to ONE line (max two short sentences)
+- Stay natural and human
+
+Protocol-specific behaviour:
+
+GRIEF:
+- Stay with the deceased person
+- If Turn 1 → ask about them
+- If Turn 2+ → continue memory, do NOT repeat opening question
+
+BRUSH_OFF:
+- Ignore dismissal
+- One grounded line only
+
+SPINE:
+- Turn 1 → express concern ("I'm worried...")
+- Turn 2 → hold once
+- Turn 3 → clean exit
+
+IDENTITY:
+- Direct factual reassurance
+- No emotion
+
+AFFECTION:
+- Warmth allowed
+- MUST redirect dependency if exclusive
+
+Return ONLY the response text. No explanation. No labels."""
+                
+                try:
+                    micro_result = buddy_openai_client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[{"role": "system", "content": micro_prompt}],
+                        max_tokens=50,
+                        temperature=0.2,
+                        timeout=10
+                    )
+                    return (micro_result.choices[0].message.content or "").strip().strip('"')
+                except Exception as e:
+                    logging.error(f"[Fallback] Micro-generation failed: {e}")
+                    return None
+            
+            # === Fix 5: Banter/humour detection for post-fallback safety ===
+            def contains_banter_or_humour(text):
+                banter_signals = ['ha.', 'haha', 'lol', 'fair one', 'fair enough', 'no worries',
+                                  'no dramas', 'all good', 'no bother']
+                text_l = text.lower().strip()
+                return any(s in text_l for s in banter_signals)
             
             judge_prompt = f"""You are a strict behavioural judge for a veteran support AI.
 Active protocols: {active_protocols_text}
@@ -6637,10 +6774,35 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_s
                             )
                             reply = retry_completion.choices[0].message.content or reply
                         else:
-                            # Final fallback — safe minimal response
-                            fallback = PROTOCOL_FALLBACKS.get(primary_protocol, PROTOCOL_FALLBACKS['general'])
+                            # === Round 8: Context-aware fallback with safety guards ===
+                            
+                            # FIX 2: Pre-fallback safety override guard
+                            if is_high_risk:
+                                reply = "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
+                                logging.warning(f"[Fallback] Safety override — high risk detected, spine entry - Session: {request.sessionId[:12]}")
+                            else:
+                                # FIX 4: Micro-generation call
+                                micro_reply = generate_micro_fallback(protocol_state)
+                                
+                                if micro_reply:
+                                    # FIX 5: Post-fallback safety filter
+                                    if contains_banter_or_humour(micro_reply):
+                                        micro_reply = "I'm worried about what you just said, mate. That sounds heavy."
+                                        logging.warning(f"[Fallback] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
+                                    
+                                    # Optional: Repetition prevention
+                                    if micro_reply == session.get('last_fallback_question'):
+                                        micro_reply = micro_reply.rstrip('.?!') + ". Tell me more."
+                                    session['last_fallback_question'] = micro_reply
+                                    
+                                    reply = micro_reply
+                                    logging.info(f"[Fallback] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']}, situation={protocol_state['situation']} - Session: {request.sessionId[:12]}")
+                                else:
+                                    # Micro-gen failed — use safe minimal response
+                                    reply = "I'm here, mate."
+                                    logging.error(f"[Fallback] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
+                            
                             logging.warning(f"[Judge] Fallback triggered for {primary_protocol} - Session: {request.sessionId[:12]}")
-                            reply = fallback
                 except Exception as judge_error:
                     logging.error(f"[Judge] Error: {judge_error} - passing through")
                     break  # Don't block on judge failure
