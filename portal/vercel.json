@@ -2,14 +2,12 @@
   "env": {
     "NEXT_PUBLIC_API_URL": "https://veterans-support-api.onrender.com"
   },
-  "redirects": [
+  "redirects": [],
+  "rewrites": [
     {
       "source": "/debrief",
-      "destination": "https://veterans-support-api.onrender.com/api/debrief-portal",
-      "permanent": false
-    }
-  ],
-  "rewrites": [
+      "destination": "https://veterans-support-api.onrender.com/api/debrief-portal"
+    },
     {
       "source": "/",
       "has": [{ "type": "host", "value": "training.radiocheck.me" }],
