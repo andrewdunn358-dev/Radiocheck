@@ -59,6 +59,10 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - [Apr 2026] Round 6 pre-fixes: grief.md 3-turn few-shot, spine.md brush-off section, identity.md privacy exemption
 - [Apr 2026] CODEOWNERS updated to Zentrafuge format, CI safety-tests.yml workflow created
 - [Apr 2026] Debrief feedback portal built — standalone HTML at /api/debrief-portal with 25-question survey, CSV/PDF export
+- [Apr 2026] Round 7: Post-generation judge (Layer 1 in-prompt + Layer 2 code-level) implemented
+- [Apr 2026] Round 7: Minimiser downgrade rule for false positive fix
+- [Apr 2026] Round 7: Banned phrase "I'm not ready to forget it" removed from positive examples
+- [Apr 2026] Round 7: @TheAIOldtimer added to CODEOWNERS
 
 ## Test Results — Modular Architecture Suite
 - Overall: 39/41 PASS (95%)

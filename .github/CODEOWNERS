@@ -9,8 +9,8 @@
 #   ✓ Require review from Code Owners
 # This is NOT urgent — enable when ready to scale, not before.
 
-/backend/safety/                    @andrewdunn358-dev @zentrafuge
-/backend/protocols/                 @andrewdunn358-dev @zentrafuge
-/backend/personas/soul.md           @andrewdunn358-dev @zentrafuge
-/backend/personas/soul_loader.py    @andrewdunn358-dev @zentrafuge
-/backend/enhanced_safety_layer.py   @andrewdunn358-dev @zentrafuge
+/backend/safety/                    @andrewdunn358-dev @zentrafuge @TheAIOldtimer
+/backend/protocols/                 @andrewdunn358-dev @zentrafuge @TheAIOldtimer
+/backend/personas/soul.md           @andrewdunn358-dev @zentrafuge @TheAIOldtimer
+/backend/personas/soul_loader.py    @andrewdunn358-dev @zentrafuge @TheAIOldtimer
+/backend/enhanced_safety_layer.py   @andrewdunn358-dev @zentrafuge @TheAIOldtimer

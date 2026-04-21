@@ -105,3 +105,30 @@
 ### INFRASTRUCTURE
 - .github/CODEOWNERS replaced with Zentrafuge-specified format (@andrewdunn358-dev as required reviewer)
 - .github/workflows/safety-tests.yml created — CI gate runs backend_test.py on push/PR to main
+
+---
+
+## Round 7 Implementation — April 2026
+
+### ARCHITECTURE: POST-GENERATION JUDGE (Two Layers)
+- Layer 1 (In-Prompt): Round 7 emergence prompt added as outermost system prompt layer in soul_loader.py
+  - 5-step mandatory self-judge: identify protocol → generate internally → check against fail conditions → discard if fail → output only passing response
+  - ROUND7_JUDGE_PROMPT constant wraps every persona prompt
+- Layer 2 (Code-Level): Separate GPT-4o judge call in buddy_chat endpoint (server.py)
+  - Binary PASS/FAIL verdict per response
+  - Conditioned regeneration with failure reason injected
+  - Max 2 retries, then protocol-specific fallback responses
+  - Fail reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_shift, over_length, therapeutic_tone, unpermitted_question
+
+### SAFETY
+- Minimiser downgrade rule added to calculate_safeguarding_score (server.py)
+  - Anhedonia + minimiser ("just being dramatic", "ignore me") = downgrade severity by one level
+  - Prevents false positive crisis overlays (Scenario 007 Run 1)
+
+### PROTOCOLS
+- grief.md: "I'm not ready to forget it" moved to WRONG examples with explicit BANNED label
+- soul_loader.py: Brush-off section updated — old phrase replaced with protocol-compliant alternative
+- New global rule: hold lines must never reference Tommy's internal state
+
+### GOVERNANCE
+- .github/CODEOWNERS: @TheAIOldtimer added as independent reviewer on all safeguarding-critical files

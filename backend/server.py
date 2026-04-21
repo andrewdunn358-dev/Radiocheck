@@ -1567,6 +1567,23 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
             score += weight
             triggered.append({"indicator": pattern, "weight": weight, "level": "MODIFIER"})
     
+    # === MINIMISER DOWNGRADE RULE (Round 6 false positive fix) ===
+    # When low mood / anhedonia language is present WITH an explicit minimiser,
+    # downgrade severity by one level. This prevents crisis overlays on
+    # "finding it hard to see the point in most things — just being dramatic"
+    MINIMISER_PHRASES = [
+        "ignore me", "just being dramatic", "just being daft", "just being silly",
+        "don't mind me", "dont mind me", "being pathetic", "being stupid",
+        "forget i said", "just joking", "only joking", "being dramatic",
+        "not a big deal", "nothing really", "overreacting"
+    ]
+    has_minimiser = any(m in message_lower for m in MINIMISER_PHRASES)
+    if has_minimiser and not is_red_flag and score >= 45:
+        downgrade_amount = min(40, score - 25)  # Downgrade but keep above GREEN
+        score -= downgrade_amount
+        triggered.append({"indicator": "minimiser_downgrade", "weight": -downgrade_amount, "level": "OVERRIDE"})
+        logging.info(f"[SafeguardingOverride] Minimiser detected — score downgraded by {downgrade_amount} (was {score + downgrade_amount}, now {score})")
+    
     # Stackable modifier: Two or more AMBER indicators (+30)
     if amber_count >= 2:
         score += 30
@@ -6511,6 +6528,93 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # If we still don't have a reply, something went wrong
         if not reply:
             raise Exception("No response from AI providers")
+        
+        # === POST-GENERATION JUDGE (Layer 2 — Round 7) ===
+        # Separate lightweight GPT-4o call that hard-blocks protocol violations.
+        # Max 2 retries, then fallback to protocol-specific safe response.
+        if protocol_files and buddy_openai_client:
+            active_protocol_names = [f.replace('.md', '').upper() for f in protocol_files]
+            active_protocols_text = ', '.join(active_protocol_names)
+            
+            # Determine primary protocol for fallback
+            protocol_priority = ['grief', 'spine', 'identity', 'attachment', 'venting', 'darkhumour']
+            primary_protocol = 'general'
+            for p in protocol_priority:
+                if f'{p}.md' in protocol_files:
+                    primary_protocol = p
+                    break
+            
+            # Protocol-specific fallbacks (Constraint 2)
+            PROTOCOL_FALLBACKS = {
+                'grief': "What was he like?",
+                'spine': "Your call. I'm here if you want to talk.",
+                'identity': "No — no one's reading this. It's just you and me here.",
+                'venting': "Alright. I hear you.",
+                'attachment': "I'm here. That's not going to change.",
+                'darkhumour': "Ha. Fair one.",
+                'general': "I'm here, mate.",
+            }
+            
+            judge_prompt = f"""You are a strict behavioural judge for a veteran support AI.
+Active protocols: {active_protocols_text}
+User message: "{request.message}"
+Assistant response: "{reply}"
+
+Check the response against these rules:
+- GRIEF: Must stay with the deceased person. Must NOT pivot to user feelings. Must NOT accept off-ramp.
+- BRUSH-OFF: Must hold once with one warm line. Must NOT accept dismissal ("ignore me", "just being dramatic").
+- IDENTITY/PRIVACY: Must answer directly. Must NOT use concern language or "worried".
+- SPINE: Must use "worried" FIRST, hold once, clean exit on second pushback.
+- GLOBAL: No "I'm worried" outside SPINE. No therapeutic language. No banned phrase "I'm not ready to forget it". No referencing Tommy's internal state. No unpermitted questions.
+
+Reply with EXACTLY one line:
+PASS
+or
+FAIL: <reason>
+
+Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_shift, over_length, therapeutic_tone, unpermitted_question"""
+            
+            max_judge_retries = 2
+            for judge_attempt in range(max_judge_retries):
+                try:
+                    judge_result = buddy_openai_client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[{"role": "system", "content": judge_prompt}],
+                        max_tokens=20,
+                        temperature=0,
+                        timeout=10
+                    )
+                    verdict = (judge_result.choices[0].message.content or "").strip()
+                    
+                    if verdict.startswith("PASS"):
+                        logging.info(f"[Judge] PASS on attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
+                        break
+                    elif verdict.startswith("FAIL"):
+                        fail_reason = verdict.replace("FAIL:", "").strip()
+                        logging.warning(f"[Judge] FAIL ({fail_reason}) attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
+                        
+                        if judge_attempt < max_judge_retries - 1:
+                            # Conditioned regeneration (Constraint 1)
+                            retry_messages = messages.copy()
+                            retry_messages.append({"role": "assistant", "content": reply})
+                            retry_messages.append({"role": "system", "content": f"Previous response failed because: {fail_reason}. You MUST correct this. Do NOT repeat the failure. Follow the protocol strictly."})
+                            
+                            retry_completion = buddy_openai_client.chat.completions.create(
+                                model="gpt-4o",
+                                messages=retry_messages,
+                                max_tokens=400,
+                                temperature=0.2,
+                                timeout=45
+                            )
+                            reply = retry_completion.choices[0].message.content or reply
+                        else:
+                            # Final fallback — safe minimal response
+                            fallback = PROTOCOL_FALLBACKS.get(primary_protocol, PROTOCOL_FALLBACKS['general'])
+                            logging.warning(f"[Judge] Fallback triggered for {primary_protocol} - Session: {request.sessionId[:12]}")
+                            reply = fallback
+                except Exception as judge_error:
+                    logging.error(f"[Judge] Error: {judge_error} - passing through")
+                    break  # Don't block on judge failure
         
         # ===== TRACK AI USAGE FOR COST MONITORING =====
         try:
