@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debrief - Radio Check Feedback</title>
+<link rel="icon" href="https://customer-assets.emergentagent.com/job_535ca64e-70e1-4fc8-813d-3b487fc07905/artifacts/14k1x3vl_logo.png">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a2332;color:#fff;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:20px}
+.header{text-align:center;padding:24px 0;border-bottom:1px solid #4a5568}
+.header h1{font-size:28px;font-weight:700;margin-bottom:4px}
+.header p{color:#b0c4de;font-size:14px}
+.progress-bar{height:3px;background:#2d3748;margin:0 -20px;position:sticky;top:0;z-index:10}
+.progress-fill{height:3px;background:#dc2626;transition:width 0.3s}
+.section{display:none;padding:24px 0}
+.section.active{display:block}
+.section-title{font-size:20px;font-weight:700;margin-bottom:4px}
+.section-desc{color:#9ca3af;font-size:14px;margin-bottom:20px}
+.question{font-size:15px;font-weight:600;margin-top:20px;margin-bottom:8px}
+.rating{display:flex;gap:8px;flex-wrap:wrap}
+.rating button{width:40px;height:40px;border-radius:20px;border:1px solid #4a5568;background:#2d3748;color:#fff;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s}
+.rating button.selected{background:#dc2626;border-color:#dc2626}
+.rating button:hover{border-color:#dc2626}
+.rating-labels{display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;margin-top:4px}
+.rating.nps button{width:32px;height:32px;border-radius:16px;font-size:12px}
+select,input[type="text"],textarea{width:100%;padding:12px;border-radius:8px;border:1px solid #4a5568;background:#2d3748;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s}
+select:focus,input:focus,textarea:focus{border-color:#dc2626}
+textarea{min-height:80px;resize:vertical}
+select{appearance:auto;cursor:pointer}
+option{background:#2d3748;color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 14px;border-radius:16px;border:1px solid #4a5568;background:#2d3748;color:#fff;cursor:pointer;font-size:13px;transition:all 0.2s;user-select:none}
+.chip.selected{background:#dc2626;border-color:#dc2626}
+.chip:hover{border-color:#dc2626}
+.nav{display:flex;justify-content:space-between;padding:20px 0;border-top:1px solid #4a5568;margin-top:24px;position:sticky;bottom:0;background:#1a2332}
+.btn{padding:12px 24px;border-radius:8px;border:none;font-weight:600;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:8px;transition:opacity 0.2s}
+.btn-primary{background:#dc2626;color:#fff}
+.btn-secondary{background:#2d3748;color:#fff;border:1px solid #4a5568}
+.btn:hover{opacity:0.9}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.thank-you{text-align:center;padding:80px 20px}
+.thank-you h2{font-size:24px;margin:16px 0 8px}
+.thank-you p{color:#9ca3af;line-height:1.6}
+.checkmark{width:64px;height:64px;border-radius:50%;background:#dc2626;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:32px}
+.hidden{display:none}
+@media(max-width:480px){.container{padding:16px}.rating button{width:36px;height:36px}.rating.nps button{width:28px;height:28px;font-size:11px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Debrief</h1>
+    <p>Radio Check Beta Feedback</p>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+  <!-- Section 0: About You -->
+  <div class="section active" data-step="0">
+    <h3 class="section-title">About You</h3>
+    <p class="section-desc">Completely anonymous. This just helps us understand who's using Radio Check.</p>
+    <p class="question">Which branch did you serve in?</p>
+    <select data-field="service_branch"><option value="">Select branch</option><option>Army</option><option>Royal Navy</option><option>Royal Marines</option><option>Royal Air Force</option><option>Reserves</option><option>Prefer not to say</option></select>
+    <p class="question">How long did you serve?</p>
+    <select data-field="service_length"><option value="">Select length</option><option>Less than 4 years</option><option>4-8 years</option><option>8-16 years</option><option>16-22 years</option><option>22+ years</option><option>Still serving</option><option>Prefer not to say</option></select>
+    <p class="question">How long since you left service?</p>
+    <select data-field="time_since_service"><option value="">Select time</option><option>Less than 1 year</option><option>1-3 years</option><option>3-5 years</option><option>5-10 years</option><option>10-20 years</option><option>20+ years</option><option>Still serving</option><option>Prefer not to say</option></select>
+  </div>
+
+  <!-- Section 1: First Impressions -->
+  <div class="section" data-step="1">
+    <h3 class="section-title">First Impressions</h3>
+    <p class="section-desc">What was it like when you first used Radio Check?</p>
+    <p class="question">How did you hear about Radio Check?</p>
+    <select data-field="how_heard"><option value="">Select</option><option>Word of mouth</option><option>Social media</option><option>Veterans organisation</option><option>Friend or family</option><option>GP or health professional</option><option>Search engine</option><option>Other</option></select>
+    <p class="question">How easy was it to find your way around?</p>
+    <div class="rating" data-field="ease_of_navigation" data-max="5"></div>
+    <div class="rating-labels"><span>Very difficult</span><span>Very easy</span></div>
+    <p class="question">What device did you use?</p>
+    <select data-field="device_used"><option value="">Select device</option><option>Mobile phone</option><option>Tablet</option><option>Laptop</option><option>Desktop computer</option></select>
+    <p class="question">What was your first impression of Radio Check?</p>
+    <textarea data-field="first_impression" placeholder="Tell us what you thought when you first opened the app..."></textarea>
+  </div>
+
+  <!-- Section 2: AI Companions -->
+  <div class="section" data-step="2">
+    <h3 class="section-title">AI Companions</h3>
+    <p class="section-desc">About your experience talking to the AI personas.</p>
+    <p class="question">Which AI persona(s) did you talk to?</p>
+    <div class="chips" data-field="personas_used" data-multi="true"></div>
+    <p class="question">How natural did the conversation feel?</p>
+    <div class="rating" data-field="conversation_natural" data-max="5"></div>
+    <div class="rating-labels"><span>Not at all</span><span>Very natural</span></div>
+    <p class="question">Did the AI feel like it understood what you were saying?</p>
+    <div class="rating" data-field="ai_understood" data-max="5"></div>
+    <div class="rating-labels"><span>Not at all</span><span>Completely</span></div>
+    <p class="question">Did the AI personality feel like a good fit?</p>
+    <div class="rating" data-field="ai_personality_fit" data-max="5"></div>
+    <div class="rating-labels"><span>Poor fit</span><span>Perfect fit</span></div>
+    <p class="question">Was there a moment where an AI response felt wrong or off?</p>
+    <select data-field="ai_response_wrong"><option value="">Select</option><option>Yes</option><option>No</option><option>Not sure</option></select>
+    <div id="wrong-detail" class="hidden">
+      <p class="question" style="font-size:13px">Can you describe what happened?</p>
+      <textarea data-field="ai_response_wrong_detail" placeholder="What did the AI say that felt wrong?"></textarea>
+    </div>
+    <p class="question">What did talking to the AI feel like?</p>
+    <textarea data-field="ai_felt_like_talking_to" placeholder='e.g. "like talking to a mate", "like a chatbot", "surprisingly real"...'></textarea>
+    <p class="question">How did you feel after the conversation?</p>
+    <textarea data-field="how_felt_after" placeholder="Better, worse, the same? Anything you noticed..."></textarea>
+  </div>
+
+  <!-- Section 3: Safety & Trust -->
+  <div class="section" data-step="3">
+    <h3 class="section-title">Safety & Trust</h3>
+    <p class="section-desc">How safe and private did the platform feel?</p>
+    <p class="question">Did you feel safe using Radio Check?</p>
+    <div class="rating" data-field="felt_safe" data-max="5"></div>
+    <div class="rating-labels"><span>Not at all</span><span>Completely safe</span></div>
+    <p class="question">Did you feel your conversations were private?</p>
+    <div class="rating" data-field="felt_private" data-max="5"></div>
+    <div class="rating-labels"><span>Not at all</span><span>Completely private</span></div>
+    <p class="question">Would you feel comfortable opening up about something personal?</p>
+    <div class="rating" data-field="would_open_up" data-max="5"></div>
+    <div class="rating-labels"><span>Not at all</span><span>Definitely</span></div>
+    <p class="question">Would you trust Radio Check with sensitive topics?</p>
+    <div class="rating" data-field="trust_with_sensitive" data-max="5"></div>
+    <div class="rating-labels"><span>Not at all</span><span>Completely</span></div>
+    <p class="question">If a crisis support overlay appeared, how did you find it?</p>
+    <select data-field="crisis_overlay_experience"><option value="">Select</option><option>Helpful — I was glad it appeared</option><option>Intrusive — it interrupted the conversation</option><option>It appeared but I didn't need it</option><option>I didn't see one</option><option>Prefer not to say</option></select>
+  </div>
+
+  <!-- Section 4: Support & Resources -->
+  <div class="section" data-step="4">
+    <h3 class="section-title">Support & Resources</h3>
+    <p class="section-desc">About the resources and support pages on Radio Check.</p>
+    <p class="question">Did you explore any of the support pages?</p>
+    <select data-field="explored_support_pages"><option value="">Select</option><option>Yes, several</option><option>Yes, one or two</option><option>No, I stuck with the AI chat</option><option>I didn't know they were there</option></select>
+    <p class="question">Were the resources relevant and useful?</p>
+    <div class="rating" data-field="resources_useful" data-max="5"></div>
+    <div class="rating-labels"><span>Not useful</span><span>Very useful</span></div>
+    <p class="question">Did you find what you were looking for?</p>
+    <input type="text" data-field="found_what_needed" placeholder="Yes / No / Partly — tell us more...">
+    <p class="question">Would you use Radio Check again?</p>
+    <select data-field="would_use_again"><option value="">Select</option><option>Definitely</option><option>Probably</option><option>Unsure</option><option>Probably not</option><option>Definitely not</option></select>
+    <p class="question">Would you recommend Radio Check to another veteran?</p>
+    <div class="rating" data-field="would_recommend" data-max="5"></div>
+    <div class="rating-labels"><span>Definitely not</span><span>Definitely</span></div>
+    <p class="question">On a scale of 0-10, how likely are you to recommend Radio Check?</p>
+    <div class="rating nps" data-field="net_promoter" data-max="10" data-start="0"></div>
+    <div class="rating-labels"><span>Not likely</span><span>Extremely likely</span></div>
+  </div>
+
+  <!-- Section 5: Open Feedback -->
+  <div class="section" data-step="5">
+    <h3 class="section-title">Open Feedback</h3>
+    <p class="section-desc">Your honest thoughts. This is the most valuable part.</p>
+    <p class="question">What did Radio Check do well?</p>
+    <textarea data-field="what_done_well" placeholder="What worked, what stood out, what surprised you..."></textarea>
+    <p class="question">What could be improved?</p>
+    <textarea data-field="what_improve" placeholder="What frustrated you, what was missing, what felt off..."></textarea>
+    <p class="question">Is there a feature or service you expected but didn't find?</p>
+    <textarea data-field="missing_feature" placeholder="Anything you looked for but couldn't find..."></textarea>
+    <p class="question">Anything else you'd like to tell us?</p>
+    <textarea data-field="anything_else" placeholder="Anything at all — good, bad, or in between..."></textarea>
+  </div>
+
+  <!-- Thank You -->
+  <div class="section" data-step="done">
+    <div class="thank-you">
+      <div class="checkmark">&#10003;</div>
+      <h2>Thank You</h2>
+      <p>Your feedback will help us make Radio Check better for veterans who need it. Every response matters.</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav" id="nav">
+    <button class="btn btn-secondary" id="backBtn" onclick="navigate(-1)">&#8592; Back</button>
+    <button class="btn btn-primary" id="nextBtn" onclick="navigate(1)">Next &#8594;</button>
+  </div>
+</div>
+
+<script>
+const PERSONAS = ['Tommy','Grace','Bob','Frankie','Margie','Megan','Rachel','Finch','Penny','Jack','Rita','Sam','Helen','Alex','Kofi','James','Catherine','Dave','Baz','Mo','Reg'];
+const API_BASE = window.location.origin + '/api';
+const TOTAL_STEPS = 6;
+let currentStep = 0;
+let formData = { personas_used: [] };
+
+// Initialize rating buttons and chips
+document.querySelectorAll('.rating[data-field]').forEach(div => {
+  const max = parseInt(div.dataset.max);
+  const start = parseInt(div.dataset.start || '1');
+  for (let i = start; i <= max; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    btn.onclick = () => {
+      formData[div.dataset.field] = i;
+      div.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    div.appendChild(btn);
+  }
+});
+
+// Initialize persona chips
+document.querySelectorAll('.chips[data-field]').forEach(div => {
+  PERSONAS.forEach(name => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = name;
+    chip.onclick = () => {
+      chip.classList.toggle('selected');
+      if (chip.classList.contains('selected')) {
+        formData.personas_used.push(name);
+      } else {
+        formData.personas_used = formData.personas_used.filter(p => p !== name);
+      }
+    };
+    div.appendChild(chip);
+  });
+});
+
+// Collect form data from inputs
+function collectInputs() {
+  document.querySelectorAll('select[data-field], input[data-field], textarea[data-field]').forEach(el => {
+    if (el.value) formData[el.dataset.field] = el.value;
+  });
+}
+
+// Show/hide wrong detail
+document.querySelector('select[data-field="ai_response_wrong"]').addEventListener('change', function() {
+  document.getElementById('wrong-detail').classList.toggle('hidden', this.value !== 'Yes');
+});
+
+function navigate(direction) {
+  collectInputs();
+  const newStep = currentStep + direction;
+  if (newStep < 0) return;
+  if (newStep >= TOTAL_STEPS) { submitForm(); return; }
+  currentStep = newStep;
+  updateView();
+}
+
+function updateView() {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const target = document.querySelector(`[data-step="${currentStep}"]`);
+  if (target) target.classList.add('active');
+  document.getElementById('progress').style.width = ((currentStep + 1) / TOTAL_STEPS * 100) + '%';
+  document.getElementById('backBtn').style.visibility = currentStep === 0 ? 'hidden' : 'visible';
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.innerHTML = currentStep === TOTAL_STEPS - 1 ? 'Submit Feedback &#10148;' : 'Next &#8594;';
+}
+
+async function submitForm() {
+  collectInputs();
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.disabled = true;
+  nextBtn.innerHTML = 'Submitting...';
+  try {
+    const res = await fetch(API_BASE + '/debrief/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+    if (res.ok) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector('[data-step="done"]').classList.add('active');
+      document.getElementById('nav').style.display = 'none';
+      document.getElementById('progress').style.width = '100%';
+    }
+  } catch(e) { console.error(e); nextBtn.disabled = false; nextBtn.innerHTML = 'Submit Feedback &#10148;'; }
+}
+
+updateView();
+</script>
+</body>
+</html>

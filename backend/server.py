@@ -8291,6 +8291,8 @@ from routers import (
     twilio_calling, events, ai_tutor
 )
 
+from routers.debrief import router as debrief_router, set_db as set_debrief_db
+
 # Core functionality routers
 app.include_router(auth.router, prefix="/api")
 app.include_router(cms.router, prefix="/api")
@@ -8316,6 +8318,10 @@ app.include_router(surveys.router, prefix="/api")
 app.include_router(data_retention.router)
 app.include_router(shift_swaps.router, prefix="/api")
 app.include_router(twilio_calling.router)  # Twilio browser-to-phone calling
+
+# Debrief — Anonymous user feedback for beta testing
+set_debrief_db(db)
+app.include_router(debrief_router, prefix="/api")
 
 # Community Events routes (virtual coffee mornings, etc.)
 events.set_db(db)
@@ -8389,6 +8395,14 @@ if DOCS_PATH.exists():
 STATIC_REPORTS_PATH = Path(__file__).parent / "static" / "reports"
 STATIC_REPORTS_PATH.mkdir(parents=True, exist_ok=True)
 app.mount("/api/reports", StaticFiles(directory=str(STATIC_REPORTS_PATH)), name="reports")
+
+# Serve Debrief feedback portal as standalone HTML
+@app.get("/api/debrief-portal", response_class=FileResponse)
+async def serve_debrief_portal():
+    debrief_path = Path(__file__).parent / "static" / "debrief.html"
+    if debrief_path.exists():
+        return FileResponse(str(debrief_path), media_type="text/html")
+    raise HTTPException(status_code=404, detail="Debrief portal not found")
 
 
 # Create ASGI app that combines FastAPI and Socket.IO
