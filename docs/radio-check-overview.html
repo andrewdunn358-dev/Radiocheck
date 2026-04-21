@@ -243,7 +243,7 @@
   <div class="meta">
     <strong>Project Overview &amp; Funding Proposal</strong><br>
     April 2026<br><br>
-    <strong>Developed by:</strong> Andrew Dunn<br>
+    <strong>Developed by:</strong> Andrew Dunn, Rachel Webster &amp; Anthony Donnelly<br>
     <strong>Safety Testing:</strong> Zentrafuge Limited<br>
     <strong>Platform:</strong> Web, iOS, Android
   </div>
@@ -259,6 +259,8 @@
 <p>Radio Check is a veteran support platform that combines AI companions &mdash; who talk like real people, not therapists, not chatbots &mdash; with human counsellors, peer supporters, and a multi-layered safeguarding system independently tested across six rounds by Zentrafuge Limited, a specialist safety testing company.</p>
 
 <p>It covers mental health, housing, money, legal, addiction, family, faith, fitness, women's issues, LGBTQ+ support, Commonwealth veterans, service children, serious illness, criminal justice, and crisis intervention &mdash; all from a single app that a veteran can access without registering, without giving their name, and without anyone knowing they're using it.</p>
+
+<p>For many veterans, the barrier isn't that help doesn't exist &mdash; it's that asking for it feels impossible. Radio Check removes that barrier. There's no waiting list, no referral form, no receptionist, no "your call is important to us." A veteran can open the app at 2am, talk to someone who sounds like them, and if things get serious, a real human is already being notified &mdash; with the veteran's location, their conversation context, and the ability to call them directly from the staff portal.</p>
 
 <div class="highlight-box">
   <p><strong>The governing test for every AI interaction:</strong> "Would a mate say this on a sofa at 2am?" If no &mdash; rewrite.</p>
@@ -451,16 +453,32 @@
 <h3>Identity Dampening &amp; Crisis Override</h3>
 <p>The system tracks when a veteran is having a philosophical conversation about AI identity. During these conversations, safety escalation is dampened &mdash; because scepticism is not distress. But if genuine crisis language appears mid-conversation, a hard override fires immediately, clearing the dampening and activating full crisis response.</p>
 
-<h3>What Happens in a Crisis</h3>
+<h3>What Happens in a Crisis &mdash; From AI Score to Human Response</h3>
+
+<p>Every message a veteran sends to any of the 21 AI personas is scored in real time by the five-layer safety system. The score accumulates across the conversation &mdash; a single dark joke scores low, but a conversation that gradually reveals hopelessness, isolation, and intent will cross the threshold even if no single message contains an obvious crisis keyword.</p>
+
 <div class="highlight-box">
-  <p><strong>1.</strong> AI detects risk &rarr; AMBER or RED threshold crossed</p>
-  <p><strong>2.</strong> RED triggers full crisis overlay with helpline numbers and platform counsellors</p>
-  <p><strong>3.</strong> Safeguarding alert created with IP geolocation</p>
-  <p><strong>4.</strong> If veteran grants permission &rarr; GPS coordinates captured</p>
-  <p><strong>5.</strong> Email sent to all counsellors and admins simultaneously</p>
-  <p><strong>6.</strong> Alert appears in staff portal with location on map</p>
-  <p><strong>7.</strong> Staff acknowledge, assign, and track resolution</p>
+  <p><strong>1.</strong> Veteran sends a message &rarr; all five safety layers score it simultaneously</p>
+  <p><strong>2.</strong> If cumulative score crosses AMBER (45): AI shifts tone, becomes more present and grounded</p>
+  <p><strong>3.</strong> If cumulative score crosses RED (120): full crisis overlay appears with Samaritans, Combat Stress, 999, and platform counsellors</p>
+  <p><strong>4.</strong> Safeguarding alert is automatically created in the database with IP geolocation</p>
+  <p><strong>5.</strong> If veteran grants browser permission &rarr; precise GPS coordinates are captured</p>
+  <p><strong>6.</strong> Email notification sent instantly to all counsellors and admins via Resend</p>
+  <p><strong>7.</strong> Alert appears in the staff portal with the veteran's location on a live map</p>
+  <p><strong>8.</strong> Staff can initiate a phone call directly from the portal via Twilio &mdash; browser-to-phone, no personal numbers exposed</p>
+  <p><strong>9.</strong> Staff can also open a live chat session with the veteran in real time</p>
+  <p><strong>10.</strong> The alert is tracked through to resolution &mdash; acknowledged, assigned, and closed</p>
 </div>
+
+<h3>Twilio Voice Integration</h3>
+<p>The staff portal includes <strong>browser-to-phone calling via Twilio</strong>. When a safeguarding alert comes in, counsellors don't need to pick up a personal phone &mdash; they can call the veteran directly from their browser. The call is made through Twilio's infrastructure with WebRTC, meaning:</p>
+<ul>
+  <li>No personal phone numbers are exposed on either side</li>
+  <li>Calls can be initiated from any device with a browser</li>
+  <li>Call logs are recorded in the platform for audit and governance</li>
+  <li>Staff can also receive inbound calls through the same system</li>
+</ul>
+<p>This means the response chain from AI detection to a human voice on the phone can happen in <strong>minutes, not hours</strong>. The veteran doesn't need to call anyone &mdash; someone calls them.</p>
 
 <h3>Testing Rigour</h3>
 <p>Six rounds of independent testing by Zentrafuge Limited. Each round comprises structured scenarios designed to break the system &mdash; grief conversations, brush-offs, identity challenges, and dark humour. Findings feed directly into protocol fixes. Safeguarding-critical files carry "DO NOT MODIFY" headers and require Zentrafuge sign-off. A CODEOWNERS file enforces review on GitHub, and a CI pipeline runs the safety test suite on every push.</p>
@@ -567,8 +585,9 @@
 <table>
   <tr><th>Service</th><th>Cost</th><th>Notes</th></tr>
   <tr><td>AI (GPT-4o)</td><td>Variable</td><td>Pay-per-use, primary variable cost</td></tr>
-  <tr><td>Email (Resend)</td><td>Minimal</td><td>Pay-per-email</td></tr>
-  <tr><td>Video (Agora)</td><td>Variable</td><td>Pay-per-minute for events</td></tr>
+  <tr><td>Email (Resend)</td><td>Minimal</td><td>Pay-per-email, safeguarding alerts and notifications</td></tr>
+  <tr><td>Voice Calls (Twilio)</td><td>Variable</td><td>Pay-per-minute, browser-to-phone calling for staff</td></tr>
+  <tr><td>Video (Agora)</td><td>Variable</td><td>Pay-per-minute for community events</td></tr>
   <tr><td>Hosting</td><td>Fixed</td><td>Standard cloud hosting</td></tr>
   <tr><td>Database (MongoDB)</td><td>Fixed</td><td>Single instance</td></tr>
 </table>
