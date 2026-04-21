@@ -2,6 +2,13 @@
   "env": {
     "NEXT_PUBLIC_API_URL": "https://veterans-support-api.onrender.com"
   },
+  "redirects": [
+    {
+      "source": "/debrief",
+      "destination": "https://veterans-support-api.onrender.com/api/debrief-portal",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
