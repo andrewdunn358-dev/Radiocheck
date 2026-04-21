@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
   Users, Calendar, FileText, Bot, Shield, Activity, 
   Settings, BarChart3, Clock, BookOpen,
-  LogOut, Menu, X, Bell, RefreshCw
+  LogOut, Menu, X, Bell, RefreshCw, ClipboardList
 } from 'lucide-react';
 import { api } from '@/lib/admin-api';
 import { useMainAdminAuth } from '@/hooks/useMainAdminAuth';
@@ -25,6 +25,7 @@ import BetaTestingTab from '@/components/admin/tabs/BetaTestingTab';
 import ComplianceTab from '@/components/admin/tabs/ComplianceTab';
 import LearningTab from '@/components/admin/tabs/LearningTab';
 import TimeTrackingTab from '@/components/admin/tabs/TimeTrackingTab';
+import DebriefTab from '@/components/admin/tabs/DebriefTab';
 
 // Tab definitions
 const TABS = [
@@ -40,6 +41,7 @@ const TABS = [
   { id: 'events', label: 'Events', icon: Calendar },
   { id: 'learning', label: 'AI Learning', icon: BookOpen },
   { id: 'timetracking', label: 'Time Tracking', icon: Clock },
+  { id: 'debrief', label: 'Debrief', icon: ClipboardList },
   { id: 'ai-usage', label: 'AI Usage', icon: BarChart3 },
   { id: 'migration', label: 'Migration', icon: RefreshCw },
   { id: 'settings', label: 'Settings', icon: Settings },
@@ -404,6 +406,14 @@ export default function AdminPortal() {
             <SettingsTab
               token={token!}
               userEmail={user?.email}
+              onSuccess={setSuccess}
+              onError={setError}
+            />
+          )}
+
+          {activeTab === 'debrief' && (
+            <DebriefTab
+              token={token!}
               onSuccess={setSuccess}
               onError={setError}
             />
