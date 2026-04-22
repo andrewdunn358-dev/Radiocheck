@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blue Light Support</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a1628;color:#fff;min-height:100vh;display:flex;flex-direction:column}
+a{color:#4a9eff;text-decoration:none}
+.header{background:#0d1b2e;border-bottom:2px solid #003078;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:20px;font-weight:700;color:#fff}
+.header .thin-blue{height:2px;background:linear-gradient(90deg,transparent,#0057B8,transparent);position:absolute;bottom:0;left:0;right:0}
+.header span{font-size:12px;color:#8b9dc3}
+.nav{display:flex;gap:4px;padding:12px 20px;background:#0d1b2e;border-bottom:1px solid #1a2744;overflow-x:auto}
+.nav button{padding:8px 16px;border-radius:8px;border:none;background:#1a2744;color:#8b9dc3;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap;transition:all 0.2s}
+.nav button.active{background:#0057B8;color:#fff}
+.nav button:hover{background:#243656}
+.main{flex:1;max-width:900px;width:100%;margin:0 auto;padding:20px}
+
+/* Home */
+.hero{text-align:center;padding:40px 20px}
+.hero h2{font-size:28px;font-weight:700;margin-bottom:8px}
+.hero p{color:#8b9dc3;font-size:15px;line-height:1.6;max-width:500px;margin:0 auto 24px}
+.hero-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px;margin:0 auto}
+.hero-card{background:#1a2744;border:1px solid #243656;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s}
+.hero-card:hover{border-color:#0057B8;transform:translateY(-2px)}
+.hero-card h3{font-size:16px;margin-bottom:4px}
+.hero-card p{font-size:12px;color:#8b9dc3}
+
+/* Chat */
+.chat-container{display:flex;flex-direction:column;height:calc(100vh - 140px)}
+.persona-select{display:flex;gap:12px;padding:16px 0;justify-content:center}
+.persona-btn{padding:12px 24px;border-radius:12px;border:2px solid #243656;background:#1a2744;color:#fff;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s}
+.persona-btn.active{border-color:#0057B8;background:#0d2a5e}
+.persona-btn:hover{border-color:#0057B8}
+.persona-role{font-size:11px;color:#8b9dc3;font-weight:400;display:block}
+.messages{flex:1;overflow-y:auto;padding:12px 0}
+.msg{margin-bottom:12px;display:flex;gap:10px;animation:fadeIn 0.3s}
+.msg.user{flex-direction:row-reverse}
+.msg-bubble{max-width:75%;padding:12px 16px;border-radius:16px;font-size:14px;line-height:1.5}
+.msg.assistant .msg-bubble{background:#1a2744;border:1px solid #243656;border-bottom-left-radius:4px}
+.msg.user .msg-bubble{background:#0057B8;border-bottom-right-radius:4px}
+.msg-name{font-size:11px;color:#8b9dc3;margin-bottom:2px}
+.input-area{display:flex;gap:8px;padding:12px 0}
+.input-area input{flex:1;padding:12px 16px;border-radius:24px;border:1px solid #243656;background:#1a2744;color:#fff;font-size:14px;outline:none}
+.input-area input:focus{border-color:#0057B8}
+.input-area button{padding:12px 20px;border-radius:24px;border:none;background:#0057B8;color:#fff;font-weight:600;cursor:pointer;font-size:14px}
+.input-area button:disabled{opacity:0.5}
+.typing{color:#8b9dc3;font-size:13px;padding:8px 0;font-style:italic}
+
+/* Crisis */
+.crisis-banner{background:linear-gradient(135deg,#7f1d1d,#991b1b);border-radius:12px;padding:24px;margin-bottom:16px;text-align:center}
+.crisis-banner h3{font-size:20px;margin-bottom:8px}
+.crisis-banner p{color:#fca5a5;font-size:14px}
+.crisis-card{background:#1a2744;border:1px solid #243656;border-radius:12px;padding:16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.crisis-card h4{font-size:15px}
+.crisis-card p{font-size:12px;color:#8b9dc3}
+.crisis-card a{background:#0057B8;padding:8px 16px;border-radius:8px;color:#fff;font-weight:600;font-size:13px}
+
+/* Resources */
+.resource-card{background:#1a2744;border:1px solid #243656;border-radius:12px;padding:16px;margin-bottom:8px}
+.resource-card h4{font-size:15px;margin-bottom:4px}
+.resource-card p{font-size:13px;color:#8b9dc3;margin-bottom:8px}
+.resource-card a{color:#4a9eff;font-size:13px}
+
+.section-title{font-size:20px;font-weight:700;margin-bottom:16px}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(max-width:480px){.hero-cards{grid-template-columns:1fr}.hero h2{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Blue Light Support</h1>
+    <span>Support for Those Who Protect</span>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="active" onclick="showPage('home')">Home</button>
+  <button onclick="showPage('chat')">Talk to Someone</button>
+  <button onclick="showPage('crisis')">Crisis Support</button>
+  <button onclick="showPage('resources')">Resources</button>
+  <button onclick="showPage('callback')">Request Callback</button>
+</div>
+
+<div class="main">
+  <!-- HOME -->
+  <div id="page-home" class="page">
+    <div class="hero">
+      <h2>You protect everyone else.<br>Who's got your back?</h2>
+      <p>Confidential support for serving and retired police officers. No names, no records, no judgement. Talk to someone who understands the job.</p>
+      <div class="hero-cards">
+        <div class="hero-card" onclick="showPage('chat')">
+          <h3>Talk Now</h3>
+          <p>Chat with someone who gets it</p>
+        </div>
+        <div class="hero-card" onclick="showPage('crisis')">
+          <h3>Crisis Support</h3>
+          <p>Need help right now</p>
+        </div>
+        <div class="hero-card" onclick="showPage('resources')">
+          <h3>Resources</h3>
+          <p>Police support organisations</p>
+        </div>
+        <div class="hero-card" onclick="showPage('callback')">
+          <h3>Callback</h3>
+          <p>We'll call you</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div id="page-chat" class="page" style="display:none">
+    <div class="chat-container">
+      <div class="persona-select">
+        <button class="persona-btn active" onclick="selectPersona('sgt_cooper', this)">
+          Sgt Cooper<span class="persona-role">Peer Support</span>
+        </button>
+        <button class="persona-btn" onclick="selectPersona('dr_hayes', this)">
+          Dr Hayes<span class="persona-role">Welfare Specialist</span>
+        </button>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="typing" id="typing" style="display:none">Typing...</div>
+      <div class="input-area">
+        <input id="msgInput" type="text" placeholder="Type a message..." onkeypress="if(event.key==='Enter')sendMessage()">
+        <button onclick="sendMessage()" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRISIS -->
+  <div id="page-crisis" class="page" style="display:none">
+    <div class="crisis-banner">
+      <h3>If you're in immediate danger, call 999</h3>
+      <p>These services understand what you're going through</p>
+    </div>
+    <div class="crisis-card">
+      <div><h4>Samaritans</h4><p>24/7 emotional support — free, confidential</p></div>
+      <a href="tel:116123">Call 116 123</a>
+    </div>
+    <div class="crisis-card">
+      <div><h4>Police Care UK</h4><p>Support for police officers and families</p></div>
+      <a href="tel:03000120030">Call 0300 012 0030</a>
+    </div>
+    <div class="crisis-card">
+      <div><h4>Oscar Kilo</h4><p>National police wellbeing service</p></div>
+      <a href="https://oscarkilo.org.uk" target="_blank">Visit Site</a>
+    </div>
+    <div class="crisis-card">
+      <div><h4>Mind Blue Light</h4><p>Mental health for emergency services</p></div>
+      <a href="https://www.mind.org.uk/news-campaigns/campaigns/blue-light-programme/" target="_blank">Visit Site</a>
+    </div>
+    <div class="crisis-card">
+      <div><h4>Emergency</h4><p>Immediate danger to life</p></div>
+      <a href="tel:999">Call 999</a>
+    </div>
+  </div>
+
+  <!-- RESOURCES -->
+  <div id="page-resources" class="page" style="display:none">
+    <h3 class="section-title">Police Support Organisations</h3>
+    <div id="resources-list"></div>
+  </div>
+
+  <!-- CALLBACK -->
+  <div id="page-callback" class="page" style="display:none">
+    <h3 class="section-title">Request a Callback</h3>
+    <p style="color:#8b9dc3;margin-bottom:20px;font-size:14px">Leave your details and someone will call you back. Completely confidential.</p>
+    <form id="callbackForm" onsubmit="submitCallback(event)">
+      <div style="margin-bottom:12px"><input type="text" id="cb_name" placeholder="Your name (or alias)" required style="width:100%;padding:12px;border-radius:8px;border:1px solid #243656;background:#1a2744;color:#fff;font-size:14px"></div>
+      <div style="margin-bottom:12px"><input type="tel" id="cb_phone" placeholder="Phone number" required style="width:100%;padding:12px;border-radius:8px;border:1px solid #243656;background:#1a2744;color:#fff;font-size:14px"></div>
+      <div style="margin-bottom:12px"><input type="email" id="cb_email" placeholder="Email (optional)" style="width:100%;padding:12px;border-radius:8px;border:1px solid #243656;background:#1a2744;color:#fff;font-size:14px"></div>
+      <div style="margin-bottom:12px"><select id="cb_time" style="width:100%;padding:12px;border-radius:8px;border:1px solid #243656;background:#1a2744;color:#fff;font-size:14px"><option>Anytime</option><option>Morning</option><option>Afternoon</option><option>Evening</option></select></div>
+      <div style="margin-bottom:16px"><textarea id="cb_message" placeholder="Anything you'd like us to know..." rows="3" style="width:100%;padding:12px;border-radius:8px;border:1px solid #243656;background:#1a2744;color:#fff;font-size:14px;resize:vertical"></textarea></div>
+      <button type="submit" style="width:100%;padding:14px;border-radius:8px;border:none;background:#0057B8;color:#fff;font-weight:600;font-size:15px;cursor:pointer">Request Callback</button>
+    </form>
+    <div id="cb-success" style="display:none;text-align:center;padding:40px">
+      <div style="font-size:48px;margin-bottom:12px">&#10003;</div>
+      <h3>Callback Requested</h3>
+      <p style="color:#8b9dc3;margin-top:8px">Someone will be in touch. Stay safe.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.origin + '/api';
+let currentPersona = 'sgt_cooper';
+let sessionId = 'bls_' + Math.random().toString(36).substr(2, 12);
+let messages = [];
+
+const RESOURCES = [
+  {name:"Police Care UK",url:"https://www.policecare.org.uk",desc:"Charity for serving and retired police officers, staff, and volunteers"},
+  {name:"Oscar Kilo",url:"https://oscarkilo.org.uk",desc:"National Police Wellbeing Service"},
+  {name:"Police Mutual",url:"https://www.policemutual.co.uk",desc:"Financial services and wellbeing for police"},
+  {name:"Mind Blue Light Programme",url:"https://www.mind.org.uk/news-campaigns/campaigns/blue-light-programme/",desc:"Mental health support for emergency services"},
+  {name:"PFEW Welfare",url:"https://www.polfed.org/ourwork/welfare/",desc:"Police Federation welfare support"},
+  {name:"The Police Treatment Centres",url:"https://www.thepolicetreatmentcentres.org",desc:"Physical and psychological treatment for officers"},
+  {name:"Flint House",url:"https://www.flinthouse.co.uk",desc:"Police rehabilitation centre"},
+  {name:"NARPO",url:"https://www.narpo.org",desc:"National Association of Retired Police Officers"},
+  {name:"Blue Light Together",url:"https://bluelighttogether.org.uk",desc:"Domestic abuse support for emergency services"},
+  {name:"BackUp Buddy (PFOA)",url:"https://www.intandem.org.uk",desc:"Post-trauma support for officers"}
+];
+
+// Render resources
+document.getElementById('resources-list').innerHTML = RESOURCES.map(r =>
+  `<div class="resource-card"><h4>${r.name}</h4><p>${r.desc}</p><a href="${r.url}" target="_blank">Visit &rarr;</a></div>`
+).join('');
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+  document.getElementById('page-' + page).style.display = 'block';
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (page === 'chat' && messages.length === 0) {
+    const greeting = currentPersona === 'sgt_cooper'
+      ? "Alright mate. Sgt Cooper — 25 years on the job, now retired. What's going on?"
+      : "Hello. I'm Dr Hayes — I've spent 15 years working with officers. Whatever's on your mind, I've probably heard something like it before. What's going on?";
+    addMessage('assistant', greeting);
+  }
+}
+
+function selectPersona(id, btn) {
+  currentPersona = id;
+  sessionId = 'bls_' + Math.random().toString(36).substr(2, 12);
+  messages = [];
+  document.getElementById('messages').innerHTML = '';
+  document.querySelectorAll('.persona-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const greeting = id === 'sgt_cooper'
+    ? "Alright mate. Sgt Cooper — 25 years on the job, now retired. What's going on?"
+    : "Hello. I'm Dr Hayes — I've spent 15 years working with officers. Whatever's on your mind, I've probably heard something like it before. What's going on?";
+  addMessage('assistant', greeting);
+}
+
+function addMessage(role, text) {
+  messages.push({role, text});
+  const div = document.getElementById('messages');
+  const name = role === 'assistant' ? (currentPersona === 'sgt_cooper' ? 'Sgt Cooper' : 'Dr Hayes') : 'You';
+  div.innerHTML += `<div class="msg ${role}"><div><div class="msg-name">${name}</div><div class="msg-bubble">${text}</div></div></div>`;
+  div.scrollTop = div.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addMessage('user', msg);
+  document.getElementById('typing').style.display = 'block';
+  document.getElementById('sendBtn').disabled = true;
+  try {
+    const res = await fetch(API_BASE + '/ai-buddies/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg, sessionId: sessionId, character: currentPersona, tenant: 'bluelight'})
+    });
+    const data = await res.json();
+    addMessage('assistant', data.reply || 'Sorry, something went wrong.');
+  } catch(e) {
+    addMessage('assistant', 'Connection error. Please try again.');
+  }
+  document.getElementById('typing').style.display = 'none';
+  document.getElementById('sendBtn').disabled = false;
+  input.focus();
+}
+
+async function submitCallback(e) {
+  e.preventDefault();
+  try {
+    await fetch(API_BASE + '/callbacks', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: document.getElementById('cb_name').value,
+        phone: document.getElementById('cb_phone').value,
+        email: document.getElementById('cb_email').value || undefined,
+        request_type: 'counsellor',
+        preferred_time: document.getElementById('cb_time').value,
+        message: document.getElementById('cb_message').value,
+        tenant: 'bluelight'
+      })
+    });
+    document.getElementById('callbackForm').style.display = 'none';
+    document.getElementById('cb-success').style.display = 'block';
+  } catch(e) { alert('Failed to submit. Please try again.'); }
+}
+</script>
+</body>
+</html>

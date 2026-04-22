@@ -67,6 +67,7 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - [Apr 2026] Round 8: Grief pronoun/name tracking, per-protocol turn counters, situation classifier
 - [Apr 2026] Round 8: Pre/post-fallback safety guards, "dark" signal fix
 - [Apr 2026] Debrief admin tab rebuilt: priority matrix, persona performance, cohort comparison, NPS breakdown, sentiment analysis, word cloud
+- [Apr 2026] Multi-tenant gateway: Blue Light Support (police.radiocheck.me) with 2 personas (Sgt Cooper, Dr Hayes), tenant config, standalone portal
 
 ## Test Results — Modular Architecture Suite
 - Overall: 39/41 PASS (95%)

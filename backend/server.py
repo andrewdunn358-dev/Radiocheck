@@ -8587,6 +8587,7 @@ from routers import (
 )
 
 from routers.debrief import router as debrief_router, set_db as set_debrief_db
+from tenants import get_tenant_config, get_tenant_by_id
 
 # Core functionality routers
 app.include_router(auth.router, prefix="/api")
@@ -8698,6 +8699,29 @@ async def serve_debrief_portal():
     if debrief_path.exists():
         return FileResponse(str(debrief_path), media_type="text/html")
     raise HTTPException(status_code=404, detail="Debrief portal not found")
+
+# Serve Blue Light Support portal as standalone HTML
+@app.get("/api/bluelight-portal", response_class=FileResponse)
+async def serve_bluelight_portal():
+    bl_path = Path(__file__).parent / "static" / "bluelight.html"
+    if bl_path.exists():
+        return FileResponse(str(bl_path), media_type="text/html")
+    raise HTTPException(status_code=404, detail="Blue Light portal not found")
+
+# Tenant config endpoint
+@app.get("/api/tenant/config")
+async def get_tenant_config_endpoint(req: Request):
+    hostname = req.headers.get("x-forwarded-host", req.headers.get("host", ""))
+    config = get_tenant_config(hostname)
+    return {
+        "id": config["id"],
+        "name": config["name"],
+        "tagline": config["tagline"],
+        "colors": config["colors"],
+        "personas": config["personas"],
+        "crisis_resources": config["crisis_resources"],
+        "support_organisations": config["support_organisations"],
+    }
 
 
 # Create ASGI app that combines FastAPI and Socket.IO

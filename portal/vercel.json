@@ -13,6 +13,16 @@
       "destination": "https://veterans-support-api.onrender.com/api/debrief/:path*"
     },
     {
+      "source": "/:path*",
+      "has": [{"type": "host", "value": "police.radiocheck.me"}],
+      "destination": "https://veterans-support-api.onrender.com/api/bluelight-portal"
+    },
+    {
+      "source": "/api/:path*",
+      "has": [{"type": "host", "value": "police.radiocheck.me"}],
+      "destination": "https://veterans-support-api.onrender.com/api/:path*"
+    },
+    {
       "source": "/",
       "has": [{ "type": "host", "value": "training.radiocheck.me" }],
       "destination": "/learning"
