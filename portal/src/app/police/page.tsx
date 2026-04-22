@@ -89,9 +89,59 @@ function pickReturningGreeting(p: Persona): string {
   return p.returningGreetings[Math.floor(Math.random() * p.returningGreetings.length)];
 }
 
+// Module-scoped so React doesn't remount it on every parent render (was causing input focus loss)
+const DesktopShell = ({ children }: { children: React.ReactNode }) => (
+  <>
+    <style>{`
+      .bls-desktop{min-height:100vh;background:#060e1a;display:flex;align-items:center;justify-content:center;gap:50px;padding:40px}
+      .bls-brand{width:260px;flex-shrink:0}
+      .bls-brand h2{font-size:26px;font-weight:800;color:#fff;margin:12px 0 6px}
+      .bls-brand p{font-size:14px;color:#8b9dc3;line-height:1.5}
+      .bls-feature{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;color:#8b9dc3}
+      .bls-feature-dot{width:8px;height:8px;border-radius:4px;background:#0057B8;flex-shrink:0}
+      .bls-phone{width:430px;height:850px;border-radius:40px;border:6px solid #1a1a2e;box-shadow:0 0 60px rgba(0,87,184,0.2);overflow:hidden;display:flex;flex-direction:column;background:#0a1628;flex-shrink:0}
+      .bls-phone-inner{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
+      .bls-right{width:220px;flex-shrink:0}
+      .bls-right h3{font-size:17px;font-weight:700;color:#fff;margin-bottom:14px}
+      .bls-emer{margin-bottom:12px}
+      .bls-emer-label{font-size:11px;color:#8b9dc3}
+      .bls-emer-num{font-size:15px;font-weight:600;color:#fff}
+      .bls-emer-primary{border:2px solid #0057B8;border-radius:12px;padding:12px;margin-bottom:16px;background:#0d2a5e}
+      .bls-emer-primary .bls-emer-num{color:#60a5fa;font-size:18px}
+      .bls-hint{font-size:11px;color:#4a5568;margin-top:24px;line-height:1.5}
+      @media(max-width:900px){.bls-brand,.bls-right{display:none}.bls-desktop{padding:0;gap:0}.bls-phone{width:100%;height:100vh;border-radius:0;border:none;box-shadow:none}}
+    `}</style>
+    <div className="bls-desktop">
+      <div className="bls-brand">
+        <img src={LOGO_URL} alt="" style={{ width: 60, height: 60, borderRadius: 12 }} />
+        <h2>Blue Light Support</h2>
+        <p>Confidential peer support for serving and retired police officers</p>
+        <div style={{ marginTop: 20 }}>
+          <div className="bls-feature"><div className="bls-feature-dot" />24/7 AI Support</div>
+          <div className="bls-feature"><div className="bls-feature-dot" />Understands The Job</div>
+          <div className="bls-feature"><div className="bls-feature-dot" />Completely Anonymous</div>
+          <div className="bls-feature"><div className="bls-feature-dot" />Request Callbacks</div>
+        </div>
+      </div>
+      <div className="bls-phone"><div className="bls-phone-inner">{children}</div></div>
+      <div className="bls-right">
+        <h3>Need Help Now?</h3>
+        <div className="bls-emer-primary"><div className="bls-emer-label" style={{color:'#60a5fa',fontWeight:600}}>Police Care UK</div><div className="bls-emer-num">0300 012 0030</div><div className="bls-emer-label">Support for officers &amp; families</div></div>
+        <div className="bls-emer"><div className="bls-emer-label">Samaritans</div><div className="bls-emer-num">116 123</div></div>
+        <div className="bls-emer"><div className="bls-emer-label">Oscar Kilo</div><div className="bls-emer-num" style={{fontSize:13,color:'#60a5fa'}}>oscarkilo.org.uk</div></div>
+        <div className="bls-emer"><div className="bls-emer-label">Mind Blue Light</div><div className="bls-emer-num" style={{fontSize:13,color:'#60a5fa'}}>mind.org.uk</div></div>
+        <div className="bls-emer"><div className="bls-emer-label">Emergency</div><div className="bls-emer-num">999</div></div>
+        <div className="bls-hint">Optimised for mobile.<br/>Use your phone for the best experience.</div>
+      </div>
+    </div>
+  </>
+);
+
 export default function PolicePage() {
   const [page, setPage] = useState<Page>('splash');
   const [gateError, setGateError] = useState('');
+  const [showGatePwd, setShowGatePwd] = useState(false);
+  const [gateValue, setGateValue] = useState('');
   const [persona, setPersona] = useState(PERSONAS[0]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [sending, setSending] = useState(false);
@@ -141,9 +191,9 @@ export default function PolicePage() {
   }, [page, persona]);
 
   const handleGate = () => {
-    const val = gateRef.current?.value || '';
-    if (val === SITE_PASSWORD) { localStorage.setItem('bls_unlocked', 'true'); setPage('consent'); setGateError(''); }
-    else { setGateError('Incorrect password'); if (gateRef.current) gateRef.current.value = ''; }
+    const val = gateValue.trim();
+    if (val === SITE_PASSWORD) { localStorage.setItem('bls_unlocked', 'true'); setPage('consent'); setGateError(''); setGateValue(''); }
+    else { setGateError('Incorrect password'); setGateValue(''); }
   };
 
   const handleConsent = () => { localStorage.setItem('bls_consent', 'true'); setPage('home'); };
@@ -238,54 +288,6 @@ export default function PolicePage() {
 
   const goBack = () => setPage('home');
 
-  // ===== DESKTOP THREE-COLUMN LAYOUT =====
-  const DesktopShell = ({ children }: { children: React.ReactNode }) => (
-    <>
-      <style>{`
-        .bls-desktop{min-height:100vh;background:#060e1a;display:flex;align-items:center;justify-content:center;gap:50px;padding:40px}
-        .bls-brand{width:260px;flex-shrink:0}
-        .bls-brand h2{font-size:26px;font-weight:800;color:#fff;margin:12px 0 6px}
-        .bls-brand p{font-size:14px;color:#8b9dc3;line-height:1.5}
-        .bls-feature{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;color:#8b9dc3}
-        .bls-feature-dot{width:8px;height:8px;border-radius:4px;background:#0057B8;flex-shrink:0}
-        .bls-phone{width:430px;height:850px;border-radius:40px;border:6px solid #1a1a2e;box-shadow:0 0 60px rgba(0,87,184,0.2);overflow:hidden;display:flex;flex-direction:column;background:#0a1628;flex-shrink:0}
-        .bls-phone-inner{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
-        .bls-right{width:220px;flex-shrink:0}
-        .bls-right h3{font-size:17px;font-weight:700;color:#fff;margin-bottom:14px}
-        .bls-emer{margin-bottom:12px}
-        .bls-emer-label{font-size:11px;color:#8b9dc3}
-        .bls-emer-num{font-size:15px;font-weight:600;color:#fff}
-        .bls-emer-primary{border:2px solid #0057B8;border-radius:12px;padding:12px;margin-bottom:16px;background:#0d2a5e}
-        .bls-emer-primary .bls-emer-num{color:#60a5fa;font-size:18px}
-        .bls-hint{font-size:11px;color:#4a5568;margin-top:24px;line-height:1.5}
-        @media(max-width:900px){.bls-brand,.bls-right{display:none}.bls-desktop{padding:0;gap:0}.bls-phone{width:100%;height:100vh;border-radius:0;border:none;box-shadow:none}}
-      `}</style>
-      <div className="bls-desktop">
-        <div className="bls-brand">
-          <img src={LOGO_URL} alt="" style={{ width: 60, height: 60, borderRadius: 12 }} />
-          <h2>Blue Light Support</h2>
-          <p>Confidential peer support for serving and retired police officers</p>
-          <div style={{ marginTop: 20 }}>
-            <div className="bls-feature"><div className="bls-feature-dot" />24/7 AI Support</div>
-            <div className="bls-feature"><div className="bls-feature-dot" />Understands The Job</div>
-            <div className="bls-feature"><div className="bls-feature-dot" />Completely Anonymous</div>
-            <div className="bls-feature"><div className="bls-feature-dot" />Request Callbacks</div>
-          </div>
-        </div>
-        <div className="bls-phone"><div className="bls-phone-inner">{children}</div></div>
-        <div className="bls-right">
-          <h3>Need Help Now?</h3>
-          <div className="bls-emer-primary"><div className="bls-emer-label" style={{color:'#60a5fa',fontWeight:600}}>Police Care UK</div><div className="bls-emer-num">0300 012 0030</div><div className="bls-emer-label">Support for officers & families</div></div>
-          <div className="bls-emer"><div className="bls-emer-label">Samaritans</div><div className="bls-emer-num">116 123</div></div>
-          <div className="bls-emer"><div className="bls-emer-label">Oscar Kilo</div><div className="bls-emer-num" style={{fontSize:13,color:'#60a5fa'}}>oscarkilo.org.uk</div></div>
-          <div className="bls-emer"><div className="bls-emer-label">Mind Blue Light</div><div className="bls-emer-num" style={{fontSize:13,color:'#60a5fa'}}>mind.org.uk</div></div>
-          <div className="bls-emer"><div className="bls-emer-label">Emergency</div><div className="bls-emer-num">999</div></div>
-          <div className="bls-hint">Optimised for mobile.<br/>Use your phone for the best experience.</div>
-        </div>
-      </div>
-    </>
-  );
-
   const Header = ({ title, showBack, rightAction }: { title?: string; showBack?: boolean; rightAction?: React.ReactNode }) => (
     <div style={{ background: '#0d1b2e', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #1a2744', flexShrink: 0 }}>
       {showBack && <button data-testid="back-button" onClick={goBack} style={{ background: 'none', border: 'none', color: '#8b9dc3', cursor: 'pointer', fontSize: 20, padding: 0 }}>&#8592;</button>}
@@ -317,7 +319,14 @@ export default function PolicePage() {
   if (page === 'splash') return (<DesktopShell><div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg,#0a1628,#0d2a5e)', padding: 40 }}><img src={HERO_IMG} alt="" style={{ width: 180, height: 180, borderRadius: 24, objectFit: 'cover', marginBottom: 24, boxShadow: '0 0 40px rgba(0,87,184,0.4)' }} /><div style={{ fontSize: 12, color: '#4a9eff', letterSpacing: 3, textTransform: 'uppercase' }}>Blue Light Support</div></div></DesktopShell>);
 
   // GATE
-  if (page === 'gate') return (<DesktopShell><div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a1628', padding: 32 }}><img src={LOGO_URL} alt="" style={{ width: 72, height: 72, marginBottom: 20 }} /><div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Blue Light Support</div><div style={{ fontSize: 13, color: '#8b9dc3', marginBottom: 24, textAlign: 'center' }}>Beta testing. Enter your access code.</div><input data-testid="gate-password-input" ref={gateRef} type="password" onKeyDown={e => e.key === 'Enter' && handleGate()} placeholder="Access code" style={{ width: '100%', maxWidth: 260, padding: 14, borderRadius: 12, border: '1px solid #243656', background: '#1a2744', color: '#fff', fontSize: 15, textAlign: 'center', outline: 'none', marginBottom: 12 }} />{gateError && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 8 }}>{gateError}</div>}<button data-testid="gate-enter-button" onClick={handleGate} style={{ width: '100%', maxWidth: 260, padding: 14, borderRadius: 12, border: 'none', background: '#0057B8', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Enter</button></div></DesktopShell>);
+  if (page === 'gate') return (<DesktopShell><div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a1628', padding: 32 }}><img src={LOGO_URL} alt="" style={{ width: 72, height: 72, marginBottom: 20 }} /><div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Blue Light Support</div><div style={{ fontSize: 13, color: '#8b9dc3', marginBottom: 24, textAlign: 'center' }}>Beta testing. Enter your access code.</div>
+    <div style={{ position: 'relative', width: '100%', maxWidth: 260, marginBottom: 12 }}>
+      <input data-testid="gate-password-input" ref={gateRef} type={showGatePwd ? 'text' : 'password'} value={gateValue} onChange={e => setGateValue(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} onKeyDown={e => e.key === 'Enter' && handleGate()} placeholder="Access code" style={{ width: '100%', padding: '14px 56px 14px 14px', borderRadius: 12, border: '1px solid #243656', background: '#1a2744', color: '#fff', fontSize: 15, textAlign: 'center', outline: 'none', boxSizing: 'border-box' }} />
+      <button data-testid="gate-toggle-visibility" type="button" onClick={() => setShowGatePwd(v => !v)} aria-label={showGatePwd ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#8b9dc3', cursor: 'pointer', padding: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.5 }}>{showGatePwd ? 'HIDE' : 'SHOW'}</button>
+    </div>
+    {gateError && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 8 }}>{gateError}</div>}
+    <button data-testid="gate-enter-button" onClick={handleGate} style={{ width: '100%', maxWidth: 260, padding: 14, borderRadius: 12, border: 'none', background: '#0057B8', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Enter</button>
+  </div></DesktopShell>);
 
   // CONSENT
   if (page === 'consent') return (<DesktopShell><div style={{ flex: 1, overflow: 'auto', background: '#0a1628', padding: 20 }}><div style={{ textAlign: 'center', marginBottom: 16 }}><img src={LOGO_URL} alt="" style={{ width: 48, height: 48, marginBottom: 8 }} /><div style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>Before You Begin</div></div>{[['This is a support tool, not an emergency service','If you are in immediate danger, call 999. This app provides peer support through AI companions.'],['Your conversations are private','Chats are stored on your device only. If our safety system detects crisis, support resources will be offered.'],['You are talking to AI companions','Steve and Claire are AI personas designed to understand police culture. They are not real people.']].map(([t,d],i)=>(<div key={i} style={{ background: '#1a2744', borderRadius: 12, padding: 14, marginBottom: 10, border: '1px solid #243656' }}><div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 4 }}>{t}</div><div style={{ fontSize: 12, color: '#8b9dc3', lineHeight: 1.5 }}>{d}</div></div>))}<div style={{ display: 'flex', gap: 8, justifyContent: 'center', fontSize: 12, marginTop: 4 }}><button onClick={() => setPage('privacy')} style={{ background: 'none', border: 'none', color: '#4a9eff', cursor: 'pointer', fontSize: 12 }}>Privacy Policy</button><span style={{ color: '#4a5568' }}>|</span><button onClick={() => setPage('terms')} style={{ background: 'none', border: 'none', color: '#4a9eff', cursor: 'pointer', fontSize: 12 }}>Terms</button></div><button data-testid="consent-accept-button" onClick={handleConsent} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: '#0057B8', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer', marginTop: 12 }}>I Understand — Continue</button></div></DesktopShell>);
