@@ -79,6 +79,7 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 
 ## Backlog
 - P1: Enhance Video UX (TikTok Live-like experience)
+- P2: Wire up password-reset endpoint (send_reset_email() exists but is never invoked)
 - P2: Push notifications for live events
 - P2: PDF user manual export
 - P2: Discussion Forums
@@ -87,3 +88,14 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - P2: Agora → Daily.co migration consideration
 - P2: Migrate remaining interactive pages to CMS
 - P2: Resend sender domain needs updating for new API key (re_Usz3feuE_...)
+- P2: Additional tenants (fire service, NHS, ambulance) once Police is finalised
+- P2: server.py refactor (8,500+ lines — split safety/email/judge/endpoints)
+
+## Blue Light Support (Police Tenant) — Apr 2026
+- Standalone Next.js page at `/police` in `/app/portal/` project
+- Access gate password: `bluelight2026`
+- Two personas: Steve (retired copper, 25y) and Claire (wellbeing practitioner, 15y ES)
+- Desktop 3-column layout (branding/phone/emergency) — mobile collapses to full-screen phone
+- Chat memory parity with main app: local storage per persona, `conversation_context` sent to AI, in-character returning greetings, prior messages restored on reload
+- Police-specific safeguarding modal (Police Care UK, Samaritans, Shout, 999, callback)
+- Universal safety stack (hard_stop, grief, spine, identity, attachment, venting, post-gen judge) covers Steve/Claire — no police-specific safety code; clinical context lives in persona prompts

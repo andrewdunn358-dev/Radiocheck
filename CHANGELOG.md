@@ -175,3 +175,34 @@
 ### SIGNAL FIXES
 - "dark" removed from darkhumour signals (false positive on "dark thoughts" = welfare, not humour)
 - Replaced with "dark humour" / "dark humor" (explicit phrase match only)
+
+---
+
+## Blue Light Support (/police) — Main-app Parity — April 2026
+
+### FRONTEND
+- `/app/portal/src/app/police/page.tsx` rewritten for parity with Radio Check Expo app
+- Desktop three-column layout: branding left, phone frame centre, emergency contacts right
+- Mobile: collapses to full-screen phone view (<900px)
+- data-testid coverage added across all interactive elements
+
+### CHAT MEMORY PARITY (mirrors frontend/app/chat/[characterId].tsx)
+- Local storage key `bls_conversations` keyed per persona (steve/claire), capped at 50 messages
+- `conversation_context` block built from last 15 messages and sent on every `/api/ai-buddies/chat` call using the same `[RETURNING MATE...]` wrapper as the main app — so Steve and Claire actually remember previous conversations across sessions
+- In-character returning-user greetings added for Steve ("Alright mate, back again. What's occurring?") and Claire ("Good to see you back. How have things been since we spoke?") — 4 variants each, randomised
+- Prior messages re-rendered on reload above the returning greeting
+- "New Chat" button wipes persona-specific history and starts fresh session
+
+### SAFEGUARDING UI
+- Police-appropriate crisis modal triggers when backend sets `safeguardingTriggered`
+- Modal offers: Police Care UK (0300 012 0030), Samaritans (116 123), Shout 85258 text, callback form, 999
+- Backend safeguarding logic (hard_stop, grief, spine, identity, attachment, venting, unified_safety, post-gen judge) is tenant-agnostic and already covers Steve/Claire — no safety code changes
+
+### CONTENT
+- Crisis Support cards expanded with organisation descriptions (who they are, who they help)
+- Resources list expanded from 10 to 12 entries with 1–2 line descriptions each; added Thin Blue Line UK and Police Firearms Officers Association
+- Home-screen nav tiles now include sub-labels (e.g. "Urgent contacts", "Speak to a real person")
+
+### OTHER
+- 3-minute inactivity check-in ported (persona-specific phrasing)
+- Gate/chat input focus-loss bug fixed via `defaultValue=""` + ref pattern (no controlled-input re-render)
