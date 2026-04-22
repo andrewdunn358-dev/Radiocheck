@@ -208,7 +208,7 @@ export default function PolicePage() {
         </div>
         <div style={{ background: '#1a2744', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #243656' }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 6 }}>You are talking to AI companions</div>
-          <div style={{ fontSize: 12, color: '#8b9dc3', lineHeight: 1.5 }}>Sgt Cooper and Dr Hayes are AI personas designed to understand police culture. They are not real people, but they are built to listen like one.</div>
+          <div style={{ fontSize: 12, color: '#8b9dc3', lineHeight: 1.5 }}>Steve and Claire are AI personas designed to understand police culture. They are not real people, but they are built to listen like one.</div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8, fontSize: 12, color: '#8b9dc3', justifyContent: 'center' }}>
           <button onClick={() => setPage('privacy')} style={{ background: 'none', border: 'none', color: '#4a9eff', cursor: 'pointer', fontSize: 12 }}>Privacy Policy</button>
@@ -246,7 +246,7 @@ export default function PolicePage() {
         <p>By using Blue Light Support, you agree to the following:</p>
         <ul style={{ paddingLeft: 20, marginTop: 8 }}>
           <li style={{ marginBottom: 8 }}>This is a peer support tool, not a medical or emergency service.</li>
-          <li style={{ marginBottom: 8 }}>AI companions (Sgt Cooper, Dr Hayes) are artificial intelligence — not real people.</li>
+          <li style={{ marginBottom: 8 }}>AI companions (Steve, Claire) are artificial intelligence — not real people.</li>
           <li style={{ marginBottom: 8 }}>In an emergency, always call 999.</li>
           <li style={{ marginBottom: 8 }}>We reserve the right to modify the service at any time during the beta period.</li>
           <li style={{ marginBottom: 8 }}>Misuse of the platform may result in access being revoked.</li>
@@ -312,13 +312,6 @@ export default function PolicePage() {
   if (page === 'chat') return (
     <PhoneFrame>
       <Header title={persona.name} showBack />
-      <div style={{ display: 'flex', gap: 8, padding: '8px 12px', background: '#0d1b2e', borderBottom: '1px solid #1a2744', flexShrink: 0 }}>
-        {PERSONAS.map(p => (
-          <button key={p.id} onClick={() => switchPersona(p)} style={{ flex: 1, padding: '8px 4px', borderRadius: 10, border: `2px solid ${persona.id === p.id ? '#0057B8' : '#243656'}`, background: persona.id === p.id ? '#0d2a5e' : '#1a2744', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, textAlign: 'center' }}>
-            {p.name}<span style={{ display: 'block', fontSize: 10, color: '#8b9dc3', fontWeight: 400 }}>{p.role}</span>
-          </button>
-        ))}
-      </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '12px 12px 0' }}>
         {messages.map((m, i) => (
           <div key={i} style={{ marginBottom: 10, display: 'flex', flexDirection: m.role === 'user' ? 'row-reverse' : 'row', gap: 8 }}>
@@ -367,13 +360,17 @@ export default function PolicePage() {
     <PhoneFrame>
       <Header title="Support Organisations" showBack />
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-        {RESOURCES.map(r => (
-          <a key={r.name} href={r.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', background: '#1a2744', border: '1px solid #243656', borderRadius: 14, padding: 14, marginBottom: 8, textDecoration: 'none' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{r.name}</div>
-            <div style={{ fontSize: 12, color: '#8b9dc3', marginTop: 2 }}>{r.desc}</div>
-            <div style={{ fontSize: 11, color: '#4a9eff', marginTop: 6 }}>Visit &#8250;</div>
-          </a>
-        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {RESOURCES.map(r => (
+            <a key={r.name} href={r.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', background: '#1a2744', border: '1px solid #243656', borderRadius: 14, padding: 14, textDecoration: 'none', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 4 }}>{r.name}</div>
+                <div style={{ fontSize: 11, color: '#8b9dc3', lineHeight: 1.4 }}>{r.desc}</div>
+              </div>
+              <div style={{ fontSize: 11, color: '#4a9eff', marginTop: 8 }}>Visit &#8250;</div>
+            </a>
+          ))}
+        </div>
       </div>
     </PhoneFrame>
   );
