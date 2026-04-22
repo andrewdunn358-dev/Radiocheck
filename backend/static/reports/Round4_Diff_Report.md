@@ -270,12 +270,12 @@ if _is_holdspace and not _char_is_frankie:
 
 **Removed:**
 ```python
-"https://modular-safety-hub.preview.emergentagent.com",
+"https://multi-tenant-chat-8.preview.emergentagent.com",
 ```
 
 **Added:**
 ```python
-"https://modular-safety-hub.preview.emergentagent.com",
+"https://multi-tenant-chat-8.preview.emergentagent.com",
 ```
 
 ---

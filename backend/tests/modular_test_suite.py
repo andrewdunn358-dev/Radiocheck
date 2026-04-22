@@ -8,7 +8,7 @@ import time
 import sys
 import uuid
 
-API_URL = "https://modular-safety-hub.preview.emergentagent.com"
+API_URL = "https://multi-tenant-chat-8.preview.emergentagent.com"
 
 # Add backend to path for direct protocol testing
 sys.path.insert(0, '/app/backend')

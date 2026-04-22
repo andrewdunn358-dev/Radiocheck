@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime
 
 # API URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://modular-safety-hub.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://multi-tenant-chat-8.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"
