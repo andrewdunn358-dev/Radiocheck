@@ -52,6 +52,17 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  if (hostname.startsWith('police.')) {
+    // police.radiocheck.me -> Blue Light Support portal on Render backend
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    if (pathname.startsWith('/api/')) {
+      // Pass API calls through to backend
+      return NextResponse.rewrite(new URL(`${apiBase}${pathname}`, request.url));
+    }
+    // Everything else -> bluelight portal
+    return NextResponse.rewrite(new URL(`${apiBase}/api/bluelight-portal`, request.url));
+  }
+
   return NextResponse.next();
 }
 
