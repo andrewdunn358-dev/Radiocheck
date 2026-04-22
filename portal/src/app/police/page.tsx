@@ -55,6 +55,7 @@ export default function PolicePage() {
   const [sessionId, setSessionId] = useState('bls_' + Math.random().toString(36).substr(2, 12));
   const [cbSent, setCbSent] = useState(false);
   const msgEnd = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { msgEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -104,9 +105,9 @@ export default function PolicePage() {
   };
 
   const send = async () => {
-    if (!input.trim() || sending) return;
-    const msg = input.trim();
-    setInput('');
+    const msg = chatRef.current?.value?.trim() || '';
+    if (!msg || sending) return;
+    if (chatRef.current) chatRef.current.value = '';
     setMessages(m => [...m, { role: 'user', text: msg }]);
     setSending(true);
     try {
@@ -134,29 +135,31 @@ export default function PolicePage() {
 
   const goBack = () => setPage('home');
 
-  // Phone frame wrapper
+  // Phone frame wrapper - renders children ONCE, CSS handles the frame
   const PhoneFrame = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ minHeight: '100vh', background: '#060e1a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ display: 'none' }} className="mobile-direct">{children}</div>
-      <div className="desktop-frame" style={{ width: 430, height: '90vh', maxHeight: 932, borderRadius: 40, overflow: 'hidden', border: '8px solid #1a1a2e', boxShadow: '0 0 60px rgba(0,87,184,0.3), inset 0 0 0 2px #2a2a4e', position: 'relative', display: 'flex', flexDirection: 'column', background: '#0a1628' }}>
-        <div style={{ height: 28, background: '#0d1b2e', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-          <div style={{ width: 120, height: 5, borderRadius: 3, background: '#1a2744' }} />
-        </div>
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{children}</div>
-        <div style={{ height: 5, background: '#0d1b2e', display: 'flex', justifyContent: 'center', alignItems: 'center', paddingBottom: 8 }}>
-          <div style={{ width: 140, height: 5, borderRadius: 3, background: '#1a2744' }} />
-        </div>
-      </div>
+    <>
       <style>{`
-        @media (max-width: 500px) {
-          .desktop-frame { display: none !important; }
-          .mobile-direct { display: flex !important; flex-direction: column; min-height: 100vh; }
-        }
-        @media (min-width: 501px) {
-          .mobile-direct { display: none !important; }
+        .bls-outer { min-height:100vh; background:#060e1a; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .bls-frame { width:430px; height:90vh; max-height:932px; border-radius:40px; overflow:hidden; border:8px solid #1a1a2e; box-shadow:0 0 60px rgba(0,87,184,0.3),inset 0 0 0 2px #2a2a4e; position:relative; display:flex; flex-direction:column; background:#0a1628; }
+        .bls-notch { height:28px; background:#0d1b2e; display:flex; justify-content:center; align-items:center; }
+        .bls-notch-bar { width:120px; height:5px; border-radius:3px; background:#1a2744; }
+        .bls-inner { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+        .bls-home { height:5px; background:#0d1b2e; display:flex; justify-content:center; align-items:center; padding-bottom:8px; }
+        .bls-home-bar { width:140px; height:5px; border-radius:3px; background:#1a2744; }
+        @media(max-width:500px) {
+          .bls-outer { padding:0; background:#0a1628; }
+          .bls-frame { width:100%; height:100vh; max-height:none; border-radius:0; border:none; box-shadow:none; }
+          .bls-notch, .bls-home { display:none; }
         }
       `}</style>
-    </div>
+      <div className="bls-outer">
+        <div className="bls-frame">
+          <div className="bls-notch"><div className="bls-notch-bar" /></div>
+          <div className="bls-inner">{children}</div>
+          <div className="bls-home"><div className="bls-home-bar" /></div>
+        </div>
+      </div>
+    </>
   );
 
   const Header = ({ title, showBack }: { title?: string; showBack?: boolean }) => (
@@ -280,7 +283,7 @@ export default function PolicePage() {
               <img src={p.avatar} alt={p.name} style={{ width: 48, height: 48, borderRadius: 24, objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{p.name}</div>
-                <div style={{ fontSize: 12, color: p.color, marginBottom: 2 }}>{p.role}</div>
+                <div style={{ fontSize: 12, color: '#60a5fa', marginBottom: 2 }}>{p.role}</div>
                 <div style={{ fontSize: 11, color: '#8b9dc3' }}>{p.desc}</div>
               </div>
               <div style={{ color: '#4a9eff', fontSize: 20 }}>&#8250;</div>
@@ -327,7 +330,7 @@ export default function PolicePage() {
         <div ref={msgEnd} />
       </div>
       <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid #1a2744', flexShrink: 0 }}>
-        <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} placeholder="Type a message..." style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: '1px solid #243656', background: '#1a2744', color: '#fff', fontSize: 13, outline: 'none' }} />
+        <input ref={chatRef} defaultValue="" onKeyDown={e => e.key === 'Enter' && send()} placeholder="Type a message..." style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: '1px solid #243656', background: '#1a2744', color: '#fff', fontSize: 13, outline: 'none' }} />
         <button onClick={send} disabled={sending} style={{ padding: '10px 16px', borderRadius: 20, border: 'none', background: '#0057B8', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13, opacity: sending ? 0.5 : 1 }}>Send</button>
       </div>
     </PhoneFrame>
