@@ -270,8 +270,24 @@ export default function PolicePage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Meet the Team - FIRST */}
         <div style={{ padding: '16px 16px 0' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Your Support Team</div>
+          {PERSONAS.map(p => (
+            <button key={p.id} onClick={() => openChat(p)} style={{ width: '100%', background: '#1a2744', border: '1px solid #243656', borderRadius: 14, padding: 16, marginBottom: 10, display: 'flex', gap: 14, alignItems: 'center', cursor: 'pointer', textAlign: 'left' }}>
+              <img src={p.avatar} alt={p.name} style={{ width: 48, height: 48, borderRadius: 24, objectFit: 'cover', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: p.color, marginBottom: 2 }}>{p.role}</div>
+                <div style={{ fontSize: 11, color: '#8b9dc3' }}>{p.desc}</div>
+              </div>
+              <div style={{ color: '#4a9eff', fontSize: 20 }}>&#8250;</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div style={{ padding: '0 16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {MENU_ITEMS.map(item => (
               <button key={item.page} onClick={() => item.page === 'chat' ? openChat() : setPage(item.page)} style={{ background: '#1a2744', border: '1px solid #243656', borderRadius: 14, padding: 16, textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -281,22 +297,6 @@ export default function PolicePage() {
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Meet the Team */}
-        <div style={{ padding: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Your Support Team</div>
-          {PERSONAS.map(p => (
-            <button key={p.id} onClick={() => openChat(p)} style={{ width: '100%', background: '#1a2744', border: '1px solid #243656', borderRadius: 14, padding: 16, marginBottom: 10, display: 'flex', gap: 14, alignItems: 'center', cursor: 'pointer', textAlign: 'left' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 24, background: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{p.name.charAt(0)}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{p.name}</div>
-                <div style={{ fontSize: 12, color: p.color, marginBottom: 2 }}>{p.role}</div>
-                <div style={{ fontSize: 11, color: '#8b9dc3' }}>{p.desc}</div>
-              </div>
-              <div style={{ color: '#4a9eff', fontSize: 20 }}>&#8250;</div>
-            </button>
-          ))}
         </div>
 
         {/* Emergency Banner */}
