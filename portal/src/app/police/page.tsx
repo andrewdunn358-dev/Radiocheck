@@ -46,6 +46,7 @@ export default function PolicePage() {
   const [page, setPage] = useState<Page>('splash');
   const [gatePassword, setGatePassword] = useState('');
   const [gateError, setGateError] = useState('');
+  const gateRef = useRef<HTMLInputElement>(null);
   const [consentGiven, setConsentGiven] = useState(false);
   const [persona, setPersona] = useState(PERSONAS[0]);
   const [messages, setMessages] = useState<{role: string; text: string}[]>([]);
@@ -67,13 +68,14 @@ export default function PolicePage() {
   }, []);
 
   const handleGate = () => {
-    if (gatePassword === SITE_PASSWORD) {
+    const val = gateRef.current?.value || gatePassword;
+    if (val === SITE_PASSWORD) {
       localStorage.setItem('bls_unlocked', 'true');
       setPage('consent');
       setGateError('');
     } else {
       setGateError('Incorrect password');
-      setGatePassword('');
+      if (gateRef.current) gateRef.current.value = '';
     }
   };
 
@@ -183,7 +185,7 @@ export default function PolicePage() {
         <img src={LOGO_URL} alt="" style={{ width: 80, height: 80, marginBottom: 24 }} />
         <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Blue Light Support</div>
         <div style={{ fontSize: 13, color: '#8b9dc3', marginBottom: 24, textAlign: 'center' }}>This app is currently in beta testing.<br/>Enter your access code to continue.</div>
-        <input type="password" value={gatePassword} onChange={e => setGatePassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleGate()} placeholder="Access code" style={{ width: '100%', maxWidth: 280, padding: 14, borderRadius: 12, border: '1px solid #243656', background: '#1a2744', color: '#fff', fontSize: 15, textAlign: 'center', outline: 'none', marginBottom: 12 }} />
+        <input ref={gateRef} type="password" defaultValue="" onKeyDown={e => e.key === 'Enter' && handleGate()} placeholder="Access code" style={{ width: '100%', maxWidth: 280, padding: 14, borderRadius: 12, border: '1px solid #243656', background: '#1a2744', color: '#fff', fontSize: 15, textAlign: 'center', outline: 'none', marginBottom: 12 }} />
         {gateError && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{gateError}</div>}
         <button onClick={handleGate} style={{ width: '100%', maxWidth: 280, padding: 14, borderRadius: 12, border: 'none', background: '#0057B8', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Enter</button>
       </div>
