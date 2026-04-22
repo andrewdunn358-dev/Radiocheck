@@ -53,14 +53,16 @@ export function middleware(request: NextRequest) {
   }
 
   if (hostname.startsWith('police.')) {
-    // police.radiocheck.me -> Blue Light Support portal on Render backend
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    // police.radiocheck.me -> /police (Blue Light Support)
     if (pathname.startsWith('/api/')) {
-      // Pass API calls through to backend
-      return NextResponse.rewrite(new URL(`${apiBase}${pathname}`, request.url));
+      // API calls pass through - handled by vercel.json rewrites
+      return NextResponse.next();
     }
-    // Everything else -> bluelight portal
-    return NextResponse.rewrite(new URL(`${apiBase}/api/bluelight-portal`, request.url));
+    if (!pathname.startsWith('/police')) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/police${pathname}`;
+      return NextResponse.rewrite(url);
+    }
   }
 
   return NextResponse.next();
