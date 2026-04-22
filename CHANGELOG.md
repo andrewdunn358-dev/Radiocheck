@@ -206,3 +206,19 @@
 ### OTHER
 - 3-minute inactivity check-in ported (persona-specific phrasing)
 - Gate/chat input focus-loss bug fixed via `defaultValue=""` + ref pattern (no controlled-input re-render)
+
+---
+
+## Password Reset Wired Up — April 2026
+
+### BACKEND
+- `routers/auth.py` `/forgot-password` endpoint now invokes `send_reset_email()` (previously a TODO stub). Uses lazy import from server.py to avoid circular dependency.
+- Email copy corrected: expiry notice updated from "1 hour" to "24 hours" to match actual token TTL.
+- Failure in email dispatch is logged but does NOT leak to the response (still returns the generic "If an account exists..." message for security).
+
+### VERIFIED END-TO-END
+- `POST /api/auth/forgot-password` creates reset token in `password_resets` collection
+- Resend dispatches email via `send_reset_email()` (confirmed in logs)
+- `POST /api/auth/reset-password` accepts token, hashes new password, marks token used
+- Token cannot be replayed (second attempt returns 400)
+- Nonexistent email still returns 200 with generic message (no enumeration)

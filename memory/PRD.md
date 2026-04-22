@@ -79,7 +79,6 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 
 ## Backlog
 - P1: Enhance Video UX (TikTok Live-like experience)
-- P2: Wire up password-reset endpoint (send_reset_email() exists but is never invoked)
 - P2: Push notifications for live events
 - P2: PDF user manual export
 - P2: Discussion Forums

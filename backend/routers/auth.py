@@ -523,8 +523,12 @@ async def forgot_password(request: ResetPasswordRequest):
         "used": False
     })
     
-    # TODO: Send email with reset link
-    # await send_reset_email(request.email, reset_token)
+    # Send reset email via Resend (lazy import to avoid circular dep with server.py)
+    try:
+        from server import send_reset_email
+        await send_reset_email(request.email, reset_token)
+    except Exception as e:
+        logger.error(f"Failed to dispatch password reset email to {request.email}: {e}")
     
     return {"message": "If an account exists, a reset email has been sent"}
 

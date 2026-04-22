@@ -1751,7 +1751,7 @@ async def send_reset_email(email: str, reset_token: str):
                 <a href="{reset_link}" style="background-color: #4a90d9; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">Reset Password</a>
             </p>
             <p style="color: #666; font-size: 14px;">Or copy this link: {reset_link}</p>
-            <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
+            <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
             <p style="color: #666; font-size: 14px;">If you did not request this, please ignore this email.</p>
             <br>
             <p style="color: #1a2332;">Radio Check Team</p>
