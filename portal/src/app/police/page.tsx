@@ -8,8 +8,8 @@ const HERO_IMG = 'https://customer-assets.emergentagent.com/job_99d619d0-b5ae-4a
 const SITE_PASSWORD = 'bluelight2025';
 
 const PERSONAS = [
-  { id: 'sgt_cooper', name: 'Sgt Cooper', role: 'Peer Support', color: '#0057B8', desc: 'Retired police sergeant, 25 years on the job. Straight-talking peer support.', greeting: "Alright mate. Sgt Cooper — 25 years on the job, now retired. What's going on?" },
-  { id: 'dr_hayes', name: 'Dr Hayes', role: 'Welfare Specialist', color: '#003078', desc: 'Clinical psychologist, 15 years with emergency services. Understands the job and the mind.', greeting: "Hello. I'm Dr Hayes — I've spent 15 years working with officers. Whatever's on your mind, I've probably heard something like it before. What's going on?" },
+  { id: 'steve', name: 'Steve', role: 'Peer Support', color: '#0057B8', avatar: 'https://static.prod-images.emergentagent.com/jobs/99d619d0-b5ae-4aad-8c13-9ad1f0c90dfa/images/4576491eca3195744da6499172bdcf312d5fb21dd4be481ac8d9ba7bb4127e02.png', desc: 'Retired copper, 25 years on the job. Straight-talking support from someone who\'s been there.', greeting: "Alright mate. I'm Steve — 25 years on the job, now retired. What's going on?" },
+  { id: 'claire', name: 'Claire', role: 'Wellbeing Support', color: '#003078', avatar: 'https://static.prod-images.emergentagent.com/jobs/99d619d0-b5ae-4aad-8c13-9ad1f0c90dfa/images/f06b560a0e81c6ed1251844fba825a02507c6e776247c99e9dd6a7c642718a92.png', desc: 'Wellbeing practitioner, 15 years with emergency services. Understands the job and what it does to people.', greeting: "Hi, I'm Claire — I've spent 15 years working with officers. Whatever's on your mind, I've probably heard something like it before. What's going on?" },
 ];
 
 const CRISIS = [

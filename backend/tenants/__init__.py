@@ -46,7 +46,7 @@ TENANTS = {
             "text": "#ffffff",
             "textMuted": "#8b9dc3"
         },
-        "personas": ["sgt_cooper", "dr_hayes"],
+        "personas": ["steve", "claire"],
         "crisis_resources": [
             {"name": "Samaritans", "phone": "116 123", "description": "24/7 emotional support"},
             {"name": "Police Care UK", "phone": "0300 012 0030", "description": "Support for police officers and families"},
