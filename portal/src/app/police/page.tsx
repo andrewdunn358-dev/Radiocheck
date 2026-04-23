@@ -369,6 +369,28 @@ export default function PolicePage() {
   const lastUserMsgTime = useRef<number>(Date.now());
   const inactivitySent = useRef<boolean>(false);
   const hasUserSent = useRef<boolean>(false);
+  const pageRef = useRef<Page>(page);
+
+  useEffect(() => { pageRef.current = page; }, [page]);
+
+  // Android/browser back button: navigate within the app instead of leaving it.
+  // Mirrors the in-app back arrow: wellbeing-topic -> wellbeing; anything else -> home.
+  // On home/splash/gate/consent, back exits the page (expected Android behaviour).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SENTINEL = { __blsBack: true };
+    window.history.pushState(SENTINEL, '', window.location.href);
+    const onPop = () => {
+      const current = pageRef.current;
+      const rootPages: Page[] = ['splash', 'gate', 'consent', 'home'];
+      if (rootPages.includes(current)) return; // let browser exit
+      if (current === 'wellbeing-topic') setPage('wellbeing');
+      else setPage('home');
+      window.history.pushState(SENTINEL, '', window.location.href);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   useEffect(() => { msgEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
