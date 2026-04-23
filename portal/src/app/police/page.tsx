@@ -56,17 +56,230 @@ const RESOURCES = [
   { name: 'Oscar Kilo', url: 'https://oscarkilo.org.uk', desc: 'National Police Wellbeing Service. Evidence-based resources, trauma support programmes, and force wellbeing leads.' },
   { name: 'Police Mutual', url: 'https://www.policemutual.co.uk', desc: 'Financial services & wellbeing: savings, insurance, debt help, Open Up wellbeing service — police community only.' },
   { name: 'Mind Blue Light', url: 'https://www.mind.org.uk/news-campaigns/campaigns/blue-light-programme/', desc: 'Dedicated mental health programme for emergency services. Peer support networks and workplace wellbeing training.' },
-  { name: 'PFEW Welfare', url: 'https://www.polfed.org/ourwork/welfare/', desc: 'Police Federation welfare support: misconduct/PSD guidance, legal, post-incident and member welfare services.' },
+  { name: 'PFEW Welfare', url: 'https://polfed.org/support/', desc: 'Police Federation welfare support: misconduct/PSD guidance, legal, post-incident and member welfare services.' },
   { name: 'Police Treatment Centres', url: 'https://www.thepolicetreatmentcentres.org', desc: 'Residential physical rehabilitation and psychological wellbeing programmes. Subscribers and donations funded.' },
   { name: 'Flint House', url: 'https://www.flinthouse.co.uk', desc: 'Police rehabilitation charity offering residential physiotherapy and PTSD recovery. Free to serving officers.' },
   { name: 'NARPO', url: 'https://www.narpo.org', desc: 'National Association of Retired Police Officers — welfare, pensions, community and support after service.' },
   { name: 'Blue Light Together', url: 'https://bluelighttogether.org.uk', desc: 'Domestic abuse support designed for emergency services personnel and their families. Safe, understanding, specialist.' },
-  { name: 'BackUp Buddy UK', url: 'https://www.backupbuddyuk.org', desc: 'App-based PTSD and trauma support designed with and for emergency services personnel.' },
-  { name: 'Thin Blue Line UK', url: 'https://www.thinbluelineuk.org', desc: 'Families of officers killed on duty and seriously injured — welfare, support, remembrance.' },
+  { name: 'BackUp Buddy UK', url: 'https://backupbuddy.uk', desc: 'App-based wellbeing and PTSD support designed with emergency services — covers trauma, sleep, diet, exercise and more.' },
+  { name: 'Thin Blue Line UK', url: 'https://www.thinbluelineuk.org.uk', desc: 'Charity founded and run by serving and retired officers — free confidential 24/7 mental health support for the police community.' },
+  { name: 'UK COPS (Care of Police Survivors)', url: 'https://ukcops.org', desc: 'Supporting families of officers and staff who have died on duty — peer support, counselling (Winston\u2019s Wish for children, Red Arc for adults), respite, and remembrance.' },
   { name: 'Police Firearms Officers Association', url: 'https://www.pfoa.co.uk', desc: 'Post-incident and welfare support specifically for firearms officers and their families.' },
 ];
 
-type Page = 'splash' | 'gate' | 'consent' | 'home' | 'chat' | 'crisis' | 'resources' | 'callback' | 'privacy' | 'terms';
+type Page = 'splash' | 'gate' | 'consent' | 'home' | 'chat' | 'crisis' | 'resources' | 'wellbeing' | 'wellbeing-topic' | 'callback' | 'privacy' | 'terms';
+
+interface WellbeingTopic {
+  id: string;
+  title: string;
+  tag: string;
+  intro: string;
+  tips: string[];
+  signposts: { name: string; url?: string; phone?: string; note: string }[];
+}
+
+const WELLBEING: WellbeingTopic[] = [
+  {
+    id: 'grief',
+    title: 'Grief & Bereavement',
+    tag: 'When someone you love is gone',
+    intro: "Grief in the job looks different. You might have held it together at the scene, at the funeral, at work — and then it ambushes you months later. That\u2019s not weakness. That\u2019s a nervous system that finally has space to feel it.",
+    tips: [
+      "Name what you\u2019re carrying — say it out loud to one person you trust, even if it\u2019s just \u201CI\u2019m not okay about this.\u201D",
+      "Don\u2019t rush the timeline. There are no stages you have to pass through by a date.",
+      "Anniversaries and reminders will hit. Plan for them — book leave, tell someone, have a ritual.",
+      "Sleep, food and moving your body won\u2019t fix grief, but they keep you functional while it does its work.",
+    ],
+    signposts: [
+      { name: 'Cruse Bereavement Support', phone: '0808 808 1677', note: 'Free confidential helpline, any bereavement.' },
+      { name: 'UK COPS', url: 'https://ukcops.org', note: 'Specifically for families bereaved by on-duty death.' },
+      { name: 'Samaritans', phone: '116 123', note: '24/7 — if the grief is taking you somewhere dark.' },
+    ],
+  },
+  {
+    id: 'trauma',
+    title: 'Trauma & PTSD',
+    tag: 'Scenes you can\u2019t unsee',
+    intro: "Cumulative trauma is the one nobody warned you about in training. Single-event trauma sticks out, but for most officers it\u2019s the stack — fifteen years of RTAs, domestics, sudden deaths, children — that finally tips something over.",
+    tips: [
+      "Intrusive images, hypervigilance, irritability and numbness are normal responses to abnormal exposure. They\u2019re symptoms, not a character flaw.",
+      "Alcohol numbs it tonight and makes it worse tomorrow. Every time.",
+      "EMDR and trauma-focused CBT have the strongest evidence base — ask specifically for those, not generic counselling.",
+      "A Police Federation or Oscar Kilo referral can bypass long NHS waiting lists and protect your confidentiality.",
+    ],
+    signposts: [
+      { name: 'Police Care UK', phone: '0300 012 0030', note: 'Assessment + funded trauma-focused therapy.' },
+      { name: 'Oscar Kilo', url: 'https://oscarkilo.org.uk', note: 'Trauma Impact Prevention Techniques (TIPT) programmes.' },
+      { name: 'BackUp Buddy UK', url: 'https://backupbuddy.uk', note: 'App-based PTSD content written for the job.' },
+    ],
+  },
+  {
+    id: 'sleep',
+    title: 'Sleep & Shift Work',
+    tag: 'Switching the brain off',
+    intro: "Shift patterns wreck circadian rhythms, and job adrenaline keeps you scanning long after the shift ends. \u201CJust being tired\u201D for years becomes a health problem.",
+    tips: [
+      "After nights, wear dark glasses on the drive home and black out the bedroom — you\u2019re tricking your brain it\u2019s night.",
+      "Caffeine has a 6-hour half-life. A 2pm coffee is still in you at 8pm.",
+      "If your mind races when your head hits the pillow, try \u201Cbrain-dump\u201D journaling for 5 minutes before bed — empty it on paper.",
+      "Persistent insomnia over 3 months is treatable. CBT-I (sleep CBT) works better than sleeping tablets long-term.",
+    ],
+    signposts: [
+      { name: 'Sleepstation', url: 'https://www.sleepstation.org.uk', note: 'NHS-partnered digital CBT-I — some forces fund it.' },
+      { name: 'Oscar Kilo — Sleep', url: 'https://oscarkilo.org.uk', note: 'Shift-specific sleep hygiene guides.' },
+    ],
+  },
+  {
+    id: 'exercise',
+    title: 'Movement & Exercise',
+    tag: 'Why the gym actually helps',
+    intro: "You don\u2019t need a bodybuilder split. Movement is one of the few things with real evidence for anxiety, depression, sleep and PTSD — and you can start from any baseline.",
+    tips: [
+      "Three 30-minute walks a week will move the needle on mood. Start there if everything else feels too much.",
+      "Lifting heavy things 2\u20133 times a week protects joints, bone density and confidence through your 40s, 50s and 60s.",
+      "Find something you\u2019ll actually do. Boxing, swimming, cycling, yoga, team sport — consistency beats intensity.",
+      "If you\u2019re injured or rehabbing post-op, the Police Treatment Centres do residential programmes.",
+    ],
+    signposts: [
+      { name: 'Police Treatment Centres', url: 'https://www.thepolicetreatmentcentres.org', note: 'Residential physical rehabilitation.' },
+      { name: 'Flint House', url: 'https://www.flinthouse.co.uk', note: 'Police rehabilitation & physiotherapy — free to serving officers.' },
+      { name: 'Couch to 5K', url: 'https://www.nhs.uk/live-well/exercise/running-and-aerobic-exercises/get-running-with-couch-to-5k/', note: 'Proven starter programme. 9 weeks.' },
+    ],
+  },
+  {
+    id: 'diet',
+    title: 'Food & Nutrition',
+    tag: 'Shift food and what to do about it',
+    intro: "Refs room food, garage meal deals at 2am, three coffees to get through court. Nobody\u2019s asking you to eat like an athlete — but a few changes compound over a career.",
+    tips: [
+      "Front-load protein at breakfast (eggs, Greek yoghurt, porridge with nuts). Keeps you full through the shift and stops the 11am crash.",
+      "On nights, eat your main meal before the shift, then small snacks through — not one huge 4am takeaway.",
+      "Prep one thing on a rest day. Even a pot of chilli or soup beats deciding at 11pm.",
+      "Alcohol is calorie-dense and wrecks sleep, appetite signals and mood for 2 days after. If you\u2019re tracking anything, track that.",
+    ],
+    signposts: [
+      { name: 'NHS Better Health', url: 'https://www.nhs.uk/better-health/', note: 'Free weight, food and activity tools.' },
+      { name: 'BackUp Buddy UK', url: 'https://backupbuddy.uk', note: 'Nutrition section written for shift workers.' },
+    ],
+  },
+  {
+    id: 'alcohol',
+    title: 'Alcohol & Self-Medication',
+    tag: 'The shift drink that becomes the daily drink',
+    intro: "Drinking to come down from a shift is normal in the culture. That\u2019s the problem — it\u2019s normalised. No judgement here, just the straight science: alcohol is a short-acting depressant. It switches off the threat response for a few hours and then rebounds it higher.",
+    tips: [
+      "Count honestly for a week. Not for anyone else — for you. Most people under-count by about a third.",
+      "Two alcohol-free days in a row gives your liver and sleep a chance to recover.",
+      "If you can\u2019t sleep without it, that\u2019s the drink talking — not you. Get help before it gets worse.",
+      "Cutting down is harder than stopping for some people. No shame in asking for proper support.",
+    ],
+    signposts: [
+      { name: 'Drinkaware', url: 'https://www.drinkaware.co.uk', note: 'Self-assessment + unit tracker.' },
+      { name: 'Police Care UK', phone: '0300 012 0030', note: 'Confidential assessment if alcohol is tied to the job.' },
+      { name: 'NHS alcohol support', url: 'https://www.nhs.uk/live-well/alcohol-advice/', note: 'Local service finder.' },
+    ],
+  },
+  {
+    id: 'menopause',
+    title: 'Menopause',
+    tag: 'Serving through it, or living with someone who is',
+    intro: "Policing through peri-menopause and menopause is brutal if nobody\u2019s named what\u2019s happening. Brain fog on a statement, rage at a custody sergeant who\u2019d normally just annoy you, night sweats on a nights rota, anxiety from nowhere. It\u2019s hormones, not breakdown.",
+    tips: [
+      "Symptoms can start 10+ years before periods stop. It\u2019s not \u201Ctoo early\u201D.",
+      "HRT is safe for most women and, for many, life-changing. NICE guidance is clear — get a GP who\u2019s up to date.",
+      "Stock basics: cool uniform layers, sleep-friendly kit, magnesium at bedtime, and honesty with your sergeant about shift adjustments if needed.",
+      "Partners — the mood shifts are real, not personal. Read one thing on it. It helps.",
+    ],
+    signposts: [
+      { name: 'Menopause in Policing', url: 'https://oscarkilo.org.uk', note: 'Oscar Kilo has a dedicated menopause toolkit.' },
+      { name: 'Balance App', url: 'https://balance-app.com', note: 'Dr Louisa Newson\u2019s free symptom tracker — evidence-based.' },
+      { name: 'Henpicked Menopause Hub', url: 'https://henpicked.net/menopause-hub/', note: 'Large free resource library.' },
+    ],
+  },
+  {
+    id: 'children',
+    title: 'Child Wellbeing',
+    tag: 'Kids of officers — and parenting after shift',
+    intro: "Children of officers absorb more than they let on. The overheard phone calls, the kit at the door, the parent who sometimes comes home quiet. They don\u2019t need you to pretend the job doesn\u2019t exist — they need age-appropriate honesty and predictability.",
+    tips: [
+      "Protect rituals: one meal a day together, bedtime story, Saturday pancakes — whatever you can actually keep.",
+      "When the job follows you home, name it (\u201Chad a hard shift, I\u2019m quiet tonight, it\u2019s not you\u201D). Kids fill silence with stories worse than the truth.",
+      "Screens aren\u2019t the enemy, but 90 minutes before bed is. Hold the line there.",
+      "If your child is struggling, schools have pastoral leads, and there are specialist services for emergency services families.",
+    ],
+    signposts: [
+      { name: 'Winston\u2019s Wish', url: 'https://www.winstonswish.org', note: 'Bereavement support for children — partners of UK COPS.' },
+      { name: 'Young Minds', url: 'https://www.youngminds.org.uk', note: 'Parents helpline: 0808 802 5544.' },
+      { name: 'Blue Light Together', url: 'https://bluelighttogether.org.uk', note: 'Family-aware support if home life is hard.' },
+    ],
+  },
+  {
+    id: 'relationships',
+    title: 'Relationships & Family',
+    tag: 'Holding it together at home',
+    intro: "Shift patterns, cancelled plans, black humour nobody else finds funny, coming home tight-jawed. The job is hard on partners and they\u2019re not always sure how to ask about it.",
+    tips: [
+      "Protect 20 minutes a day where neither of you is on a phone. That\u2019s the anchor.",
+      "Your partner is not your debrief. They can hear some of it, but not all of it — that\u2019s what Steve and Claire, peer supporters and counsellors are for.",
+      "Rows that keep happening in the same shape are usually about something older. Name it, don\u2019t just refight it.",
+      "If things have got physical, controlling, or you\u2019re scared — Blue Light Together exists because this happens in emergency services too. Zero judgement.",
+    ],
+    signposts: [
+      { name: 'Blue Light Together', url: 'https://bluelighttogether.org.uk', note: 'Specialist DA support for ES personnel.' },
+      { name: 'Relate', url: 'https://www.relate.org.uk', note: 'Couples and individual counselling — sliding scale available.' },
+    ],
+  },
+  {
+    id: 'retirement',
+    title: 'Retirement Transition',
+    tag: 'From 999 to silence',
+    intro: "You hand in the warrant card and the world gets quiet overnight. No radio, no banter, no purpose delivered in a shift rota. The cliff edge is real and it\u2019s the bit nobody prepares you for.",
+    tips: [
+      "Start talking about it 2 years before you go. Identity shift is slow work.",
+      "Have something structured in the diary from week one — a course, volunteering, a part-time role. Unstructured time is the enemy.",
+      "Keep one policing connection (NARPO branch, ex-colleagues WhatsApp). You don\u2019t have to leave the community.",
+      "Pension, tax, new income streams — get independent financial advice, not just the force one.",
+    ],
+    signposts: [
+      { name: 'NARPO', url: 'https://www.narpo.org', note: 'Retired officers\u2019 association — welfare, pensions, community.' },
+      { name: 'Police Mutual', url: 'https://www.policemutual.co.uk', note: 'Financial planning for transition.' },
+    ],
+  },
+  {
+    id: 'finances',
+    title: 'Money & Financial Pressure',
+    tag: 'When the pay doesn\u2019t stretch',
+    intro: "Real-terms pay cuts, shift allowance changes, childcare, housing. Financial stress is one of the biggest mental health loads on officers and it\u2019s the one people talk about least.",
+    tips: [
+      "Look at everything on one page for 20 minutes. Most of the dread is not knowing the actual numbers.",
+      "Police Mutual and credit unions (like Serve & Protect) usually beat high-street rates and won\u2019t trigger credit problems.",
+      "Debt is fixable. StepChange and Citizens Advice are free, confidential and won\u2019t judge.",
+      "Police Care UK has welfare grants for officers in genuine financial crisis — applying is not a weakness.",
+    ],
+    signposts: [
+      { name: 'StepChange', url: 'https://www.stepchange.org', note: 'Free debt advice. Confidential.' },
+      { name: 'Police Mutual', url: 'https://www.policemutual.co.uk', note: 'Savings, loans, wellbeing — police only.' },
+      { name: 'Serve & Protect Credit Union', url: 'https://serveandprotectcu.co.uk', note: 'Ethical loans & savings for police community.' },
+      { name: 'Police Care UK grants', url: 'https://www.policecare.org.uk', note: 'Welfare grants for genuine hardship.' },
+    ],
+  },
+  {
+    id: 'hypervigilance',
+    title: 'Hypervigilance & Switching Off',
+    tag: 'Why you sit facing the door',
+    intro: "Your nervous system learned to scan. That kept you safe at work. The problem is it doesn\u2019t stand down when you walk through your front door — and over years, that background alertness costs sleep, digestion, patience and joy.",
+    tips: [
+      "Slow breathing out for longer than in (e.g. in 4, out 6) for two minutes can switch the parasympathetic nervous system on. Do it in the car before you walk inside.",
+      "Cold water on the face, wrists, or a cold shower activates the dive reflex and lowers heart rate fast.",
+      "\u201COff-duty rituals\u201D help — change clothes immediately, a 10-minute walk, music in the car. You\u2019re signalling to your body that the shift is over.",
+      "If it\u2019s constant, it\u2019s not a personality trait — it\u2019s a trauma response and it\u2019s treatable.",
+    ],
+    signposts: [
+      { name: 'Oscar Kilo — Trauma', url: 'https://oscarkilo.org.uk', note: 'Resources and TIPT programmes.' },
+      { name: 'Police Care UK', phone: '0300 012 0030', note: 'Assessment + funded therapy.' },
+    ],
+  },
+];
 
 // Local storage helpers
 function loadConversations(): Record<string, Msg[]> {
@@ -149,6 +362,7 @@ export default function PolicePage() {
   const [sessionId, setSessionId] = useState('bls_' + Math.random().toString(36).substr(2, 12));
   const [cbSent, setCbSent] = useState(false);
   const [showSafeguardModal, setShowSafeguardModal] = useState(false);
+  const [wellbeingTopic, setWellbeingTopic] = useState<WellbeingTopic | null>(null);
   const msgEnd = useRef<HTMLDivElement>(null);
   const gateRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<HTMLInputElement>(null);
@@ -344,7 +558,7 @@ export default function PolicePage() {
     <div style={{ flex: 1, overflow: 'auto' }}>
       <div style={{ position: 'relative', height: 180, overflow: 'hidden' }}><img src={HERO_IMG} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.35)' }} /><div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, background: 'linear-gradient(transparent,#0a1628)' }}><div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>You protect everyone else.</div><div style={{ fontSize: 13, color: '#8b9dc3', marginTop: 2 }}>Who&apos;s got your back?</div></div></div>
       <div style={{ padding: '12px 14px 0' }}><div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 10 }}>Your Support Team</div>{PERSONAS.map(p => (<button data-testid={`persona-card-${p.id}`} key={p.id} onClick={() => openChat(p)} style={{ width: '100%', background: '#1a2744', border: '1px solid #243656', borderRadius: 14, padding: 14, marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer', textAlign: 'left' }}><img src={p.avatar} alt={p.name} style={{ width: 44, height: 44, borderRadius: 22, objectFit: 'cover', flexShrink: 0 }} /><div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{p.name}</div><div style={{ fontSize: 11, color: '#60a5fa', marginBottom: 1 }}>{p.role}</div><div style={{ fontSize: 11, color: '#8b9dc3' }}>{p.desc}</div></div><div style={{ color: '#4a9eff', fontSize: 18 }}>&#8250;</div></button>))}</div>
-      <div style={{ padding: '4px 14px 0' }}><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>{([['crisis','Crisis Support','Urgent contacts'],['resources','Resources','Police charities & wellbeing'],['callback','Request Callback','Speak to a real person'],['terms','About','Privacy & terms']] as const).map(([pg,label,sub]) => (<button data-testid={`nav-${pg}`} key={pg} onClick={() => setPage(pg as Page)} style={{ background: '#1a2744', border: '1px solid #243656', borderRadius: 12, padding: 12, textAlign: 'left', cursor: 'pointer' }}><div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 3 }}>{label}</div><div style={{ fontSize: 10, color: '#8b9dc3', lineHeight: 1.3 }}>{sub}</div></button>))}</div></div>
+      <div style={{ padding: '4px 14px 0' }}><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>{([['crisis','Crisis Support','Urgent contacts'],['wellbeing','Wellbeing Hub','Sleep, trauma, grief, family & more'],['resources','Resources','Police charities & wellbeing'],['callback','Request Callback','Speak to a real person'],['terms','About','Privacy & terms']] as const).map(([pg,label,sub]) => (<button data-testid={`nav-${pg}`} key={pg} onClick={() => setPage(pg as Page)} style={{ background: '#1a2744', border: '1px solid #243656', borderRadius: 12, padding: 12, textAlign: 'left', cursor: 'pointer' }}><div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 3 }}>{label}</div><div style={{ fontSize: 10, color: '#8b9dc3', lineHeight: 1.3 }}>{sub}</div></button>))}</div></div>
       <div style={{ margin: '12px 14px', background: 'linear-gradient(135deg,#7f1d1d,#991b1b)', borderRadius: 12, padding: 14, textAlign: 'center' }}><div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>In an emergency, call 999</div></div>
     </div>
   </DesktopShell>);
@@ -376,6 +590,58 @@ export default function PolicePage() {
 
   // RESOURCES
   if (page === 'resources') return (<DesktopShell><Header title="Support Organisations" showBack /><div style={{ flex: 1, overflow: 'auto', padding: 14 }}><div style={{ fontSize: 11, color: '#8b9dc3', marginBottom: 10, lineHeight: 1.5 }}>Charities and specialist services built for the police community. Tap any card to visit.</div>{RESOURCES.map(r => (<a data-testid={`resource-${r.name.replace(/\s+/g,'-').toLowerCase()}`} key={r.name} href={r.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', background: '#1a2744', border: '1px solid #243656', borderRadius: 12, padding: 12, textDecoration: 'none', marginBottom: 8 }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}><div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{r.name}</div><div style={{ fontSize: 11, color: '#4a9eff' }}>Visit &#8250;</div></div><div style={{ fontSize: 11, color: '#8b9dc3', lineHeight: 1.45 }}>{r.desc}</div></a>))}</div></DesktopShell>);
+
+  // WELLBEING HUB (list of topics)
+  if (page === 'wellbeing') return (<DesktopShell><Header title="Wellbeing Hub" showBack />
+    <div style={{ flex: 1, overflow: 'auto', padding: 14 }}>
+      <div style={{ fontSize: 12, color: '#8b9dc3', marginBottom: 12, lineHeight: 1.5 }}>Short, honest guides on the stuff that actually weighs on officers. Practical tips and where to get proper help.</div>
+      {WELLBEING.map(t => (
+        <button data-testid={`wellbeing-card-${t.id}`} key={t.id} onClick={() => { setWellbeingTopic(t); setPage('wellbeing-topic'); }} style={{ width: '100%', background: '#1a2744', border: '1px solid #243656', borderRadius: 12, padding: 12, marginBottom: 8, textAlign: 'left', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{t.title}</div>
+            <div style={{ fontSize: 16, color: '#4a9eff' }}>&#8250;</div>
+          </div>
+          <div style={{ fontSize: 11, color: '#60a5fa', marginBottom: 3 }}>{t.tag}</div>
+          <div style={{ fontSize: 11, color: '#8b9dc3', lineHeight: 1.4 }}>{t.intro.slice(0, 120)}{t.intro.length > 120 ? '\u2026' : ''}</div>
+        </button>
+      ))}
+    </div>
+  </DesktopShell>);
+
+  // WELLBEING TOPIC DETAIL
+  if (page === 'wellbeing-topic' && wellbeingTopic) {
+    const t = wellbeingTopic;
+    return (<DesktopShell>
+      <Header title={t.title} showBack rightAction={<button data-testid="wellbeing-back-to-hub" onClick={() => setPage('wellbeing')} style={{ background: 'none', border: 'none', color: '#4a9eff', cursor: 'pointer', fontSize: 11 }}>All topics</button>} />
+      <div data-testid={`wellbeing-topic-${t.id}`} style={{ flex: 1, overflow: 'auto', padding: 14 }}>
+        <div style={{ fontSize: 11, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{t.tag}</div>
+        <div style={{ fontSize: 12, color: '#cbd5e1', lineHeight: 1.6, marginBottom: 14 }}>{t.intro}</div>
+
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Try this</div>
+        <ul style={{ paddingLeft: 18, marginBottom: 18 }}>
+          {t.tips.map((tip, i) => (
+            <li key={i} style={{ fontSize: 12, color: '#cbd5e1', lineHeight: 1.55, marginBottom: 8 }}>{tip}</li>
+          ))}
+        </ul>
+
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Where to get help</div>
+        {t.signposts.map((s, i) => (
+          <div key={i} style={{ background: '#1a2744', border: '1px solid #243656', borderRadius: 10, padding: 10, marginBottom: 6, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#fff', marginBottom: 2 }}>{s.name}</div>
+              <div style={{ fontSize: 11, color: '#8b9dc3', lineHeight: 1.4 }}>{s.note}</div>
+              {s.phone && <div style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa', marginTop: 3 }}>{s.phone}</div>}
+            </div>
+            {s.phone ? <a href={`tel:${s.phone.replace(/\s/g,'')}`} style={{ padding: '5px 10px', borderRadius: 7, background: '#0057B8', color: '#fff', fontSize: 11, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>Call</a> : s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 10px', borderRadius: 7, background: '#243656', color: '#4a9eff', fontSize: 11, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>Visit</a> : null}
+          </div>
+        ))}
+
+        <div style={{ marginTop: 18, padding: 10, background: 'rgba(127,29,29,0.3)', border: '1px solid #7f1d1d', borderRadius: 10, fontSize: 11, color: '#fca5a5', lineHeight: 1.5 }}>
+          If things feel too heavy right now, you don&apos;t have to go through it alone. Call <strong>999</strong> in an emergency, Samaritans on <strong>116 123</strong>, or tap Request a Callback.
+        </div>
+      </div>
+    </DesktopShell>);
+  }
 
   // CALLBACK
   if (page === 'callback') return (<DesktopShell><Header title="Request Callback" showBack /><div style={{ flex: 1, overflow: 'auto', padding: 14 }}>{!cbSent ? (<><div style={{ fontSize: 13, color: '#8b9dc3', marginBottom: 14, lineHeight: 1.5 }}>Leave your details. Completely confidential.</div><form onSubmit={submitCallback}><input data-testid="cb-name" name="name" placeholder="Your name (or alias)" required style={is} /><input data-testid="cb-phone" name="phone" type="tel" placeholder="Phone number" required style={is} /><input data-testid="cb-email" name="email" type="email" placeholder="Email (optional)" style={is} /><select data-testid="cb-time" name="time" style={is}><option>Anytime</option><option>Morning</option><option>Afternoon</option><option>Evening</option></select><textarea data-testid="cb-message" name="message" placeholder="Anything you'd like us to know..." rows={3} style={{...is,resize:'vertical' as const}} /><button data-testid="cb-submit" type="submit" style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: '#0057B8', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer', marginTop: 4 }}>Request Callback</button></form></>) : (<div style={{ textAlign: 'center', padding: 40 }}><div style={{ width: 48, height: 48, borderRadius: 24, background: '#0057B8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: 24, color: '#fff' }}>&#10003;</div><div style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>Callback Requested</div><div style={{ fontSize: 13, color: '#8b9dc3', marginTop: 6 }}>Someone will be in touch. Stay safe.</div></div>)}</div></DesktopShell>);
