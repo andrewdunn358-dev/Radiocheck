@@ -45,6 +45,7 @@ const CRISIS = [
   { name: 'Emergency Services', phone: '999', desc: 'Immediate danger to life — police, fire, ambulance, coastguard.' },
   { name: 'Samaritans', phone: '116 123', desc: '24/7 free emotional support. Anonymous. Call any time, any reason.' },
   { name: 'Police Care UK', phone: '0300 012 0030', desc: 'National charity for serving & retired officers and families. Counselling, financial grants, trauma support.' },
+  { name: 'Police Firearms Officers Association', phone: '0300 131 2789', desc: 'Post-incident and welfare support specifically for firearms officers and their families.' },
   { name: 'Oscar Kilo', url: 'https://oscarkilo.org.uk', desc: 'National Police Wellbeing Service — free resources, trauma support, and force wellbeing leads directory.' },
   { name: 'Mind Blue Light', url: 'https://www.mind.org.uk/news-campaigns/campaigns/blue-light-programme/', desc: 'Mental health charity programme dedicated to emergency services. Info line: 0300 303 5999.' },
   { name: 'Shout 85258', phone: '85258', desc: 'Free 24/7 text messaging support — text SHOUT to 85258 for confidential help.' },

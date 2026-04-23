@@ -87,6 +87,21 @@
       "static/chunks/18-e91420ad1d8fa50a.js",
       "static/chunks/app/learning/page-f482e6302284ab99.js"
     ],
+    "/police/page": [
+      "static/chunks/webpack-a7895151258ca88d.js",
+      "static/chunks/fd9d1056-f23eb4d89fad63d7.js",
+      "static/chunks/23-9acc107ff34a1a39.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/760-5b0356fe88d143ef.js",
+      "static/chunks/app/police/page-167af0ccb478f71b.js"
+    ],
+    "/police/layout": [
+      "static/chunks/webpack-a7895151258ca88d.js",
+      "static/chunks/fd9d1056-f23eb4d89fad63d7.js",
+      "static/chunks/23-9acc107ff34a1a39.js",
+      "static/chunks/main-app-cd4d9205f08e9035.js",
+      "static/chunks/app/police/layout-5f466f48bc4021f7.js"
+    ],
     "/lms-admin/page": [
       "static/chunks/webpack-a7895151258ca88d.js",
       "static/chunks/fd9d1056-f23eb4d89fad63d7.js",
@@ -122,21 +137,6 @@
       "static/chunks/main-app-cd4d9205f08e9035.js",
       "static/chunks/765-541e446a4e38161f.js",
       "static/chunks/app/staff/layout-b22666117604c87b.js"
-    ],
-    "/police/page": [
-      "static/chunks/webpack-a7895151258ca88d.js",
-      "static/chunks/fd9d1056-f23eb4d89fad63d7.js",
-      "static/chunks/23-9acc107ff34a1a39.js",
-      "static/chunks/main-app-cd4d9205f08e9035.js",
-      "static/chunks/760-5b0356fe88d143ef.js",
-      "static/chunks/app/police/page-b9980613dbedf85d.js"
-    ],
-    "/police/layout": [
-      "static/chunks/webpack-a7895151258ca88d.js",
-      "static/chunks/fd9d1056-f23eb4d89fad63d7.js",
-      "static/chunks/23-9acc107ff34a1a39.js",
-      "static/chunks/main-app-cd4d9205f08e9035.js",
-      "static/chunks/app/police/layout-5f466f48bc4021f7.js"
     ]
   }
 }
