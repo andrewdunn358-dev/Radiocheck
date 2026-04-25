@@ -8,6 +8,7 @@ import { AgeGateProvider } from '../src/context/AgeGateContext';
 import { SiteGateProvider } from '../src/context/SiteGateContext';
 import { LocationPermissionProvider } from '../src/context/LocationPermissionContext';
 import ResponsiveWrapper from '../src/components/ResponsiveWrapper';
+import InstallPwaPrompt from '../src/components/InstallPwaPrompt';
 
 function AppContent() {
   const { theme, colors } = useTheme();
@@ -41,6 +42,7 @@ function AppContent() {
         <Stack.Screen name="resources" />
         <Stack.Screen name="grace-welcome" />
       </Stack>
+      <InstallPwaPrompt />
     </ResponsiveWrapper>
   );
 }

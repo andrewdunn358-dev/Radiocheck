@@ -10,8 +10,20 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, shrink-to-fit=no"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
         />
+
+        {/* PWA — install on phone home screen (Android Chrome + iOS Safari) */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#3b82f6" />
+        <meta name="application-name" content="Radio Check" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Radio Check" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+
         <ScrollViewStyleReset />
         <style
           dangerouslySetInnerHTML={{
