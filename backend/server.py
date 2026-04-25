@@ -1439,13 +1439,33 @@ _OVERDOSE_GRIEF_SIGNALS = [
     "lost", "died", "passed away", "passed", "gone",
     # Funeral / death context
     "funeral", "buried", "wake",
-    # Relations (the other person who died)
+    # Relations (the other person who died) — veteran register
     "mate", "friend", "buddy", "brother", "sister",
     "wife", "husband", "partner", "ex-wife", "ex-husband",
     "dad", "mum", "father", "mother", "son", "daughter",
     "uncle", "aunt", "cousin", "nephew", "niece",
     "best mate", "old mate", "oppo",
     "comrade", "lad",
+    # Round 9 follow-up: Blue Light Support (police) bereavement register.
+    # A Blue Light officer's bereavement disclosure can use language the
+    # veteran list does not catch. Same override semantics — these only
+    # suppress when "overdose" also matches AND no first-person crisis
+    # pattern is present (which is checked first).
+    "colleague", "colleagues",
+    "crewmate", "crew mate",
+    "shift mate", "shift partner",
+    "crewed with", "crewed",
+    "team mate", "teammate",
+    # Line-of-duty / on-duty death context
+    "on duty", "on the job", "line of duty", "in the line of duty",
+    # Police-specific rank references (distinctive forms only — no
+    # bare-letter abbreviations that would risk false matches)
+    "sergeant", "sgt", "inspector", "dci",
+    "detective sergeant", "detective inspector", "detective constable",
+    # Third-person took-own-life construction (bereavement by suicide;
+    # may co-occur with "overdose" e.g. "took his own life from an overdose")
+    "took his own life", "took her own life", "took their own life",
+    "took his life", "took her life",
     # Temporal (past)
     "last year", "years ago", "months ago", "weeks ago",
     "two years ago", "five years ago", "ten years ago",

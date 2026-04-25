@@ -31,18 +31,25 @@ A targeted regression test (`tests/test_round9_section5_regression.py`) asserts 
 
 **Files changed:**
 - `backend/server.py` — added `is_overdose_bereavement_context()` helper and an OVERRIDE branch inside the RED-indicator loop in `calculate_safeguarding_score()`.
-- `backend/tests/test_round9_item1_overdose.py` — new file, 21 unit tests.
+- `backend/tests/test_round9_item1_overdose.py` — new file, 32 unit tests (originally 21 veteran-register; expanded to 32 with Blue Light Support / police register coverage).
 
 **Change description:**
 A context-aware modifier (NOT keyword removal). When `overdose` matches in the message AND grief / loss-of-other signals are present (`lost`, `died`, `passed away`, relations, temporal markers, "to an overdose" / "of an overdose" constructions, longing phrases), the indicator's contribution to the score is suppressed and an auditable entry is emitted: `{"indicator": "overdose", "weight": 0, "level": "OVERRIDE", "reason": "bereavement_context"}`. First-person crisis patterns (`I took an overdose`, `I'm going to take an overdose`, `thinking about an overdose`, etc.) take precedence — when any of those appear, the override does NOT apply and the indicator scores its full RED weight.
 
+**Tenant coverage — IMPORTANT (added per operator follow-up):**
+The signal list was originally veteran-flavoured. Because `calculate_safeguarding_score()` is tenant-agnostic and runs the same code path for Tommy, Steve and Claire, a Blue Light officer disclosing a colleague's overdose using police register would have hit the same false positive Item 1 was meant to fix. The signal list has been extended with police-specific terms:
+- Crew/shift/colleague language: `colleague`, `colleagues`, `crewmate`, `crew mate`, `shift mate`, `shift partner`, `crewed with`, `crewed`, `team mate`, `teammate`
+- Line-of-duty / on-duty death context: `on duty`, `on the job`, `line of duty`, `in the line of duty`
+- Police-specific rank references (distinctive forms only — no bare-letter abbreviations to avoid false matches): `sergeant`, `sgt`, `inspector`, `dci`, `detective sergeant`, `detective inspector`, `detective constable`
+- Third-person took-own-life construction (bereavement by suicide; can co-occur with overdose): `took his own life`, `took her own life`, `took their own life`, `took his life`, `took her life`
+
 **Tests verifying both directions:**
-- 10 bereavement-message parameterised cases — none escalate from the `overdose` indicator alone. OVERRIDE entry present in `triggered_indicators`.
-- 7 first-person crisis parameterised cases — all still escalate `is_red_flag=True` with `level=RED` and full weight.
+- 18 bereavement-message parameterised cases — 10 veteran register + 8 Blue Light register including the verbatim "Lost my old crewmate to an overdose last year" — none escalate from the `overdose` indicator alone. OVERRIDE entry present in `triggered_indicators`.
+- 10 first-person crisis parameterised cases — 7 generic + 3 Blue Light first-person cases that contain police bereavement signals AND first-person crisis patterns ("I'm thinking about an overdose, can't go back to the job", "I want to overdose. Lost a colleague to one last year"). All 10 still escalate `is_red_flag=True` with `level=RED` and full weight. Proves the new police signals do NOT over-suppress when first-person crisis is also present.
 - Helper-level direct tests for ambiguous mixed cases (first-person wins, lone keyword falls through to default RED).
 - Audit-trail check confirms OVERRIDE entry has the correct shape.
 
-All 21 pass.
+All 32 pass.
 
 ---
 

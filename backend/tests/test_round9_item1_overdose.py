@@ -37,6 +37,20 @@ BEREAVEMENT_MESSAGES = [
     "After he died of overdose I just shut down.",
     "My friend passed away from an overdose months ago.",
     "Lost a comrade to an overdose, never got over it.",
+    # ---- Round 9 follow-up: Blue Light Support (police) bereavement register ----
+    # Verbatim case from the operator follow-up:
+    "Lost my old crewmate to an overdose last year.",
+    # Rank-based reference:
+    "The sergeant I worked with died of an overdose. Funeral was rough.",
+    "Old DCI of mine passed away from an overdose, hit the team hard.",
+    # Crew / shift / colleague language:
+    "My shift partner passed away from an overdose, miss him every day.",
+    "Lost a colleague to overdose on the job last year.",
+    "The lad I crewed with took his own life from an overdose last year.",
+    # Inspector + line-of-duty context:
+    "Inspector I worked with died of an overdose two years ago.",
+    # Crew mate construction:
+    "My old crew mate died from an overdose. Still gets to me.",
 ]
 
 
@@ -78,6 +92,14 @@ FIRST_PERSON_CRISIS_MESSAGES = [
     "Planning an overdose this weekend.",
     "I want to overdose.",
     "Going to take an overdose, can't do this anymore.",
+    # Round 9 follow-up: Blue Light first-person crisis with police-flavoured
+    # context words. Even though "colleague" / "the job" / "sergeant" are now
+    # in the bereavement signal list, the first-person crisis test runs FIRST
+    # and must take precedence. These cases prove the new signals do not
+    # over-suppress.
+    "I'm thinking about an overdose, can't go back to the job.",
+    "Going to take an overdose. The sergeant doesn't even know.",
+    "I want to overdose. Lost a colleague to one last year and I can't see another way.",
 ]
 
 
