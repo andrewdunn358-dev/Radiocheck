@@ -1,0 +1,32 @@
+{
+  "name": "Blue Light Support",
+  "short_name": "Blue Light",
+  "description": "Confidential peer support for serving and retired police officers",
+  "start_url": "/police",
+  "scope": "/police",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a1628",
+  "theme_color": "#0057B8",
+  "categories": ["health", "lifestyle", "social"],
+  "icons": [
+    {
+      "src": "/police/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/police/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/police/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

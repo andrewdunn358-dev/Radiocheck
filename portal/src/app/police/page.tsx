@@ -363,6 +363,11 @@ export default function PolicePage() {
   const [cbSent, setCbSent] = useState(false);
   const [showSafeguardModal, setShowSafeguardModal] = useState(false);
   const [wellbeingTopic, setWellbeingTopic] = useState<WellbeingTopic | null>(null);
+  // PWA install — Android/Chrome fires beforeinstallprompt; iOS Safari needs manual instructions.
+  const [installPromptEvent, setInstallPromptEvent] = useState<{ prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> } | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+  const [showIosInstall, setShowIosInstall] = useState(false);
   const msgEnd = useRef<HTMLDivElement>(null);
   const gateRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<HTMLInputElement>(null);
@@ -391,6 +396,61 @@ export default function PolicePage() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  // PWA: register the service worker, listen for the install prompt event,
+  // detect iOS (which has no programmatic install — Safari requires the
+  // user to tap Share → Add to Home Screen manually) and detect whether
+  // the app is already running standalone (i.e. previously installed).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Register service worker. SW lives at /sw.js (root) so its max scope
+    // is the origin; we restrict it to /police via the scope option so it
+    // does not interfere with admin/staff routes on the same domain.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/police' })
+        .catch(() => { /* registration failure is non-fatal */ });
+    }
+
+    // Detect iOS Safari (only path on iOS; Chrome on iOS shares the same engine).
+    const ua = window.navigator.userAgent;
+    const iosDetected = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
+    setIsIos(iosDetected);
+
+    // Detect whether the app is already running standalone (installed).
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    setIsInstalled(standalone);
+
+    const onBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setInstallPromptEvent(e as unknown as { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> });
+    };
+    const onInstalled = () => {
+      setIsInstalled(true);
+      setInstallPromptEvent(null);
+    };
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
+  const triggerInstall = async () => {
+    if (installPromptEvent) {
+      await installPromptEvent.prompt();
+      const choice = await installPromptEvent.userChoice;
+      setInstallPromptEvent(null);
+      if (choice?.outcome === 'accepted') setIsInstalled(true);
+    } else if (isIos) {
+      setShowIosInstall(true);
+    }
+  };
+
+  const canShowInstallButton = !isInstalled && (installPromptEvent !== null || isIos);
 
   useEffect(() => { msgEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -582,7 +642,28 @@ export default function PolicePage() {
       <div style={{ padding: '12px 14px 0' }}><div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 10 }}>Your Support Team</div>{PERSONAS.map(p => (<button data-testid={`persona-card-${p.id}`} key={p.id} onClick={() => openChat(p)} style={{ width: '100%', background: '#1a2744', border: '1px solid #243656', borderRadius: 14, padding: 14, marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer', textAlign: 'left' }}><img src={p.avatar} alt={p.name} style={{ width: 44, height: 44, borderRadius: 22, objectFit: 'cover', flexShrink: 0 }} /><div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{p.name}</div><div style={{ fontSize: 11, color: '#60a5fa', marginBottom: 1 }}>{p.role}</div><div style={{ fontSize: 11, color: '#8b9dc3' }}>{p.desc}</div></div><div style={{ color: '#4a9eff', fontSize: 18 }}>&#8250;</div></button>))}</div>
       <div style={{ padding: '4px 14px 0' }}><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>{([['crisis','Crisis Support','Urgent contacts'],['wellbeing','Wellbeing Hub','Sleep, trauma, grief, family & more'],['resources','Resources','Police charities & wellbeing'],['callback','Request Callback','Speak to a real person'],['terms','About','Privacy & terms']] as const).map(([pg,label,sub]) => (<button data-testid={`nav-${pg}`} key={pg} onClick={() => setPage(pg as Page)} style={{ background: '#1a2744', border: '1px solid #243656', borderRadius: 12, padding: 12, textAlign: 'left', cursor: 'pointer' }}><div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 3 }}>{label}</div><div style={{ fontSize: 10, color: '#8b9dc3', lineHeight: 1.3 }}>{sub}</div></button>))}</div></div>
       <div style={{ margin: '12px 14px', background: 'linear-gradient(135deg,#7f1d1d,#991b1b)', borderRadius: 12, padding: 14, textAlign: 'center' }}><div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>In an emergency, call 999</div></div>
+      {canShowInstallButton && (
+        <button data-testid="install-app-button" onClick={triggerInstall} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'calc(100% - 28px)', margin: '0 14px 14px', background: 'transparent', border: '1px dashed #4a9eff', borderRadius: 12, padding: 12, cursor: 'pointer', color: '#60a5fa', fontWeight: 600, fontSize: 13 }}>
+          <span style={{ fontSize: 16, lineHeight: 1 }}>&#x2B07;</span>
+          Install Blue Light Support on this phone
+        </button>
+      )}
     </div>
+    {showIosInstall && (
+      <div data-testid="ios-install-modal" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: '#0d1b2e', border: '1px solid #243656', borderRadius: 16, padding: 18, maxWidth: 360, width: '100%' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Install on iPhone</div>
+          <div style={{ fontSize: 12, color: '#8b9dc3', lineHeight: 1.5, marginBottom: 14 }}>iOS doesn&apos;t allow apps to install themselves. To add Blue Light Support to your home screen:</div>
+          <ol style={{ paddingLeft: 18, marginBottom: 14 }}>
+            <li style={{ fontSize: 12, color: '#cbd5e1', lineHeight: 1.55, marginBottom: 8 }}>Tap the <strong>Share</strong> button at the bottom of Safari (the square with the up arrow).</li>
+            <li style={{ fontSize: 12, color: '#cbd5e1', lineHeight: 1.55, marginBottom: 8 }}>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+            <li style={{ fontSize: 12, color: '#cbd5e1', lineHeight: 1.55, marginBottom: 8 }}>Tap <strong>Add</strong> in the top right.</li>
+          </ol>
+          <div style={{ fontSize: 11, color: '#8b9dc3', lineHeight: 1.5, marginBottom: 14 }}>It will appear on your home screen with the Blue Light icon. It opens like a normal app — no browser bars, fully confidential.</div>
+          <button data-testid="ios-install-dismiss" onClick={() => setShowIosInstall(false)} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: '#0057B8', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Got it</button>
+        </div>
+      </div>
+    )}
   </DesktopShell>);
 
   // CHAT
