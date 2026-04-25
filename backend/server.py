@@ -1407,11 +1407,85 @@ MODIFIER_PATTERNS = {
 # Session risk tracking
 session_risk_history: Dict[str, List[Dict]] = {}
 
+# ===== ROUND 9 ITEM 1: OVERDOSE BEREAVEMENT CONTEXT DETECTION =====
+# Section 4.1 of the Round 8 report: a veteran disclosing that a friend died
+# of an overdose was being given a full crisis overlay because "overdose" sits
+# in RED_INDICATORS at weight 100. The fix is a context-aware override (NOT
+# keyword removal): bereavement context suppresses, first-person crisis context
+# does not. Both directions are unit-tested in tests/test_round9_item1_overdose.py.
+
+# First-person overdose-as-self-harm patterns. If ANY match, the message is
+# treated as genuine crisis and the RED indicator is preserved unchanged.
+_OVERDOSE_FIRST_PERSON_PATTERNS = [
+    "i took an overdose", "i took overdose", "took an overdose",
+    "i'm going to take an overdose", "im going to take an overdose",
+    "going to take an overdose", "going to overdose", "going to od",
+    "thinking about an overdose", "thinking about overdose",
+    "thinking of an overdose", "thinking of overdose",
+    "considering an overdose", "considering overdose",
+    "planning an overdose", "planning overdose",
+    "want to overdose", "want to od",
+    "i overdosed", "i'd overdose", "id overdose",
+    "i could overdose", "i might overdose",
+    "have an overdose", "having an overdose",
+    "my overdose", "my own overdose",
+]
+
+# Bereavement / loss-of-other signals. Per Section 4.1 — if any of these are
+# present alongside "overdose" (and no first-person crisis pattern matched),
+# the message is a grief disclosure, not a crisis.
+_OVERDOSE_GRIEF_SIGNALS = [
+    # Loss verbs
+    "lost", "died", "passed away", "passed", "gone",
+    # Funeral / death context
+    "funeral", "buried", "wake",
+    # Relations (the other person who died)
+    "mate", "friend", "buddy", "brother", "sister",
+    "wife", "husband", "partner", "ex-wife", "ex-husband",
+    "dad", "mum", "father", "mother", "son", "daughter",
+    "uncle", "aunt", "cousin", "nephew", "niece",
+    "best mate", "old mate", "oppo",
+    "comrade", "lad",
+    # Temporal (past)
+    "last year", "years ago", "months ago", "weeks ago",
+    "two years ago", "five years ago", "ten years ago",
+    "since he", "since she", "since they",
+    "after he", "after she", "after they",
+    # Longing
+    "miss him", "miss her", "miss them",
+    "missing him", "missing her", "missing them",
+    # "lost X to an overdose" / "died of an overdose" constructions
+    "to an overdose", "to overdose", "from an overdose", "from overdose",
+    "of an overdose", "of overdose",
+]
+
+
+def is_overdose_bereavement_context(message_lower: str) -> bool:
+    """
+    Round 9 Item 1: Detect bereavement context for the "overdose" RED indicator.
+
+    Returns True ONLY when:
+      - the message contains a grief/loss-of-other signal, AND
+      - no first-person overdose-as-crisis pattern is present.
+
+    First-person crisis takes precedence so genuine self-harm disclosure
+    continues to escalate exactly as before.
+    """
+    for pattern in _OVERDOSE_FIRST_PERSON_PATTERNS:
+        if pattern in message_lower:
+            return False
+    for signal in _OVERDOSE_GRIEF_SIGNALS:
+        if signal in message_lower:
+            return True
+    return False
+
+
 def calculate_safeguarding_score(message: str, session_id: str, character_id: str = None, protocol_files: list = None) -> Dict[str, Any]:
     """
     Calculate safeguarding risk score using weighted indicators.
     Now includes Anthony's negation detection to reduce false positives.
     Now includes character-context awareness for appropriate exemptions.
+    Round 9 Item 1: bereavement-context override for the "overdose" indicator.
     When identity.md is active, raises accumulated-score RED threshold by 40.
     Returns: {score, risk_level, triggered_indicators, is_red_flag}
     """
@@ -1530,7 +1604,21 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
             if is_negated(message_lower, match_pos):
                 negated_indicators.append({"indicator": indicator, "reason": "negated"})
                 continue  # Skip this indicator - it was negated
-            
+
+            # ===== ROUND 9 ITEM 1: OVERDOSE BEREAVEMENT CONTEXT OVERRIDE =====
+            # When "overdose" appears alongside grief signals (loss-of-other) and
+            # there's no first-person crisis pattern, this is a bereavement
+            # disclosure, not a crisis. Suppress the indicator's score
+            # contribution and emit an auditable OVERRIDE entry.
+            if indicator == "overdose" and is_overdose_bereavement_context(message_lower):
+                triggered.append({
+                    "indicator": "overdose",
+                    "weight": 0,
+                    "level": "OVERRIDE",
+                    "reason": "bereavement_context",
+                })
+                continue
+
             score += weight
             triggered.append({"indicator": indicator, "weight": weight, "level": "RED"})
             is_red_flag = True
