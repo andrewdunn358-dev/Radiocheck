@@ -1,11 +1,11 @@
-<analysis>police.radiocheck.me/police/police/app/portal/src/app/police/page.tsx/police/app/portal/src/app/police/page.tsxyarn build/app/portal/policesend_reset_email()server.py/api/authserver.pygrief.mdspine.mdidentity.mdsteveclaire/policeConcernCreateradiocheck.me
+<analysis>_round10_diagnostics.pyis_overdose_bereavement_context()calculate_safeguarding_score()server.pyanalyze_message_unified()safety/unified_safety.py/app/backend/_round10_diagnostics.py/app/backend/_round10_diagnostics.pyis_overdose_bereavement_context()server.pysafety_monitor.pyunified_safety.pyconversation_contextpushManager.subscribe()/policebluelight2026/api/auth/forgot-passwordsend_reset_email()/police/policeapp.radiocheck.meserver.py
 /app
 ├── backend/
-│   ├── personas/                 # 23 AI character definitions + soul_loader.py + soul.md
-│   ├── protocols/                # Modular Markdown files
-│   ├── safety/                   # Multi-layered safety (text_normalizer.py, safety_monitor.py, unified_safety.py)
-│   ├── tenants/                  # Multi-tenant configuration
-│   └── server.py                 # Main FastAPI app (Safety orchestration, Judge logic, Emails, OpenAI)
+│   ├── personas/                 # AI character definitions + soul_loader.py
+│   ├── protocols/                # Modular Markdown files for safety boundaries
+│   ├── safety/                   # Unified safety (unified_safety.py, safety_monitor.py)
+│   ├── server.py                 # Main FastAPI app
+│   └── _round10_diagnostics.py   # Diagnostic script for deployment integrity
 ├── frontend/                     # Expo React Native Web export (Main App)
-└── portal/                       # Next.js Admin/Staff/Police Portals (Middleware routing)
-protocol_statemiddleware.ts/portal/police.radiocheck.me/policesteve.pyclaire.pyai_chat_sessionssafeguarding_alertsinternal_messagessite_settingsconcernsdebrief_submissions/app/portal/src/app/police/page.tsx/app/backend/server.py/app/backend/personas/soul_loader.py/app/portal/src/middleware.ts/app/portal/src/components/admin/tabs/DebriefTab.tsx/app/CHANGELOG.md/app/memory/PRD.md/app/backend/server.pyPOST /api/ai-buddies/chatPOST /api/debrief/submitGET /api/debrief/submissionssoul.mdhard_stop.mdunified_safety.pysafety_monitor.pypolice.radiocheck.me/app/portal/yarn build/app/portal/bluelight2026SENDER_EMAIL.envnoreply@radiocheck.me/app/docs/Radio_Check_Overview_April_2026.pdf/app/CHANGELOG.md/app/memory/PRD.md/app/test_reports/iteration_45.json/app/portal/src/app/police/page.tsxnext buildbuddy_chatiteration_45.json/policebluelight2026/app/portal/src/app/police/page.tsxyarn build/police/app/portal/src/app/police/page.tsx/app/portalyarn buildsudo supervisorctl restart frontendhttps://<preview-url>/policebluelight2026</analysis>
+└── portal/                       # Next.js Admin/Staff/Police Portals
+manifest.webmanifestsw.jssafeguarding_alertsusers/app/backend/_round10_diagnostics.py/app/backend/server.pyis_overdose_bereavement_context/app/backend/safety/unified_safety.py/app/backend/safety/safety_monitor.py/app/backend/tests/test_round9_item1_overdose.py/app/backend/personas/soul_loader.pyserver.pycalculate_safeguarding_scoresafety/safety_monitor.pyPOST /api/ai-buddies/chatPOST /api/auth/forgot-password/app/backend/_round10_diagnostics.pyis_overdose_bereavement_contextcalculate_safeguarding_score()POST /api/ai-buddies/chatanalyze_message_unified()/app/memory/ROUND9_HANDOFF.md/app/backend/tests/test_round9_item1_overdose.py/app/backend/tests/test_round9_item6_session_bleed.py/app/backend/tests/test_round9_items3_4_5_signals_judge.pycalculate_safeguarding_scoreserver.pysafety.unified_safety_round10_diagnostics.py/app/backend/tests/bluelight2026/app/backend/_round10_diagnostics.pypython3 /app/backend/_round10_diagnostics.pyask_humanserver.py:calculate_safeguarding_scoreunified_safety.py</analysis>

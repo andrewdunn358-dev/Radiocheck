@@ -11,7 +11,7 @@ import time
 import sys
 from datetime import datetime
 
-API_URL = "https://multi-tenant-chat-8.preview.emergentagent.com"
+API_URL = "https://radio-check-safety-1.preview.emergentagent.com"
 ENDPOINT = f"{API_URL}/api/ai-buddies/chat"
 
 def send_message(session_id: str, message: str, character: str = "tommy"):
