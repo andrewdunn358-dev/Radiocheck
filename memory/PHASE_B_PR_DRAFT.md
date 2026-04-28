@@ -84,6 +84,31 @@ Contains, in this order:
    RECONCILABLE_KEYWORD_TRIGGERS = frozenset({"overdose"})
    ```
 
+   **Provenance of `CLASSIFIER_CONFIDENCE_THRESHOLD = 0.7`** — full disclosure.
+   This value is **anchored on the observed confidence floor in the n=2 bereavement
+   production traces** (`r10_S009_a.json`, `r10_S009_b.json`), not statistically
+   derived. In both traces the classifier returned `confidence: 0.7` while
+   correctly identifying bereavement and returning `contains_self_harm_intent: false`.
+   The control case (`r10_CTRL.json`) returned `confidence: 1.0` on a genuine
+   crisis. So 0.7 is the lowest confidence we have direct evidence the classifier
+   gets right on the only relevant data we possess.
+
+   **It is a data-anchored guess, not a calibrated threshold.** The sample size
+   is small (n=2 positives, n=1 negative), and the threshold was set to "include
+   the observed bereavement cases." A defensible alternative is **0.85**, on the
+   "if we're going to suppress a CRITICAL keyword on classifier confidence, the
+   classifier needs to be *very* sure" principle. At 0.85 our two production
+   bereavement cases would have been blocked by the threshold and routed to
+   `KEYWORD_FAILSAFE` instead — the safer-by-default direction, at the cost of
+   the live S009 false positive remaining a false positive until the classifier
+   sharpens.
+
+   The named constant is the only line that has to change either way. Open
+   question for review: keep at 0.7 (matches observed bereavement floor, lets
+   override fire on real Round 9 traffic) or raise to 0.85 (more conservative,
+   would have left S009 escalating until the classifier earns more confidence
+   on those inputs)? Ant's call.
+
 3. **Verdict dataclasses** (so the reconciler reads typed input, not loose dicts):
    ```python
    @dataclass(frozen=True)
@@ -114,13 +139,22 @@ Contains, in this order:
    ```python
    def reconcile_verdicts(
        keyword: KeywordVerdict,
-       classifier: ClassifierVerdict,
+       classifier: ClassifierVerdict | None,   # None when classifier failed
        message_lower: str,
+       *,
+       classifier_error: Exception | None = None,
    ) -> FinalVerdict:
        """
        Single authoritative safety verdict per message.
 
        Precedence (top wins):
+         0. CLASSIFIER_UNAVAILABLE — classifier raised, timed out, returned
+            None, or returned malformed output (missing required fields,
+            confidence outside [0.0, 1.0], unknown risk_level value).
+            → Final: keyword verdict, unmodified. Audit-logged at WARNING with
+            the captured exception class / malformed-field reason. Reconciler
+            never enters context-override territory without a well-formed
+            classifier verdict to read.
          1. CONTEXT_OVERRIDE — keyword fired solely on a reconcilable trigger,
             classifier confidence ≥ CLASSIFIER_CONFIDENCE_THRESHOLD, classifier
             says no self-harm intent, AND a documented context-aware detector
@@ -135,11 +169,94 @@ Contains, in this order:
          4. DEFAULT — neither pipeline escalates.
             → Final: lower of the two, no failsafe.
 
-       Each rule logs the precedence_rule_fired identifier for audit.
+       Each rule writes one structured audit log line (schema below).
        """
    ```
 
-5. **Audit logging hook** — every reconciliation writes a structured log line with `session_id`, `precedence_rule_fired`, `keyword_verdict_summary`, `classifier_verdict_summary`, `final_verdict`, so Ant can tail logs during the Round 10 human re-test and see exactly which rule fired on every borderline case.
+   **Rule 0 design rationale.** The classifier is a network call to an LLM
+   provider (currently OpenAI for the AI-classification layer inside
+   `analyze_message_unified`). It can time out, rate-limit, return
+   schema-shifted output on a model upgrade, or raise inside our wrapper. If
+   any of those happen and we silently treat "no classifier verdict" as
+   "classifier said no override applies," we preserve safety. If we instead
+   silently treated it as "classifier returned low confidence, so no override
+   applies anyway," same result — but the *audit trail* would show a normal
+   `KEYWORD_FAILSAFE` and we'd lose visibility on classifier health. Rule 0
+   makes classifier unavailability a **named, logged event** so Ant can grep
+   for `CLASSIFIER_UNAVAILABLE` during the human re-test and see whether the
+   reconciler's "look safe by default" branch is firing for the right reason
+   (genuinely safe inputs the keyword pipeline judged correctly) or the wrong
+   reason (classifier flapping in production and we're effectively running
+   the keyword pipeline solo).
+
+5. **Audit logging schema.** One structured line per `reconcile_verdicts` call,
+   emitted via the standard `logging` module (already wired into Render's log
+   collector and the Sentry exporter). Format is JSON-on-one-line so it's
+   greppable and machine-parseable without a log-shipper config change.
+
+   Schema (exact fields, exact order):
+
+   ```json
+   {
+     "evt": "round10.reconcile",
+     "ts": "2026-04-28T16:45:12.318Z",
+     "session_id": "abc12345-...",
+     "character": "tommy",
+     "msg_sha256_16": "a1b2c3d4e5f6a7b8",
+     "msg_length": 52,
+     "kw": {
+       "risk_level": "CRITICAL",
+       "failsafe": true,
+       "failsafe_reason": "explicit_suicide_plan",
+       "triggers": ["overdose"]
+     },
+     "cls": {
+       "risk_level": "low",
+       "confidence": 0.7,
+       "self_harm_intent": false,
+       "indicators_count": 2
+     },
+     "final": {
+       "risk_level": "NONE",
+       "failsafe": false,
+       "failsafe_reason": null
+     },
+     "rule": "CONTEXT_OVERRIDE",
+     "reason": "overdose+bereavement_context+classifier_lo_no_intent_conf_0.70",
+     "ctx_detector": "is_overdose_bereavement_context"
+   }
+   ```
+
+   **Privacy.** The user message is **never logged in the clear**. We log only
+   `msg_sha256_16` (first 16 hex chars of `sha256(message)`, deterministic
+   so the same input maps to the same hash for cross-correlation during
+   adversarial re-testing) and `msg_length` (so Ant can tell long disclosures
+   from short ones at a glance without seeing content). Classifier `reason`
+   strings and `detected_indicators` are also dropped from the log line —
+   they paraphrase the user's words and a leak via classifier output is the
+   same privacy concern as a leak via the message itself. Only counts and
+   structured fields ship to logs.
+
+   **Severity.**
+   - `INFO` for `KEYWORD_FAILSAFE`, `CLASSIFIER_ESCALATION`, `DEFAULT`.
+   - `WARNING` for `CONTEXT_OVERRIDE` — every time the reconciler suppresses
+     a CRITICAL keyword, it shows up as a WARNING so it cannot be lost in
+     INFO-level noise during a tail.
+   - `WARNING` for `CLASSIFIER_UNAVAILABLE`, with the captured exception
+     class name and (for malformed output) the missing/invalid field name.
+
+   **Destination.** Standard Python `logging.getLogger("safety.reconciler")`.
+   Sink config is unchanged from current backend logging — Render captures
+   stdout, structured fields are JSON-loadable for downstream tooling, and
+   the existing log-shipping path in `/var/log/supervisor/backend.*.log`
+   picks it up locally. No new dependency, no new env var, no new sink.
+
+   **Sample log line Ant can grep for during the Round 10 human re-test:**
+   ```
+   $ tail -f /var/log/supervisor/backend.out.log | grep '"evt":"round10.reconcile"'
+   $ tail -f .../backend.out.log | grep '"rule":"CONTEXT_OVERRIDE"'    # every override fire
+   $ tail -f .../backend.out.log | grep '"rule":"CLASSIFIER_UNAVAILABLE"'  # classifier health
+   ```
 
 ### `server.py:calculate_safeguarding_score`
 
@@ -185,6 +302,75 @@ Each of these is, today, a tap-tap-boom RED in the keyword pipeline and would be
 
 The Round 10 scope is **one row**: bereavement-overdose. The architectural shape supports the rest.
 
+### Worked example: what "adding a row" actually looks like
+
+To make the extensibility claim concrete rather than aspirational, here is the **actual diff** that would later add `"jump"` (skydiving / parachute / wings-course context) as a future row. This is **not part of this PR** — it's the receipt that the architecture pays out as advertised.
+
+**Hypothetical future PR (not Phase B):**
+
+`safety/verdict_reconciler.py` — three additions:
+
+```python
+# 1. Add to the reconcilable triggers set (one line):
+RECONCILABLE_KEYWORD_TRIGGERS = frozenset({"overdose", "jump"})
+
+# 2. Add a new context-detector function next to is_overdose_bereavement_context.
+#    Signature is identical: (message_lower: str) -> bool.
+_JUMP_OCCUPATIONAL_PATTERNS = frozenset({
+    "first jump", "static line", "wings course", "para course",
+    "p company", "ppc", "free fall", "haho", "halo",
+    "drop zone", "dz", "rigger", "chute", "canopy",
+})
+_JUMP_CRISIS_PATTERNS = frozenset({
+    "going to jump", "want to jump", "gonna jump off",
+    "jump off the", "jump from the",
+})
+
+def is_jump_occupational_context(message_lower: str) -> bool:
+    for pattern in _JUMP_CRISIS_PATTERNS:
+        if pattern in message_lower:
+            return False
+    for signal in _JUMP_OCCUPATIONAL_PATTERNS:
+        if signal in message_lower:
+            return True
+    return False
+
+# 3. Wire it into the CONTEXT_OVERRIDE rule's lookup table (one line in the
+#    existing dict that maps trigger -> detector function):
+_CONTEXT_DETECTORS = {
+    "overdose": is_overdose_bereavement_context,
+    "jump":     is_jump_occupational_context,   # new row
+}
+```
+
+`safety/safety_monitor.py` — **no change**. The keyword pipeline keeps flagging
+`"jump"` as it does today; the reconciler now has a documented route to
+suppress it when occupational context is unambiguous and the classifier agrees.
+
+`tests/test_verdict_reconciler.py` — three additions:
+
+```python
+def test_jump_occupational_overdrides_keyword_when_classifier_agrees(): ...
+def test_jump_first_person_crisis_keyword_failsafe_wins(): ...
+def test_jump_occupational_blocked_by_low_classifier_confidence(): ...
+```
+
+That is the full diff. **One trigger added to a frozenset, one detector
+function written, one row added to a dict, three tests added.** No changes
+to `server.py`, no changes to `safety_monitor.py`, no changes to
+`unified_safety.py`, no changes to `buddy_chat()`, no plumbing of new flags
+through the call graph. CODEOWNERS will route the PR to Ant + TheAIOldtimer
+because `_CONTEXT_DETECTORS` is in `backend/safety/`. Ant reviews ~60 lines.
+Approve / request-changes / merge.
+
+This is what "extensible" buys us. Each of the seven foreseeable rows in the
+table above is a PR of roughly that size, reviewable in isolation, with its
+own tests, its own audit log signature (`"ctx_detector": "is_jump_..."`), and
+its own paper trail in CODEOWNERS history.
+
+The Round 10 PR ships the infrastructure plus row 1 (`"overdose"`). Future
+rows ship one at a time, each as a CODEOWNERS-gated review.
+
 ---
 
 ## Non-negotiable requirements (verbatim from Ant's Round 10 brief)
@@ -209,8 +395,12 @@ In `/app/backend/tests/test_verdict_reconciler.py`:
 | 6 | Bereavement context but classifier confidence below threshold | keyword=CRITICAL/`overdose`, classifier=low/0.55/no-intent, bereavement detector=True | `KEYWORD_FAILSAFE` (override blocked by threshold) | RED |
 | 7 | Bereavement detector matches but classifier reports self-harm intent | keyword=CRITICAL/`overdose`, classifier=imminent/0.90/intent=True, bereavement detector=True | `KEYWORD_FAILSAFE` (override blocked by intent flag) | RED |
 | 8 | Non-reconcilable keyword trigger | keyword=CRITICAL/`pills`, classifier=low/0.80/no-intent | `KEYWORD_FAILSAFE` (`pills` not in `RECONCILABLE_KEYWORD_TRIGGERS`) | RED |
+| 9 | Classifier exception during call | keyword=CRITICAL/`overdose`, classifier=None (raised `TimeoutError`), bereavement detector=True | `CLASSIFIER_UNAVAILABLE` | keyword verdict (RED), audit log at WARNING with `exception_class: "TimeoutError"` |
+| 10 | Classifier returned malformed output | keyword=CRITICAL/`overdose`, classifier confidence=`1.7` (out of [0.0, 1.0]) | `CLASSIFIER_UNAVAILABLE` | keyword verdict (RED), audit log at WARNING with `malformed_field: "confidence"` |
 
 Tests #6, #7, #8 are intentional adversarial guards: the reconciler must refuse to suppress a keyword failsafe when the safety conditions for suppression are not met. These exist to make sure the override is narrow.
+
+Tests #9 and #10 are intentional infrastructure-failure guards: the reconciler must defer to the keyword pipeline whenever the classifier cannot be trusted to have produced a verdict at all. These exist to make sure the "look safe by default" branch is reached **and audit-logged as such** rather than silently degrading into the keyword-pipeline-only world.
 
 ---
 
@@ -227,11 +417,14 @@ Tests #6, #7, #8 are intentional adversarial guards: the reconciler must refuse 
 ## Review checklist for Ant
 
 1. Is **(b) merge layer** the right call vs (a) or (c)?
-2. Is `CLASSIFIER_CONFIDENCE_THRESHOLD = 0.7` the right value, or should it be higher / lower / per-trigger?
-3. Is the precedence ordering (CONTEXT_OVERRIDE → KEYWORD_FAILSAFE → CLASSIFIER_ESCALATION → DEFAULT) right?
-4. Does `RECONCILABLE_KEYWORD_TRIGGERS = frozenset({"overdose"})` — i.e. only `"overdose"` is currently reconcilable — feel right for Round 10? (Other crisis keywords stay unconditionally authoritative until a future PR adds them.)
-5. The 8 unit tests — any scenario shapes you'd add or rephrase before they become the regression baseline?
-6. Anything in the "foreseeable future exceptions" table that you want explicitly **excluded** from ever being reconciled (e.g. method words like `"pills"`, `"rope"`, `"gun"`)?
+2. **`CLASSIFIER_CONFIDENCE_THRESHOLD = 0.7` — provenance disclosed.** Anchored on the n=2 bereavement traces (both at 0.70) plus the n=1 control (1.0). Keep at 0.7 (matches observed bereavement floor, lets the override actually fire on real Round 9 traffic), or raise to 0.85 (more conservative, would have left both production S009 cases escalating until the classifier earns more confidence on those inputs)? Either is one-line change.
+3. Is the precedence ordering (`CLASSIFIER_UNAVAILABLE` → `CONTEXT_OVERRIDE` → `KEYWORD_FAILSAFE` → `CLASSIFIER_ESCALATION` → `DEFAULT`) right?
+4. **Rule 0 design.** Does deferring to the keyword pipeline on classifier exception / malformed output, with `WARNING`-level audit, feel right? Or should `CLASSIFIER_UNAVAILABLE` be even more conservative (e.g. force `failsafe_triggered=True` on any classifier failure on the basis that we can't trust we're not missing something)?
+5. **Audit log schema.** Field set, JSON-on-one-line format, `msg_sha256_16` + `msg_length` as the only message-derived fields (no raw text, no classifier `reason` strings, no `detected_indicators` text), severity tiers (`WARNING` for `CONTEXT_OVERRIDE` and `CLASSIFIER_UNAVAILABLE`, `INFO` otherwise). Anything you want added, dropped, or renamed before it lands as the schema you'll be tailing during the human re-test?
+6. Does `RECONCILABLE_KEYWORD_TRIGGERS = frozenset({"overdose"})` — i.e. only `"overdose"` is currently reconcilable — feel right for Round 10? (Other crisis keywords stay unconditionally authoritative until a future PR adds them.)
+7. **Worked "jump" example.** Is the diff-shape representative of how you'd want future rows added? If not, what would you change — a different detector signature, a different registration mechanism, a different test pattern?
+8. The 10 unit tests — any scenario shapes you'd add or rephrase before they become the regression baseline?
+9. Anything in the "foreseeable future exceptions" table that you want explicitly **excluded** from ever being reconciled (e.g. method words like `"pills"`, `"rope"`, `"gun"`)?
 
 Once approved, I open the PR with code matching this design exactly. If the design changes during your review, I update this document, re-circulate, and only then write code.
 
