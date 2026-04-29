@@ -22,7 +22,7 @@ router = APIRouter(tags=["LMS"])
 
 # Initialize Resend
 resend.api_key = os.getenv("RESEND_API_KEY")
-LMS_JWT_SECRET = os.getenv("JWT_SECRET", "radiocheck-lms-secret-key-2024")
+from auth_config import get_jwt_secret as _get_app_jwt_secret
 
 # Get the full curriculum with all 14 modules
 MHFA_CURRICULUM = get_full_curriculum()
@@ -104,7 +104,7 @@ def create_learner_token(email: str, full_name: str) -> str:
         "iat": datetime.now(timezone.utc).timestamp(),
         "exp": (datetime.now(timezone.utc).timestamp()) + (7 * 24 * 60 * 60)  # 7 days
     }
-    return jwt.encode(payload, LMS_JWT_SECRET, algorithm="HS256")
+    return jwt.encode(payload, _get_app_jwt_secret(), algorithm="HS256")
 
 # ============================================================================
 # API ENDPOINTS

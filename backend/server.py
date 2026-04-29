@@ -194,10 +194,9 @@ def cleanup_rate_limits():
 
 # ============ JWT CONFIGURATION ============
 
-# JWT Configuration - Use function to read at runtime
-def get_jwt_secret():
-    """Get JWT secret at runtime to ensure env vars are loaded"""
-    return os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+# JWT signing secret comes from auth_config (single source of truth, no fallback).
+# See backend/auth_config.py for rationale and rotation guidance.
+from auth_config import get_jwt_secret, get_admin_seed_password
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
@@ -7550,14 +7549,17 @@ async def initialize_system():
         name="System Administrator"
     )
     admin_data = admin_user.dict()
-    admin_data["password_hash"] = hash_password("ChangeThisPassword123!")
+    try:
+        seed_password = get_admin_seed_password()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    admin_data["password_hash"] = hash_password(seed_password)
     await db.users.insert_one(admin_data)
-    
+
     return {
         "message": "System initialized successfully",
         "admin_email": "admin@veteran.dbty.co.uk",
-        "default_password": "ChangeThisPassword123!",
-        "warning": "Please change the default password immediately!"
+        "warning": "Use the seed password from your deployment secret store to log in, then change it immediately."
     }
 
 # ============ ROOT ENDPOINT ============

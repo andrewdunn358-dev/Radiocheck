@@ -19,6 +19,7 @@ from models.schemas import (
     ChangePassword, ResetPasswordRequest, ResetPassword, AdminResetPassword
 )
 from encryption import decrypt_field
+from auth_config import get_jwt_secret, get_admin_seed_password
 
 # Import audit logging functions
 from audit_logger import audit_login, audit_admin_action, AuditEventType, log_audit_event
@@ -37,11 +38,6 @@ def get_decrypted_name(name_value):
         except:
             return name_value
     return name_value or ""
-
-# JWT Configuration
-def get_jwt_secret():
-    """Get JWT secret - read at runtime to ensure env vars are loaded"""
-    return os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
@@ -120,13 +116,25 @@ def require_role(*required_roles: str):
 
 @router.get("/debug-jwt")
 async def debug_jwt():
-    """Health check for JWT configuration — no secrets exposed"""
-    secret = get_jwt_secret()
-    return {
-        "secret_configured": len(secret) > 20,
-        "is_default": secret == "your-secret-key-change-in-production",
-        "env_var_set": os.getenv("JWT_SECRET_KEY") is not None
-    }
+    """Health check for JWT configuration — no secrets exposed.
+
+    Reports whether JWT_SECRET_KEY is configured at all and whether it appears
+    to have sufficient entropy. Does not echo the secret itself or the historical
+    placeholder string.
+    """
+    try:
+        secret = get_jwt_secret()
+        return {
+            "secret_configured": True,
+            "secret_length_ok": len(secret) >= 32,
+            "env_var_set": True,
+        }
+    except RuntimeError as e:
+        return {
+            "secret_configured": False,
+            "env_var_set": os.getenv("JWT_SECRET_KEY") is not None,
+            "error": str(e),
+        }
 
 
 @router.post("/test-token")
@@ -158,23 +166,28 @@ async def test_token():
 async def seed_admin():
     """Create initial admin user if none exists - ONE TIME USE ONLY"""
     db = get_database()
-    
+
     # Check if any admin exists
     existing_admin = await db.users.find_one({"role": "admin"})
     if existing_admin:
         raise HTTPException(status_code=400, detail="Admin already exists")
-    
+
+    try:
+        seed_password = get_admin_seed_password()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
     # Create default admin
     user_id = str(uuid.uuid4())
     admin_data = {
         "id": user_id,
         "email": "admin@veteran.dbty.co.uk",
-        "hashed_password": hash_password("ChangeThisPassword123!"),
+        "hashed_password": hash_password(seed_password),
         "role": "admin",
         "name": "Admin",
         "created_at": datetime.utcnow()
     }
-    
+
     await db.users.insert_one(admin_data)
     return {"message": "Admin user created", "email": "admin@veteran.dbty.co.uk"}
 
@@ -183,7 +196,12 @@ async def seed_admin():
 async def reset_admin_password():
     """Reset admin password - TEMPORARY ENDPOINT FOR RECOVERY"""
     db = get_database()
-    
+
+    try:
+        seed_password = get_admin_seed_password()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
     # Find admin user
     admin = await db.users.find_one({"email": "admin@veteran.dbty.co.uk"})
     if not admin:
@@ -192,32 +210,37 @@ async def reset_admin_password():
         admin_data = {
             "id": user_id,
             "email": "admin@veteran.dbty.co.uk",
-            "hashed_password": hash_password("ChangeThisPassword123!"),
+            "hashed_password": hash_password(seed_password),
             "role": "admin",
             "name": "Admin",
             "created_at": datetime.utcnow()
         }
         await db.users.insert_one(admin_data)
-        return {"message": "Admin user created", "email": "admin@veteran.dbty.co.uk", "password": "ChangeThisPassword123!"}
-    
+        return {"message": "Admin user created", "email": "admin@veteran.dbty.co.uk"}
+
     # Reset password
     await db.users.update_one(
         {"email": "admin@veteran.dbty.co.uk"},
-        {"$set": {"hashed_password": hash_password("ChangeThisPassword123!"), "id": admin.get("id") or str(uuid.uuid4())}}
+        {"$set": {"hashed_password": hash_password(seed_password), "id": admin.get("id") or str(uuid.uuid4())}}
     )
-    return {"message": "Admin password reset", "email": "admin@veteran.dbty.co.uk", "password": "ChangeThisPassword123!"}
+    return {"message": "Admin password reset", "email": "admin@veteran.dbty.co.uk"}
 
 
 @router.post("/seed-staff")
 async def seed_staff():
     """Create initial staff users - ONE TIME USE"""
     db = get_database()
-    
+
+    try:
+        seed_password = get_admin_seed_password()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
     staff_to_create = [
-        {"name": "Anthony Donnelly", "email": "Anthony@radiocheck.me", "role": "admin", "password": "ChangeThisPassword123!"},
-        {"name": "Rachel Webster", "email": "Rachel@radiocheck.me", "role": "admin", "password": "ChangeThisPassword123!"},
+        {"name": "Anthony Donnelly", "email": "Anthony@radiocheck.me", "role": "admin"},
+        {"name": "Rachel Webster", "email": "Rachel@radiocheck.me", "role": "admin"},
     ]
-    
+
     created = []
     for staff in staff_to_create:
         # Check if exists
@@ -225,20 +248,20 @@ async def seed_staff():
         if existing:
             created.append({"email": staff["email"], "status": "already exists"})
             continue
-        
+
         user_id = str(uuid.uuid4())
         user_data = {
             "id": user_id,
             "email": staff["email"].lower(),
-            "hashed_password": hash_password(staff["password"]),
+            "hashed_password": hash_password(seed_password),
             "role": staff["role"],
             "name": staff["name"],
             "created_at": datetime.utcnow()
         }
         await db.users.insert_one(user_data)
         created.append({"email": staff["email"], "name": staff["name"], "role": staff["role"], "status": "created"})
-    
-    return {"created": created, "default_password": "ChangeThisPassword123!"}
+
+    return {"created": created}
 
 
 @router.get("/list-all-users")

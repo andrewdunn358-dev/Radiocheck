@@ -16,7 +16,7 @@ STAFF_USER = {
 
 ADMIN_USER = {
     "email": "admin@veteran.dbty.co.uk",
-    "password": "ChangeThisPassword123!"
+    "password": os.environ["TEST_ADMIN_PASSWORD"]
 }
 
 

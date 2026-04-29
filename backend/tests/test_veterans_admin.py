@@ -19,7 +19,7 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://radio-check-safety-1
 
 # Test credentials from main agent
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"
-ADMIN_PASSWORD = "ChangeThisPassword123!"
+ADMIN_PASSWORD = os.environ["TEST_ADMIN_PASSWORD"]  # set via CI repo secret
 
 
 class TestHealthAndBasics:

@@ -17,7 +17,7 @@ BASE_URL = BASE_URL.rstrip('/')
 
 # Admin credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"
-ADMIN_PASSWORD = "ChangeThisPassword123!"
+ADMIN_PASSWORD = os.environ["TEST_ADMIN_PASSWORD"]  # set via CI repo secret
 
 
 class TestLiveChatAPI:

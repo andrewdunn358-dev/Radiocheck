@@ -18,7 +18,7 @@ if not BASE_URL:
 
 # Admin credentials for testing
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"
-ADMIN_PASSWORD = "ChangeThisPassword123!"
+ADMIN_PASSWORD = os.environ["TEST_ADMIN_PASSWORD"]  # set via CI repo secret
 
 # Staff credentials
 STAFF_EMAIL = "sarahm.counsellor@radiocheck.me"
