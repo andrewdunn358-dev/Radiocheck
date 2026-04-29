@@ -18,6 +18,14 @@
 /backend/routers/buddy_finder.py    @andrewdunn358-dev @TheAIOldtimer
 /backend/routers/compliance.py      @andrewdunn358-dev @TheAIOldtimer
 
+# Round 10 regression test harness — pinned end-to-end behaviour of the safety
+# pipeline against the Zentrafuge S001–S009 adversarial fixtures. A change to
+# any test_round10_* file weakens or strengthens the regression baseline, so
+# it goes through the same code-owners as the safety stack itself. Phase D
+# will populate this glob with the per-fixture pytest harness; Phase B's
+# verdict-reconciler tests live here too (named test_round10_phase_b_*.py).
+/backend/tests/test_round10_*.py    @andrewdunn358-dev @TheAIOldtimer
+
 # Self-ownership — CODEOWNERS is itself a security-critical file.
 # Any change here could silently remove review gates from safety code, so
 # CODEOWNERS edits auto-request review from the same owners as the safety stack.
