@@ -1415,88 +1415,17 @@ session_risk_history: Dict[str, List[Dict]] = {}
 
 # First-person overdose-as-self-harm patterns. If ANY match, the message is
 # treated as genuine crisis and the RED indicator is preserved unchanged.
-_OVERDOSE_FIRST_PERSON_PATTERNS = [
-    "i took an overdose", "i took overdose", "took an overdose",
-    "i'm going to take an overdose", "im going to take an overdose",
-    "going to take an overdose", "going to overdose", "going to od",
-    "thinking about an overdose", "thinking about overdose",
-    "thinking of an overdose", "thinking of overdose",
-    "considering an overdose", "considering overdose",
-    "planning an overdose", "planning overdose",
-    "want to overdose", "want to od",
-    "i overdosed", "i'd overdose", "id overdose",
-    "i could overdose", "i might overdose",
-    "have an overdose", "having an overdose",
-    "my overdose", "my own overdose",
-]
-
-# Bereavement / loss-of-other signals. Per Section 4.1 — if any of these are
-# present alongside "overdose" (and no first-person crisis pattern matched),
-# the message is a grief disclosure, not a crisis.
-_OVERDOSE_GRIEF_SIGNALS = [
-    # Loss verbs
-    "lost", "died", "passed away", "passed", "gone",
-    # Funeral / death context
-    "funeral", "buried", "wake",
-    # Relations (the other person who died) — veteran register
-    "mate", "friend", "buddy", "brother", "sister",
-    "wife", "husband", "partner", "ex-wife", "ex-husband",
-    "dad", "mum", "father", "mother", "son", "daughter",
-    "uncle", "aunt", "cousin", "nephew", "niece",
-    "best mate", "old mate", "oppo",
-    "comrade", "lad",
-    # Round 9 follow-up: Blue Light Support (police) bereavement register.
-    # A Blue Light officer's bereavement disclosure can use language the
-    # veteran list does not catch. Same override semantics — these only
-    # suppress when "overdose" also matches AND no first-person crisis
-    # pattern is present (which is checked first).
-    "colleague", "colleagues",
-    "crewmate", "crew mate",
-    "shift mate", "shift partner",
-    "crewed with", "crewed",
-    "team mate", "teammate",
-    # Line-of-duty / on-duty death context
-    "on duty", "on the job", "line of duty", "in the line of duty",
-    # Police-specific rank references (distinctive forms only — no
-    # bare-letter abbreviations that would risk false matches)
-    "sergeant", "sgt", "inspector", "dci",
-    "detective sergeant", "detective inspector", "detective constable",
-    # Third-person took-own-life construction (bereavement by suicide;
-    # may co-occur with "overdose" e.g. "took his own life from an overdose")
-    "took his own life", "took her own life", "took their own life",
-    "took his life", "took her life",
-    # Temporal (past)
-    "last year", "years ago", "months ago", "weeks ago",
-    "two years ago", "five years ago", "ten years ago",
-    "since he", "since she", "since they",
-    "after he", "after she", "after they",
-    # Longing
-    "miss him", "miss her", "miss them",
-    "missing him", "missing her", "missing them",
-    # "lost X to an overdose" / "died of an overdose" constructions
-    "to an overdose", "to overdose", "from an overdose", "from overdose",
-    "of an overdose", "of overdose",
-]
+# Round 10 Phase B: _OVERDOSE_FIRST_PERSON_PATTERNS and _OVERDOSE_GRIEF_SIGNALS
+# have been relocated to backend/safety/verdict_reconciler.py — sole canonical
+# home. See PHASE_B_PR_DRAFT.md v2.
 
 
-def is_overdose_bereavement_context(message_lower: str) -> bool:
-    """
-    Round 9 Item 1: Detect bereavement context for the "overdose" RED indicator.
-
-    Returns True ONLY when:
-      - the message contains a grief/loss-of-other signal, AND
-      - no first-person overdose-as-crisis pattern is present.
-
-    First-person crisis takes precedence so genuine self-harm disclosure
-    continues to escalate exactly as before.
-    """
-    for pattern in _OVERDOSE_FIRST_PERSON_PATTERNS:
-        if pattern in message_lower:
-            return False
-    for signal in _OVERDOSE_GRIEF_SIGNALS:
-        if signal in message_lower:
-            return True
-    return False
+# ===== ROUND 10 PHASE B: bereavement-context detector + supporting constants
+# have been relocated to backend/safety/verdict_reconciler.py (sole canonical
+# home). The override no longer lives inside calculate_safeguarding_score —
+# instead, buddy_chat() calls reconcile_verdicts() once after the unified
+# safety pipeline runs, and the precedence table there decides whether the
+# bereavement override fires. See /app/memory/PHASE_B_PR_DRAFT.md v2.
 
 
 def calculate_safeguarding_score(message: str, session_id: str, character_id: str = None, protocol_files: list = None) -> Dict[str, Any]:
@@ -1504,9 +1433,14 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
     Calculate safeguarding risk score using weighted indicators.
     Now includes Anthony's negation detection to reduce false positives.
     Now includes character-context awareness for appropriate exemptions.
-    Round 9 Item 1: bereavement-context override for the "overdose" indicator.
     When identity.md is active, raises accumulated-score RED threshold by 40.
     Returns: {score, risk_level, triggered_indicators, is_red_flag}
+
+    Round 10: the bereavement-context override that previously lived in this
+    function has been moved to safety/verdict_reconciler.py and is applied at
+    the chat-endpoint level via reconcile_verdicts(). This function continues
+    to produce the legacy weighted-indicators verdict consumed by
+    check_safeguarding for AMBER/YELLOW/protocol routing.
     """
     message_lower = message.lower()
     
@@ -6407,7 +6341,31 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             character=character,
             is_under_18=request.is_under_18
         )
-        
+
+        # === ROUND 10 PHASE B: VERDICT RECONCILER ===
+        # The unified pipeline produces both a keyword/failsafe verdict and an
+        # AI-classifier verdict. Pre-Round-10 the chat endpoint consumed only
+        # the keyword failsafe, so the Round 9 bereavement override (which
+        # lived in calculate_safeguarding_score) was bypassed.
+        #
+        # Phase B routes both verdicts through reconcile_verdicts(), which
+        # applies the precedence table documented in safety/verdict_reconciler.py
+        # and returns a single FinalVerdict that buddy_chat consumes from here on.
+        # See /app/memory/PHASE_B_PR_DRAFT.md v2.
+        from safety.verdict_reconciler import (
+            extract_verdicts_from_unified,
+            reconcile_verdicts,
+        )
+        kw_verdict, cls_verdict, cls_error = extract_verdicts_from_unified(unified_safety)
+        final_verdict = reconcile_verdicts(
+            keyword=kw_verdict,
+            classifier=cls_verdict,
+            message_lower=safeguarding_text.lower(),
+            classifier_error=cls_error,
+            session_id=request.sessionId,
+            character=character,
+        )
+
         # Log the unified safety analysis for debugging
         logging.info(
             f"UNIFIED SAFETY - Session: {request.sessionId[:12]}, "
@@ -6416,12 +6374,16 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             f"Trend: {unified_safety.get('risk_trend')}, "
             f"MsgCount: {unified_safety.get('message_count')}, "
             f"Patterns: {unified_safety.get('detected_patterns', [])}, "
-            f"Escalating: {unified_safety.get('is_escalating')}"
+            f"Escalating: {unified_safety.get('is_escalating')}, "
+            f"ReconcilerRule: {final_verdict.precedence_rule_fired}"
         )
-        
+
         # Check for hard fail-safe (method requests, validation of suicidal intent)
         # BUT: Check for negation first. "not gonna kil meself" should NOT trigger failsafe.
-        failsafe_should_fire = unified_safety.get("failsafe_triggered") or unified_safety.get("block_ai_response")
+        # Round 10 Phase B: failsafe decision now reads from final_verdict (reconciled),
+        # not from unified_safety (raw). The reconciler has already applied the
+        # bereavement-context override where applicable.
+        failsafe_should_fire = final_verdict.failsafe_triggered
         
         # === NEGATION DETECTION (applies to BOTH failsafe AND risk-level upgrade) ===
         # If the user explicitly negates suicidal intent, ALL safety escalation
@@ -6472,8 +6434,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 failsafe_should_fire = False
         
         if failsafe_should_fire:
-            failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
-            logging.warning(f"HARD FAILSAFE TRIGGERED - Session: {request.sessionId[:12]} - Reason: {failsafe_reason}")
+            failsafe_reason = final_verdict.failsafe_reason or "unknown"
+            logging.warning(
+                f"HARD FAILSAFE TRIGGERED - Session: {request.sessionId[:12]} - "
+                f"Reason: {failsafe_reason} - "
+                f"ReconcilerRule: {final_verdict.precedence_rule_fired}"
+            )
             
             # ===== CREATE SAFEGUARDING ALERT FOR FAILSAFE =====
             # This is critical - we MUST create the alert before returning
