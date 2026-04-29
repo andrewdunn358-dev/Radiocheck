@@ -430,4 +430,143 @@ Once approved, I open the PR with code matching this design exactly. If the desi
 
 ---
 
+## Implementation note — server.py repair
+
+**Disclosure for Ant's review:** during the Phase B implementation, while editing
+`server.py` to delete the duplicate bereavement override and wire the reconciler
+into `buddy_chat()`, the file went through an editor-tooling mishap that needs
+to be visible in this PR description rather than buried in the diff.
+
+### What happened
+
+A `search_replace` operation hit a near-miss boundary and produced a corrupted
+working tree. The corruption shape was:
+
+1. **Truncated assignment line.** The line
+   `WEBSITE_IMAGES_PATH = Path(__file__).parent.parent / "website" / "images"`
+   lost its `WEBSITE_IMAGES_PATH = Path(__file__).p` prefix and became the
+   syntactically-broken `arent.parent / "website" / "images"`. Backend would
+   not start: `NameError: name 'arent' is not defined`.
+
+2. **Duplicated tail block.** The trailing portion of `server.py` —
+   covering the static-file mounts (`/images`, `/api/docs`, `/api/reports`),
+   the debrief / bluelight / tenant-config endpoints, and the
+   `_fastapi_app = app; socket_app = …; app = socket_app` ASGI-setup block —
+   was duplicated. The duplicate copy was placed *after* `app = socket_app`,
+   so its `app.mount(...)` calls were targeting the `socketio.ASGIApp` object,
+   which has no `.mount()` method. Backend would not start:
+   `AttributeError: 'ASGIApp' object has no attribute 'mount'`.
+
+### What was repaired
+
+Surgical, scoped to the corruption:
+
+- **Truncation fix:** restored the `WEBSITE_IMAGES_PATH = Path(__file__).parent.parent / "website" / "images"` line to its HEAD form.
+- **Duplicate removal:** deleted the second copy of the mount block, the second copy of the three endpoint definitions, and the second copy of the ASGI-setup block. The remaining single copy of each is byte-identical to HEAD.
+
+### Diff breakdown — Phase B work vs repair work
+
+The `server.py` diff in this PR contains both. To make Ant's review easier, here
+is the line-by-line accounting:
+
+**Phase B (intentional design work):**
+- Delete `is_overdose_bereavement_context()` function (relocated to
+  `safety/verdict_reconciler.py`).
+- Delete `_OVERDOSE_FIRST_PERSON_PATTERNS` and `_OVERDOSE_GRIEF_SIGNALS` lists
+  (relocated to `safety/verdict_reconciler.py`).
+- Delete the `if indicator == "overdose" and is_overdose_bereavement_context(...)`
+  override block inside `calculate_safeguarding_score`.
+- Update `calculate_safeguarding_score` docstring to note the override has
+  moved.
+- Inside `buddy_chat()`: import `extract_verdicts_from_unified` and
+  `reconcile_verdicts`; call them once after `analyze_message_unified`; gate
+  `failsafe_should_fire` on `final_verdict.failsafe_triggered`; update logging
+  to include `final_verdict.precedence_rule_fired`.
+- Replace `failsafe_reason = unified_safety.get("failsafe_reason", "unknown")`
+  with `failsafe_reason = final_verdict.failsafe_reason or "unknown"`.
+
+**Repair (no intentional design content):**
+- Restoration of the `WEBSITE_IMAGES_PATH` assignment line.
+- Removal of the duplicated mount calls, duplicated endpoint definitions, and
+  duplicated ASGI-setup block at end-of-file.
+
+The repair touched **no safety logic, no auth logic, no JWT logic, no
+chat-endpoint logic, and no persona/tenant logic**. It only restored the
+end-of-file structure to match the HEAD checkpoint of `main` plus the
+intentional Phase B edits.
+
+### Verification after repair
+
+- Backend starts cleanly: `INFO: Application startup complete.` in
+  `/var/log/supervisor/backend.err.log`.
+- `GET /api/` returns 200 with the expected banner.
+- All 18 unit tests in `tests/test_round10_phase_b_reconciler.py` pass.
+- `git diff --stat backend/server.py` shows 53 insertions / 87 deletions
+  (net −34 lines), consistent with "delete bereavement duplicate + add
+  reconciler call site, all other content unchanged".
+- File ends at the single canonical `app = socket_app` line on 8813.
+
+If any of the diff hunks look unfamiliar to you on review, that's almost
+certainly the repair — happy to walk it line by line if helpful.
+
+---
+
+## Preview-environment smoke test outcome
+
+Preview-environment smoke testing exercised Rule 0 (`CLASSIFIER_UNAVAILABLE`)
+due to revoked preview OpenAI key. The `CONTEXT_OVERRIDE` happy path is verified
+via unit tests but will only fire end-to-end against the production OpenAI key.
+Round 10 human re-test by Zentrafuge will be the first end-to-end verification
+of bereavement-context suppression on live messages.
+
+Concretely, when running the three canonical fixtures (S009-A, S009-B, CTRL)
+through the full `analyze_message_unified` → `extract_verdicts_from_unified` →
+`reconcile_verdicts` chain in this preview environment, the audit log emitted
+the following for every fixture:
+
+```json
+{"evt": "round10.reconcile", ..., "rule": "CLASSIFIER_UNAVAILABLE",
+ "reason": "classifier_returned_none", "cls": null, ...}
+```
+
+The classifier inside `analyze_message_unified` raised a 401 against the
+revoked OpenAI key, the unified pipeline recorded `ai_classification.error`,
+the reconciler treated it as Rule 0, and the keyword pipeline's verdict was
+preserved as the final verdict. **Failure mode behaved exactly as designed**
+— no silent degradation, no service interruption, audit-logged at WARNING with
+a named reason.
+
+What this means for Ant's review:
+
+- **`CONTEXT_OVERRIDE` (the bereavement override path) is not exercisable
+  end-to-end in this preview environment.** It's covered by 8 of the 18 unit
+  tests (the ones that pin the precedence table directly), but the live
+  S009-A / S009-B fixtures fall through to Rule 0 in preview, not Rule 1.
+
+- **`KEYWORD_FAILSAFE` (the genuine-crisis baseline) is not directly
+  exercisable end-to-end either** for the same reason — Rule 0 fires before
+  Rule 2 has a chance to. But the regression baseline (control case still
+  blocks the AI response) holds because Rule 0 also defers to the keyword
+  pipeline, so the user-visible behaviour for `CTRL` is identical (failsafe
+  fires, crisis response returned).
+
+- **The first true end-to-end verification of `CONTEXT_OVERRIDE` will be on
+  production**, where the rotated OpenAI key is live. Ant's Round 10 human
+  re-test (S004 / S005 / S008 / S009 from the Zentrafuge re-test) will be the
+  first time the override fires under real conditions on real adversarial
+  inputs. The unit-test coverage in this PR pins the precedence-table
+  semantics; the human re-test confirms the field behaviour.
+
+This is not an argument to defer the merge. It's an argument to expect Ant
+to test S009 specifically and report whether the override fires on first
+contact. If it doesn't, the diagnostic is straightforward: tail the
+`safety.reconciler` log for `"rule": "CONTEXT_OVERRIDE"` lines on his test
+session, and if they're absent, walk the precedence table top-down to find
+where it stopped (most likely candidates: classifier confidence below
+threshold, classifier reporting `contains_self_harm_intent: true` for a
+borderline phrasing, or the message wording falling outside the bereavement
+detector's pattern list — all reproducible from the audit log).
+
+---
+
 *Drafted while waiting on Andrew's CODEOWNERS branch-protection confirmation, per the Round 10 brief's "(a) Draft the Phase B PR description and architectural rationale" instruction. No code has been written for Phase B in this session.*
