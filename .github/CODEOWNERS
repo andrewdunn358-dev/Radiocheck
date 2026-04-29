@@ -17,3 +17,8 @@
 /backend/routers/lms.py             @andrewdunn358-dev @TheAIOldtimer
 /backend/routers/buddy_finder.py    @andrewdunn358-dev @TheAIOldtimer
 /backend/routers/compliance.py      @andrewdunn358-dev @TheAIOldtimer
+
+# Self-ownership — CODEOWNERS is itself a security-critical file.
+# Any change here could silently remove review gates from safety code, so
+# CODEOWNERS edits auto-request review from the same owners as the safety stack.
+/.github/CODEOWNERS                 @andrewdunn358-dev @TheAIOldtimer
