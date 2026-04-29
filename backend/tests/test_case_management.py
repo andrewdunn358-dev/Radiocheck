@@ -23,9 +23,9 @@ BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://radio-check-safety
 
 # Test credentials
 ADMIN_EMAIL = "admin@veteran.dbty.co.uk"
-ADMIN_PASSWORD = "ChangeThisPassword123!"
+ADMIN_PASSWORD = os.environ["TEST_ADMIN_PASSWORD"]  # set via CI repo secret
 STAFF_EMAIL = "sharon@radiocheck.me"
-STAFF_PASSWORD = "ChangeThisPassword123!"
+STAFF_PASSWORD = os.environ["TEST_ADMIN_PASSWORD"]  # set via CI repo secret
 
 
 @pytest.fixture(scope="module")

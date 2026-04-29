@@ -24,12 +24,12 @@ BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://radio-check-safety
 # Test credentials
 ADMIN_CREDENTIALS = {
     "email": "admin@veteran.dbty.co.uk",
-    "password": "ChangeThisPassword123!"
+    "password": os.environ["TEST_ADMIN_PASSWORD"]
 }
 
 STAFF_CREDENTIALS = {
     "email": "sharon@radiocheck.me",
-    "password": "ChangeThisPassword123!"
+    "password": os.environ["TEST_ADMIN_PASSWORD"]
 }
 
 

@@ -28,7 +28,7 @@ class TestStaffAuthentication:
         """Test that sharon@radiocheck.me can log in"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "sharon@radiocheck.me",
-            "password": "ChangeThisPassword123!"
+            "password": os.environ["TEST_ADMIN_PASSWORD"]
         })
         
         # Should return 200 with token
@@ -44,7 +44,7 @@ class TestStaffAuthentication:
         """Test admin login works"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@veteran.dbty.co.uk",
-            "password": "ChangeThisPassword123!"
+            "password": os.environ["TEST_ADMIN_PASSWORD"]
         })
         
         assert response.status_code == 200
@@ -61,7 +61,7 @@ class TestSafeguardingAlertsAPI:
         """Get authentication token for staff"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "sharon@radiocheck.me",
-            "password": "ChangeThisPassword123!"
+            "password": os.environ["TEST_ADMIN_PASSWORD"]
         })
         if response.status_code == 200:
             return response.json().get("token")

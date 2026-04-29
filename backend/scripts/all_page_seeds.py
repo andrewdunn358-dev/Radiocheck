@@ -8,8 +8,12 @@ Run: python3 /app/backend/scripts/all_page_seeds.py
 import requests, os, json, sys
 
 API_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://radio-check-safety-1.preview.emergentagent.com")
+ADMIN_PASSWORD = os.environ.get("ADMIN_SEED_PASSWORD")
+if not ADMIN_PASSWORD:
+    print("ADMIN_SEED_PASSWORD env var not set — required for this script", file=sys.stderr)
+    sys.exit(2)
 # Login
-r = requests.post(f"{API_URL}/api/auth/login", json={"email": "admin@veteran.dbty.co.uk", "password": "ChangeThisPassword123!"})
+r = requests.post(f"{API_URL}/api/auth/login", json={"email": "admin@veteran.dbty.co.uk", "password": ADMIN_PASSWORD})
 token = r.json().get("token")
 if not token:
     print("Login failed:", r.json())

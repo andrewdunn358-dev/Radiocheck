@@ -94,9 +94,9 @@ async def get_current_user(request: Request):
     
     # Decode and verify the JWT token
     import jwt
+    from auth_config import get_jwt_secret
     try:
-        # Get the secret key from environment (same as server.py)
-        jwt_secret = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+        jwt_secret = get_jwt_secret()
         payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
         user_id = payload.get("sub")
         

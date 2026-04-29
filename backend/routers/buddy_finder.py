@@ -32,13 +32,10 @@ SERVICE_BRANCHES = [
 async def get_current_user_from_token(token: str):
     """Helper to decode JWT and get user"""
     import jwt
-    import os
-    
-    def get_secret():
-        return os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
-    
+    from auth_config import get_jwt_secret
+
     try:
-        payload = jwt.decode(token, get_secret(), algorithms=["HS256"])
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=["HS256"])
         return payload.get("sub")
     except Exception:
         return None

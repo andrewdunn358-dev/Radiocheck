@@ -21,11 +21,11 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://radio-check-safety-1
 # Test credentials
 ADMIN_CREDS = {
     "email": "admin@veteran.dbty.co.uk",
-    "password": "ChangeThisPassword123!"
+    "password": os.environ["TEST_ADMIN_PASSWORD"]
 }
 STAFF_CREDS = {
     "email": "sharon@radiocheck.me",
-    "password": "ChangeThisPassword123!"
+    "password": os.environ["TEST_ADMIN_PASSWORD"]
 }
 
 

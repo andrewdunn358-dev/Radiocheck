@@ -1,13 +1,10 @@
-# Safeguarding-critical files — require review before merge
-# These files carry "DO NOT MODIFY" headers and must not be changed
-# without explicit sign-off from the safety testing team.
+# Safeguarding-critical files — require code-owner review before merge.
+# Branch protection is live on `main` (Round 10 prerequisite, enabled April 2026).
+# Direct pushes to `main` are blocked. All changes to the paths below auto-request
+# review from the listed code-owners and cannot merge without their approval.
 #
-# NOTE: Branch protection must be enabled manually in GitHub settings
-# for CODEOWNERS to be enforced. Until then this file is documentation only.
-# To enable: Repo Settings → Branches → Add rule on "main" →
-#   ✓ Require pull request reviews before merging
-#   ✓ Require review from Code Owners
-# This is NOT urgent — enable when ready to scale, not before.
+# To modify the owners list or paths, open a PR — this file is itself owned by
+# the same code-owners (any change here requires their review).
 
 /backend/safety/                    @andrewdunn358-dev @zentrafuge @TheAIOldtimer
 /backend/protocols/                 @andrewdunn358-dev @zentrafuge @TheAIOldtimer

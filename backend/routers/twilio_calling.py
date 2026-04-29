@@ -29,15 +29,22 @@ TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 TWILIO_API_KEY_SID = os.environ.get('TWILIO_API_KEY_SID')
 TWILIO_API_KEY_SECRET = os.environ.get('TWILIO_API_KEY_SECRET')
 TWILIO_TWIML_APP_SID = os.environ.get('TWILIO_TWIML_APP_SID')
-TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER', '+447446402523')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
 
 # Initialize Twilio client
 twilio_client = None
-if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER:
     twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
     logger.info("Twilio client initialized successfully")
 else:
-    logger.warning("Twilio credentials not configured - calling features disabled")
+    missing = [
+        n for n, v in [
+            ("TWILIO_ACCOUNT_SID", TWILIO_ACCOUNT_SID),
+            ("TWILIO_AUTH_TOKEN", TWILIO_AUTH_TOKEN),
+            ("TWILIO_PHONE_NUMBER", TWILIO_PHONE_NUMBER),
+        ] if not v
+    ]
+    logger.warning(f"Twilio credentials not configured ({', '.join(missing)} missing) - calling features disabled")
 
 
 class TokenResponse(BaseModel):
