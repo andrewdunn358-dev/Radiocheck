@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'backend_test.py'
   pull_request:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'backend_test.py'
 
 jobs:
   safety-tests:

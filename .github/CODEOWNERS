@@ -2,12 +2,23 @@
 # Branch protection is live on `main` (Round 10 prerequisite, enabled April 2026).
 # Direct pushes to `main` are blocked. All changes to the paths below auto-request
 # review from the listed code-owners and cannot merge without their approval.
-#
-# To modify the owners list or paths, open a PR — this file is itself owned by
-# the same code-owners (any change here requires their review).
 
-/backend/safety/                    @andrewdunn358-dev @zentrafuge @TheAIOldtimer
-/backend/protocols/                 @andrewdunn358-dev @zentrafuge @TheAIOldtimer
-/backend/personas/soul.md           @andrewdunn358-dev @zentrafuge @TheAIOldtimer
-/backend/personas/soul_loader.py    @andrewdunn358-dev @zentrafuge @TheAIOldtimer
-/backend/enhanced_safety_layer.py   @andrewdunn358-dev @zentrafuge @TheAIOldtimer
+/backend/safety/                    @andrewdunn358-dev @TheAIOldtimer
+/backend/protocols/                 @andrewdunn358-dev @TheAIOldtimer
+/backend/personas/soul.md           @andrewdunn358-dev @TheAIOldtimer
+/backend/personas/soul_loader.py    @andrewdunn358-dev @TheAIOldtimer
+/backend/enhanced_safety_layer.py   @andrewdunn358-dev @TheAIOldtimer
+
+# Authentication & session-bearing routers — added Round 10.
+# These files sign or verify JWTs, manage admin/seed flows, or read JWT_SECRET_KEY,
+# so a regression here is a session-integrity issue. Owned same as the safety stack.
+/backend/auth_config.py             @andrewdunn358-dev @TheAIOldtimer
+/backend/routers/auth.py            @andrewdunn358-dev @TheAIOldtimer
+/backend/routers/lms.py             @andrewdunn358-dev @TheAIOldtimer
+/backend/routers/buddy_finder.py    @andrewdunn358-dev @TheAIOldtimer
+/backend/routers/compliance.py      @andrewdunn358-dev @TheAIOldtimer
+
+# Self-ownership — CODEOWNERS is itself a security-critical file.
+# Any change here could silently remove review gates from safety code, so
+# CODEOWNERS edits auto-request review from the same owners as the safety stack.
+/.github/CODEOWNERS                 @andrewdunn358-dev @TheAIOldtimer
