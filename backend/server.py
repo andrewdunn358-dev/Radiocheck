@@ -1558,19 +1558,16 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
                 negated_indicators.append({"indicator": indicator, "reason": "negated"})
                 continue  # Skip this indicator - it was negated
 
-            # ===== ROUND 9 ITEM 1: OVERDOSE BEREAVEMENT CONTEXT OVERRIDE =====
-            # When "overdose" appears alongside grief signals (loss-of-other) and
-            # there's no first-person crisis pattern, this is a bereavement
-            # disclosure, not a crisis. Suppress the indicator's score
-            # contribution and emit an auditable OVERRIDE entry.
-            if indicator == "overdose" and is_overdose_bereavement_context(message_lower):
-                triggered.append({
-                    "indicator": "overdose",
-                    "weight": 0,
-                    "level": "OVERRIDE",
-                    "reason": "bereavement_context",
-                })
-                continue
+            # ===== ROUND 10 PHASE B HOTFIX (Defect #1) =====
+            # The legacy bereavement-context override that lived here previously
+            # has been removed. The override is applied centrally by
+            # safety.verdict_reconciler.reconcile_verdicts() at the chat-endpoint
+            # level (see server.py buddy_chat). Keeping a duplicate here was
+            # both architecturally redundant and the source of the production
+            # NameError discovered post-Phase-B-merge: this function does not
+            # import is_overdose_bereavement_context, and the deferred import
+            # in buddy_chat does not bind into this module's namespace.
+            # See feat/round10-phase-b-hotfix-orphan-import for full rationale.
 
             score += weight
             triggered.append({"indicator": indicator, "weight": weight, "level": "RED"})
