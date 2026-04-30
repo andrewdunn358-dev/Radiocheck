@@ -18,10 +18,15 @@ import pytest
 # Make /app/backend importable when running pytest from repo root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from server import (  # noqa: E402
-    calculate_safeguarding_score,
-    is_overdose_bereavement_context,
-)
+from server import calculate_safeguarding_score  # noqa: E402
+
+# Round 10 Phase B hotfix (feat/round10-phase-b-hotfix-orphan-import):
+# is_overdose_bereavement_context was relocated from server.py into
+# safety.verdict_reconciler as part of Phase B. The original Phase B PR
+# updated the production call sites but left this test importing from the
+# old location, causing pytest collection to fail with ImportError.
+# Fixing here as part of the orphan-cleanup scope.
+from safety.verdict_reconciler import is_overdose_bereavement_context  # noqa: E402
 
 
 # ---------- BEREAVEMENT CONTEXT (must be suppressed) ----------
