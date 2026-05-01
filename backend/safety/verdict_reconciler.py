@@ -36,6 +36,7 @@ Precedence (top wins)
 import hashlib
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -482,6 +483,57 @@ def _max_risk_level(a: str, b: str) -> str:
 # ADAPTER: extract typed verdicts from analyze_message_unified() output
 # ============================================================================
 
+_TRIGGER_LABEL_RE = re.compile(
+    r"""^
+        (?:critical|high|medium|ideation)   # severity tag
+        :\s*'(?P<phrase>[^']+)'             # quoted matched phrase
+        $""",
+    re.VERBOSE,
+)
+_MULTIPLIER_LABEL_RE = re.compile(r"^multiplier:\s*(?P<category>\S.*?)\s*$")
+
+
+def _normalise_trigger_label(label: str) -> str:
+    """
+    Strip safety_monitor's display labels back to bare keyword names so the
+    reconciler can compare them against RECONCILABLE_KEYWORD_TRIGGERS.
+
+    Round 10 Phase B hotfix (Option α): safety_monitor.assess_message_safety
+    returns triggers in human-readable label form, e.g.
+        "critical: 'overdose'"      → "overdose"
+        "critical: 'overdose on'"   → "overdose on"
+        "high: 'kill myself'"       → "kill myself"
+        "medium: 'cant cope'"       → "cant cope"
+        "ideation: 'end it all'"    → "end it all"
+        "multiplier: pills"         → "pills"
+        "pattern: persistent depression" → "pattern: persistent depression"
+                                          (passthrough; not a keyword trigger)
+
+    Unknown formats fall through unchanged. Reconciler Rule 1 then decides
+    whether the resulting bare name is in RECONCILABLE_KEYWORD_TRIGGERS.
+
+    Whitespace inside multi-word phrases is preserved so multi-token matches
+    like "overdose on" can be added to RECONCILABLE_KEYWORD_TRIGGERS verbatim
+    by future PRs without re-touching the parser.
+
+    safety_monitor.py's contract is unchanged; this normaliser lives entirely
+    inside the reconciler's adapter, which is the function whose declared
+    job is "convert the dict into the typed inputs the reconciler expects".
+    """
+    if not isinstance(label, str):
+        return label
+
+    m = _TRIGGER_LABEL_RE.match(label)
+    if m is not None:
+        return m.group("phrase").strip().lower()
+
+    m = _MULTIPLIER_LABEL_RE.match(label)
+    if m is not None:
+        return m.group("category").strip().lower()
+
+    return label
+
+
 def extract_verdicts_from_unified(
     unified_result: dict,
 ) -> tuple[KeywordVerdict, Optional[ClassifierVerdict], Optional[BaseException]]:
@@ -495,8 +547,13 @@ def extract_verdicts_from_unified(
     an error in the unified result. The reconciler treats None and malformed
     output as CLASSIFIER_UNAVAILABLE (Rule 0).
     """
-    # Keyword side — derive triggers from keyword_triggers + failsafe_reason
-    kw_triggers = list(unified_result.get("keyword_triggers") or [])
+    # Keyword side — derive triggers from keyword_triggers + failsafe_reason.
+    # Round 10 Phase B hotfix (Defect #2 / Option α): label strings emitted by
+    # safety_monitor (e.g. "critical: 'overdose'") are stripped back to bare
+    # keyword names so the reconciler can compare them against
+    # RECONCILABLE_KEYWORD_TRIGGERS. See _normalise_trigger_label.
+    raw_triggers = list(unified_result.get("keyword_triggers") or [])
+    kw_triggers = [_normalise_trigger_label(t) for t in raw_triggers]
     failsafe = bool(unified_result.get("failsafe_triggered"))
     failsafe_reason = unified_result.get("failsafe_reason")
 

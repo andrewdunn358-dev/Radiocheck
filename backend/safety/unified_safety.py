@@ -118,7 +118,13 @@ def analyze_message_unified(
     # =========================================================================
     keyword_result = assess_message_safety(message)
     keyword_score = _risk_level_to_score(keyword_result.get("risk_level", "none"))
-    keyword_triggers = keyword_result.get("matched_keywords", [])
+    # Round 10 Phase B hotfix (Defect #2): safety_monitor returns the field as
+    # `specific_triggers` (see safety_monitor.py:613), not `matched_keywords`.
+    # The pre-hotfix key was wrong, so keyword_triggers was always [], which
+    # silently disabled reconciler Rule 1 (CONTEXT_OVERRIDE). The label-string
+    # format (e.g. "critical: 'overdose'") is normalised back to bare keyword
+    # names by extract_verdicts_from_unified() in verdict_reconciler.py.
+    keyword_triggers = keyword_result.get("specific_triggers", [])
     
     # =========================================================================
     # LAYER 2: Semantic Similarity Analysis (New)

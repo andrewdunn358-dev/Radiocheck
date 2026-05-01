@@ -348,3 +348,163 @@ def test_final_verdict_is_immutable_frozen_dataclass():
     with pytest.raises(Exception):
         # frozen=True dataclass — must not be mutable in flight
         final.failsafe_triggered = True   # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Integration tests — drive analyze_message_unified() end-to-end and reconcile.
+#
+# Round 10 Phase B hotfix (feat/round10-phase-b-hotfix-orphan-import):
+# the unit tests above construct synthetic KeywordVerdict objects and so
+# cannot detect:
+#   - integration defects in the wiring between safety.unified_safety and
+#     safety.verdict_reconciler (Defect #2: wrong dict key in unified_safety,
+#     plus the label-format mismatch in safety_monitor's `specific_triggers`).
+#   - missing/orphan imports in the legacy keyword path (Defect #1: NameError
+#     at server.py:1566). Defect #1 is fixed by the deletion of that block;
+#     this hotfix PR could not regress it because the call site no longer
+#     exists. See feat/round10-phase-b-hotfix-orphan-import for context.
+#
+# These integration tests run the real safety_monitor, real unified_safety,
+# real extract_verdicts_from_unified, and real reconcile_verdicts. Only the
+# AI classifier is monkey-patched so CI does not require an OpenAI key.
+# ---------------------------------------------------------------------------
+
+from unittest.mock import patch  # noqa: E402
+
+from safety.unified_safety import analyze_message_unified  # noqa: E402
+from safety.verdict_reconciler import extract_verdicts_from_unified  # noqa: E402
+
+
+async def _fake_classifier_low_no_intent(message, conversation_history=None,
+                                          previous_sessions=None, use_cache=True):
+    """Stand-in for safety.ai_safety_classifier.classify_message_with_ai.
+    Returns a confident "no self-harm intent" verdict, matching the actual
+    GPT-4o output captured for r10_S009 fixtures (confidence=0.70)."""
+    return {
+        "ai_used": True,
+        "risk_level": "low",
+        "risk_score": 25,
+        "confidence": 0.70,
+        "contains_self_harm_intent": False,
+        "detected_indicators": [],
+        "reason": "bereavement disclosure, third-person loss",
+        "cached": False,
+        "processing_time_ms": 0,
+    }
+
+
+async def _fake_classifier_imminent_intent(message, conversation_history=None,
+                                            previous_sessions=None, use_cache=True):
+    """Stand-in classifier verdict for genuine first-person crisis."""
+    return {
+        "ai_used": True,
+        "risk_level": "imminent",
+        "risk_score": 95,
+        "confidence": 0.95,
+        "contains_self_harm_intent": True,
+        "detected_indicators": ["explicit_plan"],
+        "reason": "first-person crisis, method named",
+        "cached": False,
+        "processing_time_ms": 0,
+    }
+
+
+def _run_end_to_end(message: str, classifier_coro):
+    """Drive the real unified pipeline + reconciler and return FinalVerdict."""
+    with patch("safety.unified_safety.classify_message_with_ai",
+               new=classifier_coro):
+        unified = analyze_message_unified(
+            message=message,
+            session_id="it_" + message[:12],
+            user_id="it_" + message[:12],
+            character="tommy",
+            is_under_18=False,
+        )
+    kw, cls, err = extract_verdicts_from_unified(unified)
+    return reconcile_verdicts(
+        keyword=kw,
+        classifier=cls,
+        message_lower=message.lower(),
+        classifier_error=err,
+        session_id="it_" + message[:12],
+        character="tommy",
+    ), unified
+
+
+def test_integration_s009_b_drives_end_to_end_to_context_override():
+    """Round 10 S009_b regression baseline.
+
+    With the hotfix in place, the real keyword pipeline → real unified pipeline
+    → real reconciler chain must classify "lost my brother to an overdose…" as
+    a bereavement disclosure (CONTEXT_OVERRIDE), NOT a crisis.
+
+    Pre-hotfix this test would fail at TWO points:
+      1. unified_safety["keyword_triggers"] would be []  (Defect #2).
+      2. Even after #2, RECONCILABLE_KEYWORD_TRIGGERS={"overdose"} could not
+         match safety_monitor's labelled "critical: 'overdose'"  (Option α gap).
+
+    Post-hotfix the chain delivers final.precedence_rule_fired=="CONTEXT_OVERRIDE"
+    and failsafe_triggered=False — i.e. the user receives the persona's grief
+    response, not the crisis overlay.
+    """
+    final, unified = _run_end_to_end(S009_B_MSG, _fake_classifier_low_no_intent)
+
+    # Confirm Defect #2 is fixed: keyword_triggers populated.
+    assert unified.get("keyword_triggers"), (
+        "Phase B Defect #2 regression: unified_safety['keyword_triggers'] is "
+        "empty. Check unified_safety.py:121 reads 'specific_triggers' (the "
+        "key safety_monitor actually emits), not 'matched_keywords'."
+    )
+
+    # Confirm Option α is in place: trigger labels were stripped to bare names.
+    assert "overdose" in unified["keyword_triggers"][0] or any(
+        t == "overdose" for t in [
+            t.split(": '")[-1].rstrip("'") for t in unified["keyword_triggers"]
+        ]
+    ), "S009_b should match safety_monitor's 'overdose' critical keyword"
+
+    # The reconciler is the one decision the chat endpoint reads. This assert
+    # is the contract Round 10 closes against.
+    assert final.precedence_rule_fired == "CONTEXT_OVERRIDE", (
+        f"S009_b should fire CONTEXT_OVERRIDE; got {final.precedence_rule_fired}. "
+        f"reason={final.reconciliation_reason}"
+    )
+    assert final.failsafe_triggered is False
+    assert final.failsafe_reason is None
+
+
+def test_integration_ctrl_drives_end_to_end_to_keyword_failsafe():
+    """Round 10 CTRL regression baseline.
+
+    Genuine first-person overdose crisis must still fire KEYWORD_FAILSAFE.
+    The bereavement override must NEVER swallow a real disclosure of intent.
+
+    This is the more important of the two integration tests — false-negatives
+    on CTRL are a worse safety failure than false-positives on S009.
+
+    Note: the real safety_monitor matches BOTH 'overdose' (critical keyword)
+    AND 'pills' / 'means' (multiplier) for the CTRL fixture. After Option α
+    normalisation, kw.triggers contains both bare names. Reconciler Rule 1's
+    `all(t in RECONCILABLE_KEYWORD_TRIGGERS for t in keyword.triggers)` check
+    fails (multiplier not reconcilable), so Rule 2 KEYWORD_FAILSAFE wins —
+    which is the desired behaviour. Safer-by-default: any non-reconcilable
+    co-trigger blocks the override.
+    """
+    # Even with a (hypothetical) incorrect classifier verdict, KEYWORD_FAILSAFE
+    # must dominate. Use the imminent-intent classifier here — they should
+    # AGREE on this message — but the rule would also fire if the classifier
+    # were silent or low-confidence.
+    final, unified = _run_end_to_end(CTRL_MSG, _fake_classifier_imminent_intent)
+
+    assert unified.get("failsafe_triggered") is True
+    assert unified.get("keyword_triggers"), (
+        "Phase B Defect #2 regression: unified_safety['keyword_triggers'] is "
+        "empty. Check unified_safety.py:121."
+    )
+
+    assert final.precedence_rule_fired == "KEYWORD_FAILSAFE", (
+        f"CTRL must fire KEYWORD_FAILSAFE; got {final.precedence_rule_fired}. "
+        f"reason={final.reconciliation_reason}"
+    )
+    assert final.failsafe_triggered is True
+    assert final.risk_level == "IMMINENT"
