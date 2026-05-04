@@ -4578,15 +4578,29 @@ async def resolve_panic_alert(
 @api_router.get("/safeguarding-alerts")
 async def get_safeguarding_alerts(
     status: Optional[str] = None,
+    include_audit_only: bool = False,
     current_user: User = Depends(get_current_user)
 ):
-    """Get safeguarding alerts - all staff can view"""
+    """Get safeguarding alerts - all staff can view.
+
+    Round 10 Phase B² (alert-gate reconciler hotfix):
+    - audit_only alerts (legacy escalation suppressed by reconciler) are
+      excluded from the default response so they don't pollute the staff
+      queue with false positives (e.g. bereaved users on S009 fixtures).
+    - Pass ?include_audit_only=true to include them. Their `status` field is
+      preserved verbatim ("audit_only") so the staff portal can render them
+      with a distinct visual treatment.
+    - An explicit ?status=audit_only filter overrides the default exclusion.
+    """
     print(f"[SAFEGUARDING] get_safeguarding_alerts called by user={current_user.email}, role='{current_user.role}'")
     
     try:
         query = {}
         if status:
             query["status"] = status
+        elif not include_audit_only:
+            # Default: hide audit_only records from the active staff queue.
+            query["status"] = {"$ne": "audit_only"}
         
         # Get total count first for debugging
         total_count = await db.safeguarding_alerts.count_documents({})
@@ -6916,19 +6930,51 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_s
         
         # If safeguarding triggered (RED or AMBER), create alert and send notification
         if should_escalate:
-            print(f"[SAFEGUARDING ESCALATE] Creating alert - Session: {request.sessionId[:20]}, Risk: {risk_level}, Score: {risk_data['score']}")
+            # === ROUND 10 PHASE B²: ALERT-GATE RECONCILER HOTFIX ===
+            # Gate the additive (legacy) escalation alert behind the reconciler's
+            # decision. The hard-failsafe block at line ~6433 has already returned
+            # if failsafe_should_fire was True, so reaching here means the
+            # reconciler did NOT trigger failsafe — yet legacy keyword/unified
+            # variables (`should_escalate`) still want to fire.
+            #
+            # Per Position 3 (sign-off Ant 2026-02): write the alert as
+            # status="audit_only" so it does NOT appear in the default staff
+            # queue but is preserved for audit / regression review. This stops
+            # the split-authority bug (S009 false positives on bereaved users)
+            # without losing observability.
+            #
+            # MEDIUM → GREEN mapping is *conditional*: only applied to the DB
+            # record when the classifier said "medium" AND we're writing
+            # audit_only. Other classifier levels (low/high) pass through. We
+            # never mutate the classifier cache or any in-memory verdict —
+            # the mapping is local to the persisted record.
+            is_audit_only = not failsafe_should_fire
+            alert_status = "audit_only" if is_audit_only else "active"
+
+            db_risk_level = risk_level
+            if is_audit_only:
+                cls_risk = (unified_safety.get("ai_classification") or {}).get("risk_level")
+                if isinstance(cls_risk, str) and cls_risk.lower() == "medium":
+                    db_risk_level = "GREEN"
+
+            print(
+                f"[SAFEGUARDING ESCALATE] Creating alert - Session: {request.sessionId[:20]}, "
+                f"Risk: {db_risk_level} (origin: {risk_level}), Score: {risk_data['score']}, "
+                f"Status: {alert_status}, ReconcilerRule: {final_verdict.precedence_rule_fired}"
+            )
             # Get conversation history for context (last 10 exchanges)
             # Capture FULL conversation history for case management and handoff
             conversation_history = session.get("history", [])
-            
+
             alert = SafeguardingAlert(
                 session_id=request.sessionId,
                 character=character,
                 triggering_message=request.message,
                 ai_response=reply,
-                risk_level=risk_level,
+                risk_level=db_risk_level,
                 risk_score=risk_data["score"],
                 triggered_indicators=[t["indicator"] for t in risk_data["triggered_indicators"]],
+                status=alert_status,
                 client_ip=client_ip,
                 user_agent=user_agent,
                 conversation_history=conversation_history

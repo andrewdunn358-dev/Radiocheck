@@ -33,7 +33,7 @@
 ---
 
 ### 2. Staff Portal V2 (Complete Redesign)
-**File:** `/app/staff-portal/index-v2.html`
+**File:** `[REMOVED 2026-02-15: /app/staff-portal/index-v2.html — orphan file deleted in Phase 0 PR 1; the planned rename to index.html never happened. Live staff portal lives at /app/portal/ (Next.js).]`
 
 **New Tabbed Interface:**
 - Dashboard tab with stats and morning queue
@@ -157,7 +157,7 @@
 - `/app/frontend/app/unified-chat.tsx` - Staff busy notice
 
 ### Portals
-- `/app/staff-portal/index-v2.html` - NEW (complete redesign)
+- `[REMOVED 2026-02-15: /app/staff-portal/index-v2.html — Phase 0 PR 1, orphan deletion]`
 - `/app/admin-site/index.html` - Email settings, compliance section
 - `/app/admin-site/app.js` - Password reset, email settings, compliance checker
 
@@ -179,8 +179,8 @@
 3. Clear browser cache
 
 **Staff Portal:**
-1. Backup current `index.html`
-2. Rename `index-v2.html` to `index.html`
+1. ~~Backup current `index.html`~~  *(skipped — Phase 0 PR 1: index-v2.html deleted as orphan, rename never happened)*
+2. ~~Rename `index-v2.html` to `index.html`~~  *(skipped — Phase 0 PR 1: index-v2.html deleted as orphan)*
 3. Upload to 20i
 4. Clear browser cache
 
