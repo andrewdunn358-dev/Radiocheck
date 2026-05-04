@@ -270,12 +270,12 @@ if _is_holdspace and not _char_is_frankie:
 
 **Removed:**
 ```python
-"https://radio-check-safety-1.preview.emergentagent.com",
+"https://phase-b2-alert.preview.emergentagent.com",
 ```
 
 **Added:**
 ```python
-"https://radio-check-safety-1.preview.emergentagent.com",
+"https://phase-b2-alert.preview.emergentagent.com",
 ```
 
 ---

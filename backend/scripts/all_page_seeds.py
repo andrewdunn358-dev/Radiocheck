@@ -7,7 +7,7 @@ Run: python3 /app/backend/scripts/all_page_seeds.py
 """
 import requests, os, json, sys
 
-API_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://radio-check-safety-1.preview.emergentagent.com")
+API_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://phase-b2-alert.preview.emergentagent.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_SEED_PASSWORD")
 if not ADMIN_PASSWORD:
     print("ADMIN_SEED_PASSWORD env var not set — required for this script", file=sys.stderr)
