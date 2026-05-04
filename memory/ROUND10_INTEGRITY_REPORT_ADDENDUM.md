@@ -10,7 +10,7 @@
 ### Methodology
 Per Andrew's Round 10 brief, a token-gated diagnostic endpoint (`POST /api/_round10_trace`, header `X-R10-Token`) was wired into the deployed FastAPI app. `ROUND10_TRACE_TOKEN` was set on the live deployment for one session only. The endpoint is read-only with respect to product state — it calls the safety pipelines with synthetic `_r10_diag_*` session IDs that cannot pollute real session state. Every invocation is logged with origin IP and user-agent. The endpoint **and** the source file `_round10_diagnostics.py` and the env-var have all been removed at the end of this session — confirmed below.
 
-`radiocheck.me` is hosted on Vercel (frontend only). `/api/*` calls from the live frontend route directly to `https://radio-check-safety-1.preview.emergentagent.com` (per `EXPO_PUBLIC_BACKEND_URL` in the live build env). That backend is Cloudflare-fronted (`cf-ray` headers present). It is the production target Ant referenced in the Round 8 report.
+`radiocheck.me` is hosted on Vercel (frontend only). `/api/*` calls from the live frontend route directly to `https://phase-b2-alert.preview.emergentagent.com` (per `EXPO_PUBLIC_BACKEND_URL` in the live build env). That backend is Cloudflare-fronted (`cf-ray` headers present). It is the production target Ant referenced in the Round 8 report.
 
 ### Deployment metadata captured from production
 
@@ -137,7 +137,7 @@ Production response is `{"message":"Radio Check API - Admin System Active"}`. Th
 
 **2. ❌ Three "Register valid email" failures (`veteran.test@example.com`, `john.doe.veteran@gmail.com`, `support.seeker@email.co.uk`)**
 
-`backend_test.py:13` hardcodes `BACKEND_URL = "https://radio-check-safety-1.preview.emergentagent.com/api"` — i.e. the **production backend, with shared persistent MongoDB**. The first ever CI run successfully registered these emails. Every subsequent run gets `HTTP 400: "This email is already registered."` from the production endpoint at `server.py:7311–7313`:
+`backend_test.py:13` hardcodes `BACKEND_URL = "https://phase-b2-alert.preview.emergentagent.com/api"` — i.e. the **production backend, with shared persistent MongoDB**. The first ever CI run successfully registered these emails. Every subsequent run gets `HTTP 400: "This email is already registered."` from the production endpoint at `server.py:7311–7313`:
 ```python
 existing = await db.peer_support_registrations.find_one({"email": input.email})
 if existing:

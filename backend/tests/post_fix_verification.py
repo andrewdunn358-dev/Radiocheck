@@ -11,7 +11,7 @@ import uuid
 import time
 import re
 
-API_URL = "https://radio-check-safety-1.preview.emergentagent.com/api/ai-buddies/chat"
+API_URL = "https://phase-b2-alert.preview.emergentagent.com/api/ai-buddies/chat"
 
 results = []
 

@@ -28,7 +28,7 @@ import uuid
 _RAW_URL = (
     os.environ.get("BACKEND_URL_OVERRIDE")
     or os.environ.get("EXPO_PUBLIC_BACKEND_URL")
-    or "https://radio-check-safety-1.preview.emergentagent.com"
+    or "https://phase-b2-alert.preview.emergentagent.com"
 ).rstrip("/")
 BACKEND_URL = _RAW_URL if _RAW_URL.endswith("/api") else f"{_RAW_URL}/api"
 

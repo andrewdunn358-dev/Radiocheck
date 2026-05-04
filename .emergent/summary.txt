@@ -1,11 +1,155 @@
-<analysis>_round10_diagnostics.pyis_overdose_bereavement_context()calculate_safeguarding_score()server.pyanalyze_message_unified()safety/unified_safety.py/app/backend/_round10_diagnostics.py/app/backend/_round10_diagnostics.pyis_overdose_bereavement_context()server.pysafety_monitor.pyunified_safety.pyconversation_contextpushManager.subscribe()/policebluelight2026/api/auth/forgot-passwordsend_reset_email()/police/policeapp.radiocheck.meserver.py
-/app
-├── backend/
-│   ├── personas/                 # AI character definitions + soul_loader.py
-│   ├── protocols/                # Modular Markdown files for safety boundaries
-│   ├── safety/                   # Unified safety (unified_safety.py, safety_monitor.py)
-│   ├── server.py                 # Main FastAPI app
-│   └── _round10_diagnostics.py   # Diagnostic script for deployment integrity
-├── frontend/                     # Expo React Native Web export (Main App)
-└── portal/                       # Next.js Admin/Staff/Police Portals
-manifest.webmanifestsw.jssafeguarding_alertsusers/app/backend/_round10_diagnostics.py/app/backend/server.pyis_overdose_bereavement_context/app/backend/safety/unified_safety.py/app/backend/safety/safety_monitor.py/app/backend/tests/test_round9_item1_overdose.py/app/backend/personas/soul_loader.pyserver.pycalculate_safeguarding_scoresafety/safety_monitor.pyPOST /api/ai-buddies/chatPOST /api/auth/forgot-password/app/backend/_round10_diagnostics.pyis_overdose_bereavement_contextcalculate_safeguarding_score()POST /api/ai-buddies/chatanalyze_message_unified()/app/memory/ROUND9_HANDOFF.md/app/backend/tests/test_round9_item1_overdose.py/app/backend/tests/test_round9_item6_session_bleed.py/app/backend/tests/test_round9_items3_4_5_signals_judge.pycalculate_safeguarding_scoreserver.pysafety.unified_safety_round10_diagnostics.py/app/backend/tests/bluelight2026/app/backend/_round10_diagnostics.pypython3 /app/backend/_round10_diagnostics.pyask_humanserver.py:calculate_safeguarding_scoreunified_safety.py</analysis>
+<analysis>**original_problem_statement**: Build a veteran support platform (Radio Check) with AI-powered chat companions, peer support, and comprehensive safeguarding. Goal is to prove deployment integrity, then implement deterministic code-level post-generation gates for safety checks (Phase C/D). Currently addressing Round 10 Phase B integration failures (split-authority escalation bugs in the safety layer). 
+PRODUCT REQUIREMENTS: 
+- Maintain AI personas with strict multi-layered safety architecture. 
+- Address safety fixes via Phase B (verdict reconciler) and Phase B² (alert gate hotfix). 
+- Strictly adhere to branch protection on : ALL code must be saved to feature branches and merged via PR with CODEOWNERS review (Ant/Andrew). No direct pushes to .
+
+**User's preferred language**: English (INSTRUCT next agent to respond in English only)
+
+**what currently exists?**: 
+A React Native Expo Web app, Next.js admin portal, and FastAPI backend with MongoDB. It has a complex multi-layered safeguarding architecture (keyword + semantic + trajectory -> AI classifier -> Verdict Reconciler). Phase B merged successfully but contained two major integration bugs: an orphaned import causing s (fixed via PR #7 draft), and a split-authority bug where legacy escalation variables () bypass the reconciler's  verdict, generating false-positive database alerts for bereaved users (currently being fixed via Phase B²).
+
+**Last working item**:
+    - Last item agent was working: Executing Phase B² (Alert-Gate Reconciler Hotfix). The agent just finished locating the line numbers for  in  () and is about to write the code. This fix implements an  gate around the additive escalation block using . It writes suppressed alerts to the database with  and  (Position 3), and filters  to hide them by default.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? backend testing agent / manual pytest execution.
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  Issue 1: Phase B² — Alert-Gate Reconciler Hotfix (P0)
+     - Attempted fixes: Agent audited all  consumers. Received design sign-off from Ant to implement a gate based on . 
+     - Next debug checklist: 
+        1. Implement the  gate in  () before the additive escalation paths. 
+        2. In the suppressed branch, write the  with  and  (mapping applied ONLY to the DB record, do not mutate classifier cache). 
+        3. Modify  () to exclude  records by default, unless  is passed. 
+        4. Update PR #7's integration test () to assert an alert IS written, has , and is excluded from default queries.
+        5. Push branch  and draft PR. Do not merge.
+     - Why fix this issue and what will be achieved with the fix? Stops legacy keyword variables from generating false safeguarding alerts, respecting the reconciler's authority.
+     - Status: IN PROGRESS
+     - Is recurring issue? Y (Split-authority)
+     - Should Test frontend/backend/both after fix? Backend (pytest)
+     - Blocked on other issue: None
+
+  Issue 2: Phase 0 PR 1 - Remove Orphaned Frontend Files (P1)
+     - Attempted fixes: Agent verified no live code references for , , , etc. 
+     - Next debug checklist: Ask user how to handle a stale reference to  inside  before deleting the files and pushing the PR .
+     - Why fix this issue and what will be achieved with the fix? Removes predictable, unmonitored attack surfaces (like test logins).
+     - Status: BLOCKED on user decision
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? N/A
+     - Blocked on other issue: None
+
+**In progress Task List**: 
+  Task 1: Execute Claude's Remediation Plan - Phase 0
+     - Where to resume: 
+     - What will be achieved with this? Deletes 6+ completely unauthenticated admin endpoints (e.g., , ).
+     - Status: NOT STARTED
+     - Should Test frontend/backend/both after fix? Backend
+     - Blocked on something: Phase B² completion.
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - (P1) Phase C — Deterministic Python post-generation gates (BLOCKED waiting for Ant to test Phase B² on prod).
+    - (P1) Phase D — End-to-end pytest regression harness.
+    - (P1) Remediation Phase 1A: Fix  signature in frontend (unblocks case management).
+    - (P1) Remediation Phase 2C: AI prompt versioning (auto-capture + rollback) to prevent catastrophic prompt typos.
+    - (P1) Remediation Phase 3D: Encryption hardening (fail-loud if  is missing at startup).
+
+    Future Tasks:
+    - (P2) Push notifications for live events.
+    - (P2) PDF user manual export / Discussion Forums / Mood Tracker / Welsh Language Support.
+    - (P2) Migrate from Agora to Daily.co.
+    - (P2) Enforce Age gate  on the backend API (currently client-side bypassable).
+    - (P2) Migrate MongoDB cluster from M0 (Free tier, 512MB limit, no backups) to M10 Dedicated.
+
+**Completed work in this session**
+- Read-only audit of liability docs, safeguarding UX, and platform data privacy.
+- Identified that backend Pydantic models () are shadowed by monolithic inline models in .
+- Identified that  age gate is strictly frontend only and backend modifiers are bypassed.
+- Diagnosed S009 Prod Exception: Authored hotfix PR  (fixed  for , fixed dict-key bug  -> , added normalisation adapter).
+- Reviewed and endorsed Claude's Staff/Admin Portal Remediation Plan, outputting .
+
+**Earlier issues found/mentioned but not fixed**
+   Issue 1: Unauthenticated Admin Endpoints
+   - Debug checklist: Check  and  for routes missing .
+   - Why to solve this issue and what will be achieved with this? Closes massive security holes where admin passwords can be reset via API without auth.
+   - Should Test frontend/backend/both after fix: Backend
+   - Is recurring issue? N
+
+   Issue 2: Encryption Configuration silently fails
+   - Debug checklist:  silently returns plaintext if  is not present in . Must be updated to throw a startup error.
+   - Why to solve this issue and what will be achieved with this? Prevents accidental plaintext storage of PII.
+   - Should Test frontend/backend/both after fix: Backend
+   - Is recurring issue? N
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork (Check 1st <LLM message history> array entry): Split authority in the safety system.
+  - Recurrence count: 4 (Round 8 -> Round 9 -> Round 10 -> Phase B²)
+  - Status: IN PROGRESS (Being fixed via Phase B²)
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Safety Reconciliation Layer**: Evaluates keyword vs classifier verdicts. Rules like  suppress false alarms (e.g., bereavement), but legacy code in  was bypassing it.
+- **GitHub Branch Protection**:  is protected. Use  tool. Merge requires CODEOWNERS review (Ant/Andrew). No direct pushing.
+
+**key DB schema**
+  - : 
+  - , , , 
+
+**changes in tech stack**
+  - None
+
+**All files of reference** 
+-  (Target for Phase B²  gate)
+- 
+-  (Target for Phase B² integration test updates)
+- 
+
+**Areas that need refactoring**: 
+-  has thousands of lines and duplicate routing (e.g.,  defined multiple times). 
+-  is mostly dead code, as  relies on locally defined monolithic Pydantic models.
+
+**key api endpoints**
+-  (Core pipeline logic)
+-  (Needs filtering to exclude )
+
+**Critical Info for New Agent**
+- **PHASE B² EXECUTION RULE:** Line numbers given in the brief are approximate. Use grep to find  and the  block inside . 
+- **NO PROD LOGGING / ATLAS ACCESS:** You are in a sandboxed preview pod with a local MongoDB (). The live app is on Render and MongoDB Atlas M0. Do not attempt to hit the prod database.
+- **DO NOT TOUCH:**  assignment at  (R4 in the audit) - it is an intentional conservative brush-off guard.
+
+**documents and test reports created in this job**
+  - 
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - *User*: Phase 0 PR 1 — Remove Orphaned Frontend Files. Deletions only.
+ - *Agent*: Checked for live references of the orphaned files. Found one mention of  inside . Asked user for permission to delete the doc reference. (PENDING human response).
+ - *User*: Passed briefs for Phase B² (Alert-Gate) and Phase 1D (Viewer). Confirmed Position 3: write suppressed alerts as . 
+ - *Agent*: Analyzed brief, asked 2 clarifying questions: Update PR #7's test? Map  on the DB record or classifier cache?
+ - *User*: Answered: Yes, update PR #7's integration test. Apply  mapping ONLY to the DB record, do not mutate the classifier cache. Warned not to trust line numbers.
+ - *Agent*: Confirmed. Fetched  boundaries and is actively preparing to execute the  commands. (Current State).
+
+**Project Health Check:**
+- Broken: Unauthenticated admin routes in . 
+- Mocked: AI classifier is mocked in .
+
+**3rd Party Integrations** 
+- OpenAI GPT-4o-mini (Requires User API Key;  is present but unused).
+- Twilio (Requires User API Key).
+- Resend (Requires User API Key).
+
+**Testing status**
+  - Testing agent used after significant changes: NO (Manual pytest).
+  - Troubleshoot agent used after agent stuck in loop: NO.
+  - Test files created: None new, but heavily edited .
+  - Known regressions: S009 Sits in false-positive escalation due to split-authority.
+
+**Credentials to test flow:**
+(None present in history other than  standards).
+
+**What agent forgot to execute**
+- The agent was in the middle of executing Phase B² (Alert-Gate Reconciler Hotfix) via  in . You must resume applying the  gate logic, mapping the audit_only status, filtering the GET route, and updating tests.
+- Awaiting user response on how to handle the doc reference in Phase 0 PR 1.</analysis>
