@@ -1,6 +1,6 @@
 # RadioCheck CHANGELOG
 
-## 2026-02-15 — Round 10 Phase B² (Alert-Gate Reconciler Hotfix)
+## 2026-05-04 — Round 10 Phase B² (Alert-Gate Reconciler Hotfix)
 
 ### Problem
 After Round 10 Phase B merged the verdict reconciler, the chat endpoint still
@@ -39,7 +39,7 @@ references:
 - `/app/admin-site/test-login.html` — predictable test login UI
 - `/app/admin-site/app-minimal.js` — legacy minimal admin JS, dead code
 - Stale references in `docs/IMPLEMENTATION_SUMMARY.md` replaced with
-  `[REMOVED 2026-02-15]` historical notes for traceability
+  `[REMOVED 2026-05-04]` historical notes for traceability
 
 ### Tests
 - New: `test_phase_b2_get_safeguarding_alerts_excludes_audit_only_by_default`

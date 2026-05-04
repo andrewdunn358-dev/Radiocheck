@@ -3,6 +3,19 @@
 Closes the residual S009 failure identified in Round 10 retest.
 Approved design via email from @theaioldtimer 4 May 2026.
 
+### ⚠ Bundling notice — Phase 0 PR 1 included in this PR
+
+This PR also includes the **Phase 0 PR 1** orphan-frontend-file deletions, even though the original plan was to ship them on a separate branch. Bundled here because the deletions are uncontroversial, the work was already staged in the same working tree, and cherry-picking would have added rebase risk for no review benefit. Andrew has signed off on the bundling.
+
+Phase 0 PR 1 deletions in this PR (NOT safety-layer code, do not require CODEOWNERS safety review):
+
+- `staff-portal/index-v2.html` (orphan, 2266 lines — planned rename to `index.html` never shipped)
+- `admin-site/test-login.html` (orphan, 59 lines — predictable test login UI, attack surface)
+- `admin-site/app-minimal.js` (orphan, 456 lines — dead legacy admin JS)
+- `docs/IMPLEMENTATION_SUMMARY.md` (3 stale references replaced with `[REMOVED 2026-05-04]` historical notes)
+
+The Phase B² safety-layer changes are scoped to `backend/server.py` (gate + GET filter, 56 lines) and `backend/tests/test_round10_phase_b_reconciler.py` (5 new tests, 345 lines). Everything else in the diff is either (a) Phase 0 PR 1 deletions listed above, (b) auto-generated preview-URL substitutions in test-file `BASE_URL` fallback strings (environment-driven, no test logic or assertions touched — confirmed by line-by-line audit), or (c) auto-generated platform metadata (`.emergent/`, changelog).
+
 ### Changes
 - Gate the legacy alert-creation path on `failsafe_should_fire` (not `final_verdict.failsafe_triggered` — see commit message for rationale)
 - When suppressed, write alert with `status="audit_only"` (Position 3 per Ant's decision)
