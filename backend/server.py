@@ -6552,6 +6552,18 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 f"UNIFIED RISK UPGRADE SUPPRESSED BY IDENTITY PROTOCOL - Session: {request.sessionId[:12]} - "
                 f"Unified risk was {unified_risk}, keeping {risk_level}"
             )
+        elif not failsafe_should_fire and final_verdict.precedence_rule_fired == "CONTEXT_OVERRIDE":
+            # === ROUND 10 PHASE B³: OVERLAY-GATE RECONCILER HOTFIX ===
+            # The reconciler authoritatively overrode the keyword verdict (e.g. grief
+            # context, CONTEXT_OVERRIDE). The Phase B² alert-gate at server.py:~6932
+            # already writes the alert as status="audit_only" for this case; this
+            # branch closes the symmetric path on the response-payload side that
+            # drives the user-facing `safeguardingTriggered` overlay. Without this,
+            # the alert queue stays clean but the user still sees the crisis modal.
+            logging.info(
+                f"UNIFIED RISK UPGRADE SUPPRESSED BY RECONCILER - Session: {request.sessionId[:12]} - "
+                f"Unified risk was {unified_risk}, keeping {risk_level} (ReconcilerRule: CONTEXT_OVERRIDE)"
+            )
         elif unified_risk == "IMMINENT" and risk_level != "RED":
             risk_level = "RED"
             should_escalate = True
@@ -6565,13 +6577,14 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             logging.info(f"Unified safety upgraded risk to YELLOW (MEDIUM)")
         
         # Also escalate on rapid escalation or concerning patterns
-        # (but NOT if negation was confirmed)
-        if not negation_confirmed and not identity_active and unified_safety.get("rapid_escalation") and not should_escalate:
+        # (but NOT if negation was confirmed, identity protocol active, or reconciler
+        # authoritatively decided failsafe=False — Phase B³ reconciler-aware guard).
+        if not negation_confirmed and not identity_active and failsafe_should_fire and unified_safety.get("rapid_escalation") and not should_escalate:
             should_escalate = True
             risk_level = "AMBER" if risk_level == "GREEN" else risk_level
             logging.warning(f"Rapid escalation detected - Session: {request.sessionId[:12]}")
         
-        if not negation_confirmed and not identity_active and unified_safety.get("detected_patterns"):
+        if not negation_confirmed and not identity_active and failsafe_should_fire and unified_safety.get("detected_patterns"):
             concerning_patterns = ["INTENT_ESCALATION", "METHOD_INTRODUCTION", "FINALITY_BEHAVIOR"]
             if any(p in unified_safety.get("detected_patterns", []) for p in concerning_patterns):
                 should_escalate = True
