@@ -1,5 +1,79 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-04 — Round 10 Phase B³ (Overlay-Gate Reconciler Hotfix)
+
+### Problem
+Phase B² (PR #8, merged) closed the alert-DB side of the split-authority bug:
+reconciler-suppressed alerts now persist with `status="audit_only"` and stay
+out of the default staff queue. Production logs confirm working.
+
+However, the same production trace showed the user-facing crisis overlay
+still fired on the same message. The Phase B³ investigation traced this to
+the `unified_risk` upgrade block in `buddy_chat()` at `backend/server.py:6555–6587`
+— a structural twin of the alert-DB block gated by B², but on the
+response-payload side. Third recurrence of the split-authority pattern in
+Round 10 (Phase B → B² → B³).
+
+### Fix — Anthony's Option A scope (reconciler-aware upgrade-block gate)
+
+Three additive changes inside `buddy_chat()`:
+
+- **`backend/server.py:~6555`** — new `elif not failsafe_should_fire and
+  final_verdict.precedence_rule_fired == "CONTEXT_OVERRIDE":` branch in the
+  existing negation/identity suppression chain. Logs and falls through;
+  does not upgrade `risk_level`. Log style matches the adjacent
+  `negation_confirmed` / `identity_active` branches.
+- **`backend/server.py:~6582`** — `rapid_escalation` guard extended with
+  `and failsafe_should_fire`.
+- **`backend/server.py:~6588`** — `detected_patterns` guard extended with
+  `and failsafe_should_fire`.
+
+Variable scope: `failsafe_should_fire` set at line 6397, finalised through
+line 6445 (negation/identity adjustments), in scope at 6555. No threading,
+no refactor.
+
+### Known incomplete coverage — pending Phase B³.5
+During implementation, a failing end-to-end test surfaced a second leak
+vector at `server.py:6334` (the initial `risk_level = risk_data["risk_level"]`
+assignment from `check_safeguarding()`), structurally upstream of the
+upgrade-block fix. Per Anthony's addendum decision (Option C), B³.5 will
+close that vector as a separate named PR. The failing test is retained in
+B³ with `@pytest.mark.xfail(strict=True)` and a reason string identifying
+the line-6334 vector — it flips to passing when B³.5 lands and removes the
+decorator. Round 10 close-out retest (S009 + CTRL) happens after B³.5
+merges, not after B³ alone.
+
+Post-merge of B³, a full `risk_level` mutation audit of `buddy_chat()`
+(lines 6320–7028) will enumerate every assignment before B³.5 is scoped.
+
+### Tests
+- New: `test_phase_b3_context_override_suppresses_overlay_upgrade` —
+  end-to-end via `TestClient` with mocked classifier/OpenAI/geo/email,
+  S009_B fixture. **Marked `xfail(strict=True)` pending B³.5.**
+- New: `test_phase_b3_genuine_crisis_still_triggers_overlay` — control;
+  genuine IMMINENT + intent must still fire overlay.
+- New: `test_phase_b3_rapid_escalation_gated_by_reconciler` — unit-level
+  guard-expression assertion.
+- New: `test_phase_b3_detected_patterns_gated_by_reconciler` — unit-level
+  guard-expression assertion.
+- Round 10 reconciler suite: 28 passed, 1 xfailed.
+- Full safety regression (reconciler + unified + session-bleed +
+  section-5 + signals/judge): 71 passed, 1 xfailed, 0 failed.
+
+### Files Modified
+- `/app/backend/server.py` — new elif + two extended guards.
+- `/app/backend/tests/test_round10_phase_b_reconciler.py` — 4 new tests +
+  shared test helpers.
+- `/app/memory/PHASE_B3_PR_DESCRIPTION.md` — new PR body per §4.2 of the
+  original brief + §2.3 of the addendum.
+- `/app/memory/CHANGELOG.md` — this entry.
+
+### Branch
+`feat/round10-phase-b3-overlay-reconciler-gate` — draft PR, Andrew Claude
+pre-check first, then Anthony via CODEOWNERS. Do not merge.
+
+---
+
 ## 2026-05-04 — Round 10 Phase B² (Alert-Gate Reconciler Hotfix)
 
 ### Problem
