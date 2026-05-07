@@ -533,6 +533,7 @@ export async function clearAllStoredData(): Promise<void> {
     }
   } catch (error) {
     console.error('[ConversationStorage] Error clearing data:', error);
+    throw error;
   }
 }
 
