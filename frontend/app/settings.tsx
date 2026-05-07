@@ -253,7 +253,7 @@ export default function Settings() {
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={[styles.settingRow, styles.dangerRow]} onPress={handleClearData}>
+          <TouchableOpacity style={[styles.settingRow, styles.dangerRow]} onPress={handleClearData} data-testid="clear-all-data-btn">
             <View style={styles.settingInfo}>
               <Ionicons name="trash-outline" size={22} color="#ef4444" />
               <View>

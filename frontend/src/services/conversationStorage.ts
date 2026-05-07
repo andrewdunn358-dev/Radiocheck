@@ -480,48 +480,60 @@ export async function deleteConversationForCharacter(characterId: string): Promi
 }
 
 /**
- * Clear all stored data
+ * Clear all stored data — allowlist-based "delete my data" implementation.
+ *
+ * Replaces the prior denylist that missed 22/40 storage write sites
+ * (audit: /app/memory/DEVICE_DATA_DELETION_AUDIT.md). The denylist
+ * approach failed because every new feature that wrote to AsyncStorage
+ * had to remember to add its key — and several didn't.
+ *
+ * The allowlist approach inverts this: enumerate every AsyncStorage key
+ * via AsyncStorage.getAllKeys(), filter to KEYS_TO_PRESERVE (currently
+ * empty — every device-side key represents user data the user is asking
+ * to delete), and AsyncStorage.multiRemove() everything else. Plus
+ * sessionStorage.clear() on web for completeness.
+ *
+ * Adding a future key to KEYS_TO_PRESERVE is a deliberate, reviewable
+ * decision documented at the constant. Adding a new key elsewhere in the
+ * codebase doesn't silently slip through deletion as it did before.
  */
+const KEYS_TO_PRESERVE: string[] = [
+  // Currently empty by design — every key written by RadioCheck represents
+  // user data, all of which should be wiped on "delete my data".
+  //
+  // Future entries here must be:
+  //   1. Genuinely platform-level state, not user-feature state.
+  //   2. Reviewed by Anthony before merge, with rationale captured in the
+  //      PR body and in /app/memory/DEVICE_DATA_DELETION_AUDIT.md.
+];
+
 export async function clearAllStoredData(): Promise<void> {
   try {
-    // Get ALL keys to find any chat_history_* keys
+    // Step 1: enumerate every AsyncStorage key and remove all of them
+    // except the allowlist.
     const allKeys = await AsyncStorage.getAllKeys();
-    const chatHistoryKeys = allKeys.filter(k => k.startsWith('chat_history_'));
-    
-    // Clear ALL user data for a completely fresh state
-    await AsyncStorage.multiRemove([
-      // Conversation storage
-      STORAGE_KEYS.CONVERSATIONS,
-      STORAGE_KEYS.SUMMARIES,
-      STORAGE_KEYS.OPT_OUT,
-      STORAGE_KEYS.LAST_SYNC,
-      STORAGE_KEYS.ENCRYPTION_KEY,
-      STORAGE_KEYS.LAST_CLEANUP,
-      // Auth
-      'auth_token',
-      'auth_user',
-      // Favourites
-      '@veterans_favorite_counsellors',
-      '@veterans_favorite_peers',
-      // Journal and mood
-      '@veterans_journal_entries',
-      '@veterans_mood_entries',
-      '@veterans_last_checkin',
-      // Location
-      'location_permission_asked',
-      'last_known_location',
-      // Age gate
-      '@radio_check_dob',
-      '@radio_check_age_verified',
-      // Site gate
-      'site_unlocked',
-      // Theme
-      '@veterans_app_theme',
-      // Chat history per character
-      ...chatHistoryKeys,
-    ]);
+    const keysToRemove = allKeys.filter(k => !KEYS_TO_PRESERVE.includes(k));
+    if (keysToRemove.length > 0) {
+      await AsyncStorage.multiRemove(keysToRemove);
+    }
+
+    // Step 2: web-only — clear sessionStorage. The InstallPwaPrompt
+    // dismissal flag (`rc_install_prompt_dismissed`) lives there, plus
+    // any future PWA-only ephemeral state.
+    if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+      try {
+        window.sessionStorage.clear();
+      } catch (sessionError) {
+        // sessionStorage can throw in some embedded contexts (private
+        // browsing on iOS Safari, third-party iframe restrictions, etc).
+        // Log but don't fail the overall delete — the AsyncStorage wipe
+        // is the primary surface and has already succeeded.
+        console.warn('[ConversationStorage] sessionStorage clear failed:', sessionError);
+      }
+    }
   } catch (error) {
     console.error('[ConversationStorage] Error clearing data:', error);
+    throw error;
   }
 }
 
