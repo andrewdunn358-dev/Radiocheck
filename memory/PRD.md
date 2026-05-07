@@ -47,6 +47,9 @@ Prompt layer order: hard_stop → signal protocols → persona → soul injectio
 - [Feb 2026] Restored Round 3 AMBER=45 / RED=120 thresholds
 - [Feb 2026] Updated Tommy crisis overlay pre-text
 - [Feb 2026] Fixed Clear All Data to wipe all AsyncStorage keys
+- [May 2026] Phase B², B³, B³.5 safety reconciler split-authority hotfixes — single failsafe authority
+- [May 2026] Device Data Deletion: migrated `clearAllStoredData` to allowlist + dead-code excision, fail-loud re-throw
+- [May 2026] Granular Chat History Deletion: new `clearChatHistoryOnly()` + Settings UI button + nuclear-button copy update + smoke-test doc
 - [Feb 2026] Replaced expo-crypto with Web Crypto API
 - [Feb 2026] Implemented full modular protocol architecture (6 protocol files, signal detector, layered prompt builder)
 - [Feb 2026] Fixed Frankie register-drop (added negative few-shot for "Training's meant to..." pattern)

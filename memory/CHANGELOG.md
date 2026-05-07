@@ -1,5 +1,34 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-07 — Granular Chat History Deletion (frontend privacy)
+
+### Why
+Andrew flagged during the prior PR's smoke test that the (correctly-scoped) nuclear "Clear All Data" button now also wipes site-unlock + age-gate + AI-consent + theme — meaning a user just wanting to clear a single recent conversation gets fully de-onboarded. The single button was conflating two different user intents (routine privacy hygiene vs. UK GDPR Art. 17 erasure). Per `emergent-brief-granular-chat-deletion-direct-to-main.md`, the fix splits these into two siblings.
+
+### Changes
+- **`frontend/src/services/conversationStorage.ts`** — added new `clearChatHistoryOnly()` immediately above `clearAllStoredData()`. Clears `chat_history_*` + `radiocheck_chat_history_*` prefixes plus `STORAGE_KEYS.CONVERSATIONS` and `STORAGE_KEYS.SUMMARIES`. Re-throws errors (fail-loud, matches the nuclear sibling). Intentionally does **not** share helpers with `clearAllStoredData()` — different semantics (allowlist vs. explicit-key) per brief §2.1 hard constraint.
+- **`frontend/app/settings.tsx`** —
+  - Added `clearChatHistoryOnly` to the import.
+  - Added `handleDeleteChatHistory()` handler with web `window.confirm` + native `Alert.alert` parity.
+  - Added new "Delete chat history" row immediately above the existing "Clear All Data" row, neutral (non-destructive) styling, `data-testid="delete-chat-history-btn"`, `chatbubbles-outline` icon.
+  - Updated copy on the existing nuclear button: helper subtext now reads *"Returns the device to a fresh-install state…"*; both confirm dialogs (web + native) updated to the new body, with the *"If you only want to delete your conversations, use 'Delete chat history' instead"* cross-reference.
+- **`memory/DEVICE_DATA_DELETION_SMOKE_TEST.md`** — appended a "Granular Chat History Deletion" section with full pre-action setup, action, post-action assertions, negative test, and nuclear-sanity-check procedures.
+
+### Out of scope (explicit deferrals, per brief §4 / §7)
+- Server-side deletion (separate Article 17 pathway).
+- Live clear-event broadcast to mounted chat screens — confirmed with Andrew, stale-state-until-next-mount is acceptable.
+- Per-character chat deletion surfaced from Settings.
+- Refactoring the two parallel chat implementations.
+- Automated frontend test framework.
+- `clearAllStoredData()` was not modified beyond its already-shipped form. No shared helpers with the new function.
+- No `.gitignore` changes. No safety-layer code touched. No backend changes.
+
+### Verification
+- TypeScript: compiles clean for both touched files (only pre-existing `cardBg` errors remain, unrelated to this diff).
+- Smoke test: the brief reserves the real DevTools smoke test for Andrew on the production Vercel deploy (this preview pod serves the Next.js admin portal, not the Expo frontend).
+
+
+
 ## 2026-05-04 — Device-Side Data Deletion Fix (frontend privacy)
 
 ### Problem
