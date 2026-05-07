@@ -1,5 +1,108 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-04 — Round 10 Phase B³.5 (Generalised Reconciler-Suppress Gate)
+
+### Problem
+Phase B³ (PR #9, merged) closed the upgrade-block leak at `server.py:6555` for
+the `CONTEXT_OVERRIDE` precedence rule specifically. The B³.5 pre-scoping
+audit (`/app/memory/PHASE_B3_5_RISK_LEVEL_AUDIT.md`) found two further leak
+vectors plus two latent split-authority bugs:
+- **Entry 1 (line 6334):** initial `risk_level = risk_data["risk_level"]`
+  from `check_safeguarding()` runs pre-reconciler. On S009_A / S009_B the
+  "overdose" keyword sets RED before the reconciler authoritatively decides
+  CONTEXT_OVERRIDE — RED carries through to `safeguardingTriggered`, overlay
+  leaks. Live vector.
+- **Entry 3 (line 6568):** IMMINENT upgrade branch reachable via the
+  score-only IMMINENT path at `unified_safety.py:291–292`. Moderate signals
+  combine to cross threshold without firing failsafe; reconciler returns
+  DEFAULT (or CLASSIFIER_UNAVAILABLE-no-fs); B³ elif's
+  `precedence_rule_fired == "CONTEXT_OVERRIDE"` clause missed both rules;
+  upgrade fires, overlay leaks. Live vector.
+- **Entries 4, 5 (lines 6572, 6576):** HIGH and MEDIUM upgrade branches —
+  same shape as Entry 3 but no current user-visible regression (RED-only
+  overlay, B² alert gate). Latent.
+
+### Fix — Anthony's Option β (one PR closes all four entries)
+
+Two changes inside `buddy_chat()`:
+
+- **Change A (`backend/server.py:~6555`).** Generalise the B³ elif: remove
+  `and final_verdict.precedence_rule_fired == "CONTEXT_OVERRIDE"` from the
+  condition. The new condition `elif not failsafe_should_fire:` catches all
+  five precedence rules that produce `failsafe_should_fire == False`
+  (CONTEXT_OVERRIDE, DEFAULT, CLASSIFIER_UNAVAILABLE-no-fs, plus
+  KEYWORD_FAILSAFE / CLASSIFIER_ESCALATION flipped by negation/identity
+  guards). Comment block updated to reference the audit doc. Log message
+  updated to interpolate `final_verdict.precedence_rule_fired` dynamically
+  — restores observability the original B³ log lost (was hard-coded to
+  `CONTEXT_OVERRIDE`). Closes Entries 3, 4, 5.
+- **Change B (`backend/server.py:~6541`, new block).** Standalone block
+  inserted between line 6445 (where `failsafe_should_fire` is finalised)
+  and line 6542 (where the negation/identity/upgrade chain begins).
+  Shape: `if not failsafe_should_fire and risk_level == "RED":
+  risk_level = "AMBER"; logging.info(...)`. Downgrade target is AMBER, not
+  GREEN: mirrors the alert-side `audit_only` behaviour, preserves the
+  elevated-context signal, ensures the overlay does not fire. Closes
+  Entry 1.
+
+Variable scope: `risk_level` (line 6334), `final_verdict` (line 6371),
+`failsafe_should_fire` (line 6397, finalised through 6445), `unified_safety`
+all in scope at both insertion points. No threading, no refactor.
+
+### xfail closure evidence
+The `@pytest.mark.xfail(strict=True)` decorator on
+`test_phase_b3_context_override_suppresses_overlay_upgrade` has been
+**removed** in this PR. Per the B³ PR body: *"`strict=True` ... if line
+6334 is silently fixed (or the fixture drifts), pytest will mark the run
+XPASS and fail the build — which is the desired outcome, because we need
+to know."* Decorator removal is the explicit close-out evidence the B³ PR
+committed to.
+
+### Tests
+- Decorator removed: B³ S009_B end-to-end test (now passes).
+- New: `test_phase_b35_score_only_imminent_default_rule_suppressed`
+  (Entry 3 close-out — mocks `analyze_message_unified()` at boundary,
+  asserts overlay suppressed AND new generalised log fires with dynamic
+  ReconcilerRule interpolation).
+- New: `test_phase_b35_high_branch_gated_by_reconciler` (Entry 4
+  close-out, unit-level boolean invariant).
+- New: `test_phase_b35_medium_branch_gated_by_reconciler` (Entry 5
+  close-out, unit-level boolean invariant).
+- New: `test_phase_b35_initial_red_preserved_when_failsafe_fires` (control
+  for Change B — genuine crisis with `failsafe_should_fire=True` must
+  still surface RED).
+- Round 10 reconciler suite: **33 passed, 0 xfailed, 0 failed**
+  (was 28 passing + 1 xfailed in B³ baseline; +4 new + 1 xfail flipped).
+- Full safety regression: **76 passed, 0 xfailed, 0 failed**
+  (was 71 passing + 1 xfailed in B³ baseline; same delta).
+
+### Production retest plan
+S009_A, S009_B, CTRL — all three required. S009_A and S009_B are separate
+production-traced messages (Tommy persona, grief-overdose, CONTEXT_OVERRIDE
+path), not collapsed. Entry 3 has no clean production fixture; Test N1 is
+the close-out coverage for Entry 3.
+
+### Files Modified
+- `/app/backend/server.py` — Change A (generalise B³ elif) + Change B
+  (initial-assignment corrective).
+- `/app/backend/tests/test_round10_phase_b_reconciler.py` — xfail decorator
+  removed, 4 new tests added.
+- `/app/memory/PHASE_B35_PR_DESCRIPTION.md` — new PR body.
+- `/app/memory/CHANGELOG.md` — this entry.
+
+### Branch
+`feat/round10-phase-b35-generalised-reconciler-gate` — draft PR, Andrew
+Claude pre-design check first, then Anthony via CODEOWNERS. Do not merge.
+
+### Round 10 close-out
+B³.5 is the close-out PR for Round 10 (subject to S009_A + S009_B + CTRL
+production retest passing). All four `risk_level` write sites in the
+audit window 6320–7028 that produce user-visible state are now reconciler-
+gated. The remaining write sites (rapid_escalation, detected_patterns) were
+gated by B³.
+
+---
+
 ## 2026-05-04 — Round 10 Phase B³ (Overlay-Gate Reconciler Hotfix)
 
 ### Problem

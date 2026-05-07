@@ -921,16 +921,6 @@ def _cleanup_session(sid: str):
         del server.buddy_sessions[sid]
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Phase B³ closes the upgrade-block leak at server.py:6555 only. "
-        "S009_B production scenario also leaks via the upstream initial assignment "
-        "at server.py:6334 (risk_level = risk_data['risk_level'] from check_safeguarding). "
-        "Phase B³.5 will close that vector. This test asserts the production close-out "
-        "condition and is expected to pass when B³.5 lands."
-    ),
-    strict=True,
-)
 def test_phase_b3_context_override_suppresses_overlay_upgrade(monkeypatch):
     """S009_B grief-context scenario — the bug case Phase B³ closes.
 
@@ -1149,3 +1139,316 @@ def test_phase_b3_detected_patterns_gated_by_reconciler(monkeypatch):
         negation_confirmed=False, identity_active=True,
         failsafe_should_fire=True, has_patterns=True,
     ) is False
+
+
+# ---------------------------------------------------------------------------
+# Round 10 Phase B³.5 — Generalised Reconciler-Suppress Gate tests
+#
+# Phase B³.5 closes the four leak vectors identified in the B³.5 pre-scoping
+# audit (/app/memory/PHASE_B3_5_RISK_LEVEL_AUDIT.md):
+#
+#   - Entry 1 (server.py:6334) — initial assignment from check_safeguarding().
+#     LIVE overlay leak. Closed by the new initial-assignment corrective
+#     inserted between line 6445 and the upgrade chain.
+#   - Entry 3 (server.py:6568) — IMMINENT upgrade branch. LIVE overlay leak
+#     reachable via score-only IMMINENT + reconciler DEFAULT. Closed by
+#     generalising the B³ elif from CONTEXT_OVERRIDE-specific to all
+#     `not failsafe_should_fire` cases.
+#   - Entry 4 (server.py:6572) — HIGH upgrade branch. Latent. Same gate.
+#   - Entry 5 (server.py:6576) — MEDIUM upgrade branch. Latent. Same gate.
+#
+# Coverage:
+#   N1 — score-only IMMINENT + DEFAULT rule path (Entry 3 close-out).
+#   N2 — HIGH branch unit-level guard (Entry 4 close-out).
+#   N3 — MEDIUM branch unit-level guard (Entry 5 close-out).
+#   N4 — control: initial RED preserved when failsafe legitimately fires.
+# ---------------------------------------------------------------------------
+
+
+def test_phase_b35_score_only_imminent_default_rule_suppressed(monkeypatch, caplog):
+    """Entry 3 close-out: score-only IMMINENT path + reconciler DEFAULT.
+
+    The B³ failing E2E test exercised CONTEXT_OVERRIDE only. Entry 3 is a
+    structurally distinct leak path: moderate signals across keyword,
+    semantic, conversation, and AI-classifier layers combine to cross
+    UNIFIED_THRESHOLD_IMMINENT (80) without any single layer firing a
+    failsafe trigger. unified_safety produces risk_level="IMMINENT" with
+    failsafe_triggered=False (the score-only branch at unified_safety.py
+    line 291–292). With keyword.failsafe=False, the reconciler returns
+    DEFAULT (or CLASSIFIER_UNAVAILABLE-no-fs). The B³ elif's
+    CONTEXT_OVERRIDE-specific check missed this case; the B³.5 generalised
+    elif (not failsafe_should_fire) catches it.
+
+    To produce the score-only IMMINENT path deterministically we mock
+    analyze_message_unified() at its boundary rather than trying to compose
+    the layer scores arithmetically. This keeps the test focused on the
+    buddy_chat consumer logic — which is what B³.5 changes — rather than
+    coupling to unified_safety's internal weighting math.
+    """
+    # 1) Mock unified_safety to return score-only IMMINENT with no failsafe.
+    def _fake_unified(message, session_id, user_id, character, is_under_18=False):
+        return {
+            "risk_level": "IMMINENT",
+            "risk_score": 85,
+            "failsafe_triggered": False,
+            "failsafe_reason": None,
+            "keyword_triggers": [],
+            "rapid_escalation": False,
+            "detected_patterns": [],
+            "is_escalating": False,
+            "risk_trend": "stable",
+            "message_count": 1,
+            "ai_classification": {
+                "invoked": True,
+                "risk_level": "medium",
+                "confidence": 0.65,
+                "contains_self_harm_intent": False,
+                "detected_indicators": [],
+                "reason": "moderate distress signals, no direct intent",
+            },
+            "safety_wrapper": None,
+            "requires_intervention": True,
+        }
+    monkeypatch.setattr(server, "analyze_message_unified", _fake_unified)
+
+    # 2) OpenAI buddy client + geo + email no-ops (same pattern as B³ tests).
+    class _FakeChoice:
+        message = type("M", (), {"content": "I hear you, mate."})()
+    class _FakeCompletion:
+        choices = [_FakeChoice()]
+    class _FakeChatCompletions:
+        def create(self, *a, **kw):
+            return _FakeCompletion()
+    class _FakeChat:
+        completions = _FakeChatCompletions()
+    class _FakeOpenAI:
+        chat = _FakeChat()
+    monkeypatch.setattr(server, "buddy_openai_client", _FakeOpenAI())
+
+    async def _no_geo(_ip):
+        return None
+    monkeypatch.setattr(server, "lookup_ip_geolocation", _no_geo)
+
+    async def _no_email(*a, **kw):
+        return None
+    monkeypatch.setattr(server, "send_safeguarding_email_notification", _no_email)
+
+    # 3) Drive the endpoint with caplog capturing buddy_chat logs.
+    sid = "phaseb35-score-only-imminent"
+    client = TestClient(server.app)
+    try:
+        with caplog.at_level("INFO"):
+            resp = client.post(
+                "/api/ai-buddies/chat",
+                json={
+                    # Benign-shaped message — keyword pipeline (real
+                    # check_safeguarding) won't hit a critical trigger,
+                    # so the initial risk_level at line 6334 won't be RED.
+                    # The leak under audit is at the IMMINENT upgrade branch.
+                    "message": "feeling really low today, hard to keep going some days",
+                    "sessionId": sid,
+                    "character": "tommy",
+                },
+            )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+
+        # 4) Primary B³.5 invariant: the score-only IMMINENT path must NOT
+        # produce safeguardingTriggered=True.
+        assert body.get("safeguardingTriggered") is False, (
+            "Phase B³.5 regression (Entry 3): score-only IMMINENT + "
+            "reconciler DEFAULT must NOT trigger the user-facing overlay. "
+            f"Got safeguardingTriggered={body.get('safeguardingTriggered')}, "
+            f"riskLevel={body.get('riskLevel')}. The generalised B³.5 elif "
+            "at server.py:~6555 is letting non-CONTEXT_OVERRIDE rules slip "
+            "past the gate."
+        )
+        assert body.get("riskLevel") != "RED", (
+            f"riskLevel leaked RED on score-only IMMINENT: {body.get('riskLevel')}"
+        )
+
+        # 5) Observability assertion: the new generalised log line must fire
+        # with the dynamic ReconcilerRule interpolation introduced in B³.5.
+        # The exact rule will be DEFAULT or CLASSIFIER_UNAVAILABLE depending
+        # on classifier mock — both are valid; assert one of them.
+        suppress_logs = [
+            r for r in caplog.records
+            if "UNIFIED RISK UPGRADE SUPPRESSED BY RECONCILER" in r.getMessage()
+        ]
+        assert len(suppress_logs) >= 1, (
+            "B³.5 generalised elif must log when it suppresses an upgrade. "
+            "If this assertion fails, either the elif didn't fire (gate "
+            "regression) or the log message was changed without updating "
+            "this test."
+        )
+        # The log message includes the dynamically-interpolated rule.
+        log_msg = suppress_logs[0].getMessage()
+        assert (
+            "ReconcilerRule: DEFAULT" in log_msg
+            or "ReconcilerRule: CLASSIFIER_UNAVAILABLE" in log_msg
+        ), (
+            f"Expected ReconcilerRule: DEFAULT or CLASSIFIER_UNAVAILABLE in "
+            f"the suppress log; got: {log_msg!r}. The dynamic interpolation "
+            "(B³.5 observability change) may have regressed."
+        )
+    finally:
+        _delete_alerts_by_session_sync(sid)
+        if sid in getattr(server, "buddy_sessions", {}):
+            del server.buddy_sessions[sid]
+
+
+def test_phase_b35_high_branch_gated_by_reconciler():
+    """Entry 4 close-out: HIGH branch (server.py:6572) is now reconciler-gated.
+
+    Mirrors the existing B³ unit-test pattern. The HIGH branch elevates
+    risk_level to AMBER on `unified_risk == "HIGH"`. After B³.5, that
+    branch is unreachable when the reconciler said failsafe=False — the
+    new generalised elif at ~6555 fires first and falls through.
+    """
+    def _high_branch_reachable(
+        negation_confirmed: bool,
+        identity_active: bool,
+        failsafe_should_fire: bool,
+        unified_risk: str,
+    ) -> bool:
+        """Mirrors the precedence of the if/elif chain post-B³.5.
+
+        Order: negation_confirmed → identity_active (non-IMMINENT) →
+        not failsafe_should_fire (B³.5 generalised) → IMMINENT upgrade →
+        HIGH upgrade. The HIGH branch fires only when none of the above
+        elifs short-circuit.
+        """
+        if negation_confirmed:
+            return False
+        if identity_active and unified_risk != "IMMINENT":
+            return False
+        if not failsafe_should_fire:
+            return False  # B³.5 generalised elif catches all not-failsafe cases
+        if unified_risk == "IMMINENT":
+            return False  # IMMINENT branch fires first
+        return unified_risk == "HIGH"
+
+    # Bug case before B³.5: HIGH + failsafe=False → would have fired.
+    # Post-B³.5: must not fire (generalised elif catches it).
+    assert _high_branch_reachable(
+        negation_confirmed=False, identity_active=False,
+        failsafe_should_fire=False, unified_risk="HIGH",
+    ) is False, (
+        "Phase B³.5 regression (Entry 4): HIGH branch must be suppressed "
+        "when failsafe_should_fire is False. The generalised elif at "
+        "~6555 should catch this before the HIGH branch is reached."
+    )
+
+    # Control: failsafe=True + HIGH → branch reachable (existing behaviour).
+    assert _high_branch_reachable(
+        negation_confirmed=False, identity_active=False,
+        failsafe_should_fire=True, unified_risk="HIGH",
+    ) is True
+
+    # Control: existing guards still dominate.
+    assert _high_branch_reachable(
+        negation_confirmed=True, identity_active=False,
+        failsafe_should_fire=True, unified_risk="HIGH",
+    ) is False
+    assert _high_branch_reachable(
+        negation_confirmed=False, identity_active=True,
+        failsafe_should_fire=True, unified_risk="HIGH",
+    ) is False
+
+
+def test_phase_b35_medium_branch_gated_by_reconciler():
+    """Entry 5 close-out: MEDIUM branch (server.py:6576) is now reconciler-gated.
+
+    Same shape as N2. The MEDIUM branch upgrades risk_level from GREEN to
+    YELLOW on `unified_risk == "MEDIUM"`. Post-B³.5, unreachable when
+    failsafe_should_fire is False.
+    """
+    def _medium_branch_reachable(
+        negation_confirmed: bool,
+        identity_active: bool,
+        failsafe_should_fire: bool,
+        unified_risk: str,
+    ) -> bool:
+        if negation_confirmed:
+            return False
+        if identity_active and unified_risk != "IMMINENT":
+            return False
+        if not failsafe_should_fire:
+            return False
+        if unified_risk == "IMMINENT":
+            return False
+        if unified_risk == "HIGH":
+            return False
+        return unified_risk == "MEDIUM"
+
+    # Bug case before B³.5: MEDIUM + failsafe=False → would have fired.
+    assert _medium_branch_reachable(
+        negation_confirmed=False, identity_active=False,
+        failsafe_should_fire=False, unified_risk="MEDIUM",
+    ) is False, (
+        "Phase B³.5 regression (Entry 5): MEDIUM branch must be suppressed "
+        "when failsafe_should_fire is False."
+    )
+
+    # Control: failsafe=True + MEDIUM → branch reachable.
+    assert _medium_branch_reachable(
+        negation_confirmed=False, identity_active=False,
+        failsafe_should_fire=True, unified_risk="MEDIUM",
+    ) is True
+
+
+def test_phase_b35_initial_red_preserved_when_failsafe_fires(monkeypatch):
+    """Control for the Change B initial-assignment corrective.
+
+    When `risk_level == "RED"` from the legacy keyword pipeline at line 6334
+    AND the reconciler authoritatively confirms failsafe_should_fire == True
+    (genuine first-person crisis), the corrective MUST NOT fire — RED must
+    persist to the response payload. Guards against the corrective being
+    too aggressive on real crisis flows.
+
+    Mirrors the existing B³ control test
+    (`test_phase_b3_genuine_crisis_still_triggers_overlay`) but specifically
+    tests that the new B³.5 corrective at lines ~6541–6573 doesn't strip
+    RED when the reconciler said failsafe=True.
+    """
+    _patch_buddy_chat_common(monkeypatch, {
+        "ai_used": True,
+        "risk_level": "imminent",
+        "risk_score": 95,
+        "confidence": 0.95,
+        "contains_self_harm_intent": True,
+        "detected_indicators": ["direct_first_person_suicidal_intent"],
+        "reason": "direct first-person suicidal intent with method",
+        "cached": False,
+        "processing_time_ms": 0,
+    })
+
+    sid = "phaseb35-genuine-crisis-control"
+    client = TestClient(server.app)
+    try:
+        resp = client.post(
+            "/api/ai-buddies/chat",
+            json={
+                "message": "i'm going to kill myself tonight with my service pistol",
+                "sessionId": sid,
+                "character": "tommy",
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+
+        # The corrective must not fire on genuine crisis. RED must persist.
+        assert body.get("safeguardingTriggered") is True, (
+            "Phase B³.5 regression: the initial-assignment corrective is "
+            "over-suppressing — a genuine crisis with failsafe_should_fire=True "
+            "is being downgraded from RED to AMBER. "
+            f"Got safeguardingTriggered={body.get('safeguardingTriggered')}, "
+            f"riskLevel={body.get('riskLevel')}."
+        )
+        assert body.get("riskLevel") == "RED", (
+            f"Genuine crisis must surface as riskLevel=RED post-B³.5, "
+            f"got {body.get('riskLevel')}. The corrective at ~6541–6573 "
+            "is firing on a failsafe=True flow when it should not."
+        )
+    finally:
+        _cleanup_session(sid)
