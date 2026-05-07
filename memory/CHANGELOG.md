@@ -1,5 +1,110 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-04 — Device-Side Data Deletion Fix (frontend privacy)
+
+### Problem
+Anthony reported during multi-turn testing: the "Clear All Data" / "Delete
+my data" button in Settings does not actually wipe stored data. Audit
+(`/app/memory/DEVICE_DATA_DELETION_AUDIT.md`) confirmed: 22 of 40 storage
+write sites were missed by `clearAllStoredData()`. The denylist
+implementation enumerated keys explicitly, and several features (notably
+the per-character `${character.id}_email` / `${character.id}_pin`
+anti-grooming flow, mental-health screening history, breathing game state,
+push tokens) were never added to the list. Privacy-critical missed entries
+included full conversation history (legacy chat path), per-character email
++ PIN credentials (dead code — feature was never finished, no read-side
+consumer), mental-health assessment scores (PHQ-9 / GAD-7), and the push
+notification token.
+
+### Fix — Anthony's Plan A scope (allowlist + dead-code excision)
+
+**Change A — Excise email/PIN feature** (no read consumers found; dead
+code per audit §4 + §1.3 confirmation grep). Removed from both chat
+implementations (`frontend/app/chat/[characterId].tsx`,
+`frontend/app/unified-chat.tsx`):
+- 5 state variables (`showEmailModal`, `email`, `pin`, `isAuthenticated`,
+  `savedEmail`) per file
+- `handleSetupEmail` function per file (writes the credentials)
+- `<TouchableOpacity>` "Save conversation banner" (the entry point)
+- `<Modal>` "Save Your Conversation" (the form UI)
+- 14 stylesheet entries used exclusively by the modal/banner per file
+  (saveBanner, saveBannerText, modalOverlay, modalContent, modalClose,
+  modalTitle, modalDescription, privacyNote, privacyText, inputLabel,
+  modalInput, modalButton, modalButtonDisabled, modalButtonText)
+- Net: ~150 lines removed per file, ~300 lines total. Eliminated 2
+  pre-existing TS errors (lines 592/593 of unified-chat.tsx) as a
+  byproduct.
+
+**Change B — Rewrite `clearAllStoredData()` as allowlist** at
+`frontend/src/services/conversationStorage.ts:483–544`. Replaces the
+denylist with: `AsyncStorage.getAllKeys()` → filter against
+`KEYS_TO_PRESERVE` (currently empty by design) → `multiRemove`
+everything else, plus `window.sessionStorage.clear()` on web with a
+catch-and-log fallback for embedded contexts where sessionStorage is
+restricted (private browsing, third-party iframes). Comment block
+documents the inversion and the rule for future preserved-key additions
+(must be platform-level, must be reviewed by Anthony, must update the
+audit doc). Added STORAGE_KEYS constants are no longer enumerated in
+clearAllStoredData itself — the allowlist function-side wipe handles all
+of them.
+
+**Change C — Test infrastructure note.** Added
+`data-testid="clear-all-data-btn"` to the Settings clear-data button
+(`frontend/app/settings.tsx:256`). The frontend has no test framework
+configured (no jest, vitest, or @testing-library), so the brief's §2.3
+Test 1 is fulfilled via a manual smoke procedure documented at
+`/app/memory/DEVICE_DATA_DELETION_SMOKE_TEST.md` (per brief §6: *"manual
+smoke test if no automated suite"*). Adding a test framework is out of
+scope per brief §7.
+
+### Files Modified
+- `/app/frontend/app/chat/[characterId].tsx` — Change A excision
+- `/app/frontend/app/unified-chat.tsx` — Change A excision
+- `/app/frontend/src/services/conversationStorage.ts` — Change B rewrite
+- `/app/frontend/app/settings.tsx` — Change C testid added
+- `/app/memory/DEVICE_DATA_DELETION_SMOKE_TEST.md` — new manual procedure
+- `/app/memory/CHANGELOG.md` — this entry
+
+### TypeScript signal
+`yarn tsc --noEmit` — pre-existing baseline 4 errors → post-fix 2 errors.
+**My changes eliminated 2 pre-existing errors** (lines 592/593 of
+unified-chat.tsx, the `${character.id}_email`/`_pin` writes); zero new
+errors introduced. The 2 remaining errors are pre-existing and unrelated
+(line 111 of `[characterId].tsx`'s `accent_color` typo, line 596 of
+`unified-chat.tsx`'s null-safety on `character.name`).
+
+### Privacy properties — what's now true
+- Every device-side AsyncStorage key (40 enumerated in audit) is wiped on
+  "Clear All Data". Future keys added to the codebase are wiped
+  automatically.
+- sessionStorage is wiped on web (`rc_install_prompt_dismissed`).
+- The two PII-laden dead-code keys (`${character.id}_email`,
+  `${character.id}_pin`) are no longer written at all; the next time a
+  user clears data, those keys leave the device permanently.
+
+### Branch & review
+`feat/device-data-deletion-fix` — frontend privacy code (not safety-
+layer); CODEOWNERS-required review is NOT triggered. Andrew handles the
+pre-push design check directly. Anthony tests the deployed preview against
+the smoke procedure.
+
+### Out of scope (deferred — DO NOT FORGET)
+- `expo-notifications` / `expo-router` / `expo-updates` native-side
+  persistence — flagged in audit §4.5; not enumerated by the audit; no
+  fix in this PR.
+- Service-worker registration cleanup — flagged in audit §4.6; SW caches
+  nothing today, but registration persists. Design intent question.
+- `AsyncStorage.mergeItem` / `multiMerge` calls — flagged in audit §5;
+  30-second grep gap. Allowlist approach naturally catches whatever key
+  these write to (since it's a getAllKeys-driven wipe), but the audit
+  itself didn't enumerate them.
+- Frontend test framework — out of scope per brief §7. Adding it is its
+  own scope decision.
+- Entry 3 / Entry 4 / Entry 5 latent bugs in the safety layer — separate
+  workstream (Round 11+).
+
+---
+
 ## 2026-05-04 — Round 10 Phase B³.5 (Generalised Reconciler-Suppress Gate)
 
 ### Problem

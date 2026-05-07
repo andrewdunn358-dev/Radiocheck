@@ -177,12 +177,6 @@ export default function DynamicAIChat() {
   };
   
   // Auth state
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [email, setEmail] = useState('');
-  const [pin, setPin] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [savedEmail, setSavedEmail] = useState<string | null>(null);
-  
   // Consent state - now app-wide, not per-chat
   const [hasLoadedSession, setHasLoadedSession] = useState(false);
   const [showAIConsent, setShowAIConsent] = useState(false);
@@ -664,19 +658,6 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
     }
   };
 
-  const handleSetupEmail = async () => {
-    if (!email || pin.length !== 4) return;
-    try {
-      await AsyncStorage.setItem(`${character.id}_email`, email);
-      await AsyncStorage.setItem(`${character.id}_pin`, pin);
-      setSavedEmail(email);
-      setIsAuthenticated(true);
-      setShowEmailModal(false);
-    } catch (error) {
-      console.error('Error saving email:', error);
-    }
-  };
-
   // Submit callback request
   const submitCallback = async () => {
     if (!callbackPhone || !callbackName) return;
@@ -739,19 +720,6 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
           <Ionicons name="refresh" size={22} color={colors.text} />
         </Pressable>
       </View>
-
-      {/* Save conversation banner */}
-      {!isAuthenticated && (
-        <TouchableOpacity 
-          style={styles.saveBanner}
-          onPress={() => setShowEmailModal(true)}
-          data-testid="save-conversation-btn"
-        >
-          <Ionicons name="bookmark-outline" size={18} color={character.accentColor} />
-          <Text style={styles.saveBannerText}>Save conversation to continue later</Text>
-          <Ionicons name="chevron-forward" size={18} color={character.accentColor} />
-        </TouchableOpacity>
-      )}
 
       {/* AI Profile Card - shows on first message */}
       {messages.length <= 1 && (
@@ -862,72 +830,6 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      {/* Email Setup Modal */}
-      <Modal
-        visible={showEmailModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowEmailModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity 
-              style={styles.modalClose}
-              onPress={() => setShowEmailModal(false)}
-            >
-              <Ionicons name="close" size={24} color={colors.textMuted} />
-            </TouchableOpacity>
-
-            <Ionicons name="bookmark" size={40} color={character.accentColor} />
-            <Text style={styles.modalTitle}>Save Your Conversation</Text>
-            <Text style={styles.modalDescription}>
-              Enter your email and a 4-digit PIN to save and continue your conversation later.
-            </Text>
-
-            <View style={styles.privacyNote}>
-              <Ionicons name="lock-closed" size={18} color={isDark ? '#6ee7b7' : '#166534'} />
-              <Text style={styles.privacyText}>
-                Your conversation is private and encrypted. Only you can access it with your PIN.
-              </Text>
-            </View>
-
-            <Text style={styles.inputLabel}>Email</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="your@email.com"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <Text style={styles.inputLabel}>4-Digit PIN</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={pin}
-              onChangeText={(text) => setPin(text.replace(/[^0-9]/g, '').slice(0, 4))}
-              placeholder="1234"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="number-pad"
-              maxLength={4}
-              secureTextEntry
-            />
-
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                (!email || pin.length !== 4) && styles.modalButtonDisabled
-              ]}
-              onPress={handleSetupEmail}
-              disabled={!email || pin.length !== 4}
-            >
-              <Text style={styles.modalButtonText}>Save Conversation</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Safeguarding Support Modal */}
       <Modal
@@ -1199,20 +1101,6 @@ const createStyles = (colors: any, isDark: boolean, accentColor: string) => Styl
   refreshButton: {
     padding: 8,
   },
-  saveBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: isDark ? '#064e3b' : '#dcfce7',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  saveBannerText: {
-    fontSize: 13,
-    color: isDark ? '#6ee7b7' : '#166534',
-    fontWeight: '500',
-  },
   aiProfileCard: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -1348,89 +1236,6 @@ const createStyles = (colors: any, isDark: boolean, accentColor: string) => Styl
   },
   sendButtonDisabled: {
     backgroundColor: colors.textMuted,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 24,
-    width: '100%',
-    alignItems: 'center',
-  },
-  modalClose: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  modalDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  privacyNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: isDark ? '#064e3b' : '#dcfce7',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 20,
-    gap: 10,
-  },
-  privacyText: {
-    flex: 1,
-    fontSize: 13,
-    color: isDark ? '#6ee7b7' : '#166534',
-    lineHeight: 18,
-  },
-  inputLabel: {
-    alignSelf: 'flex-start',
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  modalInput: {
-    width: '100%',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalButton: {
-    width: '100%',
-    backgroundColor: accentColor,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  modalButtonDisabled: {
-    backgroundColor: colors.textMuted,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
   },
   safeguardingOverlay: {
     flex: 1,
