@@ -6539,6 +6539,38 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         unified_risk = unified_safety.get("risk_level", "NONE")
         identity_active = protocol_files and 'identity.md' in protocol_files
 
+        # === ROUND 10 PHASE B³.5: INITIAL-ASSIGNMENT RECONCILER CORRECTIVE ===
+        # Line ~6334 sets `risk_level = risk_data["risk_level"]` from the legacy
+        # keyword pipeline (`check_safeguarding`), BEFORE the reconciler runs at
+        # line ~6371. If that initial assignment was "RED" (e.g. because a
+        # reconcilable keyword like "overdose" matched), but the reconciler
+        # then authoritatively decided no failsafe (CONTEXT_OVERRIDE on grief
+        # context, DEFAULT, etc.), the initial RED must not carry forward to
+        # `safeguardingTriggered = (risk_level == "RED")` at line ~7041.
+        #
+        # The Phase B² alert-gate at line ~6932 already gates the alert-DB side
+        # (writes `status="audit_only"`); this corrective closes the symmetric
+        # path on the response-payload side for the upstream-of-upgrade-block
+        # leak vector that surfaced via the B³ failing E2E test (S009_A / S009_B
+        # grief-overdose flow). See /app/memory/PHASE_B3_5_RISK_LEVEL_AUDIT.md
+        # entry 1 (line 6334).
+        #
+        # Downgrade target is AMBER, not GREEN: this mirrors the alert-side
+        # audit_only behaviour (alert is recorded but not escalated to staff
+        # queue), preserves an elevated-context signal, and ensures the
+        # overlay does not fire. Mapping from final_verdict.risk_level was
+        # considered but introduces a new mapping function whose IMMINENT-
+        # no-failsafe edge case collapses to AMBER anyway. GREEN was rejected
+        # as too aggressive — loses the elevated signal entirely.
+        if not failsafe_should_fire and risk_level == "RED":
+            _previous_risk_level = risk_level
+            risk_level = "AMBER"
+            logging.info(
+                f"INITIAL RISK LEVEL DOWNGRADED BY RECONCILER - Session: {request.sessionId[:12]} - "
+                f"Was: {_previous_risk_level} (from check_safeguarding), Now: {risk_level} "
+                f"(ReconcilerRule: {final_verdict.precedence_rule_fired})"
+            )
+
         if negation_confirmed:
             # Negation overrides unified safety escalation
             logging.info(
@@ -6552,17 +6584,30 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 f"UNIFIED RISK UPGRADE SUPPRESSED BY IDENTITY PROTOCOL - Session: {request.sessionId[:12]} - "
                 f"Unified risk was {unified_risk}, keeping {risk_level}"
             )
-        elif not failsafe_should_fire and final_verdict.precedence_rule_fired == "CONTEXT_OVERRIDE":
-            # === ROUND 10 PHASE B³: OVERLAY-GATE RECONCILER HOTFIX ===
-            # The reconciler authoritatively overrode the keyword verdict (e.g. grief
-            # context, CONTEXT_OVERRIDE). The Phase B² alert-gate at server.py:~6932
-            # already writes the alert as status="audit_only" for this case; this
-            # branch closes the symmetric path on the response-payload side that
-            # drives the user-facing `safeguardingTriggered` overlay. Without this,
-            # the alert queue stays clean but the user still sees the crisis modal.
+        elif not failsafe_should_fire:
+            # === ROUND 10 PHASE B³.5: GENERALISED OVERLAY-GATE RECONCILER HOTFIX ===
+            # The reconciler authoritatively decided no failsafe — under any
+            # precedence rule (CONTEXT_OVERRIDE on grief-context overrides,
+            # DEFAULT when neither pipeline escalates, CLASSIFIER_UNAVAILABLE
+            # with keyword.failsafe=False, or KEYWORD_FAILSAFE / CLASSIFIER_ESCALATION
+            # subsequently flipped to False by the negation/identity-guard
+            # adjustments at server.py:6399–6445).
+            #
+            # The Phase B² alert-gate at server.py:~6932 already writes the
+            # alert as status="audit_only" for these cases; this branch closes
+            # the symmetric path on the response-payload side that drives the
+            # user-facing `safeguardingTriggered` overlay. Without this, the
+            # alert queue stays clean but the user still sees the crisis modal.
+            #
+            # B³.5 generalises the original B³ elif from CONTEXT_OVERRIDE-specific
+            # to all not-failsafe cases. The B³.5 pre-scoping audit
+            # (/app/memory/PHASE_B3_5_RISK_LEVEL_AUDIT.md) found the original
+            # condition was too narrow: DEFAULT-with-score-only-IMMINENT
+            # (Entry 3) and the HIGH/MEDIUM branches (Entries 4, 5) all leaked
+            # through the gap.
             logging.info(
                 f"UNIFIED RISK UPGRADE SUPPRESSED BY RECONCILER - Session: {request.sessionId[:12]} - "
-                f"Unified risk was {unified_risk}, keeping {risk_level} (ReconcilerRule: CONTEXT_OVERRIDE)"
+                f"Unified risk was {unified_risk}, keeping {risk_level} (ReconcilerRule: {final_verdict.precedence_rule_fired})"
             )
         elif unified_risk == "IMMINENT" and risk_level != "RED":
             risk_level = "RED"
