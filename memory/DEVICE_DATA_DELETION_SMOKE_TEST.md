@@ -96,3 +96,39 @@ The procedure does NOT verify the §4 open questions from the audit (those are o
 - `expo-file-system` arbitrary file writes (audit §5 grep gap)
 
 These remain as audit-doc-tracked concerns. If any is later promoted to a fix, that's a separate brief.
+
+---
+
+## Granular Chat History Deletion
+
+> **Scope:** Verifies the new `clearChatHistoryOnly()` granular control alongside the existing nuclear `clearAllStoredData()`. This is the post-merge / production smoke test referenced in `emergent-brief-granular-chat-deletion-direct-to-main.md` §3.
+
+### Pre-action setup
+
+1. Open the production URL in incognito / private mode.
+2. Complete site-unlock + age gate + AI consent.
+3. Have a chat exchange with at least one persona (writes `chat_history_*` keys).
+4. Optionally start a chat with a second persona via the legacy chat path if reachable (writes `radiocheck_chat_history_*` keys).
+5. DevTools → Application → IndexedDB (`RKStorage`) and confirm `chat_history_*` and/or `radiocheck_chat_history_*` keys exist alongside other keys (`@radio_check_dob`, `site_unlocked`, etc.).
+
+### Action
+
+Settings → **Delete chat history** → confirm dialog → confirm.
+
+### Post-action assertions
+
+- `chat_history_*` keys are gone.
+- `radiocheck_chat_history_*` keys are gone.
+- `radiocheck_conversations` and `radiocheck_summaries` keys are gone.
+- Everything else is *still there*: `site_unlocked`, `@radio_check_dob`, `@radio_check_age_verified`, AI consent keys, theme, etc.
+- Reload the page: site stays unlocked, age gate does NOT re-prompt, AI consent does NOT re-prompt.
+- Open a chat with the same persona: opens fresh, no prior conversation visible.
+- `sessionStorage` is *not* cleared (intentional — that's `clearAllStoredData`'s job).
+
+### Negative test
+
+Trigger **Delete chat history** when no chat history is present → confirm no error, no crash, button just succeeds quietly.
+
+### Sanity-check the nuclear option
+
+Re-run the existing **Clear All Data** action and confirm it still wipes everything per the §2 procedure above. Adding the granular function must not have broken the nuclear one.

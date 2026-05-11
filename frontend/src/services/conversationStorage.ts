@@ -507,6 +507,54 @@ const KEYS_TO_PRESERVE: string[] = [
   //      PR body and in /app/memory/DEVICE_DATA_DELETION_AUDIT.md.
 ];
 
+/**
+ * Clear chat history only — the granular privacy-hygiene control.
+ *
+ * Removes all conversation-history keys from AsyncStorage while leaving
+ * everything else intact: account state, consent records, age gate, theme,
+ * favourites, journal/mood entries, screening scores, the site access
+ * password, etc. The user remains "logged in" to the app and does not
+ * have to re-onboard.
+ *
+ * Two key prefixes exist due to two parallel chat implementations:
+ *   - `chat_history_${characterId}` (newer, unified-chat.tsx path)
+ *   - `radiocheck_chat_history_${characterId}` (legacy, chat/[characterId].tsx path)
+ *
+ * This function clears both prefixes plus the SUMMARIES and CONVERSATIONS
+ * keys (used by some flows for cross-session recall). It does NOT clear:
+ *   - STORAGE_KEYS.ENCRYPTION_KEY (would orphan any encrypted-but-unread data
+ *     elsewhere; not a chat-history concern)
+ *   - STORAGE_KEYS.OPT_OUT (a separate user-controlled preference)
+ *   - STORAGE_KEYS.LAST_SYNC, STORAGE_KEYS.LAST_CLEANUP (operational metadata)
+ *
+ * For the GDPR Article 17 nuclear-option erasure, see clearAllStoredData().
+ *
+ * Errors are re-thrown (not silently swallowed) so the calling UI can show
+ * an "It didn't work" message — same fail-loud principle as clearAllStoredData.
+ */
+export async function clearChatHistoryOnly(): Promise<void> {
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const chatHistoryKeys = allKeys.filter(k =>
+      k.startsWith('chat_history_') ||
+      k.startsWith('radiocheck_chat_history_')
+    );
+
+    const keysToRemove = [
+      ...chatHistoryKeys,
+      STORAGE_KEYS.CONVERSATIONS,
+      STORAGE_KEYS.SUMMARIES,
+    ];
+
+    if (keysToRemove.length > 0) {
+      await AsyncStorage.multiRemove(keysToRemove);
+    }
+  } catch (error) {
+    console.error('[ConversationStorage] Error clearing chat history:', error);
+    throw error;
+  }
+}
+
 export async function clearAllStoredData(): Promise<void> {
   try {
     // Step 1: enumerate every AsyncStorage key and remove all of them

@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { clearAllStoredData } from '../src/services/conversationStorage';
+import { clearAllStoredData, clearChatHistoryOnly } from '../src/services/conversationStorage';
 import { useTheme } from '../src/context/ThemeContext';
 import { safeGoBack } from '../src/utils/navigation';
 
@@ -23,10 +23,11 @@ export default function Settings() {
   };
 
   const handleClearData = () => {
+    const nuclearBody =
+      'This will permanently delete every piece of data this app has stored on your device — chat history, preferences, screening scores, your site access password, and all account state. You will be returned to a fresh-install state and need to re-enter your access password and re-verify your age. This cannot be undone.\n\nIf you only want to delete your conversations, use "Delete chat history" instead.';
+
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        'This will delete all your local data including conversation history, journal entries, mood history, and favorites. This cannot be undone.\n\nAre you sure?'
-      );
+      const confirmed = window.confirm(nuclearBody + '\n\nAre you sure?');
       if (confirmed) {
         clearAllStoredData()
           .then(() => {
@@ -39,7 +40,7 @@ export default function Settings() {
     } else {
       Alert.alert(
         'Clear All Data',
-        'This will delete all your local data including conversation history, journal entries, mood history, and favorites. This cannot be undone.',
+        nuclearBody,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -51,6 +52,43 @@ export default function Settings() {
                 Alert.alert('Data Cleared', 'All local data has been deleted. You are starting fresh.');
               } catch (error) {
                 Alert.alert('Error', 'Failed to clear data. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleDeleteChatHistory = () => {
+    const body =
+      'This will permanently delete all your conversations on this device. Your account, preferences, and other settings will not be affected.';
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Delete chat history?\n\n' + body);
+      if (confirmed) {
+        clearChatHistoryOnly()
+          .then(() => {
+            window.alert('Chat history deleted.');
+          })
+          .catch(() => {
+            window.alert('Failed to delete chat history. Please try again.');
+          });
+      }
+    } else {
+      Alert.alert(
+        'Delete chat history?',
+        body,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete chat history',
+            onPress: async () => {
+              try {
+                await clearChatHistoryOnly();
+                Alert.alert('Chat history deleted', 'All your conversations on this device have been removed.');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to delete chat history. Please try again.');
               }
             },
           },
@@ -253,12 +291,24 @@ export default function Settings() {
 
           <View style={styles.divider} />
 
+          <TouchableOpacity style={styles.settingRow} onPress={handleDeleteChatHistory} data-testid="delete-chat-history-btn">
+            <View style={styles.settingInfo}>
+              <Ionicons name="chatbubbles-outline" size={22} color={colors.textSecondary} />
+              <View>
+                <Text style={styles.settingLabel}>Delete chat history</Text>
+                <Text style={styles.settingDescription}>Clears all conversations on this device. Your account, preferences, and other settings will be unaffected.</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
           <TouchableOpacity style={[styles.settingRow, styles.dangerRow]} onPress={handleClearData} data-testid="clear-all-data-btn">
             <View style={styles.settingInfo}>
               <Ionicons name="trash-outline" size={22} color="#ef4444" />
               <View>
                 <Text style={[styles.settingLabel, styles.dangerText]}>Clear All Data</Text>
-                <Text style={styles.settingDescription}>Delete all local data from this device</Text>
+                <Text style={styles.settingDescription}>Returns the device to a fresh-install state. Deletes everything including chat history, preferences, screening data, and your site access password. You will need to re-onboard from scratch.</Text>
               </View>
             </View>
           </TouchableOpacity>
