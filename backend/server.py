@@ -67,7 +67,6 @@ from safety.unified_safety import (
 from governance_router import governance_router, set_db as set_governance_db
 from case_router import case_router, set_dependencies as set_case_dependencies
 from routers.ai_characters import router as ai_characters_router, set_dependencies as set_ai_char_dependencies
-from routers.learning_system import router as learning_router, set_db as set_learning_db
 from routers.lms import router as lms_router
 
 # Import modular personas package for AI character prompts
@@ -8811,10 +8810,6 @@ app.include_router(case_router, prefix="/api")
 # AI Characters CMS routes (manage AI personas via database)
 set_ai_char_dependencies(db, get_current_user, AI_CHARACTERS)
 app.include_router(ai_characters_router, prefix="/api")
-
-# Learning System routes (safety patterns, learnings, feedback)
-set_learning_db(db)
-app.include_router(learning_router)
 
 # LMS - Mental Health First Aid Training for Volunteers
 app.include_router(lms_router)
