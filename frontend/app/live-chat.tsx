@@ -403,13 +403,30 @@ export default function LiveChat() {
   };
 
   const endChatAndNavigate = () => {
+    // Tell the chat socket we're leaving (existing behaviour — fires
+    // `user_left_chat` to remaining participants).
     if (socketRef.current && roomId) {
       socketRef.current.emit('leave_chat_room', {
         room_id: roomId,
         user_id: userId
       });
     }
-    
+
+    // Also call the HTTP /end endpoint so the room is marked ended in the
+    // database AND so the backend broadcasts `live_chat_ended` to all
+    // sockets in the room. Without this, the staff portal keeps the chat
+    // panel open ("Chat with You" + End Chat button) because the room is
+    // still 'active' in the DB and no socket event told staff otherwise.
+    // Fire-and-forget; navigation must not block on this.
+    if (roomId) {
+      fetch(`${API_URL}/api/live-chat/rooms/${roomId}/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch((e) => {
+        console.warn('live-chat: /end notification failed', e);
+      });
+    }
+
     // Try to go back to the AI chat they came from
     // If we have an alertId, they came from safeguarding flow in AI chat
     // Use router.back() first, with fallback to home (where they can choose a buddy)

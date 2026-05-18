@@ -215,6 +215,37 @@ export default function LiveChatTab({
     };
   }, [activeChatRoom, webrtcUserId, user?.id, loadLiveChats]);
 
+  // Listen for live-chat-ended broadcasts (re-dispatched by useWebRTCPhone
+  // from the backend's `live_chat_ended` Socket.IO event). Fires when
+  // EITHER side ends the chat — veteran returns to AI buddy via End Chat,
+  // or staff hits the red End Chat button on this same panel. Whichever
+  // side did not originate the end-event needs to clear local state so
+  // the stale "Chat with You" panel disappears.
+  useEffect(() => {
+    const handleLiveChatEnded = (event: Event) => {
+      const customEvent = event as CustomEvent<{ room_id: string; ended_at?: string }>;
+      const data = customEvent.detail;
+      console.log('[LiveChatTab] Received live_chat_ended:', data);
+
+      const currentRoomId =
+        (activeChatRoom as any)?.id ||
+        (activeChatRoom as any)?.room_id ||
+        (activeChatRoom as any)?._id;
+      if (currentRoomId && data?.room_id && currentRoomId === data.room_id) {
+        // Clear the active panel — this is the room that just ended.
+        setActiveChatRoom(null);
+        setChatMessages([]);
+      }
+      // Refresh the chat list so the ended room drops out / shows as ended.
+      loadLiveChats();
+    };
+
+    window.addEventListener('live_chat_ended', handleLiveChatEnded);
+    return () => {
+      window.removeEventListener('live_chat_ended', handleLiveChatEnded);
+    };
+  }, [activeChatRoom, loadLiveChats]);
+
   // Handler functions
   const handleJoinChat = async (room: LiveChatRoom) => {
     if (!token || !user?.id || !user?.name) return;
