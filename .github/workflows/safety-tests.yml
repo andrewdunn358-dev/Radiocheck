@@ -36,3 +36,4 @@ jobs:
         env:
           SKIP_LIVE_TESTS: "true"
           MONGO_URL: "mongodb://localhost:27017/ci_dummy"
+          OPENAI_API_KEY: "sk-ci-dummy"
