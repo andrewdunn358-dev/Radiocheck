@@ -204,12 +204,14 @@ export default function SafeguardingCallModal({
       
       // Setup WebRTC - get user's microphone ready with quality constraints
       try {
+        console.log('[SafeguardingCallModal] step: getUserMedia called');
         console.log('[SafeguardingCallModal] Setting up WebRTC with enhanced audio...');
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: AUDIO_CONSTRAINTS, 
           video: false 
         });
         localStreamRef.current = stream;
+        console.log('[SafeguardingCallModal] step: getUserMedia OK', { tracks: stream.getAudioTracks().length });
         console.log('[SafeguardingCallModal] Got local audio stream with noise suppression');
         
         // Create peer connection with enhanced config
@@ -218,6 +220,7 @@ export default function SafeguardingCallModal({
           iceCandidatePoolSize: 10,
         });
         pcRef.current = pc;
+        console.log('[SafeguardingCallModal] step: peerConnection created');
         
         // Add local tracks
         stream.getTracks().forEach(track => {
@@ -297,8 +300,18 @@ export default function SafeguardingCallModal({
         };
         
       } catch (err: any) {
-        console.error('[SafeguardingCallModal] WebRTC setup error:', err);
-        setErrorMessage('Could not access microphone');
+        const errName = err?.name || '';
+        const isMicError =
+          errName === 'NotAllowedError' ||
+          errName === 'NotFoundError' ||
+          errName === 'NotReadableError' ||
+          errName === 'OverconstrainedError';
+        console.error('[SafeguardingCallModal] step: WebRTC setup error', { name: errName, isMicError, err });
+        setErrorMessage(
+          isMicError
+            ? `Could not access microphone (${errName}). Please check browser permissions.`
+            : `WebRTC setup failed: ${String(err)}`
+        );
         setModalState('error');
       }
     });
@@ -315,30 +328,53 @@ export default function SafeguardingCallModal({
 
     // WebRTC offer from staff
     socket.on('webrtc_offer', async (data: any) => {
-      console.log('[SafeguardingCallModal] Received WebRTC offer');
+      console.log('[SafeguardingCallModal] step: webrtc_offer received', { call_id: data?.call_id, offerType: data?.offer?.type });
       if (!data?.offer || !pcRef.current) {
-        console.error('[SafeguardingCallModal] No offer or no peer connection');
+        // Previously this branch returned silently — leaving the staff side
+        // stuck at "ICE gathering" with no feedback on the veteran's phone.
+        // Surface it via the existing error modal state instead.
+        const reason = !data?.offer
+          ? 'WebRTC offer payload was missing'
+          : 'Peer connection was not ready when the offer arrived';
+        console.error('[SafeguardingCallModal] step: offer-handling pre-check failed', { hasOffer: !!data?.offer, hasPc: !!pcRef.current, reason });
+        setErrorMessage(reason);
+        setModalState('error');
         return;
       }
       
       try {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
-        console.log('[SafeguardingCallModal] Set remote description');
+        console.log('[SafeguardingCallModal] step: setRemoteDescription OK');
         
         const answer = await pcRef.current.createAnswer();
+        console.log('[SafeguardingCallModal] step: answer created');
         await pcRef.current.setLocalDescription(answer);
-        console.log('[SafeguardingCallModal] Created answer');
         
         socket.emit('webrtc_answer', {
           call_id: callIdRef.current,
           answer: answer,
           user_id: anonymousUserId,
         });
+        console.log('[SafeguardingCallModal] step: answer sent');
       } catch (err) {
         console.error('[SafeguardingCallModal] Error handling offer:', err);
-        setErrorMessage('Failed to connect call');
+        setErrorMessage(`Failed to connect call: ${String(err)}`);
         setModalState('error');
       }
+    });
+
+    // Diagnostic: backend emits `webrtc_error` on call_not_found / peer_disconnected
+    // (webrtc_signaling.py:706, :729). Previously not listened-for on this modal,
+    // which caused the call UI to hang silently while the staff side timed out
+    // at "ICE gathering". Surface via the existing error modal state — no
+    // signalling logic changed.
+    socket.on('webrtc_error', (data: any) => {
+      const message =
+        (data && (data.message || data.error)) ||
+        'WebRTC error reported by server';
+      console.error('[SafeguardingCallModal] step: webrtc_error from server', data);
+      setErrorMessage(`Call connection error: ${message}`);
+      setModalState('error');
     });
 
     // ICE candidate from staff
