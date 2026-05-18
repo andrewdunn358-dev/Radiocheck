@@ -17,6 +17,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../src/config/api';
 import { safeGoBack } from '../src/utils/navigation';
+import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
 
 interface Message {
   id: string;
@@ -867,6 +868,17 @@ export default function LiveChat() {
           <FontAwesome5 name="paper-plane" size={16} color="#fff" />
         </TouchableOpacity>
       </View>
+      {/*
+        Diagnostic overlay (only renders when ?debug=1 / localStorage flag set).
+        IMPORTANT: live-chat.tsx does NOT call useWebRTCCall(), so on this
+        screen there is no socket.on('webrtc_offer') listener. We surface
+        that fact via the `notice` prop so testers can confirm in the field.
+        Fixing the missing-listener bug is a separate follow-up PR — this
+        overlay is read-only.
+      */}
+      <WebRTCDebugOverlay
+        notice="useWebRTCCall hook is NOT mounted on this screen — incoming WebRTC offers will be silently discarded. See follow-up PR."
+      />
     </KeyboardAvoidingView>
   );
 }
