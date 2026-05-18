@@ -482,7 +482,9 @@ export default function LiveChatTab({
         <button
           data-testid="restore-chat-pill"
           onClick={() => setChatMinimised(false)}
-          className="fixed bottom-4 right-4 z-40 bg-card border border-border rounded-full px-4 py-2 shadow-2xl flex items-center gap-2 hover:bg-primary-light/20"
+          className={`fixed right-4 z-30 bg-card border border-border rounded-full px-4 py-2 shadow-2xl flex items-center gap-2 hover:bg-primary-light/20 ${
+            webrtcPhone?.isInCall ? 'bottom-28' : 'bottom-4'
+          }`}
           aria-label="Restore minimised chat"
         >
           <MessageSquare className="w-4 h-4 text-secondary" />
