@@ -58,12 +58,31 @@ interface DebugInfo {
   connectionState: string;
 }
 
+// Diagnostic-only: surfaces silent WebRTC setup failures (offer mishandling,
+// getUserMedia rejection, peer disconnects relayed via backend webrtc_error).
+// Read-only by callers; the hook never alters call/signalling logic based on
+// this value.
+export interface WebRTCErrorInfo {
+  stage:
+    | 'webrtc_error_event'  // backend emitted webrtc_error (call_not_found / peer_disconnected / ...)
+    | 'getUserMedia'        // mic permission denied / no device
+    | 'peer_connection'     // RTCPeerConnection setup failure
+    | 'offer_handling'      // setRemoteDescription / createAnswer failure
+    | 'offer_before_pc'     // webrtc_offer arrived before peer connection was ready
+    | 'answer_handling'     // setRemoteDescription on caller side
+    | 'ice_candidate';      // addIceCandidate failure
+  message: string;
+  detail?: unknown;
+  timestamp: string;
+}
+
 interface UseWebRTCCallReturn {
   callState: CallState;
   callInfo: CallInfo | null;
   isConnected: boolean;
   callDuration: number;
   debugInfo: DebugInfo;
+  lastError: WebRTCErrorInfo | null;
   initiateCall: (targetUserId: string, targetName: string) => Promise<void>;
   acceptCall: () => void;
   rejectCall: () => void;
@@ -82,6 +101,21 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     iceState: 'new',
     connectionState: 'new',
   });
+  const [lastError, setLastError] = useState<WebRTCErrorInfo | null>(null);
+
+  // Helper: capture a WebRTC failure for the diagnostic UI.
+  // Pure observer — does NOT alter signalling / call state.
+  const recordError = (stage: WebRTCErrorInfo['stage'], message: string, detail?: unknown) => {
+    const info: WebRTCErrorInfo = {
+      stage,
+      message,
+      detail,
+      timestamp: new Date().toISOString(),
+    };
+    // eslint-disable-next-line no-console
+    console.error('[WebRTCCallee] ERROR captured', info);
+    setLastError(info);
+  };
   
   const socketRef = useRef<Socket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -111,6 +145,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     setCallState('idle');
     setCallInfo(null);
     setCallDuration(0);
+    setLastError(null);
   };
 
   // Use ref for cleanup to avoid closure issues
@@ -288,15 +323,26 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
 
     // WebRTC signaling
     socketRef.current.on('webrtc_offer', async (data: any) => {
+      console.log('[WebRTCCallee] step: webrtc_offer received', { call_id: data.call_id, offerType: data.offer?.type });
       console.log('WebRTC: *** RECEIVED OFFER ***', data.call_id);
       console.log('WebRTC: Offer SDP type:', data.offer?.type);
       console.log('WebRTC: Current call ID:', currentCallIdRef.current);
       console.log('WebRTC: Current call state:', callState);
+      // Diagnostic: surface the "offer arrived before pc ready" case visibly
+      // instead of relying on handleOffer's lazy pc construction succeeding.
+      if (!peerConnectionRef.current) {
+        console.warn('[WebRTCCallee] step: webrtc_offer arrived BEFORE peer connection was ready — will lazy-construct');
+        recordError(
+          'offer_before_pc',
+          'WebRTC offer arrived before peer connection was constructed. Lazy-constructing now; if getUserMedia fails the call will hang silently — see subsequent errors.',
+        );
+      }
       try {
         await handleOffer(data.offer);
         console.log('WebRTC: Offer handled successfully, answer should be sent');
       } catch (err) {
         console.error('WebRTC: Error handling offer:', err);
+        recordError('offer_handling', String(err), err);
       }
     });
 
@@ -306,6 +352,19 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
 
     socketRef.current.on('webrtc_ice_candidate', async (data: any) => {
       await handleIceCandidate(data.candidate);
+    });
+
+    // Diagnostic: backend emits `webrtc_error` from webrtc_signaling.py
+    // (call_not_found, peer_disconnected, etc). Previously not listened-for
+    // on the mobile/callee side, which is why setup failures went silent.
+    // Read-only — we surface the error via lastError state; no signalling change.
+    socketRef.current.on('webrtc_error', (data: any) => {
+      const message =
+        (data && (data.message || data.error)) ||
+        'WebRTC error reported by server';
+      // eslint-disable-next-line no-console
+      console.error('[WebRTCCallee] step: webrtc_error from server', data);
+      recordError('webrtc_error_event', message, data);
     });
   }, []);
 
@@ -358,6 +417,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     if (Platform.OS !== 'web') return;
     
     try {
+      console.log('[WebRTCCallee] step: getUserMedia called');
       // Get audio with specific constraints for better compatibility
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -367,6 +427,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
         }, 
         video: false 
       });
+      console.log('[WebRTCCallee] step: getUserMedia OK', { tracks: stream.getAudioTracks().length });
       localStreamRef.current = stream;
       
       // Ensure audio tracks are enabled
@@ -377,6 +438,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
 
       const pc = new RTCPeerConnection(RTC_CONFIG);
       peerConnectionRef.current = pc;
+      console.log('[WebRTCCallee] step: peerConnection created');
 
       // Add tracks with explicit stream reference
       stream.getTracks().forEach((track) => {
@@ -465,6 +527,17 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
       }
     } catch (error) {
       console.error('WebRTC error:', error);
+      // Distinguish getUserMedia rejection (most common silent-failure cause)
+      // from other peer-connection setup failures so the UI can show why.
+      const errName = (error as any)?.name || '';
+      const stage: WebRTCErrorInfo['stage'] =
+        errName === 'NotAllowedError' ||
+        errName === 'NotFoundError' ||
+        errName === 'NotReadableError' ||
+        errName === 'OverconstrainedError'
+          ? 'getUserMedia'
+          : 'peer_connection';
+      recordError(stage, String(error), error);
       showAlert('Microphone Error', 'Could not access microphone. Please allow microphone access in your browser settings.');
       cleanupCall();
     }
@@ -492,6 +565,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
       
       console.log('WebRTC handleOffer: Creating answer...');
       const answer = await peerConnectionRef.current?.createAnswer();
+      console.log('[WebRTCCallee] step: answer created');
       console.log('WebRTC handleOffer: Answer created, setting local description...');
       await peerConnectionRef.current?.setLocalDescription(answer);
       
@@ -503,6 +577,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
         call_id: currentCallIdRef.current,
         answer: answer,
       });
+      console.log('[WebRTCCallee] step: answer sent');
       
       console.log('WebRTC handleOffer: Answer sent successfully!');
       
@@ -510,6 +585,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
       startCallTimer();
     } catch (err) {
       console.error('WebRTC handleOffer: ERROR:', err);
+      recordError('offer_handling', String(err), err);
     }
   };
 
@@ -664,6 +740,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     isConnected,
     callDuration,
     debugInfo,
+    lastError,
     initiateCall,
     acceptCall,
     rejectCall,

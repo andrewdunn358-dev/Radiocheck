@@ -75,7 +75,21 @@ interface WebRTCPhoneState {
     risk_level?: string;
     timestamp: string;
   };
+  // Diagnostic only — set when (a) backend emits `webrtc_error`
+  // (call_not_found, peer_disconnected, etc) or (b) staff sent an offer
+  // and no answer / connected state arrived within NO_ANSWER_TIMEOUT_MS.
+  // Read-only by consumers. Does NOT alter signalling.
+  remotePeerError?: {
+    stage: 'webrtc_error_event' | 'no_answer';
+    message: string;
+    timestamp: string;
+  };
 }
+
+// Diagnostic timeout: how long staff waits after sending a WebRTC offer
+// before showing "no answer received" instead of hanging at "ICE gathering".
+// Pure observer — does NOT cancel or retry the call.
+const NO_ANSWER_TIMEOUT_MS = 15000;
 
 interface OnlineUser {
   user_id: string;
@@ -107,6 +121,44 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
   const callStartTimeRef = useRef<Date | null>(null);
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const hasRemoteDescriptionRef = useRef(false);
+  // Diagnostic: timer that fires NO_ANSWER_TIMEOUT_MS after staff emits an
+  // offer. Cleared when answer arrives or call ends. Pure observer.
+  const noAnswerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Diagnostic helpers — observer-only, no signalling side effects.
+  const clearNoAnswerTimer = useCallback(() => {
+    if (noAnswerTimerRef.current) {
+      clearTimeout(noAnswerTimerRef.current);
+      noAnswerTimerRef.current = null;
+    }
+  }, []);
+  const clearRemotePeerError = useCallback(() => {
+    setState(prev => ({ ...prev, remotePeerError: undefined }));
+  }, []);
+  const startNoAnswerTimer = useCallback(() => {
+    clearNoAnswerTimer();
+    noAnswerTimerRef.current = setTimeout(() => {
+      // Only fire if we're still waiting (no remote description installed
+      // and pc isn't connected). Read-only — does not end the call.
+      const pc = peerConnectionRef.current;
+      if (
+        !hasRemoteDescriptionRef.current &&
+        pc &&
+        pc.iceConnectionState !== 'connected' &&
+        pc.iceConnectionState !== 'completed'
+      ) {
+        console.warn('[WebRTCPhone] No answer received within 15s — surfacing diagnostic indicator');
+        setState(prev => ({
+          ...prev,
+          remotePeerError: {
+            stage: 'no_answer',
+            message: 'No answer received from remote peer after 15s. The call is still in progress; check the veteran\'s console for errors.',
+            timestamp: new Date().toISOString(),
+          },
+        }));
+      }
+    }, NO_ANSWER_TIMEOUT_MS);
+  }, [clearNoAnswerTimer]);
   
   // Ringtone state using Web Audio API (no file needed)
   const ringtoneRef = useRef<{
@@ -317,6 +369,8 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
   const endCall = useCallback(() => {
     stopRingtone();
     stopCallTimer();
+    // Diagnostic: cancel any pending no-answer timer.
+    clearNoAnswerTimer();
 
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
@@ -343,8 +397,9 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
       isMuted: false,
       hasIncomingCall: false,
       callerInfo: undefined,
+      remotePeerError: undefined,
     }));
-  }, [stopRingtone, stopCallTimer, updateStatus]);
+  }, [stopRingtone, stopCallTimer, updateStatus, clearNoAnswerTimer]);
 
   // Make call
   const makeCall = useCallback(async (targetUserId: string) => {
@@ -723,7 +778,12 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
           call_id: data.call_id,
           offer: offer,
         });
-        
+        // Diagnostic only: arm the no-answer timer so the UI can show a
+        // visible "no answer received" indicator instead of hanging
+        // silently at "ICE gathering" if the veteran's mobile drops the
+        // offer. Does NOT cancel or retry the call.
+        startNoAnswerTimer();
+
         setState(prev => ({
           ...prev,
           isInCall: true,
@@ -731,7 +791,8 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
             id: data.user_id,
             name: data.user_name,
             type: 'safeguarding_call',
-          }
+          },
+          remotePeerError: undefined,
         }));
         
       } catch (error) {
@@ -928,6 +989,9 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     // If we're the callee (answered an incoming call), we should NOT receive an answer
     socket.on('webrtc_answer', async (data: { call_id: string; answer: RTCSessionDescriptionInit }) => {
       console.log('[WebRTCPhone] WebRTC answer received');
+      // Diagnostic: a real answer arrived — clear the no-answer indicator.
+      clearNoAnswerTimer();
+      clearRemotePeerError();
       if (peerConnectionRef.current) {
         // Check if connection is in the right state to receive an answer
         const signalingState = peerConnectionRef.current.signalingState;
@@ -968,7 +1032,27 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     // Call ended
     socket.on('call_ended', (data: { call_id: string; reason?: string }) => {
       console.log('[WebRTCPhone] Call ended:', data.reason);
+      clearNoAnswerTimer();
       endCall();
+    });
+
+    // Diagnostic: backend emits `webrtc_error` from webrtc_signaling.py
+    // (call_not_found / peer_disconnected / target-offline). Previously the
+    // staff portal didn't listen for this, which is why the call UI hung
+    // at "ICE gathering" with no indication. Surface via `remotePeerError`
+    // state for the UI; no signalling / call-state change.
+    socket.on('webrtc_error', (data: { error?: string; call_id?: string; message?: string }) => {
+      const message = data?.message || data?.error || 'WebRTC error reported by server';
+      console.error('[WebRTCPhone] step: webrtc_error from server', data);
+      clearNoAnswerTimer();
+      setState(prev => ({
+        ...prev,
+        remotePeerError: {
+          stage: 'webrtc_error_event',
+          message,
+          timestamp: new Date().toISOString(),
+        },
+      }));
     });
 
     // Call answered on another device (multi-device support)
