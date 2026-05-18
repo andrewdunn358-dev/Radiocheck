@@ -76,6 +76,17 @@ export interface WebRTCErrorInfo {
   timestamp: string;
 }
 
+// Diagnostic-only: in-memory record of the last N callee-path steps. Read by
+// the WebRTCDebugOverlay component when ?debug=1 / localStorage flag is set.
+// Pure observer — hook does not branch on this.
+export interface WebRTCStep {
+  name: string;
+  detail?: unknown;
+  timestamp: string;
+}
+
+const RECENT_STEPS_LIMIT = 20;
+
 interface UseWebRTCCallReturn {
   callState: CallState;
   callInfo: CallInfo | null;
@@ -83,6 +94,7 @@ interface UseWebRTCCallReturn {
   callDuration: number;
   debugInfo: DebugInfo;
   lastError: WebRTCErrorInfo | null;
+  recentSteps: WebRTCStep[];
   initiateCall: (targetUserId: string, targetName: string) => Promise<void>;
   acceptCall: () => void;
   rejectCall: () => void;
@@ -102,6 +114,27 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     connectionState: 'new',
   });
   const [lastError, setLastError] = useState<WebRTCErrorInfo | null>(null);
+  // Diagnostic-only ring buffer of recent callee-path steps. Surfaced by
+  // WebRTCDebugOverlay when debug mode is enabled. Pure observer.
+  const [recentSteps, setRecentSteps] = useState<WebRTCStep[]>([]);
+
+  // Helper: record a diagnostic step. Pushes to ring buffer + console.logs.
+  // Pure observer — does NOT alter signalling.
+  const recordStep = (name: string, detail?: unknown) => {
+    const entry: WebRTCStep = {
+      name,
+      detail,
+      timestamp: new Date().toISOString(),
+    };
+    // eslint-disable-next-line no-console
+    console.log('[WebRTCCallee] step:', name, detail ?? '');
+    setRecentSteps(prev => {
+      const next = [...prev, entry];
+      return next.length > RECENT_STEPS_LIMIT
+        ? next.slice(next.length - RECENT_STEPS_LIMIT)
+        : next;
+    });
+  };
 
   // Helper: capture a WebRTC failure for the diagnostic UI.
   // Pure observer — does NOT alter signalling / call state.
@@ -115,6 +148,19 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     // eslint-disable-next-line no-console
     console.error('[WebRTCCallee] ERROR captured', info);
     setLastError(info);
+    // Mirror into the recent-steps ring so the overlay shows the failure
+    // inline with the surrounding step sequence.
+    setRecentSteps(prev => {
+      const entry: WebRTCStep = {
+        name: `ERROR: ${stage}`,
+        detail: { message, detail },
+        timestamp: info.timestamp,
+      };
+      const next = [...prev, entry];
+      return next.length > RECENT_STEPS_LIMIT
+        ? next.slice(next.length - RECENT_STEPS_LIMIT)
+        : next;
+    });
   };
   
   const socketRef = useRef<Socket | null>(null);
@@ -146,6 +192,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     setCallInfo(null);
     setCallDuration(0);
     setLastError(null);
+    setRecentSteps([]);
   };
 
   // Use ref for cleanup to avoid closure issues
@@ -323,7 +370,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
 
     // WebRTC signaling
     socketRef.current.on('webrtc_offer', async (data: any) => {
-      console.log('[WebRTCCallee] step: webrtc_offer received', { call_id: data.call_id, offerType: data.offer?.type });
+      recordStep('webrtc_offer_received', { call_id: data?.call_id, offerType: data?.offer?.type });
       console.log('WebRTC: *** RECEIVED OFFER ***', data.call_id);
       console.log('WebRTC: Offer SDP type:', data.offer?.type);
       console.log('WebRTC: Current call ID:', currentCallIdRef.current);
@@ -332,6 +379,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
       // instead of relying on handleOffer's lazy pc construction succeeding.
       if (!peerConnectionRef.current) {
         console.warn('[WebRTCCallee] step: webrtc_offer arrived BEFORE peer connection was ready — will lazy-construct');
+        recordStep('offer_before_pc_warn');
         recordError(
           'offer_before_pc',
           'WebRTC offer arrived before peer connection was constructed. Lazy-constructing now; if getUserMedia fails the call will hang silently — see subsequent errors.',
@@ -417,7 +465,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     if (Platform.OS !== 'web') return;
     
     try {
-      console.log('[WebRTCCallee] step: getUserMedia called');
+      recordStep('getUserMedia_called');
       // Get audio with specific constraints for better compatibility
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -427,7 +475,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
         }, 
         video: false 
       });
-      console.log('[WebRTCCallee] step: getUserMedia OK', { tracks: stream.getAudioTracks().length });
+      recordStep('getUserMedia_ok', { tracks: stream.getAudioTracks().length });
       localStreamRef.current = stream;
       
       // Ensure audio tracks are enabled
@@ -438,7 +486,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
 
       const pc = new RTCPeerConnection(RTC_CONFIG);
       peerConnectionRef.current = pc;
-      console.log('[WebRTCCallee] step: peerConnection created');
+      recordStep('peerConnection_created');
 
       // Add tracks with explicit stream reference
       stream.getTracks().forEach((track) => {
@@ -565,7 +613,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
       
       console.log('WebRTC handleOffer: Creating answer...');
       const answer = await peerConnectionRef.current?.createAnswer();
-      console.log('[WebRTCCallee] step: answer created');
+      recordStep('answer_created');
       console.log('WebRTC handleOffer: Answer created, setting local description...');
       await peerConnectionRef.current?.setLocalDescription(answer);
       
@@ -577,7 +625,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
         call_id: currentCallIdRef.current,
         answer: answer,
       });
-      console.log('[WebRTCCallee] step: answer sent');
+      recordStep('answer_sent', { call_id: currentCallIdRef.current });
       
       console.log('WebRTC handleOffer: Answer sent successfully!');
       
@@ -741,6 +789,7 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     callDuration,
     debugInfo,
     lastError,
+    recentSteps,
     initiateCall,
     acceptCall,
     rejectCall,

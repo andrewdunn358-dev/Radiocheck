@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWebRTCCall, formatCallDuration } from '../hooks/useWebRTCCallWeb';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
+import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
 
 interface Counsellor {
   id: string;
@@ -27,7 +28,7 @@ export default function Counsellors() {
   const [error, setError] = useState<string | null>(null);
 
   // WebRTC calling
-  const { callState, callInfo, callDuration, initiateCall, endCall } = useWebRTCCall();
+  const { callState, callInfo, callDuration, lastError, recentSteps, initiateCall, endCall } = useWebRTCCall();
   const [isInitiatingCall, setIsInitiatingCall] = useState(false);
   const [callingCounsellorName, setCallingCounsellorName] = useState('');
   const showCallModal = callState !== 'idle' || isInitiatingCall;
@@ -303,6 +304,12 @@ export default function Counsellors() {
           </View>
         </View>
       </Modal>
+      {/* Diagnostic overlay — renders only when ?debug=1 / WEBRTC_DEBUG flag set */}
+      <WebRTCDebugOverlay
+        callState={callState}
+        lastError={lastError}
+        recentSteps={recentSteps}
+      />
     </SafeAreaView>
   );
 }

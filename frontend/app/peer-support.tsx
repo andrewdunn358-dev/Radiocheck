@@ -7,6 +7,7 @@ import { useWebRTCCall, formatCallDuration } from '../hooks/useWebRTCCallWeb';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 import { useAgeGateContext, isFeatureAvailable, getRestrictionMessage } from '../src/context/AgeGateContext';
+import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
 
 interface PeerVeteran {
   id: string;
@@ -51,7 +52,7 @@ export default function PeerSupport() {
   const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   
   // WebRTC calling - include register and acceptCall for incoming calls
-  const { callState, callInfo, callDuration, debugInfo, initiateCall, endCall, register, acceptCall, rejectCall } = useWebRTCCall();
+  const { callState, callInfo, callDuration, debugInfo, lastError, recentSteps, initiateCall, endCall, register, acceptCall, rejectCall } = useWebRTCCall();
   const [isInitiatingCall, setIsInitiatingCall] = useState(false);
   const [callingPeerName, setCallingPeerName] = useState('');
   const showCallModal = callState !== 'idle' || isInitiatingCall;
@@ -995,6 +996,12 @@ export default function PeerSupport() {
       </Modal>
         </>
       )}
+      {/* Diagnostic overlay — renders only when ?debug=1 / WEBRTC_DEBUG flag set */}
+      <WebRTCDebugOverlay
+        callState={callState}
+        lastError={lastError}
+        recentSteps={recentSteps}
+      />
     </SafeAreaView>
   );
 }
