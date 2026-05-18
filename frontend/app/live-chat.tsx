@@ -81,6 +81,8 @@ export default function LiveChat() {
     lastError: rtcLastError,
     recentSteps: rtcRecentSteps,
     register: rtcRegister,
+    acceptCall: rtcAcceptCall,
+    rejectCall: rtcRejectCall,
   } = useWebRTCCall();
 
   // Register the veteran on the WebRTC signalling socket using the same
@@ -520,18 +522,31 @@ export default function LiveChat() {
   };
 
   // Handle incoming call from staff
+  //
+  // PR #22: Accept/Reject now route through the WebRTC hook instead of the
+  // chat socket. The previous `socketRef.current.emit('call_accept', …)` /
+  // `'call_reject'` was a dead-end emit — the backend's chat-socket handlers
+  // for these events do not relay them onto the WebRTC signalling channel,
+  // so the staff side never received a `call_accepted` confirmation and the
+  // call hung at "ICE gathering" with the offer sitting buffered on the
+  // veteran's hook (proven by app.radiocheck.me browser console logs +
+  // matching staff-portal trace).
+  //
+  // The hook's acceptCall() / rejectCall() emit on the WebRTC signalling
+  // socket — the same socket the staff portal (`useWebRTCPhone`) already
+  // uses — so the backend can relay correctly and offer/answer/ICE
+  // completes end-to-end. UI/chat-message side-effects below are preserved.
   const handleAcceptCall = () => {
-    if (!incomingCall || !socketRef.current) return;
-    
+    if (!incomingCall) return;
+
     console.log('Accepting incoming call:', incomingCall.callId);
-    
-    // Emit call_accept event
-    socketRef.current.emit('call_accept', {
-      call_id: incomingCall.callId,
-    });
-    
+
+    // Route accept through the WebRTC hook (WebRTC signalling socket).
+    // Replaces the previous chat-socket emit which was a dead-end.
+    rtcAcceptCall();
+
     setShowIncomingCallModal(false);
-    
+
     // Add message to chat
     setMessages(prev => [...prev, {
       id: `call-accepted-${Date.now()}`,
@@ -540,21 +555,20 @@ export default function LiveChat() {
       senderName: 'System',
       timestamp: new Date(),
     }]);
-    
-    // Note: The actual WebRTC connection will be handled by call_accepted and webrtc_offer events
+
+    // Note: The actual WebRTC connection (offer/answer/ICE) is driven by
+    // the hook listening on its own socket for call_accepted + webrtc_offer.
   };
 
   const handleRejectCall = () => {
-    if (!incomingCall || !socketRef.current) return;
-    
+    if (!incomingCall) return;
+
     console.log('Rejecting incoming call:', incomingCall.callId);
-    
-    // Emit call_reject event
-    socketRef.current.emit('call_reject', {
-      call_id: incomingCall.callId,
-      reason: 'User declined'
-    });
-    
+
+    // Route reject through the WebRTC hook (WebRTC signalling socket).
+    // Replaces the previous chat-socket emit which was a dead-end.
+    rtcRejectCall();
+
     setShowIncomingCallModal(false);
     setIncomingCall(null);
     
