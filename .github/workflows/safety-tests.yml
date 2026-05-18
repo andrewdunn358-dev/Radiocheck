@@ -35,3 +35,4 @@ jobs:
           python -m pytest tests/test_round9_items3_4_5_signals_judge.py tests/test_typographic_safety.py -v
         env:
           SKIP_LIVE_TESTS: "true"
+          MONGO_URL: "mongodb://localhost:27017/ci_dummy"
