@@ -30,6 +30,10 @@ jobs:
 
       - name: Run safety tests
         run: |
-          python backend_test.py
+          cd backend
+          pip install pytest pytest-asyncio
+          python -m pytest tests/test_round9_items3_4_5_signals_judge.py tests/test_typographic_safety.py -v
         env:
           SKIP_LIVE_TESTS: "true"
+          MONGO_URL: "mongodb://localhost:27017/ci_dummy"
+          OPENAI_API_KEY: "sk-ci-dummy"

@@ -21,15 +21,24 @@ import json
 from datetime import datetime
 import uuid
 
-# Backend URL — preferred order:
+# Backend URL — required from env. No fallback.
 #   1. BACKEND_URL_OVERRIDE  (CI / explicit override)
 #   2. EXPO_PUBLIC_BACKEND_URL  (matches frontend env, no /api suffix)
-#   3. Live preview URL  (fallback for ad-hoc local runs)
+#
+# We intentionally do NOT default to any preview URL. A stale preview-host
+# fallback caused CI to silently 404 against a different deployment and
+# violated the project rule "no agent test environment in code".
+# Fail loudly if neither var is set.
 _RAW_URL = (
     os.environ.get("BACKEND_URL_OVERRIDE")
     or os.environ.get("EXPO_PUBLIC_BACKEND_URL")
-    or "https://phase-b2-alert.preview.emergentagent.com"
-).rstrip("/")
+)
+if not _RAW_URL:
+    raise SystemExit(
+        "backend_test.py: BACKEND_URL_OVERRIDE or EXPO_PUBLIC_BACKEND_URL "
+        "must be set. No fallback URL is provided by design — see CODEOWNERS."
+    )
+_RAW_URL = _RAW_URL.rstrip("/")
 BACKEND_URL = _RAW_URL if _RAW_URL.endswith("/api") else f"{_RAW_URL}/api"
 
 # Idempotency suffix — different per CI run so the 2nd, 3rd, … runs do not
