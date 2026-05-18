@@ -18,6 +18,7 @@ import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../src/config/api';
 import { safeGoBack } from '../src/utils/navigation';
 import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
+import { useWebRTCCall } from '../hooks/useWebRTCCallWeb';
 
 interface Message {
   id: string;
@@ -64,6 +65,34 @@ export default function LiveChat() {
   const preferredStaffType = params.staffType || 'any';
   const alertId = params.alertId || '';
   const sessionId = params.sessionId || '';
+
+  // WebRTC callee hook — mounted so incoming `webrtc_offer` / `incoming_call`
+  // events from staff-initiated calls are no longer silently discarded on
+  // this screen. Diagnostic state (`callState`, `lastError`, `recentSteps`)
+  // is surfaced via the WebRTCDebugOverlay below (opt-in via ?debug=1).
+  //
+  // INTENTIONALLY MINIMAL SCOPE: this PR mounts + registers only. The hook's
+  // `acceptCall` / `rejectCall` are NOT wired into the existing chat-socket
+  // accept/reject UI yet — that follow-up needs to consolidate the two
+  // signalling paths (chat-socket and WebRTC-socket) and is out of scope
+  // here. See follow-up PR for end-to-end accept flow.
+  const {
+    callState: rtcCallState,
+    lastError: rtcLastError,
+    recentSteps: rtcRecentSteps,
+    register: rtcRegister,
+  } = useWebRTCCall();
+
+  // Register the veteran on the WebRTC signalling socket using the same
+  // identifier the chat socket uses (sessionId || userId — see L102 below).
+  // This is the ID staff dials when initiating a WebRTC call from the
+  // safeguarding chat, so it must match exactly. Runs once on mount; the
+  // hook's `register` is stable across renders (useCallback) so safe to
+  // include in deps.
+  useEffect(() => {
+    const registrationId = sessionId || userId;
+    rtcRegister(registrationId, 'user', userName);
+  }, [sessionId, userId, userName, rtcRegister]);
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -870,14 +899,22 @@ export default function LiveChat() {
       </View>
       {/*
         Diagnostic overlay (only renders when ?debug=1 / localStorage flag set).
-        IMPORTANT: live-chat.tsx does NOT call useWebRTCCall(), so on this
-        screen there is no socket.on('webrtc_offer') listener. We surface
-        that fact via the `notice` prop so testers can confirm in the field.
-        Fixing the missing-listener bug is a separate follow-up PR — this
-        overlay is read-only.
+        As of this PR, live-chat.tsx mounts useWebRTCCall() (see top of
+        component), so the overlay now shows real hook state — `callState`,
+        any captured `lastError`, and the recent-steps ring buffer. The
+        previous "hook is NOT mounted" notice has been removed because the
+        hook IS mounted on this screen.
+
+        Note: UI-level accept/reject for incoming calls still flows through
+        the pre-existing chat-socket modal (showIncomingCallModal). Wiring
+        the hook's `acceptCall` / `rejectCall` into that UI is a follow-up
+        PR — out of scope here to avoid double `call_accept` emits across
+        the two sockets.
       */}
       <WebRTCDebugOverlay
-        notice="useWebRTCCall hook is NOT mounted on this screen — incoming WebRTC offers will be silently discarded. See follow-up PR."
+        callState={rtcCallState}
+        lastError={rtcLastError}
+        recentSteps={rtcRecentSteps}
       />
     </KeyboardAvoidingView>
   );
