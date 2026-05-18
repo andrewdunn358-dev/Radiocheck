@@ -7787,37 +7787,6 @@ class LiveChatMessage(BaseModel):
     text: str
     sender: str  # 'user' or 'staff'
 
-@api_router.get("/live-chat/rooms")
-async def list_live_chat_rooms(current_user: User = Depends(get_current_user)):
-    """Get all active live chat rooms for staff to see and join.
-    Returns rooms from both memory and database.
-    """
-    if current_user.role not in ["admin", "supervisor", "counsellor", "peer"]:
-        raise HTTPException(status_code=403, detail="Only staff can view chat rooms")
-    
-    # Get rooms from memory (most recent)
-    memory_rooms = list(live_chat_rooms.values())
-    
-    # Also get from database (for persistence across restarts)
-    db_rooms = await db.live_chat_rooms.find(
-        {"status": {"$ne": "ended"}},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
-    
-    # Merge, preferring memory versions (have up-to-date messages)
-    room_map = {}
-    for room in db_rooms:
-        room_map[room["id"]] = room
-    for room in memory_rooms:
-        room_map[room["id"]] = room
-    
-    # Return sorted by created_at (newest first)
-    rooms = list(room_map.values())
-    rooms.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-    
-    return rooms
-
-
 @api_router.post("/live-chat/rooms")
 async def create_live_chat_room(room_data: LiveChatRoomCreate):
     """Create a new live chat room for user-staff communication.
@@ -7991,39 +7960,71 @@ async def end_live_chat_room(room_id: str):
 
 @api_router.get("/live-chat/rooms")
 async def get_active_chat_rooms(current_user: User = Depends(get_current_user)):
-    """Get all active chat rooms for staff (staff only)"""
+    """Get all active live chat rooms for staff (staff only).
+
+    Returns merged view of in-memory rooms (live, plaintext) + DB rooms (decrypted on read).
+    Messages and `user_name` are decrypted before returning so staff see veteran text,
+    not raw `ENC:...` ciphertext in the request preview.
+    """
     # Normalize role check
     user_role = (current_user.role or "").lower()
     allowed_roles = ["admin", "supervisor", "counsellor", "peer", "peer_supporter"]
-    
+
     if user_role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Only staff can view chat rooms")
-    
-    rooms = await db.live_chat_rooms.find(
-        {"status": {"$in": ["active", "waiting"]}},
+
+    # Read from DB (persistent). Filter out ended rooms.
+    db_rooms = await db.live_chat_rooms.find(
+        {"status": {"$ne": "ended"}},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
-    
-    # Decrypt messages in each room
-    decrypted_rooms = []
-    for room in rooms:
-        room_copy = room.copy()
-        if room_copy.get("messages"):
-            decrypted_messages = []
-            for msg in room_copy["messages"]:
-                msg_copy = msg.copy()
-                # Decrypt message text if encrypted
-                if msg_copy.get("text") and str(msg_copy["text"]).startswith("ENC:"):
-                    try:
-                        msg_copy["text"] = decrypt_field(msg_copy["text"])
-                    except Exception as e:
-                        logging.warning(f"Failed to decrypt message: {e}")
-                        msg_copy["text"] = "[Unable to decrypt message]"
-                decrypted_messages.append(msg_copy)
-            room_copy["messages"] = decrypted_messages
-        decrypted_rooms.append(room_copy)
-    
-    return decrypted_rooms
+
+    # Memory rooms (already plaintext)
+    memory_rooms = list(live_chat_rooms.values())
+
+    # Merge — memory wins (has freshest messages); DB fills in rooms missing from memory
+    room_map = {}
+    for room in db_rooms:
+        room_map[room["id"]] = _decrypt_live_chat_room_for_view(room)
+    for room in memory_rooms:
+        room_map[room["id"]] = room
+
+    rooms = list(room_map.values())
+    rooms.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return rooms
+
+
+def _decrypt_live_chat_room_for_view(room: dict) -> dict:
+    """Decrypt encrypted fields on a live_chat_rooms document for staff view.
+
+    Decrypts `messages[*].text` and top-level `user_name` (per ENCRYPTED_FIELDS).
+    Leaves plaintext values untouched (decrypt_field is a no-op on non-`ENC:` strings).
+    Does not mutate the input.
+    """
+    room_copy = room.copy()
+
+    # Decrypt user_name if present (defined in ENCRYPTED_FIELDS for live_chat_rooms)
+    if room_copy.get("user_name"):
+        try:
+            room_copy["user_name"] = decrypt_field(str(room_copy["user_name"]))
+        except Exception as e:
+            logging.warning(f"Failed to decrypt user_name for room {room_copy.get('id')}: {e}")
+
+    # Decrypt each message.text
+    if room_copy.get("messages"):
+        decrypted_messages = []
+        for msg in room_copy["messages"]:
+            msg_copy = msg.copy()
+            if msg_copy.get("text") and str(msg_copy["text"]).startswith("ENC:"):
+                try:
+                    msg_copy["text"] = decrypt_field(msg_copy["text"])
+                except Exception as e:
+                    logging.warning(f"Failed to decrypt message in room {room_copy.get('id')}: {e}")
+                    msg_copy["text"] = "[Unable to decrypt message]"
+            decrypted_messages.append(msg_copy)
+        room_copy["messages"] = decrypted_messages
+
+    return room_copy
 
 # Note: include_router moved to end of file after all routes are defined
 
