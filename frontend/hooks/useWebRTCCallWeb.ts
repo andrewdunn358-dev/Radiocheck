@@ -172,6 +172,16 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const hasRemoteDescriptionRef = useRef<boolean>(false);
 
+  // PR #24: persist the last register() call so we can auto-re-emit on
+  // every `connect` event. Without this, if the socket disconnects /
+  // reconnects (cold-start, network blip, reconnection backoff), the
+  // backend's user_id → socket_id mapping points at the DEAD socket and
+  // staff-initiated offers silently land on a corpse. Discovered live on
+  // 2026-02-18: veteran overlay showed `socket: disconnected, steps: 0`
+  // despite chat socket being healthy — the dedicated WebRTC signalling
+  // socket never paid Render's cold-start tax and never recovered.
+  const lastRegistrationRef = useRef<{ userId: string; userType: string; userName: string } | null>(null);
+
   // Define cleanupCall first since it's used by many other functions
   const cleanupCallFn = () => {
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -247,15 +257,45 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
     socketRef.current.on('connect', () => {
       console.log('WebRTC: Connected to signaling server');
       setIsConnected(true);
+      recordStep('socket_connected', { id: socketRef.current?.id });
       // Expose socket on window for other components to use (e.g., peer-support)
       if (typeof window !== 'undefined') {
         (window as any).__webrtc_socket = socketRef.current;
       }
+      // PR #24: auto-re-emit register on every connect (including reconnects)
+      // so the backend's user_id → socket_id mapping always points at the
+      // LIVE socket. Without this, a single disconnect orphans the mapping
+      // and every subsequent incoming offer is routed to a dead socket.
+      const last = lastRegistrationRef.current;
+      if (last) {
+        console.log('WebRTC: Auto-re-registering on connect', last.userId);
+        recordStep('register_auto_on_connect', { userId: last.userId });
+        socketRef.current?.emit('register', {
+          user_id: last.userId,
+          user_type: last.userType,
+          name: last.userName,
+          status: 'available',
+        });
+      }
     });
 
-    socketRef.current.on('disconnect', () => {
-      console.log('WebRTC: Disconnected');
+    socketRef.current.on('connect_error', (err: any) => {
+      console.error('WebRTC: connect_error', err?.message || err);
+      recordError('socket_error', `connect_error: ${err?.message || String(err)}`, {
+        type: err?.type,
+        description: err?.description,
+      });
+    });
+
+    socketRef.current.on('reconnect_attempt', (attempt: number) => {
+      console.log('WebRTC: reconnect_attempt', attempt);
+      recordStep('socket_reconnect_attempt', { attempt });
+    });
+
+    socketRef.current.on('disconnect', (reason: string) => {
+      console.log('WebRTC: Disconnected', reason);
       setIsConnected(false);
+      recordStep('socket_disconnected', { reason });
       cleanupCall();
     });
 
@@ -417,19 +457,33 @@ export function useWebRTCCall(): UseWebRTCCallReturn {
   }, []);
 
   // Register with signaling server
+  //
+  // PR #24: store the registration params in a ref so they survive socket
+  // reconnects — the `connect` handler above auto-re-emits register on
+  // every successful connect (including reconnects). The old setTimeout
+  // hack remains as a belt-and-braces fallback for the very first connect
+  // race (initializeSocket triggers async io() handshake; if the socket
+  // happens to be already connected by the time setTimeout fires we emit
+  // immediately, otherwise the `connect` handler handles it).
   const register = useCallback((userId: string, userType: string, userName: string) => {
     if (Platform.OS !== 'web') return;
-    
+
+    lastRegistrationRef.current = { userId, userType, userName };
+    recordStep('register_requested', { userId, userType });
+
     initializeSocket();
-    
-    setTimeout(() => {
-      socketRef.current?.emit('register', {
+
+    // If already connected, emit now. Otherwise the `connect` handler will
+    // emit when the socket finally connects (cold-start safe).
+    if (socketRef.current?.connected) {
+      recordStep('register_emit_immediate', { userId });
+      socketRef.current.emit('register', {
         user_id: userId,
         user_type: userType,
         name: userName,
         status: 'available',
       });
-    }, 1000);
+    }
   }, [initializeSocket]);
 
   // Create remote audio element
