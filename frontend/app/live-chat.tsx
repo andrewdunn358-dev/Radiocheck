@@ -18,7 +18,7 @@ import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../src/config/api';
 import { safeGoBack } from '../src/utils/navigation';
 import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
-import { useWebRTCCall } from '../hooks/useWebRTCCallWeb';
+import { useWebRTCCall, formatCallDuration } from '../hooks/useWebRTCCallWeb';
 
 interface Message {
   id: string;
@@ -83,6 +83,8 @@ export default function LiveChat() {
     register: rtcRegister,
     acceptCall: rtcAcceptCall,
     rejectCall: rtcRejectCall,
+    endCall: rtcEndCall,
+    callDuration: rtcCallDuration,
   } = useWebRTCCall();
 
   // Register the veteran on the WebRTC signalling socket using the same
@@ -911,6 +913,45 @@ export default function LiveChat() {
           <FontAwesome5 name="paper-plane" size={16} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/*
+        PR #25: Veteran-side floating "In Call" panel with End Call button.
+        Renders only while the WebRTC hook reports an active call
+        (connecting / connected). Without this the veteran had no way to
+        hang up — staff could end the call but the veteran was stuck
+        unless they closed the tab.
+
+        Wired straight to the hook's endCall() — same path the staff
+        portal uses, so call teardown is bidirectionally symmetric.
+      */}
+      {(rtcCallState === 'connecting' || rtcCallState === 'connected') && (
+        <View style={styles.veteranCallPanel} pointerEvents="box-none">
+          <View style={styles.veteranCallPanelInner}>
+            <View style={styles.veteranCallIcon}>
+              <FontAwesome5 name="phone" size={18} color="#34d399" />
+            </View>
+            <View style={styles.veteranCallText}>
+              <Text style={styles.veteranCallStatus}>
+                {rtcCallState === 'connected' ? 'In Call' : 'Connecting…'}
+              </Text>
+              <Text style={styles.veteranCallDuration}>
+                {rtcCallState === 'connected'
+                  ? formatCallDuration(rtcCallDuration || 0)
+                  : 'Establishing audio…'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              data-testid="veteran-end-call-btn"
+              onPress={rtcEndCall}
+              style={styles.veteranEndCallBtn}
+              accessibilityLabel="End call"
+            >
+              <FontAwesome5 name="phone-slash" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/*
         Diagnostic overlay (only renders when ?debug=1 / localStorage flag set).
         As of this PR, live-chat.tsx mounts useWebRTCCall() (see top of
@@ -1459,6 +1500,58 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     backgroundColor: '#16a34a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // PR #25: floating veteran-side "In Call" panel (bottom-right).
+  veteranCallPanel: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    zIndex: 60,
+  },
+  veteranCallPanelInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#1f2937',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  veteranCallIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(52, 211, 153, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  veteranCallText: {
+    minWidth: 110,
+  },
+  veteranCallStatus: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  veteranCallDuration: {
+    color: '#9ca3af',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  veteranEndCallBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'center',
   },
