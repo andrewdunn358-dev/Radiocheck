@@ -1,5 +1,36 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-20 — Veteran Voices PR #B2 (admin portal UI)
+
+### Why
+PR #B1 shipped the admin REST endpoints + ingest pipeline; PR #B2 gives editorial staff an actual screen to use them. Without this, every clip would have to be hand-curled or seeded.
+
+### Changes
+- **`portal/src/types/voices.ts`** (new) — TS mirrors of the PR #B1 Pydantic shapes. `CLIP_CATEGORIES` / `SENSITIVITY_FLAGS` exported as `as const` arrays so the form pickers stay in sync with the backend enums.
+- **`portal/src/lib/admin-api.ts`** — adds 7 typed client methods consuming `PR #B1`: `listClipsAdmin`, `getClipAdmin`, `createClipAdmin` (multipart), `updateClipAdmin`, `publishClipAdmin`, `archiveClipAdmin`, `retranscribeClipAdmin`, `deleteClipAdmin`. Multipart upload bypasses `api.fetch` (which forces JSON content-type), mirroring the existing `uploadCMSImage` pattern.
+- **`portal/src/components/admin/tabs/VoicesTab.tsx`** (new) — single-page editorial tab (per PR #B2 Q2a):
+  - **Upload form** card at the top — file picker, contributor name/bio/photo/recording date, category + sensitivity checkbox grids, admin/internal notes, explicit consent tick. Mic icon. On submit runs the synchronous pipeline; on success auto-selects the new row in the detail editor.
+  - **Clip list** card in the middle — table with status / pipeline badges, duration, categories, flags, last updated. Click to load the detail.
+  - **Detail editor** card at the bottom — `<audio>` player, all editable fields, transcript `<textarea>`, captions table (per Q3a: simple Start/End/Text rows, add/remove). Action bar: Save · Re-transcribe · Archive · Publish · Delete. Publish button disabled (with explanatory `title`) unless `consentConfirmed && audioFilename && processingStatus==='ready' && status!=='published'` — matches the backend guardrail so the UI never lets a click 400.
+  - Pipeline failures surface a red banner with the `processingError` string from the backend.
+  - All interactive elements carry `data-testid` (`voices-*-*`) for the future Playwright suite.
+- **`portal/src/app/admin/page.tsx`** — sidebar tab placement (Q1a): new top-level **Voices** tab with `Mic` icon, sat directly next to "AI Personas".
+
+### Out of scope (explicit deferrals)
+- Background-task ingest pattern — current synchronous Whisper run is acceptable for ≤10 min clips. Revisit if editorial team asks for batch upload.
+- Waveform-with-clickable-segments caption editor — table is enough for cleaning Whisper output (Q3a).
+- Veteran-side surfaces (random feed UI, save/favourite, category browse) — PR #C.
+
+### Safety wall
+- No imports from `safety/`, `safeguarding`, `live-chat`, `WebRTC`, or any panic / alert / escalation module on either side.
+- New TS code is admin-only; no veteran-facing surfaces affected.
+
+### Verification
+- `npx tsc --noEmit` on the portal → **0 errors** across the whole tree.
+- Backend endpoints already covered by 21 pytest cases in PR #B1.
+- Smoke: `curl /api/admin/clips` still returns 401 (auth gate intact).
+
+
 ## 2026-05-20 — Veteran Voices PR #B1 (backend pipeline + admin API endpoints)
 
 ### Why
