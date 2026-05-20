@@ -13,6 +13,7 @@
  * persistent mini-player floats over the bottom inset.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -39,6 +40,7 @@ type Tab = 'categories' | 'saved' | 'recent' | 'search';
 
 export default function VoicesLibraryScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const player = useVoicesPlayer();
   const [tab, setTab] = useState<Tab>('categories');
   const [loading, setLoading] = useState(false);
@@ -159,9 +161,36 @@ export default function VoicesLibraryScreen() {
       style={{ flex: 1, backgroundColor: colors.background, paddingTop: 36 }}
       data-testid="voices-library-screen"
     >
-      <Text style={{ color: colors.text, fontSize: 24, fontWeight: '700', paddingHorizontal: 16 }}>
-        Voices
-      </Text>
+      {/* Header row: back arrow + title. Back uses router.back() when
+          there's history; otherwise falls back to /home so the user
+          never lands on a dead-end. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 12,
+          gap: 8,
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack && router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/home');
+            }
+          }}
+          data-testid="voices-library-back"
+          hitSlop={10}
+          style={{ padding: 6 }}
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </Pressable>
+        <Text style={{ color: colors.text, fontSize: 24, fontWeight: '700', flex: 1 }}>
+          Voices
+        </Text>
+      </View>
       <Text
         style={{
           color: colors.textMuted,
