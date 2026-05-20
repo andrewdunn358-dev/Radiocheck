@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Users, Calendar, FileText, Bot, Shield, Activity, 
-  Settings, BarChart3, Clock, BookOpen,
+  Settings, BarChart3, Clock,
   LogOut, Menu, X, Bell, RefreshCw, ClipboardList
 } from 'lucide-react';
 import { api } from '@/lib/admin-api';
@@ -23,7 +23,7 @@ import MigrationTab from '@/components/admin/tabs/MigrationTab';
 import CMSTab from '@/components/admin/tabs/CMSTab';
 import BetaTestingTab from '@/components/admin/tabs/BetaTestingTab';
 import ComplianceTab from '@/components/admin/tabs/ComplianceTab';
-import LearningTab from '@/components/admin/tabs/LearningTab';
+
 import TimeTrackingTab from '@/components/admin/tabs/TimeTrackingTab';
 import DebriefTab from '@/components/admin/tabs/DebriefTab';
 
@@ -39,7 +39,6 @@ const TABS = [
   { id: 'monitoring', label: 'Monitoring', icon: Activity },
   { id: 'governance', label: 'Governance', icon: Shield },
   { id: 'events', label: 'Events', icon: Calendar },
-  { id: 'learning', label: 'AI Learning', icon: BookOpen },
   { id: 'timetracking', label: 'Time Tracking', icon: Clock },
   { id: 'debrief', label: 'Debrief', icon: ClipboardList },
   { id: 'ai-usage', label: 'AI Usage', icon: BarChart3 },
@@ -379,16 +378,6 @@ export default function AdminPortal() {
               onSuccess={setSuccess}
               onError={setError}
               userName={user?.name || user?.email || 'Admin'}
-            />
-          )}
-
-          {/* AI Learning Tab */}
-          {activeTab === 'learning' && (
-            <LearningTab
-              token={token!}
-              userId={user?.id}
-              onSuccess={setSuccess}
-              onError={setError}
             />
           )}
 

@@ -436,32 +436,6 @@ export const api = {
   exportGovernanceData: (token: string) =>
     api.fetch<any>('/governance/export?days=90', { token }),
 
-  // Learning/AI Training
-  getLearningStats: (token: string) =>
-    api.fetch<any>('/learning/stats', { token }),
-  
-  getSafetyPatterns: (token: string, category: string = '', severity: string = '') => {
-    let url = '/learning/patterns?is_active=true';
-    if (category) url += `&category=${category}`;
-    if (severity) url += `&severity=${severity}`;
-    return api.fetch<any>(url, { token });
-  },
-  
-  getLearningQueue: (token: string) =>
-    api.fetch<any>('/learning/queue?status=pending', { token }),
-  
-  getApprovedLearnings: (token: string) =>
-    api.fetch<any>('/learning/approved', { token }),
-  
-  getResponseFeedback: (token: string) =>
-    api.fetch<any>('/learning/feedback?status=pending', { token }),
-  
-  deletePattern: (token: string, patternId: string) =>
-    api.fetch<any>(`/learning/patterns/${patternId}`, { token, method: 'DELETE' }),
-  
-  reviewFeedback: (token: string, feedbackId: string, action: 'approve' | 'reject') =>
-    api.fetch<any>(`/learning/feedback/${feedbackId}/review?action=${action}`, { token, method: 'POST' }),
-
   // Beta Testing
   getBetaStatus: (token: string) =>
     api.fetch<{ beta_enabled: boolean }>('/surveys/beta-enabled', { token }),
