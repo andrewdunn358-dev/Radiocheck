@@ -8764,7 +8764,12 @@ from routers import (
 )
 
 from routers.debrief import router as debrief_router, set_db as set_debrief_db
+from routers.clips import router as clips_router, set_db as set_clips_db
 from tenants import get_tenant_config, get_tenant_by_id
+
+# Wire the Veteran Voices router (PR #A — backend foundation only).
+# Lives entirely separate from safety / safeguarding / live-chat / WebRTC.
+set_clips_db(db)
 
 # Core functionality routers
 app.include_router(auth.router, prefix="/api")
@@ -8783,6 +8788,11 @@ app.include_router(live_chat.router, prefix="/api")
 app.include_router(notes.router, prefix="/api")
 app.include_router(concerns.router, prefix="/api")
 app.include_router(message_queue.router, prefix="/api")
+
+# Veteran Voices (PR #A — backend foundation: random/get/audio-stream).
+# Independent of safeguarding / WebRTC / AI buddies — see routers/clips.py
+# for the explicit safety wall comments.
+app.include_router(clips_router, prefix="/api")
 app.include_router(ai_feedback.router, prefix="/api")
 app.include_router(knowledge_base.router, prefix="/api")
 app.include_router(compliance.router, prefix="/api")
