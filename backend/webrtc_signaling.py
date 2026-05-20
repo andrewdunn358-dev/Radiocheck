@@ -273,15 +273,39 @@ async def register(sid, data):
 
 @sio.event
 async def update_status(sid, data):
-    """Update staff availability status"""
+    """Update staff availability status.
+
+    Mutates the in-memory status, broadcasts the change to all other
+    connected clients, and persists the change to the database for
+    counsellors / peer_supporters.
+
+    NOTE (safety-adjacent): the broadcast + DB persist block below
+    previously lived (in dead form) at the tail of `heartbeat()` where
+    its local variables were undefined, raising NameError on every
+    heartbeat and silently breaking the staff status broadcast.
+    Relocating it here restores the intended behavior with no logic
+    change. Flagged for @TheAIOldtimer CODEOWNERS review because the
+    `status` field gates safeguarding chat/call routing.
+    """
     if sid in connected_users:
         new_status = data.get('status', 'available')
         old_status = connected_users[sid].get('status')
         user_id = connected_users[sid].get('user_id')
         user_type = connected_users[sid].get('user_type')
-        
+
         connected_users[sid]['status'] = new_status
         logger.info(f"Status updated for {sid}: {old_status} -> {new_status}")
+
+        # Broadcast to all other connected clients so peer staff and the
+        # admin dashboard see the live change.
+        await sio.emit('staff_status_changed', {
+            'user_id': user_id,
+            'status': new_status
+        })
+
+        # Persist for counsellors / peer_supporters (no-op for app users).
+        if user_type in ['counsellor', 'peer']:
+            await update_staff_status_in_db(user_id, user_type, new_status)
 
 
 @sio.event
@@ -297,15 +321,6 @@ async def heartbeat(sid, data):
             'timestamp': datetime.utcnow().isoformat(),
             'user_id': user_id
         }, to=sid)
-        
-        await sio.emit('staff_status_changed', {
-            'user_id': user_id,
-            'status': new_status
-        })
-        
-        # Update status in database
-        if user_type in ['counsellor', 'peer']:
-            await update_staff_status_in_db(user_id, user_type, new_status)
 
 
 @sio.event

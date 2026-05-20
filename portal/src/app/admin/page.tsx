@@ -3,8 +3,12 @@
 import { useState, useEffect } from 'react';
 import { 
   Users, Calendar, FileText, Bot, Shield, Activity, 
+chore/-remove-dormant-AI-Learning-frontend-remnants
   Settings, BarChart3, Clock,
   LogOut, Menu, X, Bell, RefreshCw, ClipboardList
+  Settings, BarChart3, Clock, BookOpen,
+  LogOut, Menu, X, Bell, RefreshCw, ClipboardList, Mic
+main
 } from 'lucide-react';
 import { api } from '@/lib/admin-api';
 import { useMainAdminAuth } from '@/hooks/useMainAdminAuth';
@@ -12,6 +16,7 @@ import { useMainAdminAuth } from '@/hooks/useMainAdminAuth';
 // Import tab components
 import StaffTab from '@/components/admin/tabs/StaffTab';
 import AIPersonasTab from '@/components/admin/tabs/AIPersonasTab';
+import VoicesTab from '@/components/admin/tabs/VoicesTab';
 import SettingsTab from '@/components/admin/tabs/SettingsTab';
 import LogsTab from '@/components/admin/tabs/LogsTab';
 import RotaTab from '@/components/admin/tabs/RotaTab';
@@ -33,6 +38,7 @@ const TABS = [
   { id: 'rota', label: 'Rota', icon: Calendar },
   { id: 'cms', label: 'CMS', icon: FileText },
   { id: 'ai-personas', label: 'AI Personas', icon: Bot },
+  { id: 'voices', label: 'Voices', icon: Mic },
   { id: 'beta', label: 'Beta Testing', icon: Activity },
   { id: 'compliance', label: 'Compliance', icon: Shield },
   { id: 'logs', label: 'Logs', icon: FileText },
@@ -292,6 +298,15 @@ export default function AdminPortal() {
           {/* AI Personas Tab */}
           {activeTab === 'ai-personas' && (
             <AIPersonasTab
+              token={token!}
+              onSuccess={setSuccess}
+              onError={setError}
+            />
+          )}
+
+          {/* Veteran Voices Tab (PR #B2) */}
+          {activeTab === 'voices' && (
+            <VoicesTab
               token={token!}
               onSuccess={setSuccess}
               onError={setError}

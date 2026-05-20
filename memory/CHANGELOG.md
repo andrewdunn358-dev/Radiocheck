@@ -10,7 +10,7 @@ The backend AI Learning system was removed in a previous session, but the admin 
 - Removed 7 dead methods from `src/lib/admin-api.ts`: `getLearningStats`, `getSafetyPatterns`, `getLearningQueue`, `getApprovedLearnings`, `getResponseFeedback`, `deletePattern`, `reviewFeedback`.
 
 ### Staff portal (`staff-portal/app.js`)
-- Removed the entire `// ==================== AI RESPONSE FEEDBACK ====================` block + the `submitForLearning` / `closeLearningModal` / `submitLearningCandidate` helpers + the `showFeedbackModal` / `closeFeedbackModal` / `submitFeedback` helpers. All were defined but never called anywhere in `app.js` or any `staff-portal/*.html` — pure dead code.
+- Removed the entire `//AI RESPONSE FEEDBACK` block + the `submitForLearning` / `closeLearningModal` / `submitLearningCandidate` helpers + the `showFeedbackModal` / `closeFeedbackModal` / `submitFeedback` helpers. All were defined but never called anywhere in `app.js` or any `staff-portal/*.html` — pure dead code.
 
 ### Verification
 - `grep -rn "AILearning\|getLearningStats\|/api/learning" portal/src/` → no matches.
@@ -21,7 +21,199 @@ The backend AI Learning system was removed in a previous session, but the admin 
 ### Safety wall
 - No backend changes. No `safety/`, `encryption.py`, `webrtc_signaling.py`, or safeguarding code touched.
 - `ENCRYPTED_FIELDS` untouched.
+## 2026-05-20 — Veteran Voices UX polish: back arrow + dismissible player
 
+Two quick wins surfaced by the first round of user testing on PR #C:
+
+- **Back arrow on `/voices`** — the library screen had no in-app way home; users had to use the browser back button. Added a left-aligned `arrow-back` button next to the "Voices" title. Uses `router.back()` when there's history, falls back to `router.replace('/home')` so it never lands on a dead-end (e.g. when the route is opened from a deep link / NFC).
+- **Dismissible player** — the persistent mini-player had no way to close. Once a clip was loaded it floated forever. Added a new `close()` action on `VoicesPlayerContext` that pauses both audio and video elements, clears `clip`, and unmounts the mini-player. Wired to:
+  - An **X** icon on the right edge of the mini-player (`voices-mini-close`).
+  - A **stop-circle** icon in the full-screen player header (`voices-fullscreen-stop`), so users can stop without first collapsing.
+
+No backend changes. Pure UX additions.
+
+### Verification
+- `npx tsc --noEmit` on Voices files (`src/components/voices/*`, `src/context/VoicesPlayerContext.tsx`): 0 errors.
+- Pre-existing typed-route warning on the new `/voices` href is Expo router codegen lag, not a runtime bug — proven by user testing PR #C successfully on the live preview.
+
+
+## 2026-05-20 — Veteran Voices bug-fix: clip_id-based storage + on-disk flags
+
+Closes three production bugs surfaced after PR #C rollout:
+
+  1. **Audio filename mismatch** — files were saved as `<hash>_<contributor>_<n>.mp3` so the serve endpoint occasionally couldn't find them.
+  2. **Spaces in filenames silently failed** — `"Rachel Voice.m4a"`, `"headshot 2.jpg"` upload paths broke.
+  3. **Photo not displaying** — even with the file on disk for clip `b3db73f1…`, the admin form's Photo URL field was empty and the image never rendered.
+
+### Unified fix
+- **`services/voices_pipeline.py`**: `process_upload()` now REQUIRES a `clip_id` parameter and always saves the transcoded output as `<clip_id>.<ext>` (mp3 or mp4). The original uploaded filename is consulted only as a weak hint for the m4a-vs-mp4 magic-byte tie-breaker — never as a storage filename. Photos already followed this pattern; both paths now match. Defensive `os.path.isfile(...)` check after ffmpeg so a 0-exit-code transcode with no output file is treated as failure.
+- **`routers/clips_admin.py`**:
+  - `create_clip` generates `clip_id` BEFORE calling `process_upload` and threads it through, so audio and photo land at deterministic, server-controlled paths.
+  - New helpers `_audio_on_disk()` / `_photo_on_disk()` resolve files inside `AUDIO_STORAGE_PATH` (with path-traversal defence) and return authoritative booleans.
+  - `processingStatus=ready` is now gated on `_audio_on_disk(...)` returning True — the row can never claim "ready" if the file is missing.
+  - `replace_clip_photo` + `remove_clip_photo` update `hasPhoto` on the same write.
+- **`models/clips.py`**: new `hasAudio` / `hasPhoto` fields on `Clip` (defaults False). Operational flags, NOT in `ENCRYPTED_FIELDS`.
+- **Admin portal (`VoicesTab.tsx` + `types/voices.ts`)**: the detail view now keys off `hasAudio` / `hasPhoto` instead of the filename strings. Missing-audio gets an explicit yellow warning panel; missing-photo simply hides the preview (or shows a legacy external URL for older rows).
+- **`tests/test_voices_admin.py`**: 6 new bug-fix tests:
+  - Audio with space in filename succeeds and is saved as `<clip_id>.mp3`.
+  - Photo with space in filename succeeds and is saved as `<clip_id>.jpg`.
+  - `hasAudio=false` when pipeline fails (admin UI uses this to hide the broken player).
+  - Both flags + `<clip_id>.<ext>` filenames are correct on a combined audio+photo upload.
+  - List view carries `hasAudio` / `hasPhoto`.
+  - Video file with space in name → `<clip_id>.mp4`.
+  - The four pre-existing pipeline tests updated to thread `clip_id` through.
+
+### Verification
+- 74 backend pytest cases pass (68 from PR #C + 6 new). Ruff clean. Portal `npx tsc --noEmit` clean.
+- Existing orphan file `d69ab60975d6_rachel_2.mp3` on the Render disk can now be safely deleted — the clip should be re-uploaded after this PR lands; it will land as `<clip_id>.mp3`.
+
+
+## 2026-05-20 — Veteran Voices combined PR: B2 gaps + PR #C veteran-facing UI
+
+### Why
+PR #B1 + #B2 shipped the admin pipeline + portal for AUDIO clips only and a URL-based contributor photo field. This combined PR closes the agreed B2 gaps (video upload, contributor photo file upload) AND ships the entire veteran-facing surface (hero card, persistent mini-player, full-screen player, library) so the feature is end-to-end usable.
+
+### B2 gap-closure
+**Video upload + transcoding**
+- `services/voices_pipeline.py`:
+  - `detect_media_type()` — magic-byte sniff over WAV / MP3 / OGG / FLAC / MP4 / MOV / M4A / MKV / WebM / AVI. Extensions are NOT trusted.
+  - `transcode_to_mp4_720p()` — H.264 + AAC, 720p max, ~1.5 Mbps, `+faststart`, all container metadata stripped (GPS / device / contributor PII).
+  - `process_upload()` now branches by detected media type and reports it on `PipelineResult.media_type`.
+  - Size caps split: **100 MB audio**, **500 MB video** (was a single 50 MB cap). Both env-tunable.
+- `models/clips.py`: new `ClipMediaType` enum + `mediaType` field. `ClipPublicResponse` exposes it so the client picks the right player.
+
+**Contributor photo file upload**
+- `services/voices_pipeline.py`: `save_contributor_photo()` (PNG/JPG, 5 MB cap, magic-byte validated), `get_contributor_photo_path()` (path-traversal defence), `delete_contributor_photo()`. Stored under `<AUDIO_STORAGE_PATH>/photos/<clip_id>.<ext>`.
+- `routers/clips.py`: new `GET /api/clips/photo/{clip_id}` (only for `status=published` clips; same traversal defence as audio).
+- `routers/clips_admin.py`: `POST /api/admin/clips` accepts `contributorPhoto` UploadFile alongside audio/video. New `POST /api/admin/clips/{id}/photo` and `DELETE /api/admin/clips/{id}/photo` for swapping/removing without re-running Whisper. Hard-delete also cleans the photo file. `_to_public()` resolves photo URL: uploaded > external > null.
+- `models/clips.py`: new `contributorPhotoFilename` field. NOT added to `ENCRYPTED_FIELDS` (contributor name/photo are consented public content).
+- Admin portal (`portal`): file picker replaces the URL input, 5 MB / PNG/JPG help text. Detail editor preview renders the uploaded photo via the routed URL and shows `<video>` instead of `<audio>` when `mediaType==='video'`. Upload help text updated to list both groups and correct size limits.
+
+### PR #C — veteran-facing UI
+**Backend additions**
+- `routers/clips.py`:
+  - `GET  /api/clips`            — browse (filters: `category`, `search`, `include_sensitive`, `limit`)
+  - `GET  /api/clips/categories` — `[{category, count}]` for the Categories tab
+  - `GET  /api/clips/saved`      — saved clips for `user_id`, archived-after-save excluded
+  - `GET  /api/clips/recent`     — most-recently-played, deduped, unpublished excluded
+  - `POST /api/clips/{id}/save`  — idempotent upsert
+  - `DELETE /api/clips/{id}/save`— idempotent removal
+  - `POST /api/clips/{id}/play`  — records `{userId, playedAt, completion?}` event
+  - Sensitivity filter: default-off excludes any flag !== `'none'`; user toggle opt-in.
+  - Catch-all `GET /api/clips/{id}` registered LAST so literal-segment routes (`/saved`, `/categories`, `/photo/{id}`, `/recent`) match correctly.
+
+**Frontend additions** (`/app/frontend/`)
+- `src/services/voicesApi.ts` — typed client; persists anonymous `user_id`, `include_sensitive`, and `captions_default_on` in AsyncStorage.
+- `src/context/VoicesPlayerContext.tsx` — global player state. Owns the active clip, status, position, saved-set, captions toggle, prefs. Records a play event on `loadedmetadata` so analytics fire even if the user skips early; final completion% on `ended`.
+- `src/components/voices/VoicesMiniPlayer.tsx` — always-mounted bar above the bottom inset; hosts the persistent `<audio>`/`<video>` elements (web). Tap body → expand; tap controls → play/pause/skip.
+- `src/components/voices/VoicesFullScreenPlayer.tsx` — Modal-based expanded view. Contributor photo (or initials) for audio; embedded `<video>` for video clips. Captions list scrolls to active segment. CC toggle default-off per user, settings switch to default-on. Save heart. Replay / Play-pause / Skip. "Talk to someone" CTA → `/unified-chat`.
+- `src/components/voices/VoicesHeroCard.tsx` — home-screen card: "Hear someone — 30 seconds from someone who's been there". One tap loads a random clip in the mini-player. No navigation, no AI-Buddy framing.
+- `app/voices.tsx` — Library screen: Categories / Saved / Recent / Search tabs + sensitivity toggle.
+- `app/_layout.tsx` — wraps the tree in `VoicesPlayerProvider`; mounts `VoicesMiniPlayer` and `VoicesFullScreenPlayer` at the root so they survive route changes.
+- `app/home.tsx` — Hero card placed directly under the header (above the fold) + a discreet library tile linking to `/voices`.
+
+### Visual treatment
+- No illustrated avatars. Contributor photo if uploaded, otherwise initials in a neutral tile.
+- Voices UI never appears next to an AI Buddy block.
+- Never branded with a Buddy name.
+
+### Safety wall (unchanged)
+- No imports from `safety/`, `encryption.py`, `webrtc_signaling.py`, or any safeguarding / live-chat / panic / alert / escalation module on either side.
+- `ENCRYPTED_FIELDS` untouched.
+- Veteran endpoints return ONLY `status=published`. Drafts / archived / failed / processing never surface — covered by `TestPublishedOnlyContract` and a dedicated archived-after-save assertion.
+
+### Out of scope
+- NFC deep-link `/c` route — later.
+- Offline caching — later.
+
+### Verification
+- **68 backend pytest cases** pass across `test_voices_admin.py` (32), `test_voices_clips.py` (10), `test_voices_public.py` (26 — magic-byte detection, photo save + traversal, browse / categories / saved / play / recent / photo serve, published-only contract).
+- `ruff check` clean on every new/changed Python file.
+- `npx tsc --noEmit` on the portal and on the new Expo files: **zero new errors** (pre-existing errors in untouched files unchanged).
+- Live backend: 23 `/api/clips*` paths registered in OpenAPI; auth-gated admin paths return 401 unauthenticated.
+
+
+## 2026-05-20 — Veteran Voices PR #B2 (admin portal UI)
+
+### Why
+PR #B1 shipped the admin REST endpoints + ingest pipeline; PR #B2 gives editorial staff an actual screen to use them. Without this, every clip would have to be hand-curled or seeded.
+
+### Changes
+- **`portal/src/types/voices.ts`** (new) — TS mirrors of the PR #B1 Pydantic shapes. `CLIP_CATEGORIES` / `SENSITIVITY_FLAGS` exported as `as const` arrays so the form pickers stay in sync with the backend enums.
+- **`portal/src/lib/admin-api.ts`** — adds 7 typed client methods consuming `PR #B1`: `listClipsAdmin`, `getClipAdmin`, `createClipAdmin` (multipart), `updateClipAdmin`, `publishClipAdmin`, `archiveClipAdmin`, `retranscribeClipAdmin`, `deleteClipAdmin`. Multipart upload bypasses `api.fetch` (which forces JSON content-type), mirroring the existing `uploadCMSImage` pattern.
+- **`portal/src/components/admin/tabs/VoicesTab.tsx`** (new) — single-page editorial tab (per PR #B2 Q2a):
+  - **Upload form** card at the top — file picker, contributor name/bio/photo/recording date, category + sensitivity checkbox grids, admin/internal notes, explicit consent tick. Mic icon. On submit runs the synchronous pipeline; on success auto-selects the new row in the detail editor.
+  - **Clip list** card in the middle — table with status / pipeline badges, duration, categories, flags, last updated. Click to load the detail.
+  - **Detail editor** card at the bottom — `<audio>` player, all editable fields, transcript `<textarea>`, captions table (per Q3a: simple Start/End/Text rows, add/remove). Action bar: Save · Re-transcribe · Archive · Publish · Delete. Publish button disabled (with explanatory `title`) unless `consentConfirmed && audioFilename && processingStatus==='ready' && status!=='published'` — matches the backend guardrail so the UI never lets a click 400.
+  - Pipeline failures surface a red banner with the `processingError` string from the backend.
+  - All interactive elements carry `data-testid` (`voices-*-*`) for the future Playwright suite.
+- **`portal/src/app/admin/page.tsx`** — sidebar tab placement (Q1a): new top-level **Voices** tab with `Mic` icon, sat directly next to "AI Personas".
+
+### Out of scope (explicit deferrals)
+- Background-task ingest pattern — current synchronous Whisper run is acceptable for ≤10 min clips. Revisit if editorial team asks for batch upload.
+- Waveform-with-clickable-segments caption editor — table is enough for cleaning Whisper output (Q3a).
+- Veteran-side surfaces (random feed UI, save/favourite, category browse) — PR #C.
+
+### Safety wall
+- No imports from `safety/`, `safeguarding`, `live-chat`, `WebRTC`, or any panic / alert / escalation module on either side.
+- New TS code is admin-only; no veteran-facing surfaces affected.
+
+### Verification
+- `npx tsc --noEmit` on the portal → **0 errors** across the whole tree.
+- Backend endpoints already covered by 21 pytest cases in PR #B1.
+- Smoke: `curl /api/admin/clips` still returns 401 (auth gate intact).
+
+
+## 2026-05-20 — Veteran Voices PR #B1 (backend pipeline + admin API endpoints)
+
+### Why
+PR #A landed the public read foundation for Veteran Voices (random / get / audio-stream) but left every clip having to be hand-inserted by seed script. PR #B1 closes that gap with a real admin ingest pipeline + CRUD so the staff portal (PR #B2) and veteran UI (PR #C) can rely on a populated, captioned catalogue.
+
+### Changes
+- **`backend/services/voices_pipeline.py`** (new) — orchestrator + helpers:
+  - `process_upload()` runs validate → write raw → ffmpeg transcode (mono 96kbps mp3, strips ID3 tags) → duration probe → Whisper transcription wrapped in `asyncio.wait_for(..., timeout=WHISPER_TIMEOUT_SECONDS)` (Q6 watchdog) → caption build.
+  - Returns a `PipelineResult` dataclass — never raises into the request handler, so partial failures surface as `processingStatus=failed` instead of 500s.
+  - `delete_clip_file()` with path-traversal defence (resolved path must sit inside `AUDIO_STORAGE_PATH`).
+  - Static ffmpeg via **imageio-ffmpeg** (Q2) — no apt-get dependency on the Render base image.
+- **`backend/routers/clips_admin.py`** (new) — `/api/admin/clips` family:
+  - `POST` (multipart) creates a clip + runs the pipeline inline.
+  - `GET` / `GET {id}` list + full admin view (with transcript + processing state).
+  - `PATCH {id}` partial edit; refuses `status=published` unless `consentConfirmed=true`.
+  - `POST {id}/publish`, `POST {id}/archive`, `POST {id}/retranscribe`, `DELETE {id}` (hard-delete + cleans `clip_plays` / `clip_saves` references and the on-disk file).
+  - Auth: own `require_admin` dep mirroring `routers/ai_characters.py` — `set_dependencies(db, get_current_user)` from `server.py`.
+- **`backend/models/clips.py`** — extended:
+  - New `ClipProcessingStatus` enum (`pending`/`transcoding`/`transcribing`/`ready`/`failed`).
+  - New fields on `Clip`: `internalNotes` (Q4 — NOT encrypted, NOT added to `ENCRYPTED_FIELDS`), `processingStatus`, `processingError`.
+  - `ClipPublicResponse` shape untouched — none of these new fields leak to veterans.
+- **`backend/server.py`** — wires the admin router via `set_clips_admin_dependencies(db, get_current_user)` + `app.include_router(clips_admin_router, prefix="/api")`. No safety / safeguarding code touched.
+- **`backend/requirements.txt`** — adds `imageio-ffmpeg==0.6.0`.
+- **`backend/tests/test_voices_admin.py`** (new) — 21 pytest cases:
+  - `sanitize_filename` (4): path-traversal, unicode, length cap, empty fallback.
+  - `process_upload` (4): happy path + empty / oversized / ffmpeg-failure guards.
+  - Whisper watchdog (1): proves `asyncio.wait_for` cancels hung Whisper + cleans the partial mp3.
+  - `delete_clip_file` (3): happy path + path-traversal refusal + missing-file behaviour.
+  - Admin auth gate (2): non-admin → 403, unauth → 401/403.
+  - Admin CRUD flow (7): upload → list → publish guarded by consent → publish ok → patch publish guarded → archive flips status → delete cleans disk + row.
+
+### Out of scope (explicit deferrals)
+- Admin UI screens (PR #B2 — Next.js portal upload form + list / detail editor).
+- Veteran-side play tracking, save / favourite, category browse (PR #C — per Q5).
+- Background-task pattern for very long uploads (current synchronous ingest is fine for ≤10 min clips and ~50MB cap; revisit if admins ask for batch upload).
+- TURN / signalling / safeguarding code — explicitly untouched.
+
+### Safety wall
+- No imports from `safety/`, `encryption`, `webrtc_signaling`, or any safeguarding / live-chat / alert / escalation / panic module.
+- `ENCRYPTED_FIELDS` untouched.
+- Clip collection is independent of all PII / safeguarding data.
+
+### Verification
+- `pytest backend/tests/test_voices_admin.py backend/tests/test_voices_clips.py -q` → **31 passed** (10 PR #A + 21 PR #B1).
+- `ruff check backend/{routers/clips_admin.py,services/voices_pipeline.py,models/clips.py,tests/test_voices_admin.py}` → clean.
+- Live backend: `curl /api/admin/clips` → `401 Unauthorized` (auth gate active); 5 paths registered in OpenAPI.
+
+### Manual steps after merge
+- Render: ensure `AUDIO_STORAGE_PATH=/var/data/clips` and `OPENAI_API_KEY` are set (both already configured per PR #A + handoff).
+- Tunables (optional env vars): `VOICES_MAX_UPLOAD_BYTES` (default 50MB), `VOICES_WHISPER_TIMEOUT_S` (default 300s).
 
 ## 2026-05-07 — Granular Chat History Deletion (frontend privacy)
 

@@ -7943,18 +7943,41 @@ async def send_live_chat_message(room_id: str, message: LiveChatMessage):
 
 @api_router.post("/live-chat/rooms/{room_id}/end")
 async def end_live_chat_room(room_id: str):
-    """End a live chat session"""
+    """End a live chat session.
+
+    Marks the room as ended in both the in-memory cache and the database,
+    AND broadcasts a `live_chat_ended` Socket.IO event to all participants
+    of the room (veteran + staff) so each side can tear down its local UI
+    state. Without the broadcast, whichever side did NOT call this endpoint
+    keeps the chat panel open forever — leading to stale 'Chat with You'
+    panels on the staff portal after the veteran returns to their AI buddy.
+    """
     # Update in-memory
     if room_id in live_chat_rooms:
         live_chat_rooms[room_id]["status"] = "ended"
         live_chat_rooms[room_id]["ended_at"] = datetime.utcnow().isoformat()
-    
+
     # Update in database
     await db.live_chat_rooms.update_one(
         {"id": room_id},
         {"$set": {"status": "ended", "ended_at": datetime.utcnow()}}
     )
-    
+
+    # Broadcast end-event to all sockets in the room (lazy import to avoid
+    # any circular-import risk at module load time — sio is defined in
+    # webrtc_signaling.py which is otherwise only used further down).
+    try:
+        from webrtc_signaling import sio
+        await sio.emit(
+            'live_chat_ended',
+            {'room_id': room_id, 'ended_at': datetime.utcnow().isoformat()},
+            room=room_id,
+        )
+    except Exception as e:
+        # Never fail the HTTP request just because broadcast failed; the
+        # DB / in-memory state is what's authoritative.
+        logging.warning(f"live_chat_ended broadcast failed for {room_id}: {e}")
+
     logging.info(f"Live chat room ended: {room_id}")
     return {"status": "ended"}
 
@@ -8765,11 +8788,19 @@ from routers import (
 
 from routers.debrief import router as debrief_router, set_db as set_debrief_db
 from routers.clips import router as clips_router, set_db as set_clips_db
+from routers.clips_admin import (
+    router as clips_admin_router,
+    set_dependencies as set_clips_admin_dependencies,
+)
 from tenants import get_tenant_config, get_tenant_by_id
 
 # Wire the Veteran Voices router (PR #A — backend foundation only).
 # Lives entirely separate from safety / safeguarding / live-chat / WebRTC.
 set_clips_db(db)
+
+# Wire the Veteran Voices admin router (PR #B1 — admin pipeline + CRUD).
+# Same safety wall as the public router — no safeguarding / safety imports.
+set_clips_admin_dependencies(db, get_current_user)
 
 # Core functionality routers
 app.include_router(auth.router, prefix="/api")
@@ -8793,6 +8824,8 @@ app.include_router(message_queue.router, prefix="/api")
 # Independent of safeguarding / WebRTC / AI buddies — see routers/clips.py
 # for the explicit safety wall comments.
 app.include_router(clips_router, prefix="/api")
+# Veteran Voices admin (PR #B1 — admin pipeline + CRUD endpoints).
+app.include_router(clips_admin_router, prefix="/api")
 app.include_router(ai_feedback.router, prefix="/api")
 app.include_router(knowledge_base.router, prefix="/api")
 app.include_router(compliance.router, prefix="/api")

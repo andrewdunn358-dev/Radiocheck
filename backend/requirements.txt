@@ -81,6 +81,7 @@ networkx==3.6.1
 numpy==2.4.2
 oauthlib==3.3.1
 openai==1.99.9
+imageio-ffmpeg==0.6.0
 openpyxl==3.1.5
 packageurl-python==0.17.6
 packaging==26.0

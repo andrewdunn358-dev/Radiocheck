@@ -4,6 +4,20 @@
 
 ---
 
+## May 2026 — WebRTC diagnostics & live-chat decrypt
+
+### BACKEND
+- `fix(live-chat)`: decrypt veteran messages in `GET /api/live-chat/rooms` so staff list-view preview no longer shows raw `ENC:…` ciphertext (commits `ff89bc2e`, `d036e83a`).
+- `chore(webrtc)`: surface silent call-connect failures — added `webrtc_error` listeners to `useWebRTCCallWeb` + `useWebRTCPhone`, plus staff no-answer indicator. No signalling logic changed (commit `14c94017`).
+
+### INFRASTRUCTURE / DIAGNOSTICS
+- **`19c0f0b5`** is a platform-generated `auto-commit for <uuid>` whose contents are the **WebRTC debug overlay diagnostic** (new `frontend/src/components/WebRTCDebugOverlay.tsx`, plus mounting in `live-chat.tsx`, `counsellors.tsx`, `peer-support.tsx`, and a `recentSteps` ring buffer in `useWebRTCCallWeb.ts`). Pure observer — read-only diagnostic, no signalling/call-flow logic touched. Opt-in via `?debug=1` query param or `localStorage.webrtc-debug=1`. The ugly commit name is a platform auto-commit artefact, not a meaningful description; reviewers should refer to the in-file headers in `WebRTCDebugOverlay.tsx` for intent. Follow-up PR will mount `useWebRTCCall()` inside `live-chat.tsx` so incoming offers stop being silently dropped — that is the actual root-cause fix the overlay was set up to diagnose.
+
+### CI
+- `ci(safety-tests)`: replaced `backend_test.py` with offline pytest suites; inject dummy `MONGO_URL` / `OPENAI_API_KEY` for module import on CI runners (commits `20ea05d1`, `76967c5b`, `cfbd4c29`, `70931dd9`).
+
+---
+
 ## Round 9 — April 2026
 
 ### SAFETY (Items 1–6 from Zentrafuge Round 8 report)
