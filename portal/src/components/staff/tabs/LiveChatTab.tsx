@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  MessageSquare, RefreshCw, User, Clock, Shield, X, Send
+  MessageSquare, RefreshCw, User, Clock, Shield, X, Send, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { staffApi, LiveChatRoom } from '@/lib/api';
 
@@ -31,6 +31,24 @@ export default function LiveChatTab({
   const [activeChatRoom, setActiveChatRoom] = useState<LiveChatRoom | null>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
+
+  // Issue B fix: side-panel layout + minimise behaviour so an incoming
+  // URGENT call request (CallRequestBanner, z-50, fixed top) is never
+  // obscured by an open chat. Minimising preserves the chat session
+  // (activeChatRoom stays set) so staff can re-expand without losing
+  // context. Only `handleEndChat` (red End Chat button) actually calls
+  // /api/live-chat/rooms/<id>/end and tears down the session.
+  const [chatMinimised, setChatMinimised] = useState(false);
+
+  // Auto-minimise the chat panel whenever a new URGENT call request
+  // arrives, so the CallRequestBanner is fully visible without staff
+  // having to manually close the chat. The chat session itself is
+  // preserved; staff can re-expand after answering the call.
+  useEffect(() => {
+    if (webrtcPhone?.pendingRequest && activeChatRoom) {
+      setChatMinimised(true);
+    }
+  }, [webrtcPhone?.pendingRequest, activeChatRoom]);
   
   // AI Feedback modal state
   const [showAiFeedbackModal, setShowAiFeedbackModal] = useState(false);
@@ -125,9 +143,10 @@ export default function LiveChatTab({
           created_at: new Date().toISOString(),
         };
         
-        // Open the chat modal
+        // Open the chat side-panel
         setActiveChatRoom(room);
         setChatMessages(messages);
+        setChatMinimised(false);
         
         // Reload live chats to ensure list is up to date
         loadLiveChats();
@@ -196,6 +215,37 @@ export default function LiveChatTab({
     };
   }, [activeChatRoom, webrtcUserId, user?.id, loadLiveChats]);
 
+  // Listen for live-chat-ended broadcasts (re-dispatched by useWebRTCPhone
+  // from the backend's `live_chat_ended` Socket.IO event). Fires when
+  // EITHER side ends the chat — veteran returns to AI buddy via End Chat,
+  // or staff hits the red End Chat button on this same panel. Whichever
+  // side did not originate the end-event needs to clear local state so
+  // the stale "Chat with You" panel disappears.
+  useEffect(() => {
+    const handleLiveChatEnded = (event: Event) => {
+      const customEvent = event as CustomEvent<{ room_id: string; ended_at?: string }>;
+      const data = customEvent.detail;
+      console.log('[LiveChatTab] Received live_chat_ended:', data);
+
+      const currentRoomId =
+        (activeChatRoom as any)?.id ||
+        (activeChatRoom as any)?.room_id ||
+        (activeChatRoom as any)?._id;
+      if (currentRoomId && data?.room_id && currentRoomId === data.room_id) {
+        // Clear the active panel — this is the room that just ended.
+        setActiveChatRoom(null);
+        setChatMessages([]);
+      }
+      // Refresh the chat list so the ended room drops out / shows as ended.
+      loadLiveChats();
+    };
+
+    window.addEventListener('live_chat_ended', handleLiveChatEnded);
+    return () => {
+      window.removeEventListener('live_chat_ended', handleLiveChatEnded);
+    };
+  }, [activeChatRoom, loadLiveChats]);
+
   // Handler functions
   const handleJoinChat = async (room: LiveChatRoom) => {
     if (!token || !user?.id || !user?.name) return;
@@ -209,6 +259,7 @@ export default function LiveChatTab({
       const messages = await staffApi.getLiveChatMessages(token, roomId);
       setActiveChatRoom(room);
       setChatMessages(messages);
+      setChatMinimised(false);
       loadLiveChats();
     } catch (err) {
       console.error('Failed to join chat:', err);
@@ -267,6 +318,7 @@ export default function LiveChatTab({
       await staffApi.endLiveChat(token, roomId);
       setActiveChatRoom(null);
       setChatMessages([]);
+      setChatMinimised(false);
       loadLiveChats();
     } catch (err) {
       console.error('Failed to end chat:', err);
@@ -440,99 +492,143 @@ export default function LiveChatTab({
         )}
       </div>
 
-      {/* Live Chat Modal */}
-      {activeChatRoom && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-xl w-full max-w-2xl h-[600px] flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-border flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold">Chat with {activeChatRoom.user_name || 'User'}</h3>
-                <p className="text-sm text-gray-400">Room: {activeChatRoom.room_id}</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleEndChat}
-                  className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
-                >
-                  End Chat
-                </button>
-                <button
-                  onClick={() => { setActiveChatRoom(null); setChatMessages([]); }}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
+      {/*
+        Live Chat Side-Panel (Issue B fix)
+        ==================================
+        Previously a full-screen `fixed inset-0 … z-50` overlay that
+        completely obscured the CallRequestBanner. Staff had to End Chat
+        or close the modal to reach Accept & Call — destroying chat
+        context in the process.
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`p-3 rounded-lg max-w-[80%] ${
-                    msg.sender === 'staff' 
-                      ? 'bg-secondary/20 ml-auto' 
-                      : msg.sender === 'ai' || msg.is_ai_response
-                        ? 'bg-blue-500/20 border border-blue-500/30'
-                        : 'bg-primary-light/30'
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <p className="text-xs text-gray-400 mb-1">
-                      {msg.sender === 'staff' ? 'You' : msg.sender === 'ai' || msg.is_ai_response ? 'AI Assistant' : 'User'}
-                    </p>
-                    {/* AI Feedback button for AI responses */}
-                    {(msg.sender === 'ai' || msg.is_ai_response) && (
-                      <button
-                        data-testid={`ai-feedback-btn-${i}`}
-                        onClick={() => {
-                          // Find the user message this AI was responding to
-                          const userMsg = chatMessages.slice(0, i).reverse().find(m => m.sender === 'user' || (!m.is_ai_response && m.sender !== 'staff'));
-                          setAiFeedbackData({
-                            messageId: msg.id || msg._id || `msg_${i}`,
-                            message: userMsg?.text || 'Unknown user message',
-                            response: msg.text
-                          });
-                          setShowAiFeedbackModal(true);
-                        }}
-                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        Feedback
-                      </button>
-                    )}
-                  </div>
-                  <p>{msg.text}</p>
-                  <p className="text-xs text-gray-500 mt-1">{new Date(msg.timestamp).toLocaleTimeString()}</p>
+        Now a right-edge side-panel at z-40 (below the banner's z-50)
+        with an explicit minimise toggle. The chat session is only
+        torn down by the red "End Chat" button. Closing or minimising
+        preserves activeChatRoom so it can be re-expanded after the
+        call.
+
+        Auto-minimises when an incoming URGENT call request arrives
+        (see useEffect above).
+      */}
+      {activeChatRoom && chatMinimised && (
+        <button
+          data-testid="restore-chat-pill"
+          onClick={() => setChatMinimised(false)}
+          className={`fixed right-4 z-30 bg-card border border-border rounded-full px-4 py-2 shadow-2xl flex items-center gap-2 hover:bg-primary-light/20 ${
+            webrtcPhone?.isInCall ? 'bottom-28' : 'bottom-4'
+          }`}
+          aria-label="Restore minimised chat"
+        >
+          <MessageSquare className="w-4 h-4 text-secondary" />
+          <span className="text-sm font-medium">
+            Chat with {activeChatRoom.user_name || 'User'}
+          </span>
+          <ChevronUp className="w-4 h-4 text-gray-400" />
+        </button>
+      )}
+
+      {activeChatRoom && !chatMinimised && (
+        <div className="fixed right-0 top-0 bottom-0 w-full sm:w-[460px] bg-card border-l border-border z-40 shadow-2xl flex flex-col">
+          {/* Header */}
+          <div className="p-4 border-b border-border flex justify-between items-center">
+            <div className="min-w-0">
+              <h3 className="font-semibold truncate">Chat with {activeChatRoom.user_name || 'User'}</h3>
+              <p className="text-sm text-gray-400 truncate">Room: {activeChatRoom.room_id}</p>
+            </div>
+            <div className="flex gap-2 items-center">
+              <button
+                data-testid="end-live-chat-btn"
+                onClick={handleEndChat}
+                className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
+              >
+                End Chat
+              </button>
+              <button
+                data-testid="minimise-live-chat-btn"
+                onClick={() => setChatMinimised(true)}
+                className="text-gray-400 hover:text-white p-1"
+                aria-label="Minimise chat"
+                title="Minimise (chat session is preserved — use End Chat to terminate)"
+              >
+                <ChevronDown className="w-6 h-6" />
+              </button>
+              <button
+                data-testid="close-live-chat-btn"
+                onClick={() => setChatMinimised(true)}
+                className="text-gray-400 hover:text-white p-1"
+                aria-label="Hide chat (session preserved)"
+                title="Hide (chat session is preserved — use End Chat to terminate)"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {chatMessages.map((msg, i) => (
+              <div
+                key={i}
+                className={`p-3 rounded-lg max-w-[85%] ${
+                  msg.sender === 'staff'
+                    ? 'bg-secondary/20 ml-auto'
+                    : msg.sender === 'ai' || msg.is_ai_response
+                      ? 'bg-blue-500/20 border border-blue-500/30'
+                      : 'bg-primary-light/30'
+                }`}
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <p className="text-xs text-gray-400 mb-1">
+                    {msg.sender === 'staff' ? 'You' : msg.sender === 'ai' || msg.is_ai_response ? 'AI Assistant' : 'User'}
+                  </p>
+                  {/* AI Feedback button for AI responses */}
+                  {(msg.sender === 'ai' || msg.is_ai_response) && (
+                    <button
+                      data-testid={`ai-feedback-btn-${i}`}
+                      onClick={() => {
+                        // Find the user message this AI was responding to
+                        const userMsg = chatMessages.slice(0, i).reverse().find(m => m.sender === 'user' || (!m.is_ai_response && m.sender !== 'staff'));
+                        setAiFeedbackData({
+                          messageId: msg.id || msg._id || `msg_${i}`,
+                          message: userMsg?.text || 'Unknown user message',
+                          response: msg.text
+                        });
+                        setShowAiFeedbackModal(true);
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <MessageSquare className="w-3 h-3" />
+                      Feedback
+                    </button>
+                  )}
                 </div>
-              ))}
-            </div>
-
-            {/* Input */}
-            <div className="p-4 border-t border-border" role="form" aria-label="Chat message input">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
-                  aria-label="Type your message"
-                  data-testid="live-chat-input"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
-                  className="px-4 py-2 bg-secondary text-primary-dark rounded-lg disabled:opacity-50"
-                  aria-label="Send message"
-                  data-testid="live-chat-send"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+                <p>{msg.text}</p>
+                <p className="text-xs text-gray-500 mt-1">{new Date(msg.timestamp).toLocaleTimeString()}</p>
               </div>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="p-4 border-t border-border" role="form" aria-label="Chat message input">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Type a message..."
+                className="flex-1 px-4 py-2 bg-primary-dark border border-border rounded-lg focus:border-secondary outline-none"
+                aria-label="Type your message"
+                data-testid="live-chat-input"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!newMessage.trim()}
+                className="px-4 py-2 bg-secondary text-primary-dark rounded-lg disabled:opacity-50"
+                aria-label="Send message"
+                data-testid="live-chat-send"
+              >
+                <Send className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>

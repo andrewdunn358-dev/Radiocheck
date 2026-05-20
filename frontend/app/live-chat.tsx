@@ -18,6 +18,7 @@ import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../src/config/api';
 import { safeGoBack } from '../src/utils/navigation';
 import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
+import { useWebRTCCall, formatCallDuration } from '../hooks/useWebRTCCallWeb';
 
 interface Message {
   id: string;
@@ -64,6 +65,38 @@ export default function LiveChat() {
   const preferredStaffType = params.staffType || 'any';
   const alertId = params.alertId || '';
   const sessionId = params.sessionId || '';
+
+  // WebRTC callee hook — mounted so incoming `webrtc_offer` / `incoming_call`
+  // events from staff-initiated calls are no longer silently discarded on
+  // this screen. Diagnostic state (`callState`, `lastError`, `recentSteps`)
+  // is surfaced via the WebRTCDebugOverlay below (opt-in via ?debug=1).
+  //
+  // INTENTIONALLY MINIMAL SCOPE: this PR mounts + registers only. The hook's
+  // `acceptCall` / `rejectCall` are NOT wired into the existing chat-socket
+  // accept/reject UI yet — that follow-up needs to consolidate the two
+  // signalling paths (chat-socket and WebRTC-socket) and is out of scope
+  // here. See follow-up PR for end-to-end accept flow.
+  const {
+    callState: rtcCallState,
+    lastError: rtcLastError,
+    recentSteps: rtcRecentSteps,
+    register: rtcRegister,
+    acceptCall: rtcAcceptCall,
+    rejectCall: rtcRejectCall,
+    endCall: rtcEndCall,
+    callDuration: rtcCallDuration,
+  } = useWebRTCCall();
+
+  // Register the veteran on the WebRTC signalling socket using the same
+  // identifier the chat socket uses (sessionId || userId — see L102 below).
+  // This is the ID staff dials when initiating a WebRTC call from the
+  // safeguarding chat, so it must match exactly. Runs once on mount; the
+  // hook's `register` is stable across renders (useCallback) so safe to
+  // include in deps.
+  useEffect(() => {
+    const registrationId = sessionId || userId;
+    rtcRegister(registrationId, 'user', userName);
+  }, [sessionId, userId, userName, rtcRegister]);
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -370,13 +403,30 @@ export default function LiveChat() {
   };
 
   const endChatAndNavigate = () => {
+    // Tell the chat socket we're leaving (existing behaviour — fires
+    // `user_left_chat` to remaining participants).
     if (socketRef.current && roomId) {
       socketRef.current.emit('leave_chat_room', {
         room_id: roomId,
         user_id: userId
       });
     }
-    
+
+    // Also call the HTTP /end endpoint so the room is marked ended in the
+    // database AND so the backend broadcasts `live_chat_ended` to all
+    // sockets in the room. Without this, the staff portal keeps the chat
+    // panel open ("Chat with You" + End Chat button) because the room is
+    // still 'active' in the DB and no socket event told staff otherwise.
+    // Fire-and-forget; navigation must not block on this.
+    if (roomId) {
+      fetch(`${API_URL}/api/live-chat/rooms/${roomId}/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch((e) => {
+        console.warn('live-chat: /end notification failed', e);
+      });
+    }
+
     // Try to go back to the AI chat they came from
     // If we have an alertId, they came from safeguarding flow in AI chat
     // Use router.back() first, with fallback to home (where they can choose a buddy)
@@ -491,18 +541,31 @@ export default function LiveChat() {
   };
 
   // Handle incoming call from staff
+  //
+  // PR #22: Accept/Reject now route through the WebRTC hook instead of the
+  // chat socket. The previous `socketRef.current.emit('call_accept', …)` /
+  // `'call_reject'` was a dead-end emit — the backend's chat-socket handlers
+  // for these events do not relay them onto the WebRTC signalling channel,
+  // so the staff side never received a `call_accepted` confirmation and the
+  // call hung at "ICE gathering" with the offer sitting buffered on the
+  // veteran's hook (proven by app.radiocheck.me browser console logs +
+  // matching staff-portal trace).
+  //
+  // The hook's acceptCall() / rejectCall() emit on the WebRTC signalling
+  // socket — the same socket the staff portal (`useWebRTCPhone`) already
+  // uses — so the backend can relay correctly and offer/answer/ICE
+  // completes end-to-end. UI/chat-message side-effects below are preserved.
   const handleAcceptCall = () => {
-    if (!incomingCall || !socketRef.current) return;
-    
+    if (!incomingCall) return;
+
     console.log('Accepting incoming call:', incomingCall.callId);
-    
-    // Emit call_accept event
-    socketRef.current.emit('call_accept', {
-      call_id: incomingCall.callId,
-    });
-    
+
+    // Route accept through the WebRTC hook (WebRTC signalling socket).
+    // Replaces the previous chat-socket emit which was a dead-end.
+    rtcAcceptCall();
+
     setShowIncomingCallModal(false);
-    
+
     // Add message to chat
     setMessages(prev => [...prev, {
       id: `call-accepted-${Date.now()}`,
@@ -511,21 +574,20 @@ export default function LiveChat() {
       senderName: 'System',
       timestamp: new Date(),
     }]);
-    
-    // Note: The actual WebRTC connection will be handled by call_accepted and webrtc_offer events
+
+    // Note: The actual WebRTC connection (offer/answer/ICE) is driven by
+    // the hook listening on its own socket for call_accepted + webrtc_offer.
   };
 
   const handleRejectCall = () => {
-    if (!incomingCall || !socketRef.current) return;
-    
+    if (!incomingCall) return;
+
     console.log('Rejecting incoming call:', incomingCall.callId);
-    
-    // Emit call_reject event
-    socketRef.current.emit('call_reject', {
-      call_id: incomingCall.callId,
-      reason: 'User declined'
-    });
-    
+
+    // Route reject through the WebRTC hook (WebRTC signalling socket).
+    // Replaces the previous chat-socket emit which was a dead-end.
+    rtcRejectCall();
+
     setShowIncomingCallModal(false);
     setIncomingCall(null);
     
@@ -868,16 +930,63 @@ export default function LiveChat() {
           <FontAwesome5 name="paper-plane" size={16} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/*
+        PR #25: Veteran-side floating "In Call" panel with End Call button.
+        Renders only while the WebRTC hook reports an active call
+        (connecting / connected). Without this the veteran had no way to
+        hang up — staff could end the call but the veteran was stuck
+        unless they closed the tab.
+
+        Wired straight to the hook's endCall() — same path the staff
+        portal uses, so call teardown is bidirectionally symmetric.
+      */}
+      {(rtcCallState === 'connecting' || rtcCallState === 'connected') && (
+        <View style={styles.veteranCallPanel} pointerEvents="box-none">
+          <View style={styles.veteranCallPanelInner}>
+            <View style={styles.veteranCallIcon}>
+              <FontAwesome5 name="phone" size={18} color="#34d399" />
+            </View>
+            <View style={styles.veteranCallText}>
+              <Text style={styles.veteranCallStatus}>
+                {rtcCallState === 'connected' ? 'In Call' : 'Connecting…'}
+              </Text>
+              <Text style={styles.veteranCallDuration}>
+                {rtcCallState === 'connected'
+                  ? formatCallDuration(rtcCallDuration || 0)
+                  : 'Establishing audio…'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              data-testid="veteran-end-call-btn"
+              onPress={rtcEndCall}
+              style={styles.veteranEndCallBtn}
+              accessibilityLabel="End call"
+            >
+              <FontAwesome5 name="phone-slash" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/*
         Diagnostic overlay (only renders when ?debug=1 / localStorage flag set).
-        IMPORTANT: live-chat.tsx does NOT call useWebRTCCall(), so on this
-        screen there is no socket.on('webrtc_offer') listener. We surface
-        that fact via the `notice` prop so testers can confirm in the field.
-        Fixing the missing-listener bug is a separate follow-up PR — this
-        overlay is read-only.
+        As of this PR, live-chat.tsx mounts useWebRTCCall() (see top of
+        component), so the overlay now shows real hook state — `callState`,
+        any captured `lastError`, and the recent-steps ring buffer. The
+        previous "hook is NOT mounted" notice has been removed because the
+        hook IS mounted on this screen.
+
+        Note: UI-level accept/reject for incoming calls still flows through
+        the pre-existing chat-socket modal (showIncomingCallModal). Wiring
+        the hook's `acceptCall` / `rejectCall` into that UI is a follow-up
+        PR — out of scope here to avoid double `call_accept` emits across
+        the two sockets.
       */}
       <WebRTCDebugOverlay
-        notice="useWebRTCCall hook is NOT mounted on this screen — incoming WebRTC offers will be silently discarded. See follow-up PR."
+        callState={rtcCallState}
+        lastError={rtcLastError}
+        recentSteps={rtcRecentSteps}
       />
     </KeyboardAvoidingView>
   );
@@ -1408,6 +1517,58 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     backgroundColor: '#16a34a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // PR #25: floating veteran-side "In Call" panel (bottom-right).
+  veteranCallPanel: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    zIndex: 60,
+  },
+  veteranCallPanelInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#1f2937',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  veteranCallIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(52, 211, 153, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  veteranCallText: {
+    minWidth: 110,
+  },
+  veteranCallStatus: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  veteranCallDuration: {
+    color: '#9ca3af',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  veteranEndCallBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -217,7 +217,6 @@ PR #A landed the public read foundation for Veteran Voices (random / get / audio
 - Render: ensure `AUDIO_STORAGE_PATH=/var/data/clips` and `OPENAI_API_KEY` are set (both already configured per PR #A + handoff).
 - Tunables (optional env vars): `VOICES_MAX_UPLOAD_BYTES` (default 50MB), `VOICES_WHISPER_TIMEOUT_S` (default 300s).
 
-
 ## 2026-05-07 — Granular Chat History Deletion (frontend privacy)
 
 ### Why

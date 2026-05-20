@@ -809,6 +809,18 @@ export function useWebRTCPhone({ serverUrl, userId, userType, userName, enabled 
     });
 
     // Chat request confirmed - staff accepted and room is ready
+    // Notify when the live chat room has ended (broadcast by the backend's
+    // POST /api/live-chat/rooms/{room_id}/end). Either side ending the chat
+    // (veteran End Chat → returns to AI buddy, or staff red End Chat
+    // button) results in this fire. We re-broadcast it as a custom window
+    // event so LiveChatTab can clear its activeChatRoom if it matches.
+    socket.on('live_chat_ended', (data: { room_id: string; ended_at?: string }) => {
+      console.log('[WebRTCPhone] *** LIVE CHAT ENDED ***', data);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('live_chat_ended', { detail: data }));
+      }
+    });
+
     socket.on('chat_request_confirmed', (data: { room_id: string; user_id: string }) => {
       console.log('[WebRTCPhone] Chat request confirmed, room:', data.room_id);
       stopRingtone();
