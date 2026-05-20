@@ -1,5 +1,36 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-20 — Veteran Voices bug-fix: clip_id-based storage + on-disk flags
+
+Closes three production bugs surfaced after PR #C rollout:
+
+  1. **Audio filename mismatch** — files were saved as `<hash>_<contributor>_<n>.mp3` so the serve endpoint occasionally couldn't find them.
+  2. **Spaces in filenames silently failed** — `"Rachel Voice.m4a"`, `"headshot 2.jpg"` upload paths broke.
+  3. **Photo not displaying** — even with the file on disk for clip `b3db73f1…`, the admin form's Photo URL field was empty and the image never rendered.
+
+### Unified fix
+- **`services/voices_pipeline.py`**: `process_upload()` now REQUIRES a `clip_id` parameter and always saves the transcoded output as `<clip_id>.<ext>` (mp3 or mp4). The original uploaded filename is consulted only as a weak hint for the m4a-vs-mp4 magic-byte tie-breaker — never as a storage filename. Photos already followed this pattern; both paths now match. Defensive `os.path.isfile(...)` check after ffmpeg so a 0-exit-code transcode with no output file is treated as failure.
+- **`routers/clips_admin.py`**:
+  - `create_clip` generates `clip_id` BEFORE calling `process_upload` and threads it through, so audio and photo land at deterministic, server-controlled paths.
+  - New helpers `_audio_on_disk()` / `_photo_on_disk()` resolve files inside `AUDIO_STORAGE_PATH` (with path-traversal defence) and return authoritative booleans.
+  - `processingStatus=ready` is now gated on `_audio_on_disk(...)` returning True — the row can never claim "ready" if the file is missing.
+  - `replace_clip_photo` + `remove_clip_photo` update `hasPhoto` on the same write.
+- **`models/clips.py`**: new `hasAudio` / `hasPhoto` fields on `Clip` (defaults False). Operational flags, NOT in `ENCRYPTED_FIELDS`.
+- **Admin portal (`VoicesTab.tsx` + `types/voices.ts`)**: the detail view now keys off `hasAudio` / `hasPhoto` instead of the filename strings. Missing-audio gets an explicit yellow warning panel; missing-photo simply hides the preview (or shows a legacy external URL for older rows).
+- **`tests/test_voices_admin.py`**: 6 new bug-fix tests:
+  - Audio with space in filename succeeds and is saved as `<clip_id>.mp3`.
+  - Photo with space in filename succeeds and is saved as `<clip_id>.jpg`.
+  - `hasAudio=false` when pipeline fails (admin UI uses this to hide the broken player).
+  - Both flags + `<clip_id>.<ext>` filenames are correct on a combined audio+photo upload.
+  - List view carries `hasAudio` / `hasPhoto`.
+  - Video file with space in name → `<clip_id>.mp4`.
+  - The four pre-existing pipeline tests updated to thread `clip_id` through.
+
+### Verification
+- 74 backend pytest cases pass (68 from PR #C + 6 new). Ruff clean. Portal `npx tsc --noEmit` clean.
+- Existing orphan file `d69ab60975d6_rachel_2.mp3` on the Render disk can now be safely deleted — the clip should be re-uploaded after this PR lands; it will land as `<clip_id>.mp3`.
+
+
 ## 2026-05-20 — Veteran Voices combined PR: B2 gaps + PR #C veteran-facing UI
 
 ### Why

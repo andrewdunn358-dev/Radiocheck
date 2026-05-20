@@ -135,6 +135,13 @@ class Clip(BaseModel):
     # streaming endpoint (`/api/clips/audio/{id}`) serves both; the
     # client decides player mode from this field.
     mediaType: ClipMediaType = ClipMediaType.audio
+    # Authoritative on-disk-existence flags written at upload time and
+    # refreshed by photo replace/remove. Admin UI uses these to decide
+    # whether to render the player / image element rather than guessing
+    # from the filename strings (which may point at orphaned uploads on
+    # older rows). NOT in ENCRYPTED_FIELDS — pure operational metadata.
+    hasAudio: bool = False
+    hasPhoto: bool = False
 
     # Internal-only: full transcript for admin search / QC. NEVER returned
     # in veteran-facing payloads — captions are the only user-facing text.

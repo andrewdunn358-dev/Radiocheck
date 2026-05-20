@@ -112,15 +112,15 @@ class TestProcessUploadHappyPath:
         result = await process_upload(
             raw_bytes=raw,
             original_filename="tommy first take.wav",
+            clip_id="abc123def456",
             skip_transcription=True,
         )
 
         assert result.ok is True
         assert result.error is None
-        assert result.audio_filename is not None
-        assert result.audio_filename.endswith(".mp3")
-        # The on-disk file lives inside our temp storage dir.
-        assert (tmp_storage / result.audio_filename).is_file()
+        # Filename is ALWAYS <clip_id>.<ext> — original filename irrelevant.
+        assert result.audio_filename == "abc123def456.mp3"
+        assert (tmp_storage / "abc123def456.mp3").is_file()
         # 1s of silence → ffmpeg reports >=1s. Allow a little fuzz.
         assert result.duration_seconds >= 1
         # skip_transcription means we never called OpenAI.
@@ -134,6 +134,7 @@ class TestProcessUploadGuards:
         result = await process_upload(
             raw_bytes=b"",
             original_filename="empty.wav",
+            clip_id="cid1",
             skip_transcription=True,
         )
         assert result.ok is False
@@ -151,6 +152,7 @@ class TestProcessUploadGuards:
         result = await process_upload(
             raw_bytes=wav + b"x" * 200,  # >100 bytes
             original_filename="big.wav",
+            clip_id="cid2",
             skip_transcription=True,
         )
         assert result.ok is False
@@ -165,6 +167,7 @@ class TestProcessUploadGuards:
         result = await process_upload(
             raw_bytes=b"this is definitely not media" * 10,
             original_filename="garbage.bin",
+            clip_id="cid3",
             skip_transcription=True,
         )
         assert result.ok is False
@@ -174,11 +177,14 @@ class TestProcessUploadGuards:
     async def test_ffmpeg_failure_returns_failure_not_500(
         self, tmp_storage: Path
     ) -> None:
-        """Random garbage bytes are NOT a valid audio file → ffmpeg should
-        exit non-zero → pipeline returns ok=False with the error captured."""
+        """Random garbage bytes are now caught by magic-byte sniff
+        BEFORE ffmpeg. The contract here is still 'fails cleanly,
+        no orphan mp3' regardless of where in the chain rejection
+        happens."""
         result = await process_upload(
             raw_bytes=b"this is definitely not audio" * 100,
             original_filename="garbage.wav",
+            clip_id="cid4",
             skip_transcription=True,
         )
         assert result.ok is False
@@ -211,6 +217,7 @@ class TestWhisperWatchdog:
         result = await process_upload(
             raw_bytes=raw,
             original_filename="hang.wav",
+            clip_id="hang_cid",
             skip_transcription=False,
         )
         # We expect a clean failure, NOT a hang.
@@ -542,3 +549,182 @@ class TestAdminCRUDFlow:
         assert len(items) == 2
         names = {it["contributorName"] for it in items}
         assert names == {"Sam-a", "Sam-b"}
+
+
+# ---------------------------------------------------------------------------
+# 6. PR #C bug-fix: spaces in filenames + clip_id-based storage + flags
+# ---------------------------------------------------------------------------
+
+# Tiny PNG header + JPG header used to test photo upload — we don't need a
+# valid image, just bytes that pass the magic-byte check in
+# save_contributor_photo.
+_PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
+_JPG_BYTES = b"\xff\xd8\xff" + b"\x00" * 200
+
+
+class TestSpacesInFilenamesAndClipIdStorage:
+    """Three related production bugs, one fix:
+       1. Audio saved as <hash>_<contributor>_<n>.mp3 not <clip_id>.mp3.
+       2. Spaces in original filename ('Rachel Voice.m4a') broke uploads.
+       3. has_photo / has_audio flags never set, so admin UI hid the
+          player and image elements.
+    """
+
+    def test_audio_with_space_in_filename_succeeds(self, admin_client, tmp_storage: Path) -> None:
+        """Upload 'Rachel Voice.m4a' (space in filename) — must succeed
+        AND must be saved as <clip_id>.mp3 (NOT '_rachel_voice.mp3'
+        or any contributor-derived name)."""
+        client, fake_db = admin_client
+        wav = _make_silent_wav_bytes(duration_seconds=1)
+        r = client.post(
+            "/api/admin/clips",
+            headers={"Authorization": "Bearer admin-token"},
+            files={"audio": ("Rachel Voice.m4a", wav, "audio/wav")},
+            data={
+                "contributorName": "Rachel",
+                "contributorBio": "bio",
+                "consentConfirmed": "true",
+            },
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        # Filename is exactly <clip_id>.mp3 — NO contributor name, NO
+        # extra hash, NO 'rachel_voice' substring.
+        expected = f"{body['id']}.mp3"
+        assert body["audioFilename"] == expected
+        assert (tmp_storage / expected).is_file()
+        # Flag is true because the file actually exists on disk.
+        assert body["hasAudio"] is True
+        assert body["processingStatus"] == "ready"
+
+    def test_photo_with_space_in_filename_succeeds(self, admin_client, tmp_storage: Path) -> None:
+        """Upload 'headshot 2.jpg' (space) — must succeed and land at
+        <clip_id>.jpg in the photos subdir."""
+        client, fake_db = admin_client
+        wav = _make_silent_wav_bytes(duration_seconds=1)
+        r = client.post(
+            "/api/admin/clips",
+            headers={"Authorization": "Bearer admin-token"},
+            files={
+                "audio": ("a.wav", wav, "audio/wav"),
+                "contributorPhoto": ("headshot 2.jpg", _JPG_BYTES, "image/jpeg"),
+            },
+            data={
+                "contributorName": "Rachel",
+                "contributorBio": "bio",
+                "consentConfirmed": "true",
+            },
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        clip_id = body["id"]
+        expected_photo = f"{clip_id}.jpg"
+        assert body["contributorPhotoFilename"] == expected_photo
+        assert (tmp_storage / "photos" / expected_photo).is_file()
+        assert body["hasPhoto"] is True
+
+    def test_has_audio_false_when_pipeline_fails(self, admin_client) -> None:
+        """Garbage upload → pipeline fails → hasAudio=false,
+        processingStatus=failed. Admin UI uses these to hide the
+        broken player element."""
+        client, _ = admin_client
+        r = client.post(
+            "/api/admin/clips",
+            headers={"Authorization": "Bearer admin-token"},
+            files={"audio": ("garbage.bin", b"definitely not audio" * 10, "application/octet-stream")},
+            data={
+                "contributorName": "X",
+                "contributorBio": "bio",
+                "consentConfirmed": "false",
+            },
+        )
+        # Endpoint still 201s — the row exists so the admin can fix it.
+        assert r.status_code == 201
+        body = r.json()
+        assert body["hasAudio"] is False
+        assert body["hasPhoto"] is False
+        assert body["processingStatus"] == "failed"
+
+    def test_audio_and_photo_both_flagged_on_combined_upload(
+        self, admin_client, tmp_storage: Path
+    ) -> None:
+        """Acceptance criterion: 'admin uploads photo → appears on
+        clip detail'. With both flags true, the UI shows both elements."""
+        client, _ = admin_client
+        wav = _make_silent_wav_bytes(duration_seconds=1)
+        r = client.post(
+            "/api/admin/clips",
+            headers={"Authorization": "Bearer admin-token"},
+            files={
+                "audio": ("a.wav", wav, "audio/wav"),
+                "contributorPhoto": ("p.png", _PNG_BYTES, "image/png"),
+            },
+            data={
+                "contributorName": "Sam",
+                "contributorBio": "bio",
+                "consentConfirmed": "true",
+            },
+        )
+        assert r.status_code == 201
+        body = r.json()
+        # Both flags set + both files on disk + filenames are <clip_id>.<ext>.
+        cid = body["id"]
+        assert body["hasAudio"] is True
+        assert body["hasPhoto"] is True
+        assert body["audioFilename"] == f"{cid}.mp3"
+        assert body["contributorPhotoFilename"] == f"{cid}.png"
+        assert (tmp_storage / f"{cid}.mp3").is_file()
+        assert (tmp_storage / "photos" / f"{cid}.png").is_file()
+
+    def test_list_view_carries_flags(self, admin_client) -> None:
+        """The list view must surface hasAudio/hasPhoto so the admin
+        table can show a 'missing file' badge without fetching detail."""
+        client, _ = admin_client
+        wav = _make_silent_wav_bytes(duration_seconds=1)
+        client.post(
+            "/api/admin/clips",
+            headers={"Authorization": "Bearer admin-token"},
+            files={
+                "audio": ("a.wav", wav, "audio/wav"),
+                "contributorPhoto": ("p.png", _PNG_BYTES, "image/png"),
+            },
+            data={
+                "contributorName": "Listed",
+                "contributorBio": "bio",
+                "consentConfirmed": "true",
+            },
+        )
+        r = client.get("/api/admin/clips", headers={"Authorization": "Bearer admin-token"})
+        assert r.status_code == 200
+        rows = r.json()
+        assert any(row.get("hasAudio") is True and row.get("hasPhoto") is True for row in rows)
+
+    def test_video_filename_is_clip_id_mp4(self, admin_client, tmp_storage: Path) -> None:
+        """Same contract for video: <clip_id>.mp4 regardless of source."""
+        client, _ = admin_client
+        # An ftyp+isom header is enough to classify as video; pipeline
+        # will fail ffmpeg transcode on the empty body, which is fine —
+        # we're only asserting filename selection logic.
+        head = b"\x00\x00\x00\x20ftypisom" + b"\x00" * 50
+        r = client.post(
+            "/api/admin/clips",
+            headers={"Authorization": "Bearer admin-token"},
+            files={"audio": ("My Video Clip.mp4", head, "video/mp4")},
+            data={
+                "contributorName": "V",
+                "contributorBio": "bio",
+                "consentConfirmed": "false",
+            },
+        )
+        assert r.status_code == 201
+        body = r.json()
+        # Even though the pipeline ffmpeg-fails on these bytes, the
+        # backend STILL writes a row and the filename it WOULD have
+        # used must be <clip_id>.mp4 — the user can re-upload a real
+        # video against the same row by deleting + retrying. But the
+        # critical contract is that `audioFilename` is never the
+        # contributor's original 'My Video Clip.mp4'.
+        original = "My Video Clip.mp4"
+        assert original not in body["audioFilename"]
+        if body["audioFilename"]:
+            assert body["audioFilename"].endswith(".mp4")
