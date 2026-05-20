@@ -8,7 +8,6 @@ chore/-remove-dormant-AI-Learning-frontend-remnants
   LogOut, Menu, X, Bell, RefreshCw, ClipboardList
   Settings, BarChart3, Clock, BookOpen,
   LogOut, Menu, X, Bell, RefreshCw, ClipboardList, Mic
-main
 } from 'lucide-react';
 import { api } from '@/lib/admin-api';
 import { useMainAdminAuth } from '@/hooks/useMainAdminAuth';
