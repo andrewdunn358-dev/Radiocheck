@@ -53,9 +53,23 @@ logger = logging.getLogger(__name__)
 
 AUDIO_STORAGE_PATH = os.environ.get("AUDIO_STORAGE_PATH", "/var/data/clips")
 
-# Max raw upload accepted by the admin uploader (bytes). 50MB lets us take
-# ~10 min of high-bitrate WAV without bloating the disk. Tunable via env.
-MAX_UPLOAD_BYTES = int(os.environ.get("VOICES_MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
+# Max raw upload accepted by the admin uploader (bytes). Audio: 100 MB
+# (was 50 MB in PR #B1 — bumped per PR #C brief). Video: 500 MB. Both
+# tunable via env. The router picks the right limit based on detected
+# media type.
+MAX_UPLOAD_BYTES_AUDIO = int(
+    os.environ.get("VOICES_MAX_UPLOAD_BYTES_AUDIO", str(100 * 1024 * 1024))
+)
+MAX_UPLOAD_BYTES_VIDEO = int(
+    os.environ.get("VOICES_MAX_UPLOAD_BYTES_VIDEO", str(500 * 1024 * 1024))
+)
+# Back-compat: tests / older callers that imported the legacy name.
+# Resolves to the audio cap.
+MAX_UPLOAD_BYTES = MAX_UPLOAD_BYTES_AUDIO
+
+# Photos: 5 MB cap, PNG/JPG only. Stored under <storage>/photos/.
+MAX_PHOTO_BYTES = int(os.environ.get("VOICES_MAX_PHOTO_BYTES", str(5 * 1024 * 1024)))
+PHOTOS_SUBDIR = "photos"
 
 # Whisper end-to-end deadline. 300s comfortably covers a ~5 min clip even on
 # a cold worker; anything longer indicates a stuck request that we don't
@@ -107,8 +121,12 @@ class PipelineResult:
     `ok=False` means the router should set `processingStatus="failed"` and
     write `processingError` to the clip row. No partial files are left
     behind (cleanup is best-effort but attempted).
+
+    `media_type` is set from the magic-byte sniff at ingest time so the
+    router and the public response can branch player UI accordingly.
     """
     ok: bool
+    media_type: str = "audio"  # 'audio' | 'video'
     audio_filename: Optional[str] = None  # filename only, lives inside AUDIO_STORAGE_PATH
     duration_seconds: int = 0
     transcript: str = ""
@@ -214,6 +232,193 @@ def transcode_to_mp3(input_path: str, output_path: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Video transcode — MP4 H.264 + AAC, capped at 720p, ~1.5 Mbps
+# ---------------------------------------------------------------------------
+
+def transcode_to_mp4_720p(input_path: str, output_path: str) -> None:
+    """Re-encode video to H.264 (libx264) + AAC, scaled down to 720p
+    keeping aspect ratio. Same metadata-strip rationale as the audio
+    path: kill any GPS / device / contributor PII in the source file
+    before we put it on disk.
+
+    Bitrate target ~1.5 Mbps suits a talking-head clip on mobile and
+    keeps a 5-min file under ~60 MB. faststart moves the moov atom to
+    the front so the mobile player can begin playback without
+    downloading the whole file.
+    """
+    proc = _run_ffmpeg([
+        "-i", input_path,
+        # Scale to 720p max height while preserving aspect ratio; even
+        # dimensions required by libx264.
+        "-vf", "scale=-2:'min(720,ih)'",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-b:v", "1500k",
+        "-maxrate", "1800k",
+        "-bufsize", "3000k",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-ac", "2",
+        "-ar", "44100",
+        "-map_metadata", "-1",  # strip GPS / device tags
+        "-movflags", "+faststart",
+        output_path,
+    ], timeout=600)  # video can take longer; 10-min watchdog
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg video transcode failed (rc={proc.returncode}): "
+            f"{(proc.stderr or '')[-500:]}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Magic-byte media-type detection
+# ---------------------------------------------------------------------------
+# Extension is NOT trusted — admins occasionally rename files; client
+# browsers occasionally lie about mime-types. We sniff the leading bytes
+# of the upload to decide between audio / video. Whisper still runs on
+# the result of transcode for both paths (it accepts mp4 as a container
+# too).
+
+# Each entry is (header_bytes, offset, kind). `kind` ∈ {"audio","video"}.
+_MAGIC_SIGNATURES: tuple = (
+    # MP4 / MOV / M4A all start "....ftyp...." at offset 4. We check
+    # `ftyp` then sub-brand to split audio (M4A) vs video (MP4/MOV).
+    (b"ftyp", 4, "ftyp"),
+    # WAV (RIFF…WAVE)
+    (b"RIFF", 0, "audio"),
+    # MP3 frame header
+    (b"ID3", 0, "audio"),
+    (b"\xff\xfb", 0, "audio"),
+    (b"\xff\xf3", 0, "audio"),
+    (b"\xff\xf2", 0, "audio"),
+    # OGG
+    (b"OggS", 0, "audio"),
+    # FLAC
+    (b"fLaC", 0, "audio"),
+    # AVI
+    (b"AVI ", 8, "video"),
+    # Matroska / WebM
+    (b"\x1a\x45\xdf\xa3", 0, "video"),
+)
+
+
+def detect_media_type(raw_bytes: bytes, fallback_filename: str = "") -> Optional[str]:
+    """Return 'audio' / 'video' from magic bytes, or None if unknown.
+
+    `fallback_filename` is only consulted for the .m4a case where the
+    container is mp4 but the content is audio-only — we use the
+    extension as a tie-breaker since the ftyp sub-brand inspection is
+    imperfect on weird encoders.
+    """
+    if not raw_bytes or len(raw_bytes) < 12:
+        return None
+    head = raw_bytes[:64]
+
+    # ISO base media (mp4/mov/m4a/3gp) — read major brand at offset 8.
+    if head[4:8] == b"ftyp":
+        major = head[8:12]
+        # Audio-only brands.
+        if major in (b"M4A ", b"M4B ", b"mp42") and fallback_filename.lower().endswith(
+            (".m4a", ".m4b")
+        ):
+            return "audio"
+        # Everything else under ftyp is treated as video (mp4, mov, 3gp).
+        return "video"
+
+    for sig, offset, kind in _MAGIC_SIGNATURES:
+        if kind == "ftyp":
+            continue  # handled above
+        if head[offset : offset + len(sig)] == sig:
+            if kind == "audio" or kind == "video":
+                return kind
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Contributor photo storage
+# ---------------------------------------------------------------------------
+
+_PHOTO_MAGIC: dict = {
+    "png": b"\x89PNG\r\n\x1a\n",
+    "jpg": b"\xff\xd8\xff",
+}
+
+
+def save_contributor_photo(
+    raw_bytes: bytes, clip_id: str, storage_dir: Optional[str] = None
+) -> str:
+    """Persist a contributor photo to <storage>/photos/<clip_id>.<ext>.
+
+    Returns the filename (NOT the full path). Caller stores this on the
+    Clip row as `contributorPhotoFilename`; serving is via
+    `/api/clips/photo/<clip_id>` (see routers/clips.py).
+
+    Raises ValueError on size / format violations so the admin upload
+    handler can surface a 400 to the UI.
+    """
+    storage_dir = storage_dir or AUDIO_STORAGE_PATH
+    if not raw_bytes:
+        raise ValueError("Empty photo upload.")
+    if len(raw_bytes) > MAX_PHOTO_BYTES:
+        raise ValueError(
+            f"Photo too large: {len(raw_bytes)} bytes (max {MAX_PHOTO_BYTES})."
+        )
+    head = raw_bytes[:16]
+    ext: Optional[str] = None
+    for candidate_ext, magic in _PHOTO_MAGIC.items():
+        if head.startswith(magic):
+            ext = candidate_ext
+            break
+    if ext is None:
+        raise ValueError("Photo must be PNG or JPG (other formats are rejected).")
+
+    photos_dir = os.path.join(storage_dir, PHOTOS_SUBDIR)
+    os.makedirs(photos_dir, exist_ok=True)
+    safe_id = sanitize_filename(clip_id)
+    if not safe_id:
+        raise ValueError("Invalid clip_id for photo storage.")
+    filename = f"{safe_id}.{ext}"
+    path = os.path.join(photos_dir, filename)
+    with open(path, "wb") as fh:
+        fh.write(raw_bytes)
+    return filename
+
+
+def get_contributor_photo_path(
+    filename: str, storage_dir: Optional[str] = None
+) -> Optional[str]:
+    """Resolve a photo filename to an absolute path inside the photos
+    subdir, defending against path traversal. Returns None if the file
+    doesn't exist or escapes the storage root."""
+    storage_dir = storage_dir or AUDIO_STORAGE_PATH
+    if not filename:
+        return None
+    safe_root = Path(os.path.join(storage_dir, PHOTOS_SUBDIR)).resolve()
+    candidate = (safe_root / filename).resolve()
+    try:
+        candidate.relative_to(safe_root)
+    except ValueError:
+        return None
+    return str(candidate) if candidate.is_file() else None
+
+
+def delete_contributor_photo(
+    filename: str, storage_dir: Optional[str] = None
+) -> bool:
+    """Best-effort photo cleanup. Returns True if a file was removed."""
+    path = get_contributor_photo_path(filename, storage_dir=storage_dir)
+    if not path:
+        return False
+    try:
+        os.unlink(path)
+        return True
+    except OSError:
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Whisper helper
 # ---------------------------------------------------------------------------
 
@@ -275,58 +480,81 @@ async def process_upload(
     storage_dir: Optional[str] = None,
     skip_transcription: bool = False,
 ) -> PipelineResult:
-    """Run the full ingest pipeline on a raw uploaded audio payload.
+    """Run the full ingest pipeline on a raw uploaded audio or video payload.
 
     Steps
     -----
-      1. Reject empty / oversized uploads (cheap early check).
-      2. Write the raw bytes to a temp file inside storage_dir.
-      3. Transcode → mono 96kbps mp3 with a server-generated filename.
-      4. Probe duration off the transcoded file.
-      5. (optional) Transcribe via Whisper with watchdog.
-      6. Delete the temp raw file. The mp3 stays at AUDIO_STORAGE_PATH.
+      1. Reject empty / oversized uploads (cheap early check, using the
+         right cap for the detected media type).
+      2. Sniff magic bytes to decide audio vs video. Extensions are NOT
+         trusted (clients lie; admins rename files).
+      3. Write the raw bytes to a temp file inside storage_dir.
+      4. Transcode:
+           audio -> mono 96 kbps mp3 (existing behaviour)
+           video -> H.264/AAC mp4, 720p max, ~1.5 Mbps, +faststart
+         Both paths strip ALL container metadata to drop contributor PII
+         (ID3 tags / GPS / device tags).
+      5. Probe duration off the transcoded file.
+      6. (optional) Transcribe via Whisper with watchdog. Whisper accepts
+         the mp4 container directly so the same code path serves both
+         audio and video clips.
+      7. Delete the temp raw file. The transcoded file stays at
+         AUDIO_STORAGE_PATH.
 
-    Notes
-    -----
-    * `skip_transcription=True` is for unit tests that don't have an
-      OpenAI key — the admin endpoint never passes it. It produces a
-      PipelineResult with `captions=[]` and `transcript=""`.
-    * On ANY failure we attempt to clean up the partial mp3 so we don't
-      orphan unreachable files on the disk. Best-effort.
+    `skip_transcription=True` is for unit tests that don't have an OpenAI
+    key — the admin endpoint never passes it.
+
+    On ANY failure we attempt to clean up the partial output so we don't
+    orphan unreachable files on the disk. Best-effort.
     """
     storage_dir = storage_dir or AUDIO_STORAGE_PATH
     os.makedirs(storage_dir, exist_ok=True)
 
-    # --- 1. validate
+    # --- 1. validate (empty)
     if not raw_bytes:
         return PipelineResult(ok=False, error="Uploaded file is empty.")
-    if len(raw_bytes) > MAX_UPLOAD_BYTES:
+
+    # --- 2. magic-byte sniff
+    media_type = detect_media_type(raw_bytes, fallback_filename=original_filename)
+    if media_type is None:
         return PipelineResult(
             ok=False,
-            error=f"File too large: {len(raw_bytes)} bytes (max {MAX_UPLOAD_BYTES}).",
+            error="Could not identify the file as audio or video (unsupported format).",
+        )
+
+    # --- 1b. validate size against the right cap
+    cap = MAX_UPLOAD_BYTES_VIDEO if media_type == "video" else MAX_UPLOAD_BYTES_AUDIO
+    if len(raw_bytes) > cap:
+        return PipelineResult(
+            ok=False,
+            media_type=media_type,
+            error=f"File too large: {len(raw_bytes)} bytes (max {cap} for {media_type}).",
         )
 
     safe_stem = sanitize_filename(Path(original_filename).stem) or "clip"
     unique_id = uuid.uuid4().hex[:12]
     raw_filename = f"_raw_{unique_id}_{safe_stem}{Path(original_filename).suffix.lower() or '.bin'}"
-    final_filename = f"{unique_id}_{safe_stem}.mp3"
+    final_ext = ".mp4" if media_type == "video" else ".mp3"
+    final_filename = f"{unique_id}_{safe_stem}{final_ext}"
 
     raw_path = os.path.join(storage_dir, raw_filename)
     final_path = os.path.join(storage_dir, final_filename)
 
     try:
-        # --- 2. write raw
+        # --- 3. write raw
         with open(raw_path, "wb") as fh:
             fh.write(raw_bytes)
 
-        # --- 3. transcode (blocking ffmpeg → off-thread so the event loop
-        # stays responsive for concurrent requests)
-        await asyncio.to_thread(transcode_to_mp3, raw_path, final_path)
+        # --- 4. transcode (blocking ffmpeg → off-thread)
+        if media_type == "video":
+            await asyncio.to_thread(transcode_to_mp4_720p, raw_path, final_path)
+        else:
+            await asyncio.to_thread(transcode_to_mp3, raw_path, final_path)
 
-        # --- 4. duration
+        # --- 5. duration
         duration = await asyncio.to_thread(_probe_duration_seconds, final_path)
 
-        # --- 5. transcribe
+        # --- 6. transcribe (Whisper accepts mp4 + mp3 directly)
         transcript = ""
         captions: List[dict] = []
         if not skip_transcription:
@@ -334,6 +562,7 @@ async def process_upload(
 
         return PipelineResult(
             ok=True,
+            media_type=media_type,
             audio_filename=final_filename,
             duration_seconds=duration,
             transcript=transcript,
@@ -345,12 +574,13 @@ async def process_upload(
         _safe_unlink(final_path)
         return PipelineResult(
             ok=False,
+            media_type=media_type,
             error=f"Transcription timed out after {WHISPER_TIMEOUT_SECONDS}s.",
         )
     except Exception as e:  # ffmpeg failure, whisper error, disk full, ...
         logger.exception("[voices_pipeline] pipeline failed")
         _safe_unlink(final_path)
-        return PipelineResult(ok=False, error=str(e))
+        return PipelineResult(ok=False, media_type=media_type, error=str(e))
     finally:
         _safe_unlink(raw_path)
 
@@ -398,9 +628,18 @@ __all__ = [
     "PipelineResult",
     "process_upload",
     "transcode_to_mp3",
+    "transcode_to_mp4_720p",
     "transcribe_with_whisper",
     "sanitize_filename",
     "delete_clip_file",
+    "detect_media_type",
+    "save_contributor_photo",
+    "get_contributor_photo_path",
+    "delete_contributor_photo",
     "WHISPER_TIMEOUT_SECONDS",
     "MAX_UPLOAD_BYTES",
+    "MAX_UPLOAD_BYTES_AUDIO",
+    "MAX_UPLOAD_BYTES_VIDEO",
+    "MAX_PHOTO_BYTES",
+    "PHOTOS_SUBDIR",
 ]

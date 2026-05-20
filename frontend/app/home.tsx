@@ -9,6 +9,7 @@ import { useAgeGateContext } from '../src/context/AgeGateContext';
 import AgeGateModal from '../src/components/AgeGateModal';
 import BetaSurvey from '../src/components/BetaSurvey';
 import EventsSection from '../src/components/EventsSection';
+import VoicesHeroCard from '../src/components/voices/VoicesHeroCard';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -311,6 +312,34 @@ export default function Index() {
           <Text style={styles.headerTitle}>Radio Check</Text>
           <Text style={styles.taglineEnglish}>24/7 Mental Health & Peer Support</Text>
         </View>
+
+        {/* Veteran Voices — hero CTA (above the fold). PR #C. */}
+        <VoicesHeroCard />
+        <TouchableOpacity
+          onPress={() => router.push('/voices')}
+          data-testid="voices-library-tile"
+          activeOpacity={0.85}
+          style={{
+            marginHorizontal: 20,
+            marginTop: 4,
+            marginBottom: 8,
+            paddingVertical: 10,
+            paddingHorizontal: 14,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: 'transparent',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <Ionicons name="library-outline" size={18} color={colors.textSecondary} />
+          <Text style={{ color: colors.textSecondary, fontSize: 14, flex: 1 }}>
+            Browse Voices library — by category, saved, recently played
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         {/* What is Radio Check - Collapsible Card */}
         <TouchableOpacity 

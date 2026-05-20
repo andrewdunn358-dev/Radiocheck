@@ -43,6 +43,15 @@ class ClipProcessingStatus(str, Enum):
 # Enumerations
 # ---------------------------------------------------------------------------
 
+class ClipMediaType(str, Enum):
+    """Whether the clip is audio-only or contains video. Drives the
+    transcode profile (audio -> mp3 mono; video -> mp4 720p H.264/AAC)
+    and the veteran-facing player mode (mini-player thumbnail + full-
+    screen video vs. audio-only with photo)."""
+    audio = "audio"
+    video = "video"
+
+
 class ClipStatus(str, Enum):
     draft = "draft"
     published = "published"
@@ -111,11 +120,21 @@ class Clip(BaseModel):
     id: str
     contributorName: str  # Alias or first name only (per consent)
     contributorBio: str  # One line, max 80 chars (admin-enforced)
-    contributorPhotoUrl: Optional[str] = None  # Only if consented
+    contributorPhotoUrl: Optional[str] = None  # Set when external URL
+    # Filename of a contributor photo on disk, sitting under
+    # AUDIO_STORAGE_PATH/photos/. Served via /api/clips/photo/{id}.
+    # Independent of `contributorPhotoUrl` (which supports an external URL
+    # path if ever needed). Public response prefers the on-disk routed URL
+    # when this is set.
+    contributorPhotoFilename: Optional[str] = None
 
-    # Audio storage — filename inside AUDIO_STORAGE_PATH (no raw path leaked)
+    # Audio/video storage — filename inside AUDIO_STORAGE_PATH (no raw path leaked)
     audioFilename: str
     durationSeconds: int
+    # `audio` clips stream as mp3, `video` clips stream as mp4. The
+    # streaming endpoint (`/api/clips/audio/{id}`) serves both; the
+    # client decides player mode from this field.
+    mediaType: ClipMediaType = ClipMediaType.audio
 
     # Internal-only: full transcript for admin search / QC. NEVER returned
     # in veteran-facing payloads — captions are the only user-facing text.
@@ -179,13 +198,21 @@ class ClipPublicResponse(BaseModel):
     `adminNotes`, `uploadedByAdminId`, and the raw storage filename.
 
     `audioUrl` is the routed streaming endpoint (`/api/clips/audio/<id>`),
-    not the on-disk path.
+    not the on-disk path. `mediaType` tells the client which player to
+    render (audio vs video).
+
+    `contributorPhotoUrl` resolution order:
+      1. If `contributorPhotoFilename` is set, use the on-disk routed URL
+         `/api/clips/photo/<id>`.
+      2. Else fall back to the legacy external URL field if present.
+      3. Else null — the player falls back to a text-only card.
     """
     id: str
     contributorName: str
     contributorBio: str
     contributorPhotoUrl: Optional[str] = None
     audioUrl: str
+    mediaType: ClipMediaType = ClipMediaType.audio
     durationSeconds: int
     captions: List[CaptionSegment] = Field(default_factory=list)
     categories: List[str] = Field(default_factory=list)
