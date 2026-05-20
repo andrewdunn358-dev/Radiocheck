@@ -1,5 +1,26 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-20 — Chore: remove dormant AI Learning frontend remnants
+
+The backend AI Learning system was removed in a previous session, but the admin portal still rendered the **AI Learning** sidebar tab and the staff-portal still defined dead modal helpers. Every admin page load fired 5 console 404s as the tab's polling timer hit `/api/learning/{stats,patterns,queue,approved,feedback}`. Closes Issue 4 from the carry-over list.
+
+### Portal (`portal/`)
+- Removed `import LearningTab` + the `'learning' / 'AI Learning' / BookOpen` sidebar entry + the `{activeTab === 'learning'}` render block from `src/app/admin/page.tsx`. `BookOpen` import dropped (no other consumer).
+- Removed the entire `src/components/admin/tabs/LearningTab/` directory (5 files: `index.tsx`, `QueueSubTab.tsx`, `ApprovedSubTab.tsx`, `PatternsSubTab.tsx`, `FeedbackSubTab.tsx`).
+- Removed 7 dead methods from `src/lib/admin-api.ts`: `getLearningStats`, `getSafetyPatterns`, `getLearningQueue`, `getApprovedLearnings`, `getResponseFeedback`, `deletePattern`, `reviewFeedback`.
+
+### Staff portal (`staff-portal/app.js`)
+- Removed the entire `//AI RESPONSE FEEDBACK` block + the `submitForLearning` / `closeLearningModal` / `submitLearningCandidate` helpers + the `showFeedbackModal` / `closeFeedbackModal` / `submitFeedback` helpers. All were defined but never called anywhere in `app.js` or any `staff-portal/*.html` — pure dead code.
+
+### Verification
+- `grep -rn "AILearning\|getLearningStats\|/api/learning" portal/src/` → no matches.
+- `grep -in "learning\|feedback-modal" staff-portal/app.js` → no matches.
+- `npx tsc --noEmit` on the portal → 0 errors.
+- `node --check staff-portal/app.js` → syntactically clean.
+
+### Safety wall
+- No backend changes. No `safety/`, `encryption.py`, `webrtc_signaling.py`, or safeguarding code touched.
+- `ENCRYPTED_FIELDS` untouched.
 ## 2026-05-20 — Veteran Voices UX polish: back arrow + dismissible player
 
 Two quick wins surfaced by the first round of user testing on PR #C:
@@ -193,7 +214,6 @@ PR #A landed the public read foundation for Veteran Voices (random / get / audio
 ### Manual steps after merge
 - Render: ensure `AUDIO_STORAGE_PATH=/var/data/clips` and `OPENAI_API_KEY` are set (both already configured per PR #A + handoff).
 - Tunables (optional env vars): `VOICES_MAX_UPLOAD_BYTES` (default 50MB), `VOICES_WHISPER_TIMEOUT_S` (default 300s).
-
 
 ## 2026-05-07 — Granular Chat History Deletion (frontend privacy)
 
