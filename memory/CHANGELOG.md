@@ -1,5 +1,57 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-20 — Veteran Voices PR #B1 (backend pipeline + admin API endpoints)
+
+### Why
+PR #A landed the public read foundation for Veteran Voices (random / get / audio-stream) but left every clip having to be hand-inserted by seed script. PR #B1 closes that gap with a real admin ingest pipeline + CRUD so the staff portal (PR #B2) and veteran UI (PR #C) can rely on a populated, captioned catalogue.
+
+### Changes
+- **`backend/services/voices_pipeline.py`** (new) — orchestrator + helpers:
+  - `process_upload()` runs validate → write raw → ffmpeg transcode (mono 96kbps mp3, strips ID3 tags) → duration probe → Whisper transcription wrapped in `asyncio.wait_for(..., timeout=WHISPER_TIMEOUT_SECONDS)` (Q6 watchdog) → caption build.
+  - Returns a `PipelineResult` dataclass — never raises into the request handler, so partial failures surface as `processingStatus=failed` instead of 500s.
+  - `delete_clip_file()` with path-traversal defence (resolved path must sit inside `AUDIO_STORAGE_PATH`).
+  - Static ffmpeg via **imageio-ffmpeg** (Q2) — no apt-get dependency on the Render base image.
+- **`backend/routers/clips_admin.py`** (new) — `/api/admin/clips` family:
+  - `POST` (multipart) creates a clip + runs the pipeline inline.
+  - `GET` / `GET {id}` list + full admin view (with transcript + processing state).
+  - `PATCH {id}` partial edit; refuses `status=published` unless `consentConfirmed=true`.
+  - `POST {id}/publish`, `POST {id}/archive`, `POST {id}/retranscribe`, `DELETE {id}` (hard-delete + cleans `clip_plays` / `clip_saves` references and the on-disk file).
+  - Auth: own `require_admin` dep mirroring `routers/ai_characters.py` — `set_dependencies(db, get_current_user)` from `server.py`.
+- **`backend/models/clips.py`** — extended:
+  - New `ClipProcessingStatus` enum (`pending`/`transcoding`/`transcribing`/`ready`/`failed`).
+  - New fields on `Clip`: `internalNotes` (Q4 — NOT encrypted, NOT added to `ENCRYPTED_FIELDS`), `processingStatus`, `processingError`.
+  - `ClipPublicResponse` shape untouched — none of these new fields leak to veterans.
+- **`backend/server.py`** — wires the admin router via `set_clips_admin_dependencies(db, get_current_user)` + `app.include_router(clips_admin_router, prefix="/api")`. No safety / safeguarding code touched.
+- **`backend/requirements.txt`** — adds `imageio-ffmpeg==0.6.0`.
+- **`backend/tests/test_voices_admin.py`** (new) — 21 pytest cases:
+  - `sanitize_filename` (4): path-traversal, unicode, length cap, empty fallback.
+  - `process_upload` (4): happy path + empty / oversized / ffmpeg-failure guards.
+  - Whisper watchdog (1): proves `asyncio.wait_for` cancels hung Whisper + cleans the partial mp3.
+  - `delete_clip_file` (3): happy path + path-traversal refusal + missing-file behaviour.
+  - Admin auth gate (2): non-admin → 403, unauth → 401/403.
+  - Admin CRUD flow (7): upload → list → publish guarded by consent → publish ok → patch publish guarded → archive flips status → delete cleans disk + row.
+
+### Out of scope (explicit deferrals)
+- Admin UI screens (PR #B2 — Next.js portal upload form + list / detail editor).
+- Veteran-side play tracking, save / favourite, category browse (PR #C — per Q5).
+- Background-task pattern for very long uploads (current synchronous ingest is fine for ≤10 min clips and ~50MB cap; revisit if admins ask for batch upload).
+- TURN / signalling / safeguarding code — explicitly untouched.
+
+### Safety wall
+- No imports from `safety/`, `encryption`, `webrtc_signaling`, or any safeguarding / live-chat / alert / escalation / panic module.
+- `ENCRYPTED_FIELDS` untouched.
+- Clip collection is independent of all PII / safeguarding data.
+
+### Verification
+- `pytest backend/tests/test_voices_admin.py backend/tests/test_voices_clips.py -q` → **31 passed** (10 PR #A + 21 PR #B1).
+- `ruff check backend/{routers/clips_admin.py,services/voices_pipeline.py,models/clips.py,tests/test_voices_admin.py}` → clean.
+- Live backend: `curl /api/admin/clips` → `401 Unauthorized` (auth gate active); 5 paths registered in OpenAPI.
+
+### Manual steps after merge
+- Render: ensure `AUDIO_STORAGE_PATH=/var/data/clips` and `OPENAI_API_KEY` are set (both already configured per PR #A + handoff).
+- Tunables (optional env vars): `VOICES_MAX_UPLOAD_BYTES` (default 50MB), `VOICES_WHISPER_TIMEOUT_S` (default 300s).
+
+
 ## 2026-05-07 — Granular Chat History Deletion (frontend privacy)
 
 ### Why

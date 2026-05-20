@@ -25,6 +25,20 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class ClipProcessingStatus(str, Enum):
+    """Pipeline state for the admin uploader (PR #B1).
+
+    Distinct from `ClipStatus` (draft/published/archived): a clip can be
+    `status=draft` and `processingStatus=transcribing` simultaneously.
+    Surfaced ONLY in admin payloads — never in `ClipPublicResponse`.
+    """
+    pending = "pending"          # row inserted, audio not yet processed
+    transcoding = "transcoding"  # ffmpeg re-encode in flight
+    transcribing = "transcribing"  # Whisper in flight
+    ready = "ready"              # pipeline finished, captions/duration saved
+    failed = "failed"            # pipeline aborted; see processingError
+
+
 # ---------------------------------------------------------------------------
 # Enumerations
 # ---------------------------------------------------------------------------
@@ -117,6 +131,18 @@ class Clip(BaseModel):
     consentConfirmed: bool = False
     uploadedByAdminId: Optional[str] = None
     adminNotes: Optional[str] = None  # Admin-only, never exposed to veterans
+    # Admin-only free-text notes (e.g. provenance, follow-up reminders).
+    # Per design decision (PR #B1 Q4): NOT encrypted — contributor names and
+    # admin context here are operational metadata, not service-user PII.
+    # Do not add to ENCRYPTED_FIELDS.
+    internalNotes: Optional[str] = None
+
+    # Pipeline state (PR #B1). `status` is the editorial lifecycle
+    # (draft/published/archived); `processingStatus` is the ingest pipeline
+    # lifecycle (pending→transcoding→transcribing→ready / failed).
+    # NEVER surfaced in `ClipPublicResponse`.
+    processingStatus: ClipProcessingStatus = ClipProcessingStatus.pending
+    processingError: Optional[str] = None  # last error message if failed
 
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
