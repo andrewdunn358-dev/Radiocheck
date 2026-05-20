@@ -10,7 +10,7 @@ The backend AI Learning system was removed in a previous session, but the admin 
 - Removed 7 dead methods from `src/lib/admin-api.ts`: `getLearningStats`, `getSafetyPatterns`, `getLearningQueue`, `getApprovedLearnings`, `getResponseFeedback`, `deletePattern`, `reviewFeedback`.
 
 ### Staff portal (`staff-portal/app.js`)
-- Removed the entire `//AI RESPONSE FEEDBACK` block + the `submitForLearning` / `closeLearningModal` / `submitLearningCandidate` helpers + the `showFeedbackModal` / `closeFeedbackModal` / `submitFeedback` helpers. All were defined but never called anywhere in `app.js` or any `staff-portal/*.html` — pure dead code.
+- Removed the entire `// ==================== AI RESPONSE FEEDBACK ====================` block + the `submitForLearning` / `closeLearningModal` / `submitLearningCandidate` helpers + the `showFeedbackModal` / `closeFeedbackModal` / `submitFeedback` helpers. All were defined but never called anywhere in `app.js` or any `staff-portal/*.html` — pure dead code.
 
 ### Verification
 - `grep -rn "AILearning\|getLearningStats\|/api/learning" portal/src/` → no matches.
@@ -21,6 +21,8 @@ The backend AI Learning system was removed in a previous session, but the admin 
 ### Safety wall
 - No backend changes. No `safety/`, `encryption.py`, `webrtc_signaling.py`, or safeguarding code touched.
 - `ENCRYPTED_FIELDS` untouched.
+
+
 ## 2026-05-20 — Veteran Voices UX polish: back arrow + dismissible player
 
 Two quick wins surfaced by the first round of user testing on PR #C:

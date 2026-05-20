@@ -3,10 +3,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Users, Calendar, FileText, Bot, Shield, Activity, 
-chore/-remove-dormant-AI-Learning-frontend-remnants
   Settings, BarChart3, Clock,
-  LogOut, Menu, X, Bell, RefreshCw, ClipboardList
-  Settings, BarChart3, Clock, BookOpen,
   LogOut, Menu, X, Bell, RefreshCw, ClipboardList, Mic
 } from 'lucide-react';
 import { api } from '@/lib/admin-api';
