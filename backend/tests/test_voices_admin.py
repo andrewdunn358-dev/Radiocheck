@@ -143,15 +143,32 @@ class TestProcessUploadGuards:
     async def test_rejects_oversized_upload(
         self, tmp_storage: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # Shrink the cap so we don't have to allocate 50MB in a test.
-        monkeypatch.setattr(voices_pipeline, "MAX_UPLOAD_BYTES", 100)
+        # Shrink the cap so we don't have to allocate 100MB in a test.
+        monkeypatch.setattr(voices_pipeline, "MAX_UPLOAD_BYTES_AUDIO", 100)
+        # Use a real WAV so the magic-byte sniff classifies it as audio
+        # and the size guard is what trips (not the unknown-format guard).
+        wav = _make_silent_wav_bytes(duration_seconds=1)
         result = await process_upload(
-            raw_bytes=b"x" * 200,
+            raw_bytes=wav + b"x" * 200,  # >100 bytes
             original_filename="big.wav",
             skip_transcription=True,
         )
         assert result.ok is False
         assert result.error and "too large" in result.error.lower()
+
+    @pytest.mark.asyncio
+    async def test_rejects_unknown_format(self, tmp_storage: Path) -> None:
+        """Random bytes that don't match any audio/video magic should be
+        rejected up front with a clear message — used to be caught by
+        ffmpeg-failure path, but PR #C magic-byte sniff makes this
+        explicit and avoids spawning ffmpeg on garbage."""
+        result = await process_upload(
+            raw_bytes=b"this is definitely not media" * 10,
+            original_filename="garbage.bin",
+            skip_transcription=True,
+        )
+        assert result.ok is False
+        assert result.error and "unsupported" in result.error.lower()
 
     @pytest.mark.asyncio
     async def test_ffmpeg_failure_returns_failure_not_500(

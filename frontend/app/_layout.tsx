@@ -7,6 +7,9 @@ import { FavoritesProvider } from '../src/context/FavoritesContext';
 import { AgeGateProvider } from '../src/context/AgeGateContext';
 import { SiteGateProvider } from '../src/context/SiteGateContext';
 import { LocationPermissionProvider } from '../src/context/LocationPermissionContext';
+import { VoicesPlayerProvider } from '../src/context/VoicesPlayerContext';
+import VoicesMiniPlayer from '../src/components/voices/VoicesMiniPlayer';
+import VoicesFullScreenPlayer from '../src/components/voices/VoicesFullScreenPlayer';
 import ResponsiveWrapper from '../src/components/ResponsiveWrapper';
 import InstallPwaPrompt from '../src/components/InstallPwaPrompt';
 
@@ -41,7 +44,10 @@ function AppContent() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="resources" />
         <Stack.Screen name="grace-welcome" />
+        <Stack.Screen name="voices" />
       </Stack>
+      <VoicesMiniPlayer />
+      <VoicesFullScreenPlayer />
       <InstallPwaPrompt />
     </ResponsiveWrapper>
   );
@@ -55,7 +61,9 @@ export default function RootLayout() {
           <AgeGateProvider>
             <FavoritesProvider>
               <AuthProvider>
-                <AppContent />
+                <VoicesPlayerProvider>
+                  <AppContent />
+                </VoicesPlayerProvider>
               </AuthProvider>
             </FavoritesProvider>
           </AgeGateProvider>

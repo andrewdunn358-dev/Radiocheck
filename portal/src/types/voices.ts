@@ -2,6 +2,8 @@
 // Mirrors `backend/models/clips.py` + `backend/routers/clips_admin.py`.
 // Keep these in sync if the backend shapes ever change.
 
+export type ClipMediaType = 'audio' | 'video';
+
 export type ClipStatus = 'draft' | 'published' | 'archived';
 
 export type ClipProcessingStatus =
@@ -55,6 +57,7 @@ export interface ClipAdminListItem {
   id: string;
   contributorName: string;
   durationSeconds: number;
+  mediaType: ClipMediaType;
   status: ClipStatus;
   processingStatus: ClipProcessingStatus;
   categories: string[];
@@ -70,7 +73,9 @@ export interface ClipAdminResponse {
   contributorName: string;
   contributorBio: string;
   contributorPhotoUrl?: string | null;
+  contributorPhotoFilename?: string | null;
   audioFilename: string;
+  mediaType: ClipMediaType;
   durationSeconds: number;
   transcript: string;
   captions: CaptionSegment[];

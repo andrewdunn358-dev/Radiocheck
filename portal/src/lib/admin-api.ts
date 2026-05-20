@@ -556,7 +556,8 @@ export const api = {
     ),
 
   // Multipart upload — bypasses `api.fetch` (which forces JSON content-type)
-  // and posts FormData directly. Mirrors `uploadCMSImage` above.
+  // and posts FormData directly. Accepts both audio and video formats per
+  // PR #C scope. Contributor photo is uploaded as a file (no URL field).
   createClipAdmin: async (
     token: string,
     fields: {
@@ -565,7 +566,7 @@ export const api = {
       contributorBio: string;
       categories: string;        // csv
       sensitivityFlags: string;  // csv
-      contributorPhotoUrl?: string;
+      contributorPhoto?: File | null;
       recordingDate?: string;
       consentConfirmed: boolean;
       adminNotes?: string;
@@ -578,7 +579,7 @@ export const api = {
     formData.append('contributorBio', fields.contributorBio);
     formData.append('categories', fields.categories);
     formData.append('sensitivityFlags', fields.sensitivityFlags);
-    if (fields.contributorPhotoUrl) formData.append('contributorPhotoUrl', fields.contributorPhotoUrl);
+    if (fields.contributorPhoto) formData.append('contributorPhoto', fields.contributorPhoto);
     if (fields.recordingDate) formData.append('recordingDate', fields.recordingDate);
     formData.append('consentConfirmed', fields.consentConfirmed ? 'true' : 'false');
     if (fields.adminNotes) formData.append('adminNotes', fields.adminNotes);
@@ -595,6 +596,35 @@ export const api = {
         ? err.detail.map((e: { loc?: string[]; msg?: string }) => `${e.loc?.join('.')}: ${e.msg}`).join(', ')
         : (err.detail || `Upload failed: HTTP ${res.status}`);
       throw new Error(msg);
+    }
+    return res.json() as Promise<import('@/types/voices').ClipAdminResponse>;
+  },
+
+  // Replace/set the contributor photo on an existing clip without re-running
+  // the full ingest pipeline.
+  replaceClipPhoto: async (token: string, clipId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('contributorPhoto', file);
+    const res = await fetch(`${API_URL}/api/admin/clips/${clipId}/photo`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Photo upload failed' }));
+      throw new Error(err.detail || `Photo upload failed: HTTP ${res.status}`);
+    }
+    return res.json() as Promise<import('@/types/voices').ClipAdminResponse>;
+  },
+
+  removeClipPhoto: async (token: string, clipId: string) => {
+    const res = await fetch(`${API_URL}/api/admin/clips/${clipId}/photo`, {
+      method: 'DELETE',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Photo removal failed' }));
+      throw new Error(err.detail || `Photo removal failed: HTTP ${res.status}`);
     }
     return res.json() as Promise<import('@/types/voices').ClipAdminResponse>;
   },

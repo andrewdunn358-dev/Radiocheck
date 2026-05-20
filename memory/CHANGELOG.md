@@ -1,5 +1,70 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-20 — Veteran Voices combined PR: B2 gaps + PR #C veteran-facing UI
+
+### Why
+PR #B1 + #B2 shipped the admin pipeline + portal for AUDIO clips only and a URL-based contributor photo field. This combined PR closes the agreed B2 gaps (video upload, contributor photo file upload) AND ships the entire veteran-facing surface (hero card, persistent mini-player, full-screen player, library) so the feature is end-to-end usable.
+
+### B2 gap-closure
+**Video upload + transcoding**
+- `services/voices_pipeline.py`:
+  - `detect_media_type()` — magic-byte sniff over WAV / MP3 / OGG / FLAC / MP4 / MOV / M4A / MKV / WebM / AVI. Extensions are NOT trusted.
+  - `transcode_to_mp4_720p()` — H.264 + AAC, 720p max, ~1.5 Mbps, `+faststart`, all container metadata stripped (GPS / device / contributor PII).
+  - `process_upload()` now branches by detected media type and reports it on `PipelineResult.media_type`.
+  - Size caps split: **100 MB audio**, **500 MB video** (was a single 50 MB cap). Both env-tunable.
+- `models/clips.py`: new `ClipMediaType` enum + `mediaType` field. `ClipPublicResponse` exposes it so the client picks the right player.
+
+**Contributor photo file upload**
+- `services/voices_pipeline.py`: `save_contributor_photo()` (PNG/JPG, 5 MB cap, magic-byte validated), `get_contributor_photo_path()` (path-traversal defence), `delete_contributor_photo()`. Stored under `<AUDIO_STORAGE_PATH>/photos/<clip_id>.<ext>`.
+- `routers/clips.py`: new `GET /api/clips/photo/{clip_id}` (only for `status=published` clips; same traversal defence as audio).
+- `routers/clips_admin.py`: `POST /api/admin/clips` accepts `contributorPhoto` UploadFile alongside audio/video. New `POST /api/admin/clips/{id}/photo` and `DELETE /api/admin/clips/{id}/photo` for swapping/removing without re-running Whisper. Hard-delete also cleans the photo file. `_to_public()` resolves photo URL: uploaded > external > null.
+- `models/clips.py`: new `contributorPhotoFilename` field. NOT added to `ENCRYPTED_FIELDS` (contributor name/photo are consented public content).
+- Admin portal (`portal`): file picker replaces the URL input, 5 MB / PNG/JPG help text. Detail editor preview renders the uploaded photo via the routed URL and shows `<video>` instead of `<audio>` when `mediaType==='video'`. Upload help text updated to list both groups and correct size limits.
+
+### PR #C — veteran-facing UI
+**Backend additions**
+- `routers/clips.py`:
+  - `GET  /api/clips`            — browse (filters: `category`, `search`, `include_sensitive`, `limit`)
+  - `GET  /api/clips/categories` — `[{category, count}]` for the Categories tab
+  - `GET  /api/clips/saved`      — saved clips for `user_id`, archived-after-save excluded
+  - `GET  /api/clips/recent`     — most-recently-played, deduped, unpublished excluded
+  - `POST /api/clips/{id}/save`  — idempotent upsert
+  - `DELETE /api/clips/{id}/save`— idempotent removal
+  - `POST /api/clips/{id}/play`  — records `{userId, playedAt, completion?}` event
+  - Sensitivity filter: default-off excludes any flag !== `'none'`; user toggle opt-in.
+  - Catch-all `GET /api/clips/{id}` registered LAST so literal-segment routes (`/saved`, `/categories`, `/photo/{id}`, `/recent`) match correctly.
+
+**Frontend additions** (`/app/frontend/`)
+- `src/services/voicesApi.ts` — typed client; persists anonymous `user_id`, `include_sensitive`, and `captions_default_on` in AsyncStorage.
+- `src/context/VoicesPlayerContext.tsx` — global player state. Owns the active clip, status, position, saved-set, captions toggle, prefs. Records a play event on `loadedmetadata` so analytics fire even if the user skips early; final completion% on `ended`.
+- `src/components/voices/VoicesMiniPlayer.tsx` — always-mounted bar above the bottom inset; hosts the persistent `<audio>`/`<video>` elements (web). Tap body → expand; tap controls → play/pause/skip.
+- `src/components/voices/VoicesFullScreenPlayer.tsx` — Modal-based expanded view. Contributor photo (or initials) for audio; embedded `<video>` for video clips. Captions list scrolls to active segment. CC toggle default-off per user, settings switch to default-on. Save heart. Replay / Play-pause / Skip. "Talk to someone" CTA → `/unified-chat`.
+- `src/components/voices/VoicesHeroCard.tsx` — home-screen card: "Hear someone — 30 seconds from someone who's been there". One tap loads a random clip in the mini-player. No navigation, no AI-Buddy framing.
+- `app/voices.tsx` — Library screen: Categories / Saved / Recent / Search tabs + sensitivity toggle.
+- `app/_layout.tsx` — wraps the tree in `VoicesPlayerProvider`; mounts `VoicesMiniPlayer` and `VoicesFullScreenPlayer` at the root so they survive route changes.
+- `app/home.tsx` — Hero card placed directly under the header (above the fold) + a discreet library tile linking to `/voices`.
+
+### Visual treatment
+- No illustrated avatars. Contributor photo if uploaded, otherwise initials in a neutral tile.
+- Voices UI never appears next to an AI Buddy block.
+- Never branded with a Buddy name.
+
+### Safety wall (unchanged)
+- No imports from `safety/`, `encryption.py`, `webrtc_signaling.py`, or any safeguarding / live-chat / panic / alert / escalation module on either side.
+- `ENCRYPTED_FIELDS` untouched.
+- Veteran endpoints return ONLY `status=published`. Drafts / archived / failed / processing never surface — covered by `TestPublishedOnlyContract` and a dedicated archived-after-save assertion.
+
+### Out of scope
+- NFC deep-link `/c` route — later.
+- Offline caching — later.
+
+### Verification
+- **68 backend pytest cases** pass across `test_voices_admin.py` (32), `test_voices_clips.py` (10), `test_voices_public.py` (26 — magic-byte detection, photo save + traversal, browse / categories / saved / play / recent / photo serve, published-only contract).
+- `ruff check` clean on every new/changed Python file.
+- `npx tsc --noEmit` on the portal and on the new Expo files: **zero new errors** (pre-existing errors in untouched files unchanged).
+- Live backend: 23 `/api/clips*` paths registered in OpenAPI; auth-gated admin paths return 401 unauthenticated.
+
+
 ## 2026-05-20 — Veteran Voices PR #B2 (admin portal UI)
 
 ### Why

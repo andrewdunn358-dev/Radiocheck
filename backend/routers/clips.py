@@ -101,20 +101,30 @@ _last_random_by_user: dict[str, str] = {}
 def _to_public(doc: dict, request: Request) -> ClipPublicResponse:
     """Convert a DB doc into the veteran-facing payload.
 
-    Strips: transcript, adminNotes, uploadedByAdminId, audioFilename, _id.
-    Adds: audioUrl pointing at our streaming endpoint.
+    Strips: transcript, adminNotes, internalNotes, processingStatus,
+    processingError, uploadedByAdminId, audioFilename, _id.
+    Adds: audioUrl pointing at our streaming endpoint, mediaType,
+    contributorPhotoUrl resolution (on-disk file beats external URL).
     """
     base_url = str(request.base_url).rstrip("/")
     captions = [
         CaptionSegment(**c) if not isinstance(c, CaptionSegment) else c
         for c in (doc.get("captions") or [])
     ]
+    # Photo URL resolution order: uploaded file > external URL > none.
+    photo_filename = doc.get("contributorPhotoFilename")
+    if photo_filename:
+        photo_url: Optional[str] = f"{base_url}/api/clips/photo/{doc['id']}"
+    else:
+        photo_url = doc.get("contributorPhotoUrl")
+    media_type_raw = doc.get("mediaType") or "audio"
     return ClipPublicResponse(
         id=doc["id"],
         contributorName=doc.get("contributorName", ""),
         contributorBio=doc.get("contributorBio", ""),
-        contributorPhotoUrl=doc.get("contributorPhotoUrl"),
+        contributorPhotoUrl=photo_url,
         audioUrl=f"{base_url}/api/clips/audio/{doc['id']}",
+        mediaType=media_type_raw,
         durationSeconds=int(doc.get("durationSeconds", 0)),
         captions=captions,
         categories=list(doc.get("categories") or []),
@@ -233,25 +243,6 @@ async def get_random_clip(
     return _to_public(clip, request)
 
 
-@router.get("/clips/{clip_id}", response_model=ClipPublicResponse)
-async def get_clip_by_id(
-    clip_id: str,
-    request: Request,
-    db: AsyncIOMotorDatabase = Depends(get_db),
-) -> ClipPublicResponse:
-    """Single-clip metadata. Only `published` clips are returned to veterans.
-
-    Archived / draft clips return 404 even if the caller knows the id.
-    """
-    clip = await db.clips.find_one(
-        {"id": clip_id, "status": ClipStatus.published.value},
-        {"_id": 0},
-    )
-    if not clip:
-        raise HTTPException(status_code=404, detail="Clip not found")
-    return _to_public(clip, request)
-
-
 @router.get("/clips/audio/{clip_id}")
 async def stream_clip_audio(
     clip_id: str,
@@ -287,10 +278,299 @@ async def stream_clip_audio(
         raise HTTPException(status_code=404, detail="Clip audio not found")
 
     # FileResponse handles Range requests for seekable players out of the box.
-    media_type = "audio/mpeg"
     suffix = candidate.suffix.lower()
-    if suffix in (".m4a", ".mp4"):
+    if suffix == ".mp4":
+        media_type = "video/mp4"
+    elif suffix in (".m4a",):
         media_type = "audio/mp4"
     elif suffix == ".wav":
         media_type = "audio/wav"
+    elif suffix == ".webm":
+        media_type = "video/webm"
+    else:
+        media_type = "audio/mpeg"
     return FileResponse(str(candidate), media_type=media_type)
+
+
+# ---------------------------------------------------------------------------
+# Contributor photo serving (PR #C — replaces external URL field)
+# ---------------------------------------------------------------------------
+
+@router.get("/clips/photo/{clip_id}")
+async def stream_clip_photo(
+    clip_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Serve the contributor photo for a published clip.
+
+    Same path-traversal defence as the audio endpoint — the resolved
+    file must sit inside `<AUDIO_STORAGE_PATH>/photos/`. Returns 404
+    for any clip without a photo on disk so the client can fall back
+    to the text-only card.
+    """
+    clip = await db.clips.find_one(
+        {"id": clip_id, "status": ClipStatus.published.value},
+        {"_id": 0, "contributorPhotoFilename": 1},
+    )
+    if not clip or not clip.get("contributorPhotoFilename"):
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    filename = clip["contributorPhotoFilename"]
+    safe_root = Path(os.path.join(AUDIO_STORAGE_PATH, "photos")).resolve()
+    candidate = (safe_root / filename).resolve()
+    try:
+        candidate.relative_to(safe_root)
+    except ValueError:
+        logger.warning(f"[voices] Path-traversal blocked for photo {clip_id}")
+        raise HTTPException(status_code=404, detail="Photo not found")
+    if not candidate.is_file():
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    suffix = candidate.suffix.lower()
+    media_type = "image/png" if suffix == ".png" else "image/jpeg"
+    return FileResponse(str(candidate), media_type=media_type)
+
+
+# ---------------------------------------------------------------------------
+# Browse / library endpoints (PR #C)
+# ---------------------------------------------------------------------------
+
+def _filter_pool(
+    docs: list[dict],
+    *,
+    category: Optional[str] = None,
+    sensitivity_filter_off: bool = True,
+    search: Optional[str] = None,
+) -> list[dict]:
+    """Apply category / sensitivity / text-search filters in-memory.
+
+    `sensitivity_filter_off=True` (the default) means we EXCLUDE clips
+    that have any sensitivityFlag other than 'none'. This matches the
+    UX brief: the sensitivity filter excludes heaviest by default;
+    the toggle lets a user opt in to see everything.
+
+    Search matches case-insensitively across `contributorName` and the
+    flattened `transcript` (admin transcript is internal, but matching
+    against it is fine since we never return the raw transcript here).
+    """
+    out = docs
+    if sensitivity_filter_off:
+        out = [
+            d for d in out
+            if not [
+                f for f in (d.get("sensitivityFlags") or [])
+                if f and f != "none"
+            ]
+        ]
+    if category:
+        out = [d for d in out if category in (d.get("categories") or [])]
+    if search:
+        needle = search.strip().lower()
+        if needle:
+            out = [
+                d for d in out
+                if needle in (d.get("contributorName", "").lower())
+                or needle in (d.get("transcript", "").lower())
+            ]
+    return out
+
+
+@router.get("/clips", response_model=list[ClipPublicResponse])
+async def browse_clips(
+    request: Request,
+    category: Optional[str] = Query(None, description="Filter to one ClipCategory."),
+    search: Optional[str] = Query(None, description="Case-insensitive match on contributor name / transcript."),
+    include_sensitive: bool = Query(
+        False,
+        description="If true, include clips with sensitivity flags other than 'none'.",
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> list[ClipPublicResponse]:
+    """Library browse. Returns ONLY published clips. Newest first."""
+    pool = await db.clips.find(
+        {"status": ClipStatus.published.value}, {"_id": 0}
+    ).sort("createdAt", -1).to_list(length=None)
+    filtered = _filter_pool(
+        pool,
+        category=category,
+        sensitivity_filter_off=not include_sensitive,
+        search=search,
+    )
+    return [_to_public(c, request) for c in filtered[:limit]]
+
+
+@router.get("/clips/categories", response_model=list[dict])
+async def list_clip_categories(
+    include_sensitive: bool = Query(False),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> list[dict]:
+    """Return [{category, count}] across all published clips, respecting
+    the sensitivity filter. Drives the Categories tab in the library."""
+    pool = await db.clips.find(
+        {"status": ClipStatus.published.value},
+        {"_id": 0, "categories": 1, "sensitivityFlags": 1},
+    ).to_list(length=None)
+    pool = _filter_pool(pool, sensitivity_filter_off=not include_sensitive)
+    counts: dict[str, int] = {}
+    for d in pool:
+        for cat in d.get("categories") or []:
+            counts[cat] = counts.get(cat, 0) + 1
+    return [{"category": k, "count": v} for k, v in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+# ---------------------------------------------------------------------------
+# Save / favourite (PR #C)
+# ---------------------------------------------------------------------------
+
+@router.post("/clips/{clip_id}/save", status_code=204)
+async def save_clip(
+    clip_id: str,
+    user_id: str = Query(..., description="Veteran's local user_id."),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> None:
+    """Idempotent: saving an already-saved clip is a no-op."""
+    clip = await db.clips.find_one(
+        {"id": clip_id, "status": ClipStatus.published.value}, {"_id": 0, "id": 1}
+    )
+    if not clip:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    await db.clip_saves.update_one(
+        {"clipId": clip_id, "userId": user_id},
+        {
+            "$setOnInsert": {
+                "clipId": clip_id,
+                "userId": user_id,
+                "savedAt": datetime.now(timezone.utc),
+            }
+        },
+        upsert=True,
+    )
+
+
+@router.delete("/clips/{clip_id}/save", status_code=204)
+async def unsave_clip(
+    clip_id: str,
+    user_id: str = Query(...),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> None:
+    """Idempotent: unsaving a non-saved clip is a no-op."""
+    await db.clip_saves.delete_one({"clipId": clip_id, "userId": user_id})
+
+
+@router.get("/clips/saved", response_model=list[ClipPublicResponse])
+async def list_saved_clips(
+    request: Request,
+    user_id: str = Query(...),
+    include_sensitive: bool = Query(True, description="Saved clips show even sensitive ones by default — the user explicitly opted in by saving."),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> list[ClipPublicResponse]:
+    """Saved clips, newest-saved first. Filters out clips whose status
+    is no longer 'published' (admins may have archived since save)."""
+    saves = await db.clip_saves.find(
+        {"userId": user_id}, {"_id": 0, "clipId": 1, "savedAt": 1}
+    ).sort("savedAt", -1).to_list(length=None)
+    if not saves:
+        return []
+    clip_ids = [s["clipId"] for s in saves]
+    pool = await db.clips.find(
+        {"id": {"$in": clip_ids}, "status": ClipStatus.published.value},
+        {"_id": 0},
+    ).to_list(length=None)
+    if not include_sensitive:
+        pool = _filter_pool(pool, sensitivity_filter_off=True)
+    # Preserve save order.
+    by_id = {c["id"]: c for c in pool}
+    ordered = [by_id[s["clipId"]] for s in saves if s["clipId"] in by_id]
+    return [_to_public(c, request) for c in ordered]
+
+
+# ---------------------------------------------------------------------------
+# Play tracking (PR #C — wired up from the player on every successful start)
+# ---------------------------------------------------------------------------
+
+@router.post("/clips/{clip_id}/play", status_code=204)
+async def record_clip_play(
+    clip_id: str,
+    user_id: str = Query(..., description="Veteran's local user_id."),
+    completion: Optional[float] = Query(
+        None, ge=0.0, le=1.0, description="0.0-1.0; how much of the clip was heard."
+    ),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> None:
+    """Insert a play event. We INSERT a new row per play (rather than
+    bumping a counter) so the random-selection logic can compute
+    last-played-by-clip without an extra collection."""
+    clip = await db.clips.find_one(
+        {"id": clip_id, "status": ClipStatus.published.value}, {"_id": 0, "id": 1}
+    )
+    if not clip:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    await db.clip_plays.insert_one(
+        {
+            "clipId": clip_id,
+            "userId": user_id,
+            "playedAt": datetime.now(timezone.utc),
+            "completion": float(completion) if completion is not None else None,
+        }
+    )
+
+
+@router.get("/clips/recent", response_model=list[ClipPublicResponse])
+async def list_recently_played_clips(
+    request: Request,
+    user_id: str = Query(...),
+    limit: int = Query(30, ge=1, le=100),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> list[ClipPublicResponse]:
+    """Most-recently-played clips for this user, deduped, newest first.
+    Drives the 'Recently played' tab in the library.
+
+    Filters out clips no longer in `status=published`."""
+    plays = await db.clip_plays.find(
+        {"userId": user_id}, {"_id": 0, "clipId": 1, "playedAt": 1}
+    ).sort("playedAt", -1).to_list(length=None)
+    if not plays:
+        return []
+    seen: set[str] = set()
+    ordered_ids: list[str] = []
+    for p in plays:
+        cid = p["clipId"]
+        if cid in seen:
+            continue
+        seen.add(cid)
+        ordered_ids.append(cid)
+        if len(ordered_ids) >= limit:
+            break
+    if not ordered_ids:
+        return []
+    pool = await db.clips.find(
+        {"id": {"$in": ordered_ids}, "status": ClipStatus.published.value},
+        {"_id": 0},
+    ).to_list(length=None)
+    by_id = {c["id"]: c for c in pool}
+    return [_to_public(by_id[cid], request) for cid in ordered_ids if cid in by_id]
+
+
+# ---------------------------------------------------------------------------
+# Catch-all: single clip by id (registered LAST so literal-segment routes
+# like /clips/saved, /clips/categories, /clips/recent, /clips/photo/{id}
+# are matched first).
+# ---------------------------------------------------------------------------
+
+@router.get("/clips/{clip_id}", response_model=ClipPublicResponse)
+async def get_clip_by_id(
+    clip_id: str,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> ClipPublicResponse:
+    """Single-clip metadata. Only `published` clips are returned to veterans.
+    Archived / draft clips return 404 even if the caller knows the id.
+    """
+    clip = await db.clips.find_one(
+        {"id": clip_id, "status": ClipStatus.published.value},
+        {"_id": 0},
+    )
+    if not clip:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    return _to_public(clip, request)

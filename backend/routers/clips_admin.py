@@ -48,12 +48,15 @@ from pydantic import BaseModel, Field
 
 from models.clips import (
     CaptionSegment,
+    ClipMediaType,
     ClipProcessingStatus,
     ClipStatus,
 )
 from services.voices_pipeline import (
     delete_clip_file,
+    delete_contributor_photo,
     process_upload,
+    save_contributor_photo,
     transcribe_with_whisper,
 )
 
@@ -121,7 +124,9 @@ class ClipAdminResponse(BaseModel):
     contributorName: str
     contributorBio: str
     contributorPhotoUrl: Optional[str] = None
+    contributorPhotoFilename: Optional[str] = None
     audioFilename: str
+    mediaType: str = "audio"
     durationSeconds: int
     transcript: str
     captions: List[CaptionSegment]
@@ -144,6 +149,7 @@ class ClipAdminListItem(BaseModel):
     id: str
     contributorName: str
     durationSeconds: int
+    mediaType: str = "audio"
     status: str
     processingStatus: str
     categories: List[str]
@@ -195,7 +201,9 @@ def _to_admin_response(doc: dict) -> ClipAdminResponse:
         contributorName=doc.get("contributorName", ""),
         contributorBio=doc.get("contributorBio", ""),
         contributorPhotoUrl=doc.get("contributorPhotoUrl"),
+        contributorPhotoFilename=doc.get("contributorPhotoFilename"),
         audioFilename=doc.get("audioFilename", ""),
+        mediaType=str(doc.get("mediaType", ClipMediaType.audio.value)),
         durationSeconds=int(doc.get("durationSeconds", 0)),
         transcript=doc.get("transcript", ""),
         captions=captions,
@@ -228,7 +236,7 @@ def _parse_csv_list(raw: Optional[str]) -> List[str]:
 
 @router.post("", response_model=ClipAdminResponse, status_code=201)
 async def create_clip(
-    audio: UploadFile = File(..., description="Source audio file (wav/mp3/m4a/ogg)."),
+    audio: UploadFile = File(..., description="Source audio OR video file. Audio: wav/mp3/m4a/ogg/flac (≤100 MB). Video: mp4/mov/mkv/avi/webm (≤500 MB)."),
     contributorName: str = Form(..., description="Display alias / first name."),
     contributorBio: str = Form(..., description="One-line bio, ≤80 chars."),
     categories: str = Form(
@@ -238,6 +246,9 @@ async def create_clip(
     sensitivityFlags: str = Form(
         "none",
         description="Comma-separated SensitivityFlag values; default 'none'.",
+    ),
+    contributorPhoto: Optional[UploadFile] = File(
+        None, description="Optional contributor photo (PNG or JPG, ≤5 MB)."
     ),
     contributorPhotoUrl: Optional[str] = Form(None),
     recordingDate: Optional[str] = Form(None, description="ISO date the clip was recorded."),
@@ -254,6 +265,14 @@ async def create_clip(
     Whisper) so the admin gets immediate feedback on whether the file is
     usable. Failed ingest still creates a `status=draft,
     processingStatus=failed` row so the admin can fix metadata + retry.
+
+    Photo handling (PR #C gap closure):
+      - If `contributorPhoto` is supplied, it's saved under
+        `<AUDIO_STORAGE_PATH>/photos/<clip_id>.<ext>` (PNG/JPG only,
+        ≤5MB). Filename is stored on the row as
+        `contributorPhotoFilename` and exposed via /api/clips/photo/<id>.
+      - If the photo fails validation, the rest of the upload still
+        succeeds; the failure is appended to `processingError`.
 
     The clip is ALWAYS created as `status=draft`. A separate publish step
     (`POST /api/admin/clips/{id}/publish`) handles going live.
@@ -276,12 +295,34 @@ async def create_clip(
         else (current_admin.get("id") if isinstance(current_admin, dict) else None)
     )
 
+    # ---- Optional contributor photo (saved after we have a clip_id).
+    photo_filename: Optional[str] = None
+    photo_error: Optional[str] = None
+    if contributorPhoto is not None and contributorPhoto.filename:
+        photo_bytes = await contributorPhoto.read()
+        if photo_bytes:
+            try:
+                photo_filename = save_contributor_photo(photo_bytes, clip_id)
+            except ValueError as ve:
+                photo_error = f"Photo upload rejected: {ve}"
+                logger.warning(f"[voices_admin] {photo_error}")
+
+    # Compose processingError text if BOTH pipeline failed + photo failed.
+    combined_error = pipeline.error
+    if photo_error:
+        combined_error = (combined_error + " | " + photo_error) if combined_error else photo_error
+
     doc: dict = {
         "id": clip_id,
         "contributorName": contributorName.strip(),
         "contributorBio": contributorBio.strip()[:80],
         "contributorPhotoUrl": (contributorPhotoUrl or None),
+        "contributorPhotoFilename": photo_filename,
         "audioFilename": pipeline.audio_filename or "",
+        "mediaType": (
+            ClipMediaType.video.value if pipeline.media_type == "video"
+            else ClipMediaType.audio.value
+        ),
         "durationSeconds": pipeline.duration_seconds,
         "transcript": pipeline.transcript,
         "captions": pipeline.captions,
@@ -297,7 +338,7 @@ async def create_clip(
             ClipProcessingStatus.ready.value if pipeline.ok
             else ClipProcessingStatus.failed.value
         ),
-        "processingError": pipeline.error,
+        "processingError": combined_error,
         "createdAt": now,
         "updatedAt": now,
     }
@@ -305,7 +346,8 @@ async def create_clip(
     await db.clips.insert_one(dict(doc))  # copy so the local dict is _id-free
     logger.info(
         f"[voices_admin] created clip {clip_id} "
-        f"(pipeline_ok={pipeline.ok}, duration={pipeline.duration_seconds}s)"
+        f"(media={pipeline.media_type}, pipeline_ok={pipeline.ok}, "
+        f"duration={pipeline.duration_seconds}s, photo={'yes' if photo_filename else 'no'})"
     )
     return _to_admin_response(doc)
 
@@ -334,6 +376,7 @@ async def list_clips(
             id=d["id"],
             contributorName=d.get("contributorName", ""),
             durationSeconds=int(d.get("durationSeconds", 0)),
+            mediaType=str(d.get("mediaType", ClipMediaType.audio.value)),
             status=str(d.get("status", ClipStatus.draft.value)),
             processingStatus=str(d.get("processingStatus", ClipProcessingStatus.ready.value)),
             categories=list(d.get("categories") or []),
@@ -548,13 +591,79 @@ async def retranscribe_clip(
     return _to_admin_response(doc)
 
 
+@router.post("/{clip_id}/photo", response_model=ClipAdminResponse)
+async def replace_clip_photo(
+    clip_id: str,
+    contributorPhoto: UploadFile = File(..., description="PNG/JPG, ≤5 MB."),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_admin: Any = Depends(require_admin),
+) -> ClipAdminResponse:
+    """Replace (or set, if absent) the contributor photo on an existing
+    clip. Old photo file is removed from disk after the new one is
+    written. PR #C gap-closure endpoint so admins can fix a missing
+    photo without re-running the full Whisper pipeline."""
+    doc = await db.clips.find_one({"id": clip_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    raw = await contributorPhoto.read()
+    try:
+        new_filename = save_contributor_photo(raw, clip_id)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
+    old_filename = doc.get("contributorPhotoFilename")
+    if old_filename and old_filename != new_filename:
+        delete_contributor_photo(old_filename)
+
+    await db.clips.update_one(
+        {"id": clip_id},
+        {
+            "$set": {
+                "contributorPhotoFilename": new_filename,
+                "updatedAt": datetime.now(timezone.utc),
+            }
+        },
+    )
+    doc = await db.clips.find_one({"id": clip_id}, {"_id": 0})
+    assert doc is not None
+    return _to_admin_response(doc)
+
+
+@router.delete("/{clip_id}/photo", response_model=ClipAdminResponse)
+async def remove_clip_photo(
+    clip_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_admin: Any = Depends(require_admin),
+) -> ClipAdminResponse:
+    """Remove the contributor photo. Clip falls back to a text-only card
+    on the veteran side."""
+    doc = await db.clips.find_one({"id": clip_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    filename = doc.get("contributorPhotoFilename")
+    if filename:
+        delete_contributor_photo(filename)
+    await db.clips.update_one(
+        {"id": clip_id},
+        {
+            "$set": {
+                "contributorPhotoFilename": None,
+                "updatedAt": datetime.now(timezone.utc),
+            }
+        },
+    )
+    doc = await db.clips.find_one({"id": clip_id}, {"_id": 0})
+    assert doc is not None
+    return _to_admin_response(doc)
+
+
 @router.delete("/{clip_id}", status_code=204)
 async def delete_clip(
     clip_id: str,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_admin: Any = Depends(require_admin),
 ) -> None:
-    """Hard-delete a clip row AND remove its mp3 from disk.
+    """Hard-delete a clip row AND remove its mp3/mp4 + photo from disk.
 
     Most admin workflows should prefer `POST .../archive` (reversible).
     This endpoint is for legal removals (e.g. consent withdrawn).
@@ -566,10 +675,12 @@ async def delete_clip(
     filename = doc.get("audioFilename")
     if filename:
         delete_clip_file(filename)
+    photo_filename = doc.get("contributorPhotoFilename")
+    if photo_filename:
+        delete_contributor_photo(photo_filename)
 
     # Also delete dependent play/save records so analytics don't carry a
-    # ghost reference. (Save UX itself is PR #C; clip_saves may be empty
-    # at this point but cleaning here is cheap.)
+    # ghost reference.
     await db.clip_plays.delete_many({"clipId": clip_id})
     await db.clip_saves.delete_many({"clipId": clip_id})
     await db.clips.delete_one({"id": clip_id})

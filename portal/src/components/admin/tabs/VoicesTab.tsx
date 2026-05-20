@@ -82,7 +82,7 @@ interface UploadFormState {
   file: File | null;
   contributorName: string;
   contributorBio: string;
-  contributorPhotoUrl: string;
+  contributorPhoto: File | null;
   recordingDate: string;
   categories: ClipCategory[];
   sensitivityFlags: SensitivityFlag[];
@@ -95,7 +95,7 @@ const EMPTY_UPLOAD: UploadFormState = {
   file: null,
   contributorName: '',
   contributorBio: '',
-  contributorPhotoUrl: '',
+  contributorPhoto: null,
   recordingDate: '',
   categories: [],
   sensitivityFlags: ['none'],
@@ -183,7 +183,7 @@ export default function VoicesTab({ token, onSuccess, onError }: VoicesTabProps)
           ? uploadForm.sensitivityFlags
           : ['none']
         ).join(','),
-        contributorPhotoUrl: uploadForm.contributorPhotoUrl.trim() || undefined,
+        contributorPhoto: uploadForm.contributorPhoto,
         recordingDate: uploadForm.recordingDate || undefined,
         consentConfirmed: uploadForm.consentConfirmed,
         adminNotes: uploadForm.adminNotes.trim() || undefined,
@@ -363,10 +363,10 @@ function UploadFormCard({
         <Upload className="h-5 w-5" /> Upload new clip
       </h3>
       <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <FormField label="Audio file *">
+        <FormField label="Audio or Video file *">
           <input
             type="file"
-            accept="audio/*"
+            accept="audio/*,video/*,.mp4,.mov,.mkv,.avi,.webm,.wav,.mp3,.m4a,.ogg,.flac"
             data-testid="voices-upload-file"
             onChange={(e) =>
               setForm((f) => ({ ...f, file: e.target.files?.[0] ?? null }))
@@ -374,8 +374,10 @@ function UploadFormCard({
             className="w-full rounded border border-gray-600 bg-gray-900 p-2 text-sm text-gray-200"
           />
           <p className="mt-1 text-xs text-gray-500">
-            wav / mp3 / m4a / ogg, up to 50MB. Re-encoded to mono 96 kbps mp3 on
-            ingest.
+            Audio (wav / mp3 / m4a / ogg / flac) up to 100 MB → re-encoded
+            to mono 96 kbps mp3.<br />
+            Video (mp4 / mov / mkv / avi / webm) up to 500 MB → re-encoded
+            to 720p H.264 + AAC. All metadata stripped on ingest.
           </p>
         </FormField>
 
@@ -406,15 +408,19 @@ function UploadFormCard({
           />
         </FormField>
 
-        <FormField label="Contributor photo URL (optional)">
+        <FormField label="Contributor photo (optional, PNG/JPG ≤5 MB)">
           <input
-            type="url"
-            value={form.contributorPhotoUrl}
+            type="file"
+            accept="image/png,image/jpeg"
+            data-testid="voices-upload-photo"
             onChange={(e) =>
-              setForm((f) => ({ ...f, contributorPhotoUrl: e.target.value }))
+              setForm((f) => ({ ...f, contributorPhoto: e.target.files?.[0] ?? null }))
             }
             className="w-full rounded border border-gray-600 bg-gray-900 p-2 text-sm text-gray-200"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Clips without a photo fall back to a text-only card for veterans.
+          </p>
         </FormField>
 
         <FormField label="Recording date (optional)">
@@ -732,10 +738,49 @@ function DetailCard({
         </div>
       )}
 
-      {/* Player */}
+      {/* Player — video if mediaType==='video', audio otherwise */}
       {clip.audioFilename && (
         <div className="mb-4">
-          <audio controls src={audioUrl} data-testid="voices-detail-audio" className="w-full" />
+          {clip.mediaType === 'video' ? (
+            <video
+              controls
+              src={audioUrl}
+              data-testid="voices-detail-video"
+              className="w-full rounded bg-black"
+              style={{ maxHeight: 360 }}
+            />
+          ) : (
+            <audio
+              controls
+              src={audioUrl}
+              data-testid="voices-detail-audio"
+              className="w-full"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Contributor photo preview + admin actions to replace/remove */}
+      {(clip.contributorPhotoFilename || clip.contributorPhotoUrl) && (
+        <div className="mb-4 flex items-center gap-3" data-testid="voices-detail-photo-preview">
+          {clip.contributorPhotoFilename ? (
+            <img
+              src={`${API_URL}/api/clips/photo/${clip.id}?cb=${encodeURIComponent(clip.updatedAt)}`}
+              alt={clip.contributorName}
+              className="h-20 w-20 rounded object-cover ring-1 ring-gray-700"
+            />
+          ) : (
+            <img
+              src={clip.contributorPhotoUrl ?? ''}
+              alt={clip.contributorName}
+              className="h-20 w-20 rounded object-cover ring-1 ring-gray-700"
+            />
+          )}
+          <span className="text-xs text-gray-400">
+            {clip.contributorPhotoFilename
+              ? 'Uploaded photo (served via /api/clips/photo/:id).'
+              : 'External photo URL.'}
+          </span>
         </div>
       )}
 
