@@ -738,8 +738,11 @@ function DetailCard({
         </div>
       )}
 
-      {/* Player — video if mediaType==='video', audio otherwise */}
-      {clip.audioFilename && (
+      {/* Player — video if mediaType==='video', audio otherwise.
+          Gated on hasAudio (authoritative on-disk-existence flag) so
+          we never render a broken <video>/<audio> element pointing at
+          a missing file. */}
+      {clip.hasAudio && (
         <div className="mb-4">
           {clip.mediaType === 'video' ? (
             <video
@@ -759,28 +762,38 @@ function DetailCard({
           )}
         </div>
       )}
+      {!clip.hasAudio && (
+        <div
+          className="mb-4 rounded border border-yellow-700 bg-yellow-900/30 p-3 text-sm text-yellow-100"
+          data-testid="voices-detail-no-audio"
+        >
+          No audio/video file is on disk for this clip. Delete + re-upload to fix.
+        </div>
+      )}
 
-      {/* Contributor photo preview + admin actions to replace/remove */}
-      {(clip.contributorPhotoFilename || clip.contributorPhotoUrl) && (
+      {/* Contributor photo preview — gated on hasPhoto (authoritative
+          on-disk flag). The legacy contributorPhotoUrl fallback is kept
+          for older rows that had an external URL stored. */}
+      {clip.hasPhoto && (
         <div className="mb-4 flex items-center gap-3" data-testid="voices-detail-photo-preview">
-          {clip.contributorPhotoFilename ? (
-            <img
-              src={`${API_URL}/api/clips/photo/${clip.id}?cb=${encodeURIComponent(clip.updatedAt)}`}
-              alt={clip.contributorName}
-              className="h-20 w-20 rounded object-cover ring-1 ring-gray-700"
-            />
-          ) : (
-            <img
-              src={clip.contributorPhotoUrl ?? ''}
-              alt={clip.contributorName}
-              className="h-20 w-20 rounded object-cover ring-1 ring-gray-700"
-            />
-          )}
+          <img
+            src={`${API_URL}/api/clips/photo/${clip.id}?cb=${encodeURIComponent(clip.updatedAt)}`}
+            alt={clip.contributorName}
+            className="h-20 w-20 rounded object-cover ring-1 ring-gray-700"
+          />
           <span className="text-xs text-gray-400">
-            {clip.contributorPhotoFilename
-              ? 'Uploaded photo (served via /api/clips/photo/:id).'
-              : 'External photo URL.'}
+            Uploaded photo (served via /api/clips/photo/:id).
           </span>
+        </div>
+      )}
+      {!clip.hasPhoto && clip.contributorPhotoUrl && (
+        <div className="mb-4 flex items-center gap-3" data-testid="voices-detail-photo-preview-legacy">
+          <img
+            src={clip.contributorPhotoUrl}
+            alt={clip.contributorName}
+            className="h-20 w-20 rounded object-cover ring-1 ring-gray-700"
+          />
+          <span className="text-xs text-gray-400">External photo URL (legacy).</span>
         </div>
       )}
 

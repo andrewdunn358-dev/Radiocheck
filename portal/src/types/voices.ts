@@ -58,6 +58,8 @@ export interface ClipAdminListItem {
   contributorName: string;
   durationSeconds: number;
   mediaType: ClipMediaType;
+  hasAudio: boolean;
+  hasPhoto: boolean;
   status: ClipStatus;
   processingStatus: ClipProcessingStatus;
   categories: string[];
@@ -76,6 +78,11 @@ export interface ClipAdminResponse {
   contributorPhotoFilename?: string | null;
   audioFilename: string;
   mediaType: ClipMediaType;
+  // Authoritative on-disk-existence flags (PR #C bug-fix). UI keys off
+  // these to decide whether to render the player / image elements
+  // rather than guessing from filename strings.
+  hasAudio: boolean;
+  hasPhoto: boolean;
   durationSeconds: number;
   transcript: string;
   captions: CaptionSegment[];

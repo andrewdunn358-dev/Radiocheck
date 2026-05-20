@@ -53,6 +53,8 @@ from models.clips import (
     ClipStatus,
 )
 from services.voices_pipeline import (
+    AUDIO_STORAGE_PATH,
+    PHOTOS_SUBDIR,
     delete_clip_file,
     delete_contributor_photo,
     process_upload,
@@ -127,6 +129,11 @@ class ClipAdminResponse(BaseModel):
     contributorPhotoFilename: Optional[str] = None
     audioFilename: str
     mediaType: str = "audio"
+    # Authoritative on-disk-existence flags (PR #C fix). The UI uses
+    # these to decide whether to render the player / image element
+    # rather than guessing from the filename strings.
+    hasAudio: bool = False
+    hasPhoto: bool = False
     durationSeconds: int
     transcript: str
     captions: List[CaptionSegment]
@@ -150,6 +157,8 @@ class ClipAdminListItem(BaseModel):
     contributorName: str
     durationSeconds: int
     mediaType: str = "audio"
+    hasAudio: bool = False
+    hasPhoto: bool = False
     status: str
     processingStatus: str
     categories: List[str]
@@ -191,7 +200,12 @@ def _strip_internal(doc: dict) -> dict:
 def _to_admin_response(doc: dict) -> ClipAdminResponse:
     """Build the full admin payload (includes transcript + processing
     state). Defensively defaults missing fields so older PR #A rows
-    (pre-pipeline) don't 500 the list view."""
+    (pre-pipeline) don't 500 the list view.
+
+    `hasAudio` / `hasPhoto` are evaluated by checking disk-existence
+    (NOT just the presence of a filename string) so the UI never tries
+    to render a `<video>` / `<img>` against a missing on-disk file.
+    """
     captions = [
         CaptionSegment(**c) if not isinstance(c, CaptionSegment) else c
         for c in (doc.get("captions") or [])
@@ -204,6 +218,8 @@ def _to_admin_response(doc: dict) -> ClipAdminResponse:
         contributorPhotoFilename=doc.get("contributorPhotoFilename"),
         audioFilename=doc.get("audioFilename", ""),
         mediaType=str(doc.get("mediaType", ClipMediaType.audio.value)),
+        hasAudio=_audio_on_disk(doc.get("audioFilename")),
+        hasPhoto=_photo_on_disk(doc.get("contributorPhotoFilename")),
         durationSeconds=int(doc.get("durationSeconds", 0)),
         transcript=doc.get("transcript", ""),
         captions=captions,
@@ -228,6 +244,31 @@ def _parse_csv_list(raw: Optional[str]) -> List[str]:
     if not raw:
         return []
     return [s.strip() for s in raw.split(",") if s.strip()]
+
+
+def _audio_on_disk(filename: Optional[str]) -> bool:
+    """Authoritative check: is the audio/video file actually present at
+    AUDIO_STORAGE_PATH/<filename>? Returns False on empty filename,
+    missing file, or path-traversal attempt.
+    """
+    if not filename:
+        return False
+    safe_root = os.path.realpath(AUDIO_STORAGE_PATH)
+    candidate = os.path.realpath(os.path.join(safe_root, filename))
+    if not candidate.startswith(safe_root + os.sep) and candidate != safe_root:
+        return False
+    return os.path.isfile(candidate)
+
+
+def _photo_on_disk(filename: Optional[str]) -> bool:
+    """Authoritative check for <AUDIO_STORAGE_PATH>/<PHOTOS_SUBDIR>/<filename>."""
+    if not filename:
+        return False
+    safe_root = os.path.realpath(os.path.join(AUDIO_STORAGE_PATH, PHOTOS_SUBDIR))
+    candidate = os.path.realpath(os.path.join(safe_root, filename))
+    if not candidate.startswith(safe_root + os.sep) and candidate != safe_root:
+        return False
+    return os.path.isfile(candidate)
 
 
 # ---------------------------------------------------------------------------
@@ -280,13 +321,9 @@ async def create_clip(
     if not audio.filename:
         raise HTTPException(status_code=400, detail="No filename on upload.")
 
-    raw_bytes = await audio.read()
-
-    pipeline = await process_upload(
-        raw_bytes=raw_bytes,
-        original_filename=audio.filename,
-    )
-
+    # Generate clip_id FIRST so both audio and photo land on disk as
+    # <clip_id>.<ext>. The original filename is irrelevant from here on —
+    # spaces, unicode, or no extension at all are all fine.
     clip_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc)
     admin_id = (
@@ -295,7 +332,17 @@ async def create_clip(
         else (current_admin.get("id") if isinstance(current_admin, dict) else None)
     )
 
-    # ---- Optional contributor photo (saved after we have a clip_id).
+    raw_bytes = await audio.read()
+
+    pipeline = await process_upload(
+        raw_bytes=raw_bytes,
+        original_filename=audio.filename or "",
+        clip_id=clip_id,
+    )
+
+    # ---- Optional contributor photo (uses the SAME clip_id so it
+    # always lands at <storage>/photos/<clip_id>.<ext>). Same as audio:
+    # we never trust the inbound filename for storage.
     photo_filename: Optional[str] = None
     photo_error: Optional[str] = None
     if contributorPhoto is not None and contributorPhoto.filename:
@@ -312,6 +359,19 @@ async def create_clip(
     if photo_error:
         combined_error = (combined_error + " | " + photo_error) if combined_error else photo_error
 
+    # Defensive: do NOT report processingStatus=ready unless the audio
+    # file is actually on disk at the expected <clip_id>.<ext> path.
+    audio_on_disk = _audio_on_disk(pipeline.audio_filename)
+    photo_on_disk = _photo_on_disk(photo_filename)
+
+    if pipeline.ok and not audio_on_disk:
+        # Pipeline claims success but the file isn't where we expect.
+        # Treat as failure so the admin sees the mismatch.
+        combined_error = (
+            (combined_error + " | " if combined_error else "")
+            + "Transcode reported success but expected file is not on disk."
+        )
+
     doc: dict = {
         "id": clip_id,
         "contributorName": contributorName.strip(),
@@ -323,6 +383,9 @@ async def create_clip(
             ClipMediaType.video.value if pipeline.media_type == "video"
             else ClipMediaType.audio.value
         ),
+        # Authoritative on-disk-existence flags — UI keys off these.
+        "hasAudio": bool(audio_on_disk and pipeline.ok),
+        "hasPhoto": bool(photo_on_disk),
         "durationSeconds": pipeline.duration_seconds,
         "transcript": pipeline.transcript,
         "captions": pipeline.captions,
@@ -335,7 +398,8 @@ async def create_clip(
         "adminNotes": adminNotes,
         "internalNotes": internalNotes,
         "processingStatus": (
-            ClipProcessingStatus.ready.value if pipeline.ok
+            ClipProcessingStatus.ready.value
+            if (pipeline.ok and audio_on_disk)
             else ClipProcessingStatus.failed.value
         ),
         "processingError": combined_error,
@@ -347,7 +411,9 @@ async def create_clip(
     logger.info(
         f"[voices_admin] created clip {clip_id} "
         f"(media={pipeline.media_type}, pipeline_ok={pipeline.ok}, "
-        f"duration={pipeline.duration_seconds}s, photo={'yes' if photo_filename else 'no'})"
+        f"hasAudio={doc['hasAudio']}, hasPhoto={doc['hasPhoto']}, "
+        f"duration={pipeline.duration_seconds}s, "
+        f"audioFilename={pipeline.audio_filename})"
     )
     return _to_admin_response(doc)
 
@@ -377,6 +443,8 @@ async def list_clips(
             contributorName=d.get("contributorName", ""),
             durationSeconds=int(d.get("durationSeconds", 0)),
             mediaType=str(d.get("mediaType", ClipMediaType.audio.value)),
+            hasAudio=_audio_on_disk(d.get("audioFilename")),
+            hasPhoto=_photo_on_disk(d.get("contributorPhotoFilename")),
             status=str(d.get("status", ClipStatus.draft.value)),
             processingStatus=str(d.get("processingStatus", ClipProcessingStatus.ready.value)),
             categories=list(d.get("categories") or []),
@@ -620,6 +688,7 @@ async def replace_clip_photo(
         {
             "$set": {
                 "contributorPhotoFilename": new_filename,
+                "hasPhoto": _photo_on_disk(new_filename),
                 "updatedAt": datetime.now(timezone.utc),
             }
         },
@@ -648,6 +717,7 @@ async def remove_clip_photo(
         {
             "$set": {
                 "contributorPhotoFilename": None,
+                "hasPhoto": False,
                 "updatedAt": datetime.now(timezone.utc),
             }
         },

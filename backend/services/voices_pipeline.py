@@ -477,52 +477,57 @@ async def transcribe_with_whisper(audio_path: str) -> tuple[str, List[dict]]:
 async def process_upload(
     raw_bytes: bytes,
     original_filename: str,
+    clip_id: str,
     storage_dir: Optional[str] = None,
     skip_transcription: bool = False,
 ) -> PipelineResult:
     """Run the full ingest pipeline on a raw uploaded audio or video payload.
 
+    The transcoded file is ALWAYS saved as `<clip_id>.<ext>` (mp3 or mp4)
+    inside `storage_dir`. The original filename is consulted only as a
+    weak hint for the m4a-vs-mp4 disambiguation in the magic-byte sniff
+    — it is NEVER used for the on-disk filename, so uploads with spaces,
+    unicode, or no extension at all all work the same.
+
     Steps
     -----
-      1. Reject empty / oversized uploads (cheap early check, using the
-         right cap for the detected media type).
-      2. Sniff magic bytes to decide audio vs video. Extensions are NOT
-         trusted (clients lie; admins rename files).
-      3. Write the raw bytes to a temp file inside storage_dir.
-      4. Transcode:
-           audio -> mono 96 kbps mp3 (existing behaviour)
+      1. Reject empty uploads. We deliberately do NOT reject for filename
+         weirdness — clip_id is a hex UUID, so the storage filename is
+         always safe by construction.
+      2. Sniff magic bytes to decide audio vs video.
+      3. Reject oversized uploads against the right cap.
+      4. Write raw bytes to a temp file inside storage_dir.
+      5. Transcode:
+           audio -> mono 96 kbps mp3
            video -> H.264/AAC mp4, 720p max, ~1.5 Mbps, +faststart
-         Both paths strip ALL container metadata to drop contributor PII
-         (ID3 tags / GPS / device tags).
-      5. Probe duration off the transcoded file.
-      6. (optional) Transcribe via Whisper with watchdog. Whisper accepts
-         the mp4 container directly so the same code path serves both
-         audio and video clips.
-      7. Delete the temp raw file. The transcoded file stays at
-         AUDIO_STORAGE_PATH.
+         Both paths strip ALL container metadata.
+      6. Probe duration off the transcoded file.
+      7. (optional) Transcribe via Whisper with watchdog.
+      8. Delete the temp raw file. The transcoded `<clip_id>.<ext>`
+         stays at AUDIO_STORAGE_PATH.
 
-    `skip_transcription=True` is for unit tests that don't have an OpenAI
-    key — the admin endpoint never passes it.
-
-    On ANY failure we attempt to clean up the partial output so we don't
-    orphan unreachable files on the disk. Best-effort.
+    On any failure we best-effort delete the partial output so we don't
+    orphan unreachable files.
     """
     storage_dir = storage_dir or AUDIO_STORAGE_PATH
     os.makedirs(storage_dir, exist_ok=True)
+
+    if not clip_id:
+        return PipelineResult(ok=False, error="Missing clip_id for storage.")
 
     # --- 1. validate (empty)
     if not raw_bytes:
         return PipelineResult(ok=False, error="Uploaded file is empty.")
 
     # --- 2. magic-byte sniff
-    media_type = detect_media_type(raw_bytes, fallback_filename=original_filename)
+    media_type = detect_media_type(raw_bytes, fallback_filename=original_filename or "")
     if media_type is None:
         return PipelineResult(
             ok=False,
             error="Could not identify the file as audio or video (unsupported format).",
         )
 
-    # --- 1b. validate size against the right cap
+    # --- 3. validate size against the right cap
     cap = MAX_UPLOAD_BYTES_VIDEO if media_type == "video" else MAX_UPLOAD_BYTES_AUDIO
     if len(raw_bytes) > cap:
         return PipelineResult(
@@ -531,30 +536,39 @@ async def process_upload(
             error=f"File too large: {len(raw_bytes)} bytes (max {cap} for {media_type}).",
         )
 
-    safe_stem = sanitize_filename(Path(original_filename).stem) or "clip"
-    unique_id = uuid.uuid4().hex[:12]
-    raw_filename = f"_raw_{unique_id}_{safe_stem}{Path(original_filename).suffix.lower() or '.bin'}"
     final_ext = ".mp4" if media_type == "video" else ".mp3"
-    final_filename = f"{unique_id}_{safe_stem}{final_ext}"
+    final_filename = f"{clip_id}{final_ext}"
+    # Temp raw filename gets a unique suffix so concurrent uploads of the
+    # same clip_id (shouldn't happen, but defence-in-depth) can't collide
+    # while ffmpeg is still running.
+    raw_filename = f"_raw_{clip_id}_{uuid.uuid4().hex[:8]}.bin"
 
     raw_path = os.path.join(storage_dir, raw_filename)
     final_path = os.path.join(storage_dir, final_filename)
 
     try:
-        # --- 3. write raw
+        # --- 4. write raw
         with open(raw_path, "wb") as fh:
             fh.write(raw_bytes)
 
-        # --- 4. transcode (blocking ffmpeg → off-thread)
+        # --- 5. transcode (blocking ffmpeg → off-thread)
         if media_type == "video":
             await asyncio.to_thread(transcode_to_mp4_720p, raw_path, final_path)
         else:
             await asyncio.to_thread(transcode_to_mp3, raw_path, final_path)
 
-        # --- 5. duration
+        # --- 5b. defensive: ffmpeg may have exited 0 but produced nothing
+        # if the source was weird. Fail loudly here so the admin record
+        # never claims processingStatus=ready without an on-disk file.
+        if not os.path.isfile(final_path) or os.path.getsize(final_path) == 0:
+            raise RuntimeError(
+                "Transcode reported success but produced no output file."
+            )
+
+        # --- 6. duration
         duration = await asyncio.to_thread(_probe_duration_seconds, final_path)
 
-        # --- 6. transcribe (Whisper accepts mp4 + mp3 directly)
+        # --- 7. transcribe
         transcript = ""
         captions: List[dict] = []
         if not skip_transcription:
