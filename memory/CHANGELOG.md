@@ -1,5 +1,21 @@
 # RadioCheck CHANGELOG
 
+## 2026-05-20 — Veteran Voices UX polish: back arrow + dismissible player
+
+Two quick wins surfaced by the first round of user testing on PR #C:
+
+- **Back arrow on `/voices`** — the library screen had no in-app way home; users had to use the browser back button. Added a left-aligned `arrow-back` button next to the "Voices" title. Uses `router.back()` when there's history, falls back to `router.replace('/home')` so it never lands on a dead-end (e.g. when the route is opened from a deep link / NFC).
+- **Dismissible player** — the persistent mini-player had no way to close. Once a clip was loaded it floated forever. Added a new `close()` action on `VoicesPlayerContext` that pauses both audio and video elements, clears `clip`, and unmounts the mini-player. Wired to:
+  - An **X** icon on the right edge of the mini-player (`voices-mini-close`).
+  - A **stop-circle** icon in the full-screen player header (`voices-fullscreen-stop`), so users can stop without first collapsing.
+
+No backend changes. Pure UX additions.
+
+### Verification
+- `npx tsc --noEmit` on Voices files (`src/components/voices/*`, `src/context/VoicesPlayerContext.tsx`): 0 errors.
+- Pre-existing typed-route warning on the new `/voices` href is Expo router codegen lag, not a runtime bug — proven by user testing PR #C successfully on the live preview.
+
+
 ## 2026-05-20 — Veteran Voices bug-fix: clip_id-based storage + on-disk flags
 
 Closes three production bugs surfaced after PR #C rollout:

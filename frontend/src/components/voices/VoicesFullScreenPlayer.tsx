@@ -39,6 +39,7 @@ export default function VoicesFullScreenPlayer() {
     togglePlayPause,
     skipNext,
     replay,
+    close,
     captionsOn,
     toggleCaptions,
     captionsDefaultOn,
@@ -111,6 +112,14 @@ export default function VoicesFullScreenPlayer() {
               size={26}
               color={saved ? '#e1455c' : colors.text}
             />
+          </Pressable>
+          <Pressable
+            onPress={() => close()}
+            data-testid="voices-fullscreen-stop"
+            hitSlop={10}
+            accessibilityLabel="Stop playback"
+          >
+            <Ionicons name="stop-circle-outline" size={26} color={colors.text} />
           </Pressable>
           <Pressable
             onPress={() => setShowSettings((v) => !v)}

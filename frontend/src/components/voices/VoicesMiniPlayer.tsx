@@ -27,6 +27,7 @@ export default function VoicesMiniPlayer() {
     togglePlayPause,
     skipNext,
     setExpanded,
+    close,
   } = useVoicesPlayer();
 
   // We always render the audio + video elements (web only) so refs are
@@ -156,6 +157,14 @@ export default function VoicesMiniPlayer() {
             hitSlop={8}
           >
             <Ionicons name="chevron-up" size={22} color={colors.textMuted} />
+          </Pressable>
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); close(); }}
+            data-testid="voices-mini-close"
+            hitSlop={8}
+            accessibilityLabel="Close player"
+          >
+            <Ionicons name="close" size={22} color={colors.textMuted} />
           </Pressable>
         </Pressable>
       )}

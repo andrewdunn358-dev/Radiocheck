@@ -48,6 +48,8 @@ interface VoicesPlayerState {
   togglePlayPause: () => void;
   skipNext: () => Promise<void>;
   replay: () => void;
+  /** Stop playback + drop the active clip so the mini-player hides. */
+  close: () => void;
   setExpanded: (v: boolean) => void;
   toggleCaptions: () => void;
   setCaptionsDefault: (v: boolean) => Promise<void>;
@@ -166,6 +168,26 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     if (p && typeof p.then === 'function') p.catch(() => setStatus('error'));
   }, [clip]);
 
+  const close = useCallback(() => {
+    // Stop whatever's playing on either element, then drop the clip so
+    // the mini-player unmounts itself. Used by the mini-player's X
+    // button and by any "stop everything" path.
+    try {
+      audioRef.current?.pause();
+    } catch {
+      // ignore
+    }
+    try {
+      videoRef.current?.pause();
+    } catch {
+      // ignore
+    }
+    setIsExpanded(false);
+    setStatus('idle');
+    setPositionSeconds(0);
+    setClip(null);
+  }, []);
+
   const toggleSave = useCallback(async (clipId: string) => {
     setSavedClipIds((prev) => {
       const next = new Set(prev);
@@ -274,6 +296,7 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     togglePlayPause,
     skipNext,
     replay,
+    close,
     setExpanded: setIsExpanded,
     toggleCaptions,
     setCaptionsDefault,
@@ -283,7 +306,7 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
   }), [
     clip, status, positionSeconds, isExpanded, savedClipIds,
     includeSensitive, captionsOn, captionsDefaultOn,
-    loadAndPlay, playRandom, togglePlayPause, skipNext, replay,
+    loadAndPlay, playRandom, togglePlayPause, skipNext, replay, close,
     toggleCaptions, setCaptionsDefault, setSensitivity, toggleSave, isSaved,
   ]);
 
