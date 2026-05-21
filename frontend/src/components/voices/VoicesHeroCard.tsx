@@ -74,7 +74,7 @@ export default function VoicesHeroCard({
         <Text
           style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}
         >
-          Hear someone
+          Veterans Voices
         </Text>
         <Text
           style={{ color: colors.textMuted, fontSize: 14, marginTop: 2 }}

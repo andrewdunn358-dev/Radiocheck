@@ -336,7 +336,7 @@ export default function Index() {
         >
           <Ionicons name="library-outline" size={18} color={colors.textSecondary} />
           <Text style={{ color: colors.textSecondary, fontSize: 14, flex: 1 }}>
-            Browse Voices library — by category, saved, recently played
+            Browse Veterans Voices library — by category, saved, recently played
           </Text>
           <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
         </TouchableOpacity>
