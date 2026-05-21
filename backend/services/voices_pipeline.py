@@ -76,6 +76,16 @@ PHOTOS_SUBDIR = "photos"
 # want blocking the FastAPI thread (Q6: asyncio.wait_for watchdog).
 WHISPER_TIMEOUT_SECONDS = int(os.environ.get("VOICES_WHISPER_TIMEOUT_S", "300"))
 
+# Whisper API hard-rejects files >25 MB with HTTP 413. We cap a touch
+# lower (24 MB) so a borderline 96 kbps audio extract doesn't trip the
+# upstream limit due to container overhead. At 96 kbps mono this still
+# fits ~33 minutes of audio, which covers every realistic Voices clip.
+# When this cap trips we surface a clean user-facing error instead of
+# letting Whisper return a cryptic 413.
+WHISPER_MAX_BYTES = int(
+    os.environ.get("VOICES_WHISPER_MAX_BYTES", str(24 * 1024 * 1024))
+)
+
 # Target output: 96 kbps mono mp3 — small disk footprint, universally
 # playable on mobile browsers and the Expo audio element. mono is the
 # right choice for spoken-word veteran clips.
@@ -268,6 +278,36 @@ def transcode_to_mp4_720p(input_path: str, output_path: str) -> None:
     if proc.returncode != 0:
         raise RuntimeError(
             f"ffmpeg video transcode failed (rc={proc.returncode}): "
+            f"{(proc.stderr or '')[-500:]}"
+        )
+
+
+def extract_audio_for_whisper(input_path: str, output_path: str) -> None:
+    """Strip an audio-only mono 96 kbps MP3 from a video file, purely
+    for sending to Whisper. NOT for delivery — that's the MP4 produced
+    by `transcode_to_mp4_720p`.
+
+    This exists because Whisper's 25 MB upload cap fits ~3 minutes of
+    H.264 video but ~33 minutes of 96 kbps mono audio. By transcribing
+    against the audio-only extract we let admins upload long-form video
+    clips (interviews, panel sessions) without hitting HTTP 413.
+
+    `-vn` drops the video stream; `-map_metadata -1` keeps the same
+    PII-stripping guarantee as the MP4 transcode.
+    """
+    proc = _run_ffmpeg([
+        "-i", input_path,
+        "-vn",
+        "-acodec", FFMPEG_TARGET_CODEC,
+        "-ac", FFMPEG_TARGET_CHANNELS,
+        "-ar", FFMPEG_TARGET_SAMPLE_RATE,
+        "-b:a", FFMPEG_TARGET_BITRATE,
+        "-map_metadata", "-1",
+        output_path,
+    ], timeout=600)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg audio-extract for Whisper failed (rc={proc.returncode}): "
             f"{(proc.stderr or '')[-500:]}"
         )
 
@@ -569,10 +609,43 @@ async def process_upload(
         duration = await asyncio.to_thread(_probe_duration_seconds, final_path)
 
         # --- 7. transcribe
+        # For VIDEO clips we transcribe an audio-only extract — Whisper
+        # only needs audio, and a 5+ minute H.264/AAC mp4 easily blows
+        # past Whisper's 25 MB cap whereas a 96 kbps mono MP3 fits ~33
+        # minutes of speech. Audio uploads skip this and feed the already
+        # tiny transcoded MP3 directly.
         transcript = ""
         captions: List[dict] = []
+        whisper_temp_path: Optional[str] = None
         if not skip_transcription:
-            transcript, captions = await transcribe_with_whisper(final_path)
+            if media_type == "video":
+                whisper_temp_path = os.path.join(
+                    storage_dir, f"_whisper_{clip_id}_{uuid.uuid4().hex[:8]}.mp3"
+                )
+                await asyncio.to_thread(
+                    extract_audio_for_whisper, final_path, whisper_temp_path
+                )
+                whisper_source = whisper_temp_path
+            else:
+                whisper_source = final_path
+
+            # Defensive guard: if even the audio-only extract is over our
+            # cap (someone uploaded a 40-min keynote), reject cleanly
+            # instead of letting Whisper return a cryptic 413.
+            try:
+                whisper_size = os.path.getsize(whisper_source)
+            except OSError:
+                whisper_size = 0
+            if whisper_size > WHISPER_MAX_BYTES:
+                raise RuntimeError(
+                    "Clip too long for transcription — max 30 minutes."
+                )
+
+            try:
+                transcript, captions = await transcribe_with_whisper(whisper_source)
+            finally:
+                if whisper_temp_path:
+                    _safe_unlink(whisper_temp_path)
 
         return PipelineResult(
             ok=True,
@@ -643,6 +716,7 @@ __all__ = [
     "process_upload",
     "transcode_to_mp3",
     "transcode_to_mp4_720p",
+    "extract_audio_for_whisper",
     "transcribe_with_whisper",
     "sanitize_filename",
     "delete_clip_file",
@@ -651,6 +725,7 @@ __all__ = [
     "get_contributor_photo_path",
     "delete_contributor_photo",
     "WHISPER_TIMEOUT_SECONDS",
+    "WHISPER_MAX_BYTES",
     "MAX_UPLOAD_BYTES",
     "MAX_UPLOAD_BYTES_AUDIO",
     "MAX_UPLOAD_BYTES_VIDEO",

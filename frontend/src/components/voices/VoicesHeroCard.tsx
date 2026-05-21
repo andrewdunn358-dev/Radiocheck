@@ -74,12 +74,7 @@ export default function VoicesHeroCard({
         <Text
           style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}
         >
-          Hear someone
-        </Text>
-        <Text
-          style={{ color: colors.textMuted, fontSize: 14, marginTop: 2 }}
-        >
-          30 seconds from someone who&apos;s been there
+          Veterans Voices
         </Text>
       </View>
       <Ionicons name="play-circle" size={36} color={colors.text} />

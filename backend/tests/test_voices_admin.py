@@ -227,6 +227,152 @@ class TestWhisperWatchdog:
 
 
 # ---------------------------------------------------------------------------
+# 3b. Whisper audio-extract for video uploads + 25 MB cap guard
+# ---------------------------------------------------------------------------
+
+class TestWhisperVideoAudioExtract:
+    """When the upload is video, Whisper must receive an audio-only MP3
+    extract (not the full MP4). Whisper's 25 MB cap fits ~3 min of H.264
+    but ~33 min of 96 kbps mono audio. We assert here that:
+      1. The path handed to Whisper has a `.mp3` suffix and lives inside
+         the storage dir (so we know it's the extract, not the MP4).
+      2. The MP4 delivery file is preserved on disk after transcription.
+      3. The temp Whisper MP3 is cleaned up after the call.
+    """
+
+    @pytest.mark.asyncio
+    async def test_video_uploads_send_audio_only_to_whisper(
+        self, tmp_storage: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Build a tiny WAV, then ffmpeg-mux it into a 1-second silent MP4
+        # so the magic-byte sniff classifies it as video.
+        import subprocess
+
+        wav_bytes = _make_silent_wav_bytes(duration_seconds=1)
+        wav_path = tmp_storage / "_src.wav"
+        wav_path.write_bytes(wav_bytes)
+        mp4_path = tmp_storage / "_src.mp4"
+        # Generate a 1-second black-frame MP4 with the silent audio muxed in.
+        # `-f lavfi -i color=` gives us a video stream without an asset file.
+        proc = subprocess.run(
+            [
+                voices_pipeline._ffmpeg_binary(),
+                "-y",
+                "-f", "lavfi", "-i", "color=c=black:s=64x64:d=1",
+                "-i", str(wav_path),
+                "-c:v", "libx264", "-tune", "stillimage", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-shortest",
+                str(mp4_path),
+            ],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+        if proc.returncode != 0:
+            pytest.skip("local ffmpeg cannot synth an MP4 fixture")
+        mp4_bytes = mp4_path.read_bytes()
+
+        captured: dict = {}
+
+        async def fake_whisper(audio_path: str):
+            # Record the path & verify it exists at call time.
+            captured["path"] = audio_path
+            captured["exists_at_call"] = os.path.isfile(audio_path)
+            return ("transcribed text", [{"start": 0.0, "end": 1.0, "text": "hi"}])
+
+        monkeypatch.setattr(voices_pipeline, "transcribe_with_whisper", fake_whisper)
+
+        result = await process_upload(
+            raw_bytes=mp4_bytes,
+            original_filename="interview.mp4",
+            clip_id="vid_clip_1",
+            skip_transcription=False,
+        )
+
+        assert result.ok is True, f"pipeline failed: {result.error}"
+        assert result.media_type == "video"
+        # Delivery file is the MP4; it must survive after transcription.
+        assert result.audio_filename == "vid_clip_1.mp4"
+        assert (tmp_storage / "vid_clip_1.mp4").is_file()
+        # Whisper saw a `.mp3` audio-only extract, NOT the MP4.
+        assert captured["path"].endswith(".mp3"), (
+            f"Whisper received {captured['path']} — should be a .mp3 audio extract"
+        )
+        assert "_whisper_" in captured["path"]
+        assert captured["exists_at_call"] is True
+        # Transcription result still propagates correctly to the row.
+        assert result.transcript == "transcribed text"
+        # The temp Whisper extract must be cleaned up after the call.
+        leftover = [p.name for p in tmp_storage.iterdir() if "_whisper_" in p.name]
+        assert leftover == [], f"Whisper temp extract leaked on disk: {leftover}"
+
+    @pytest.mark.asyncio
+    async def test_audio_uploads_send_the_mp3_itself_to_whisper(
+        self, tmp_storage: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sanity: the audio path is unchanged — Whisper receives the
+        delivery MP3 directly, no temp extract is created."""
+        captured: dict = {}
+
+        async def fake_whisper(audio_path: str):
+            captured["path"] = audio_path
+            return ("hello", [])
+
+        monkeypatch.setattr(voices_pipeline, "transcribe_with_whisper", fake_whisper)
+
+        raw = _make_silent_wav_bytes(duration_seconds=1)
+        result = await process_upload(
+            raw_bytes=raw,
+            original_filename="voice.wav",
+            clip_id="aud_clip_1",
+            skip_transcription=False,
+        )
+
+        assert result.ok is True
+        # Same file is both the delivery file AND the Whisper source.
+        assert captured["path"].endswith("aud_clip_1.mp3")
+        leftover = [p.name for p in tmp_storage.iterdir() if "_whisper_" in p.name]
+        assert leftover == []
+
+
+class TestWhisperSizeGuard:
+    """If the file destined for Whisper exceeds 25 MB (defensive 24 MB
+    cap in code) we must reject up-front with a clean message instead
+    of letting Whisper return HTTP 413."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_when_audio_extract_exceeds_cap(
+        self, tmp_storage: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Pretend Whisper's cap is tiny so a 1s silent MP3 trips it.
+        monkeypatch.setattr(voices_pipeline, "WHISPER_MAX_BYTES", 10)
+
+        whisper_called = {"yes": False}
+
+        async def fake_whisper(_audio_path: str):
+            whisper_called["yes"] = True
+            return ("nope", [])
+
+        monkeypatch.setattr(voices_pipeline, "transcribe_with_whisper", fake_whisper)
+
+        raw = _make_silent_wav_bytes(duration_seconds=1)
+        result = await process_upload(
+            raw_bytes=raw,
+            original_filename="long.wav",
+            clip_id="too_long_cid",
+            skip_transcription=False,
+        )
+
+        assert result.ok is False
+        assert result.error is not None
+        # User-facing error must mention the duration limit clearly.
+        assert "too long for transcription" in result.error.lower()
+        assert "30 minutes" in result.error.lower()
+        # Whisper must NOT have been called.
+        assert whisper_called["yes"] is False
+        # No orphan MP3 on disk after the rejection.
+        assert not any(p.suffix == ".mp3" for p in tmp_storage.iterdir())
+
+
+# ---------------------------------------------------------------------------
 # 4. delete_clip_file
 # ---------------------------------------------------------------------------
 
