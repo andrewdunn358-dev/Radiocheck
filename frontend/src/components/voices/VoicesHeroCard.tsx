@@ -17,10 +17,14 @@ export default function VoicesHeroCard({
   onError?: (msg: string) => void;
 }) {
   const { colors } = useTheme();
-  const { playRandom } = useVoicesPlayer();
+  const { playRandom, primeUserGesture } = useVoicesPlayer();
   const [busy, setBusy] = useState(false);
 
   const onPress = async () => {
+    // Grant the shared media element a user-gesture token BEFORE the
+    // async fetch — otherwise browsers (especially Safari) reject the
+    // post-fetch .play() and the user has to tap play a second time.
+    primeUserGesture();
     setBusy(true);
     try {
       await playRandom();
