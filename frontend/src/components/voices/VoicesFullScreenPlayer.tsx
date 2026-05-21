@@ -159,30 +159,20 @@ export default function VoicesFullScreenPlayer() {
 
         {/* Body */}
         <View style={{ flex: 1, paddingHorizontal: 20 }}>
-          {clip.mediaType === 'video' && Platform.OS === 'web' ? (
-            // Video clips: show a placeholder card; the actual <video>
-            // element lives in MiniPlayer. We position it absolutely so
-            // it overlays this area. Simple approach: re-render video
-            // inline. We don't share the element here — caller can
-            // accept duplicate streaming since the backend handles
-            // Range requests cheaply.
+          {clip.mediaType === 'video' ? (
+            // The actual <video> element lives in the Provider and is
+            // fixed-positioned on top of this placeholder area when
+            // isExpanded. Sharing one element is what kills the
+            // double-audio bug (see VoicesPlayerContext.tsx).
             <View
               style={{
                 marginTop: 12,
+                height: 240,
                 borderRadius: 12,
-                overflow: 'hidden',
                 backgroundColor: '#000',
               }}
-            >
-              {Platform.OS === 'web' && (
-                <video
-                  src={clip.audioUrl}
-                  controls
-                  playsInline
-                  style={{ width: '100%', maxHeight: 280, display: 'block' }}
-                />
-              )}
-            </View>
+              data-testid="voices-fullscreen-video-slot"
+            />
           ) : (
             // Audio clip: contributor photo or initials
             <View
