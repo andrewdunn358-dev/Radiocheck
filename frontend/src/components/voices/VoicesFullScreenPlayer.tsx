@@ -339,11 +339,11 @@ export default function VoicesFullScreenPlayer() {
             </Pressable>
           </View>
 
-          {/* CTA — Talk to someone */}
+          {/* CTA — Back to home */}
           <Pressable
             onPress={() => {
               setExpanded(false);
-              router.push('/unified-chat');
+              router.push('/home');
             }}
             data-testid="voices-fullscreen-talk-cta"
             style={({ pressed }) => ({
@@ -356,7 +356,7 @@ export default function VoicesFullScreenPlayer() {
             })}
           >
             <Text style={{ color: colors.background, fontSize: 16, fontWeight: '700' }}>
-              Talk to someone
+              Back to home
             </Text>
           </Pressable>
         </View>
