@@ -39,6 +39,7 @@
  *      fires after React commits the new src, eliminating the timer.
  */
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Platform } from 'react-native';
 import {
   fetchRandomClip,
@@ -88,6 +89,14 @@ interface VoicesPlayerState {
    * browser's autoplay policy.
    */
   primeUserGesture: () => void;
+  /**
+   * Ref callback for the full-screen player's video slot. When the
+   * full-screen player mounts it passes the slot's DOM element here,
+   * which the Provider uses as the createPortal target so the single
+   * <video> element lives INSIDE the modal's stacking context (fixes
+   * the bug where modal renders above the video).
+   */
+  setVideoSlot: (el: HTMLElement | null) => void;
 }
 
 const VoicesPlayerContext = createContext<VoicesPlayerState | null>(null);
@@ -115,6 +124,14 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
   // Tracks whether the user (or hero card) asked us to start playing on
   // the next clip change. The autoplay effect reads + clears this.
   const desiredPlayingRef = useRef<boolean>(false);
+  // The full-screen modal's video slot DOM element. createPortal targets
+  // this when expanded + video; otherwise targets a hidden host so the
+  // single <video> stays mounted (playback / position preserved).
+  const [videoSlot, setVideoSlotState] = useState<HTMLElement | null>(null);
+  const [hiddenHost, setHiddenHost] = useState<HTMLDivElement | null>(null);
+  const setVideoSlot = useCallback((el: HTMLElement | null) => {
+    setVideoSlotState(el);
+  }, []);
 
   // Load persisted prefs on mount.
   useEffect(() => {
@@ -384,61 +401,83 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     toggleSave,
     isSaved,
     primeUserGesture,
+    setVideoSlot,
   }), [
     clip, status, positionSeconds, isExpanded, savedClipIds,
     includeSensitive, captionsOn, captionsDefaultOn,
     loadAndPlay, playRandom, togglePlayPause, skipNext, replay, close,
     toggleCaptions, setCaptionsDefault, setSensitivity, toggleSave, isSaved,
-    primeUserGesture,
+    primeUserGesture, setVideoSlot,
   ]);
 
   // ----- Single-source-of-truth media elements (web only) -------------
-  // The <video> element is fixed-positioned. It either:
-  //   - fills the modal video slot when isExpanded && mediaType==='video'
-  //   - or collapses to 0×0 (but stays mounted so its audio keeps
-  //     playing and currentTime is preserved).
-  const videoVisible = !!clip && clip.mediaType === 'video' && isExpanded;
-  const videoStyle: React.CSSProperties = videoVisible
-    ? {
-        position: 'fixed',
-        top: 100,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'min(92vw, 520px)',
-        maxHeight: 300,
-        background: '#000',
-        zIndex: 10000,
-        borderRadius: 12,
-      }
-    : {
-        position: 'fixed',
-        width: 0,
-        height: 0,
-        opacity: 0,
-        pointerEvents: 'none',
-        // Park off-screen so layout never sees it.
-        top: -9999,
-        left: -9999,
-      };
+  // The <video> element is rendered via createPortal so we can move the
+  // SAME DOM node between two parents without unmounting it:
+  //   • Expanded + video clip → portal target = the full-screen player's
+  //     video slot (a <div ref={setVideoSlot}> registered by
+  //     VoicesFullScreenPlayer). Renders INSIDE the modal's stacking
+  //     context — no z-index war with React Native Modal's portal.
+  //   • Otherwise              → portal target = a hidden off-screen
+  //     host. Element stays mounted so the audio track keeps playing
+  //     and currentTime is preserved.
+  // React Portals move (not recreate) DOM children when the target
+  // changes, so playback never resets.
+  const expandedVideoMode = !!clip && clip.mediaType === 'video' && isExpanded;
+  const videoTarget: HTMLElement | null = expandedVideoMode
+    ? (videoSlot || hiddenHost)
+    : hiddenHost;
+
+  const videoStyleExpanded: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+    background: '#000',
+    borderRadius: 12,
+    display: 'block',
+  };
+  const videoStyleHidden: React.CSSProperties = {
+    width: 1,
+    height: 1,
+    opacity: 0,
+    pointerEvents: 'none',
+  };
 
   return (
     <VoicesPlayerContext.Provider value={value}>
       {Platform.OS === 'web' && (
         <>
+          {/* Off-screen host where the <video> lives when not expanded.
+              Keeps the element mounted so audio playback continues. */}
+          <div
+            ref={setHiddenHost}
+            aria-hidden
+            style={{
+              position: 'fixed',
+              top: -9999,
+              left: -9999,
+              width: 0,
+              height: 0,
+              overflow: 'hidden',
+              pointerEvents: 'none',
+            }}
+          />
           <audio
             ref={audioRef as any}
             src={clip && clip.mediaType === 'audio' ? clip.audioUrl : undefined}
             preload="metadata"
             style={{ display: 'none' }}
           />
-          <video
-            ref={videoRef as any}
-            src={clip && clip.mediaType === 'video' ? clip.audioUrl : undefined}
-            preload="metadata"
-            playsInline
-            style={videoStyle}
-            data-testid="voices-shared-video"
-          />
+          {videoTarget && createPortal(
+            <video
+              ref={videoRef as any}
+              src={clip && clip.mediaType === 'video' ? clip.audioUrl : undefined}
+              preload="metadata"
+              playsInline
+              style={expandedVideoMode ? videoStyleExpanded : videoStyleHidden}
+              data-testid="voices-shared-video"
+            />,
+            videoTarget,
+          )}
         </>
       )}
       {children}

@@ -46,6 +46,7 @@ export default function VoicesFullScreenPlayer() {
     setCaptionsDefault,
     toggleSave,
     isSaved,
+    setVideoSlot,
   } = useVoicesPlayer();
 
   const activeCaption = useMemo(() => {
@@ -161,18 +162,32 @@ export default function VoicesFullScreenPlayer() {
         <View style={{ flex: 1, paddingHorizontal: 20 }}>
           {clip.mediaType === 'video' ? (
             // The actual <video> element lives in the Provider and is
-            // fixed-positioned on top of this placeholder area when
-            // isExpanded. Sharing one element is what kills the
-            // double-audio bug (see VoicesPlayerContext.tsx).
-            <View
-              style={{
-                marginTop: 12,
-                height: 240,
-                borderRadius: 12,
-                backgroundColor: '#000',
-              }}
-              data-testid="voices-fullscreen-video-slot"
-            />
+            // portaled INTO this slot when isExpanded. Using a plain
+            // <div> (web-only) so we get a real DOM ref to publish via
+            // setVideoSlot — React Native's <View> ref API isn't a
+            // straight HTMLElement.
+            Platform.OS === 'web' ? (
+              <div
+                ref={setVideoSlot}
+                data-testid="voices-fullscreen-video-slot"
+                style={{
+                  marginTop: 12,
+                  height: 240,
+                  borderRadius: 12,
+                  backgroundColor: '#000',
+                  overflow: 'hidden',
+                }}
+              />
+            ) : (
+              <View
+                style={{
+                  marginTop: 12,
+                  height: 240,
+                  borderRadius: 12,
+                  backgroundColor: '#000',
+                }}
+              />
+            )
           ) : (
             // Audio clip: contributor photo or initials
             <View
