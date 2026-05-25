@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { usePathname } from 'expo-router';
 
 // Get the site password from environment variable
 const SITE_PASSWORD = process.env.EXPO_PUBLIC_SITE_PASSWORD || 'radiocheck2025';
@@ -28,6 +29,12 @@ export function SiteGateProvider({ children }: SiteGateProviderProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // The /c NFC/QR public route is intentionally exempt from the alpha
+  // password gate — wristband / printed-card taps must just play a clip.
+  // No backend / safety bypass; only the alpha UI lock is skipped.
+  const pathname = usePathname();
+  const isPublicNfcRoute = !!pathname && (pathname === '/c' || pathname.startsWith('/c/'));
 
   useEffect(() => {
     checkUnlockStatus();
@@ -79,7 +86,7 @@ export function SiteGateProvider({ children }: SiteGateProviderProps) {
   }
 
   // Show password gate if not unlocked
-  if (!isUnlocked) {
+  if (!isUnlocked && !isPublicNfcRoute) {
     return (
       <View style={styles.container}>
         <View style={styles.gateCard}>

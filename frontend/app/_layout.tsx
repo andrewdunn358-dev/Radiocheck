@@ -45,6 +45,7 @@ function AppContent() {
         <Stack.Screen name="resources" />
         <Stack.Screen name="grace-welcome" />
         <Stack.Screen name="voices" />
+        <Stack.Screen name="c" />
       </Stack>
       <VoicesMiniPlayer />
       <VoicesFullScreenPlayer />

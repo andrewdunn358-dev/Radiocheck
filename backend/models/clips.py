@@ -180,6 +180,12 @@ class ClipPlay(BaseModel):
     Used by the random selection logic to exclude clips this user played
     in the last 7 days, and by admin analytics for completion / skip
     metrics.
+
+    `source` distinguishes how the play was triggered:
+      - 'app'      — in-app veteran (default; back-compat with pre-existing rows)
+      - 'public_c' — anonymous /c (NFC / QR) public route
+    Indexed in the router's set_db() so future admin queries by source
+    stay cheap.
     """
     id: str
     userId: str
@@ -187,6 +193,7 @@ class ClipPlay(BaseModel):
     playedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completionPercent: float = 0.0  # 0-100
     skipped: bool = False
+    source: Optional[str] = "app"
 
 
 class ClipSave(BaseModel):
