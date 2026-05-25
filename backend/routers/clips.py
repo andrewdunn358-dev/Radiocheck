@@ -72,9 +72,30 @@ _db: Optional[AsyncIOMotorDatabase] = None
 
 
 def set_db(database: AsyncIOMotorDatabase) -> None:
-    """Called by server.py at startup to inject the motor db handle."""
+    """Called by server.py at startup to inject the motor db handle.
+
+    Also opportunistically creates the analytics index on `clip_plays.source`
+    so future admin queries filtering by source ('app' vs 'public_c') stay
+    cheap. Idempotent — Mongo's createIndex is a no-op if the index already
+    exists. Fire-and-forget; index creation must never block startup.
+    """
     global _db
     _db = database
+
+    async def _ensure_source_index() -> None:
+        try:
+            await database.clip_plays.create_index("source")
+        except Exception:
+            logger.warning(
+                "[voices] clip_plays.source index creation failed", exc_info=True
+            )
+
+    try:
+        import asyncio as _asyncio
+        loop = _asyncio.get_event_loop()
+        loop.create_task(_ensure_source_index())
+    except Exception:
+        logger.warning("[voices] could not schedule clip_plays.source index", exc_info=True)
 
 
 def get_db() -> AsyncIOMotorDatabase:
@@ -137,6 +158,7 @@ async def _select_random_clip(
     db: AsyncIOMotorDatabase,
     user_id: str,
     include_sensitive: bool,
+    extra_exclude_ids: Optional[list[str]] = None,
 ) -> Optional[dict]:
     """Random selection per spec.
 
@@ -146,7 +168,8 @@ async def _select_random_clip(
          other than 'none'.
       3. Build exclusion set: clips this user played in the last 7 days,
          plus the user's last-served clip (so two consecutive calls
-         differ).
+         differ), plus any `extra_exclude_ids` (used by the /c public
+         route to honour the client's recent-5 cookie).
       4. Prefer clips the user has NEVER played (weight = 1.0); fall back
          to least-recently-played from the 7-day-excluded list if every
          remaining clip was already heard. (Implemented as: if the
@@ -169,7 +192,7 @@ async def _select_random_clip(
     if not pool:
         return None
 
-    # --- 3. recent plays + last-served exclusions
+    # --- 3. recent plays + last-served + caller-supplied exclusions
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     recent_play_clip_ids = await db.clip_plays.distinct(
         "clipId",
@@ -179,6 +202,8 @@ async def _select_random_clip(
     last_served = _last_random_by_user.get(user_id)
     if last_served:
         recent_set.add(last_served)
+    if extra_exclude_ids:
+        recent_set.update(extra_exclude_ids)
 
     # --- 4. prefer unheard
     all_user_played = await db.clip_plays.distinct("clipId", {"userId": user_id})
@@ -226,6 +251,10 @@ async def get_random_clip(
         False,
         description="If true, sensitivity-flagged clips are eligible for random selection. Default false.",
     ),
+    exclude: Optional[str] = Query(
+        None,
+        description="Comma-separated list of clip IDs to exclude from this selection (caller-supplied recent ring).",
+    ),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ) -> ClipPublicResponse:
     """Return one published clip per the selection logic in `_select_random_clip`.
@@ -235,11 +264,61 @@ async def get_random_clip(
     user_id from the JWT (see `get_current_user`) — out of scope here to
     keep PR #A small and reviewable.
     """
-    clip = await _select_random_clip(db, user_id=user_id, include_sensitive=include_sensitive)
+    extra_exclude = [s.strip() for s in (exclude or "").split(",") if s.strip()] or None
+    clip = await _select_random_clip(
+        db,
+        user_id=user_id,
+        include_sensitive=include_sensitive,
+        extra_exclude_ids=extra_exclude,
+    )
     if clip is None:
         raise HTTPException(status_code=404, detail="No published clips available")
     # Record last-served so the next call returns a different clip.
     _last_random_by_user[user_id] = clip["id"]
+    return _to_public(clip, request)
+
+
+@router.get("/clips/random-public", response_model=ClipPublicResponse)
+async def get_random_clip_public(
+    request: Request,
+    anon_id: str = Query(
+        ...,
+        min_length=8,
+        max_length=64,
+        description="Anonymous device UUID (v4) generated client-side and persisted in the radiocheck_recent_c cookie.",
+    ),
+    exclude: Optional[str] = Query(
+        None,
+        description="Comma-separated list of recently-served clip IDs (last 5 from the device cookie).",
+    ),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> ClipPublicResponse:
+    """Public no-auth endpoint used by the /c NFC/QR route.
+
+    SAFETY GUARANTEES (non-negotiable, by design):
+      • `include_sensitive` is hard-coded to False — sensitive clips are
+        NEVER served via this endpoint, regardless of what the client
+        sends. The default audience for a wristband tap is "stranger in
+        distress" and they must never receive high-sensitivity content
+        cold.
+      • Only `status=published` clips are eligible — already enforced
+        upstream by `_select_random_clip` step 1.
+
+    The anonymous device ID is namespaced with the `anon:` prefix on the
+    `clip_plays.userId` field so admin queries can filter / segment
+    public-route activity without colliding with real user IDs.
+    """
+    extra_exclude = [s.strip() for s in (exclude or "").split(",") if s.strip()] or None
+    namespaced_user_id = f"anon:{anon_id}"
+    clip = await _select_random_clip(
+        db,
+        user_id=namespaced_user_id,
+        include_sensitive=False,   # SAFETY WALL — never serve sensitive via /c
+        extra_exclude_ids=extra_exclude,
+    )
+    if clip is None:
+        raise HTTPException(status_code=404, detail="No published clips available")
+    _last_random_by_user[namespaced_user_id] = clip["id"]
     return _to_public(clip, request)
 
 
@@ -496,11 +575,20 @@ async def record_clip_play(
     completion: Optional[float] = Query(
         None, ge=0.0, le=1.0, description="0.0-1.0; how much of the clip was heard."
     ),
+    source: Optional[str] = Query(
+        "app",
+        description="How the play was triggered. 'app' (in-app veteran, default) or 'public_c' (anonymous /c NFC/QR route).",
+        pattern="^(app|public_c)$",
+    ),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ) -> None:
     """Insert a play event. We INSERT a new row per play (rather than
     bumping a counter) so the random-selection logic can compute
-    last-played-by-clip without an extra collection."""
+    last-played-by-clip without an extra collection.
+
+    The `source` field is indexed (see set_db) so future admin analytics
+    can segment in-app plays vs public-route plays without a full scan.
+    """
     clip = await db.clips.find_one(
         {"id": clip_id, "status": ClipStatus.published.value}, {"_id": 0, "id": 1}
     )
@@ -512,6 +600,7 @@ async def record_clip_play(
             "userId": user_id,
             "playedAt": datetime.now(timezone.utc),
             "completion": float(completion) if completion is not None else None,
+            "source": source or "app",
         }
     )
 
