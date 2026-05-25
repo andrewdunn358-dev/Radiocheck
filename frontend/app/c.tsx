@@ -30,7 +30,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+
+const RADIO_CHECK_LOGO = require('../assets/images/logo.png');
 
 const BACKEND = (process.env.EXPO_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
 
@@ -242,12 +244,14 @@ export default function NfcPublicClipPage() {
       }}
       data-testid="nfc-public-page"
     >
-      {/* Top-bar minimal brand */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
-        <Ionicons name="radio-outline" size={22} color="#e7e7ea" />
-        <Text style={{ color: '#e7e7ea', marginLeft: 8, fontSize: 14, letterSpacing: 1.2 }}>
-          RADIO CHECK
-        </Text>
+      {/* Top-bar — Radio Check logo (centred so it's the visual anchor) */}
+      <View style={{ alignItems: 'center', marginBottom: 28 }}>
+        <Image
+          source={RADIO_CHECK_LOGO}
+          style={{ width: 88, height: 88 }}
+          resizeMode="contain"
+          accessibilityLabel="Radio Check"
+        />
       </View>
 
       <Text style={{ color: '#e7e7ea', fontSize: 26, fontWeight: '700', lineHeight: 34 }}>
