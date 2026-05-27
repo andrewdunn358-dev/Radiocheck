@@ -186,6 +186,12 @@ class ClipPlay(BaseModel):
       - 'public_c' — anonymous /c (NFC / QR) public route
     Indexed in the router's set_db() so future admin queries by source
     stay cheap.
+
+    `secondsPlayed` + `totalDuration` capture the exact playback position
+    at close / skip / natural end. Both optional for back-compat with
+    legacy rows (which only carry `completion`). Persisted alongside
+    `completion` so we can compute Average Completion % cheaply in
+    aggregations without re-deriving it client-side.
     """
     id: str
     userId: str
@@ -194,6 +200,8 @@ class ClipPlay(BaseModel):
     completionPercent: float = 0.0  # 0-100
     skipped: bool = False
     source: Optional[str] = "app"
+    secondsPlayed: Optional[float] = None
+    totalDuration: Optional[float] = None
 
 
 class ClipSave(BaseModel):

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { RefreshCw, Download, Trash2, BarChart3, MapPin } from 'lucide-react';
+import { RefreshCw, Download, Trash2, BarChart3, MapPin, Headphones } from 'lucide-react';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -79,19 +79,24 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
   const [appUsageStats, setAppUsageStats] = useState<any>(null);
   const [aiChatStats, setAiChatStats] = useState<any>(null);
   const [locationData, setLocationData] = useState<any>(null);
+  const [voicesAnalytics, setVoicesAnalytics] = useState<any>(null);
 
   const loadLogs = useCallback(async () => {
     if (!token) return;
     try {
-      // Always load app usage, AI chat stats, and location data for the dashboard view
-      const [usageData, aiStatsData, locData] = await Promise.all([
+      // Always load app usage, AI chat stats, location data, and voices
+      // analytics for the dashboard view. All four are independent, so
+      // we parallelise.
+      const [usageData, aiStatsData, locData, voicesData] = await Promise.all([
         api.getAppUsageStats(token).catch(() => null),
         api.getAIChatStats(token).catch(() => null),
         api.getLocationData(token).catch(() => null),
+        api.getVoicesAnalytics(token).catch(() => null),
       ]);
       setAppUsageStats(usageData);
       setAiChatStats(aiStatsData);
       setLocationData(locData);
+      setVoicesAnalytics(voicesData);
       
       switch (activeLogSubTab) {
         case 'calls':
@@ -139,8 +144,13 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
     loadLogs();
   }, [loadLogs]);
 
-  // Export CSV handler
-  const handleExportCSV = () => {
+  // Export CSV handler.
+  // Downloads two files when there's data: (1) the existing log-type CSV
+  // for the active sub-tab, (2) a `voices-plays-YYYY-MM-DD.csv` sidecar
+  // containing all clip_plays rows from the last 90 days. The sidecar
+  // is best-effort — if the voices fetch fails, the main export still
+  // succeeds.
+  const handleExportCSV = async () => {
     let data: any[] = [];
     let filename = '';
     const dateStr = new Date().toISOString().split('T')[0];
@@ -172,34 +182,59 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
       onError('No data to export');
       return;
     }
-    
-    // Convert to CSV
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(h => {
-          const val = row[h];
-          if (val === null || val === undefined) return '';
-          if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
-            return `"${val.replace(/"/g, '""')}"`;
-          }
-          return val;
-        }).join(',')
-      )
-    ].join('\n');
-    
-    // Download
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    onSuccess('CSV exported successfully');
+
+    // Helper: serialise rows into CSV and trigger a download.
+    const downloadCsv = (rows: any[], fname: string) => {
+      const headers = Object.keys(rows[0]);
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row =>
+          headers.map(h => {
+            const val = row[h];
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'object') {
+              // Stringify nested objects/arrays so they don't render as [object Object].
+              const s = JSON.stringify(val);
+              return `"${s.replace(/"/g, '""')}"`;
+            }
+            const sv = String(val);
+            if (sv.includes(',') || sv.includes('"') || sv.includes('\n')) {
+              return `"${sv.replace(/"/g, '""')}"`;
+            }
+            return sv;
+          }).join(',')
+        )
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    downloadCsv(data, filename);
+
+    // Sidecar: voices plays for the last 90 days. Best-effort; never
+    // blocks the primary export.
+    let voicesRowCount = 0;
+    try {
+      const voicesRows = await api.getVoicesPlaysExport(token, 90);
+      if (Array.isArray(voicesRows) && voicesRows.length > 0) {
+        downloadCsv(voicesRows, `voices-plays-${dateStr}.csv`);
+        voicesRowCount = voicesRows.length;
+      }
+    } catch {
+      // Ignore — sidecar is optional.
+    }
+    if (voicesRowCount > 0) {
+      onSuccess(`CSV exported successfully (+${voicesRowCount} voices rows in sidecar)`);
+    } else {
+      onSuccess('CSV exported successfully');
+    }
   };
 
   // Clear logs handler
@@ -256,7 +291,7 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
       </div>
 
       {/* Stats Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4">
           <p className="text-blue-200 text-sm">Total Calls</p>
           <p className="text-2xl font-bold">{callLogs.length}</p>
@@ -280,6 +315,14 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
         <div className="bg-gradient-to-br from-pink-600 to-pink-700 rounded-lg p-4">
           <p className="text-pink-200 text-sm">AI Messages (7d)</p>
           <p className="text-2xl font-bold">{aiChatStats?.total_messages || 0}</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg p-4">
+          <p className="text-emerald-200 text-sm">Voices Plays (7d)</p>
+          <p className="text-2xl font-bold">{voicesAnalytics?.totals?.plays_7d || 0}</p>
+        </div>
+        <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-lg p-4">
+          <p className="text-teal-200 text-sm">Wristband Taps (7d)</p>
+          <p className="text-2xl font-bold">{voicesAnalytics?.totals?.wristband_taps_7d || 0}</p>
         </div>
       </div>
 
@@ -722,6 +765,197 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
           </div>
         </div>
       </div>
+
+      {/* Voices Analytics Section */}
+      {voicesAnalytics && (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Headphones className="w-5 h-5 text-emerald-400" />
+            Voices Analytics
+          </h3>
+
+          {/* Row 1 — Stat blocks (5 cards) */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-4 text-center">
+              <p className="text-3xl font-bold">{voicesAnalytics?.totals?.plays_all || 0}</p>
+              <p className="text-emerald-200 text-sm">Total Plays</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold">{voicesAnalytics?.totals?.plays_7d || 0}</p>
+              <p className="text-gray-400 text-sm">Plays Last 7 Days</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold">{voicesAnalytics?.totals?.plays_30d || 0}</p>
+              <p className="text-gray-400 text-sm">Plays Last 30 Days</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold">{voicesAnalytics?.totals?.unique_wristbands_30d || 0}</p>
+              <p className="text-gray-400 text-sm">Unique Wristbands (30d)</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold">
+                {(voicesAnalytics?.totals?.avg_completion_pct_30d ?? 0).toFixed
+                  ? Number(voicesAnalytics?.totals?.avg_completion_pct_30d ?? 0).toFixed(1)
+                  : voicesAnalytics?.totals?.avg_completion_pct_30d || 0}%
+              </p>
+              <p className="text-gray-400 text-sm">Avg Completion (30d)</p>
+            </div>
+          </div>
+
+          {/* Row 2 — Breakdowns (4 cards) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Top Clips */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <h4 className="font-medium mb-3 text-emerald-400">Top Clips (30d)</h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {Array.isArray(voicesAnalytics?.top_clips) && voicesAnalytics.top_clips.length > 0 ? (
+                  voicesAnalytics.top_clips.map((c: any, idx: number) => (
+                    <div key={c.clip_id || idx} className="flex justify-between items-center text-sm border-b border-gray-700 pb-1">
+                      <span className="text-gray-300 truncate" title={c.contributor_name}>
+                        {c.contributor_name}
+                      </span>
+                      <span className="font-semibold ml-2">{c.plays}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No plays yet</p>
+                )}
+              </div>
+            </div>
+
+            {/* By Source */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <h4 className="font-medium mb-3 text-emerald-400">Plays by Source (30d)</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-300">App (in-app)</span>
+                  <span className="font-semibold">{voicesAnalytics?.by_source?.app || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-300">Wristband / QR (/c)</span>
+                  <span className="font-semibold">{voicesAnalytics?.by_source?.public_c || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* By Category */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <h4 className="font-medium mb-3 text-emerald-400">Plays by Category (30d)</h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {voicesAnalytics?.by_category && Object.keys(voicesAnalytics.by_category).length > 0 ? (
+                  Object.entries(voicesAnalytics.by_category).map(([cat, count]: [string, any]) => (
+                    <div key={cat} className="flex justify-between items-center text-sm border-b border-gray-700 pb-1">
+                      <span className="text-gray-300 truncate">{cat}</span>
+                      <span className="font-semibold ml-2">{count}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No category data yet</p>
+                )}
+              </div>
+            </div>
+
+            {/* By Contributor */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <h4 className="font-medium mb-3 text-emerald-400">Plays by Contributor (30d)</h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {voicesAnalytics?.by_contributor && Object.keys(voicesAnalytics.by_contributor).length > 0 ? (
+                  Object.entries(voicesAnalytics.by_contributor).map(([name, count]: [string, any]) => (
+                    <div key={name} className="flex justify-between items-center text-sm border-b border-gray-700 pb-1">
+                      <span className="text-gray-300 truncate" title={name}>{name}</span>
+                      <span className="font-semibold ml-2">{count}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No contributor data yet</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3 — Charts (2) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Daily 7d line chart */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <h4 className="font-medium mb-4 text-emerald-400">Voices Plays Daily (Last 7 Days)</h4>
+              <div style={{ height: '250px' }}>
+                <Line
+                  data={{
+                    labels: (voicesAnalytics?.daily_7d || []).map((d: any) =>
+                      d.date ? d.date.slice(5) : ''
+                    ),
+                    datasets: [
+                      {
+                        label: 'App',
+                        data: (voicesAnalytics?.daily_7d || []).map((d: any) => d.app || 0),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                        tension: 0.3,
+                        fill: true,
+                      },
+                      {
+                        label: 'Wristband / QR',
+                        data: (voicesAnalytics?.daily_7d || []).map((d: any) => d.public_c || 0),
+                        borderColor: '#14b8a6',
+                        backgroundColor: 'rgba(20, 184, 166, 0.15)',
+                        tension: 0.3,
+                        fill: true,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: 'bottom', labels: { color: '#9ca3af' } },
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#9ca3af', precision: 0 },
+                      },
+                      x: {
+                        grid: { display: false },
+                        ticks: { color: '#9ca3af' },
+                      },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Source distribution donut */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <h4 className="font-medium mb-4 text-emerald-400">Source Distribution (30d)</h4>
+              <div style={{ height: '250px' }} className="flex justify-center">
+                <Doughnut
+                  data={{
+                    labels: ['App (in-app)', 'Wristband / QR'],
+                    datasets: [
+                      {
+                        data: [
+                          voicesAnalytics?.by_source?.app || 0,
+                          voicesAnalytics?.by_source?.public_c || 0,
+                        ],
+                        backgroundColor: ['#10b981', '#14b8a6'],
+                        borderWidth: 0,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: 'bottom', labels: { color: '#9ca3af' } },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Location Map Section */}
       <div className="mb-6">

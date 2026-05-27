@@ -666,3 +666,134 @@ class TestPlaySourceField:
         r = client.post(f"/api/clips/{cid}/play?user_id=u1&source=evil")
         assert r.status_code == 422
         assert fake_db.clip_plays._rows == []
+
+
+# ---------------------------------------------------------------------------
+# /play extended params (secondsPlayed + totalDuration) — analytics PR
+# ---------------------------------------------------------------------------
+
+class TestPlayCloseTracking:
+    """POST /api/clips/:id/play now accepts optional `seconds_played` +
+    `total_duration` query params, persisting them alongside `completion`
+    so the admin analytics dashboard can compute exact close-time
+    positions without re-deriving from completion fractions.
+    """
+
+    def test_play_persists_position_info(self, public_client) -> None:
+        client, fake_db = public_client
+        cid = _seed_clip(fake_db)
+        r = client.post(
+            f"/api/clips/{cid}/play?user_id=u1&completion=0.42"
+            f"&seconds_played=12.6&total_duration=30"
+        )
+        assert r.status_code == 204
+        rows = fake_db.clip_plays._rows
+        assert len(rows) == 1
+        assert rows[0]["completion"] == 0.42
+        assert rows[0]["secondsPlayed"] == 12.6
+        assert rows[0]["totalDuration"] == 30.0
+        assert rows[0]["source"] == "app"
+
+    def test_play_back_compat_without_position(self, public_client) -> None:
+        """Legacy callers that send only `completion` must continue to
+        succeed, and the new fields must simply be absent."""
+        client, fake_db = public_client
+        cid = _seed_clip(fake_db)
+        r = client.post(f"/api/clips/{cid}/play?user_id=u1&completion=1.0")
+        assert r.status_code == 204
+        rows = fake_db.clip_plays._rows
+        assert "secondsPlayed" not in rows[0]
+        assert "totalDuration" not in rows[0]
+
+
+# ---------------------------------------------------------------------------
+# /skip endpoint — analytics PR
+# ---------------------------------------------------------------------------
+
+class TestSkipEndpoint:
+    """POST /api/clips/:id/skip writes a clip_plays row tagged
+    `skipped=True` with the closing position captured. Powers the skip-
+    rate metric in the admin dashboard.
+    """
+
+    def test_skip_happy_path(self, public_client) -> None:
+        client, fake_db = public_client
+        cid = _seed_clip(fake_db, durationSeconds=60)
+        r = client.post(
+            f"/api/clips/{cid}/skip?user_id=u1"
+            f"&seconds_played=15&total_duration=60"
+        )
+        assert r.status_code == 204
+        rows = fake_db.clip_plays._rows
+        assert len(rows) == 1
+        assert rows[0]["skipped"] is True
+        assert rows[0]["secondsPlayed"] == 15.0
+        assert rows[0]["totalDuration"] == 60.0
+        # 15/60 = 0.25
+        assert rows[0]["completion"] == 0.25
+        assert rows[0]["source"] == "app"
+
+    def test_skip_zero_duration_guard(self, public_client) -> None:
+        """Zero-duration must safely yield completion=None — never a NaN
+        that would poison aggregation $avg downstream."""
+        client, fake_db = public_client
+        cid = _seed_clip(fake_db, durationSeconds=0)
+        r = client.post(
+            f"/api/clips/{cid}/skip?user_id=u1"
+            f"&seconds_played=0&total_duration=0"
+        )
+        assert r.status_code == 204
+        rows = fake_db.clip_plays._rows
+        assert rows[0]["completion"] is None
+        assert rows[0]["skipped"] is True
+
+    def test_skip_clamps_above_one(self, public_client) -> None:
+        """If the client somehow reports seconds_played > total_duration
+        (clock drift, late event fire), completion must clamp at 1.0
+        — not produce a >1.0 value that would skew the average."""
+        client, fake_db = public_client
+        cid = _seed_clip(fake_db, durationSeconds=30)
+        r = client.post(
+            f"/api/clips/{cid}/skip?user_id=u1"
+            f"&seconds_played=45&total_duration=30"
+        )
+        assert r.status_code == 204
+        rows = fake_db.clip_plays._rows
+        assert rows[0]["completion"] == 1.0
+
+    def test_skip_public_c_source(self, public_client) -> None:
+        """The /c (NFC/QR) route uses ?source=public_c so analytics can
+        segment wristband-driven plays from in-app plays."""
+        client, fake_db = public_client
+        cid = _seed_clip(fake_db, durationSeconds=60)
+        r = client.post(
+            f"/api/clips/{cid}/skip"
+            f"?user_id=anon:abcdef12-aaaa-4bbb-8ccc-ddddeeeeffff"
+            f"&seconds_played=8&total_duration=60&source=public_c"
+        )
+        assert r.status_code == 204
+        rows = fake_db.clip_plays._rows
+        assert rows[0]["source"] == "public_c"
+        assert rows[0]["userId"].startswith("anon:")
+        assert rows[0]["skipped"] is True
+
+    def test_skip_invalid_source_rejected(self, public_client) -> None:
+        """Regex-constrained `source` rejects anything other than 'app'
+        or 'public_c' — keeps the analytics index clean."""
+        client, fake_db = public_client
+        cid = _seed_clip(fake_db, durationSeconds=60)
+        r = client.post(
+            f"/api/clips/{cid}/skip?user_id=u1"
+            f"&seconds_played=8&total_duration=60&source=evil"
+        )
+        assert r.status_code == 422
+        assert fake_db.clip_plays._rows == []
+
+    def test_skip_unknown_clip_404(self, public_client) -> None:
+        client, fake_db = public_client
+        r = client.post(
+            "/api/clips/does-not-exist/skip?user_id=u1"
+            "&seconds_played=5&total_duration=30"
+        )
+        assert r.status_code == 404
+        assert fake_db.clip_plays._rows == []
