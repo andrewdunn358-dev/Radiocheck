@@ -456,6 +456,260 @@ async def list_clips(
     ]
 
 
+
+# ---------------------------------------------------------------------------
+# Analytics endpoints (voices admin dashboard)
+# ---------------------------------------------------------------------------
+#
+# These two endpoints feed the "Voices Analytics" section in the existing
+# Logs & Analytics admin page. Both are gated by require_admin so they
+# never expose anonymous device IDs as a list (only as aggregate counts of
+# distinct IDs).
+#
+# Design notes
+# ------------
+# - All heavy lifting is in MongoDB aggregations ($lookup + $group). No
+#   in-process row loops over clip_plays — the collection grows linearly
+#   with plays and could become large in production.
+# - Legacy rows with no `source` field bucket under 'app' for back-compat
+#   (matches the default in the play endpoint).
+# - The 7d / 30d windows match the existing App Usage Analytics pattern
+#   in the admin portal; no custom date picker yet.
+
+@router.get("/analytics")
+async def get_voices_analytics(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_admin: Any = Depends(require_admin),
+) -> dict:
+    """Consolidated analytics payload for the voices dashboard.
+
+    Returns a single dict so the frontend makes one round-trip.
+
+    Top-level keys:
+      - totals: { plays_7d, plays_30d, plays_all, wristband_taps_7d,
+                  unique_wristbands_30d, avg_completion_pct_30d }
+      - top_clips: list of { clip_id, contributor_name, plays_30d }
+      - by_source: { app, public_c }
+      - by_category: { <category>: count }  (rolled up 30d)
+      - by_contributor: { <name>: count }   (rolled up 30d)
+      - daily_7d: [ { date: "YYYY-MM-DD", app: n, public_c: n }, ... ]
+    """
+    now = datetime.now(timezone.utc)
+    cutoff_7d = now - timedelta(days=7)
+    cutoff_30d = now - timedelta(days=30)
+
+    # Totals (one aggregation, three counts).
+    plays_all = await db.clip_plays.count_documents({})
+    plays_7d = await db.clip_plays.count_documents({"playedAt": {"$gte": cutoff_7d}})
+    plays_30d = await db.clip_plays.count_documents({"playedAt": {"$gte": cutoff_30d}})
+    wristband_taps_7d = await db.clip_plays.count_documents(
+        {"playedAt": {"$gte": cutoff_7d}, "source": "public_c"}
+    )
+
+    # Unique wristband devices (30d) — collapse anonymous user_ids into a
+    # distinct count. Anonymous IDs are stored as 'anon:<uuid>' from the
+    # /c route, so we count distinct on userId WHERE source=public_c.
+    unique_wristbands_30d_list = await db.clip_plays.distinct(
+        "userId",
+        {"playedAt": {"$gte": cutoff_30d}, "source": "public_c"},
+    )
+    unique_wristbands_30d = len(unique_wristbands_30d_list or [])
+
+    # Average completion % (30d). Only count rows where completion is set
+    # (avoids skewing on legacy rows that have no completion field).
+    avg_completion_cursor = db.clip_plays.aggregate([
+        {"$match": {
+            "playedAt": {"$gte": cutoff_30d},
+            "completion": {"$ne": None, "$exists": True},
+        }},
+        {"$group": {
+            "_id": None,
+            "avg": {"$avg": "$completion"},
+        }},
+    ])
+    avg_completion_docs = await avg_completion_cursor.to_list(length=1)
+    avg_completion_raw = (avg_completion_docs[0]["avg"]
+                          if avg_completion_docs and avg_completion_docs[0].get("avg") is not None
+                          else 0.0)
+    avg_completion_pct_30d = round(float(avg_completion_raw) * 100, 1)
+
+    # Top clips by plays (30d). $lookup pulls the contributor name without
+    # a follow-up query.
+    top_clips_cursor = db.clip_plays.aggregate([
+        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
+        {"$group": {"_id": "$clipId", "plays": {"$sum": 1}}},
+        {"$sort": {"plays": -1}},
+        {"$limit": 10},
+        {"$lookup": {
+            "from": "clips",
+            "localField": "_id",
+            "foreignField": "id",
+            "as": "clip",
+        }},
+        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": True}},
+        {"$project": {
+            "_id": 0,
+            "clip_id": "$_id",
+            "plays": 1,
+            "contributor_name": {"$ifNull": ["$clip.contributorName", "(deleted)"]},
+        }},
+    ])
+    top_clips = await top_clips_cursor.to_list(length=10)
+
+    # By source (30d) — bucket legacy/null source values under 'app' for
+    # back-compat.
+    by_source_cursor = db.clip_plays.aggregate([
+        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
+        {"$group": {
+            "_id": {"$ifNull": ["$source", "app"]},
+            "count": {"$sum": 1},
+        }},
+    ])
+    by_source: dict[str, int] = {"app": 0, "public_c": 0}
+    async for row in by_source_cursor:
+        src = row.get("_id") or "app"
+        if src in by_source:
+            by_source[src] += int(row.get("count") or 0)
+        else:
+            # Defensive: any unexpected legacy value rolls into 'app'
+            by_source["app"] += int(row.get("count") or 0)
+
+    # By category (30d) — clips can carry multiple categories, so we
+    # $unwind the categories array after the lookup. A play of a clip
+    # with N categories contributes 1 to each of N category buckets.
+    by_category_cursor = db.clip_plays.aggregate([
+        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
+        {"$lookup": {
+            "from": "clips",
+            "localField": "clipId",
+            "foreignField": "id",
+            "as": "clip",
+        }},
+        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": False}},
+        {"$unwind": "$clip.categories"},
+        {"$group": {"_id": "$clip.categories", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ])
+    by_category: dict[str, int] = {}
+    async for row in by_category_cursor:
+        key = row.get("_id") or "uncategorised"
+        by_category[key] = int(row.get("count") or 0)
+
+    # By contributor (30d). Top 10 to keep the payload small; the table
+    # in the UI shows the top names alongside their counts.
+    by_contributor_cursor = db.clip_plays.aggregate([
+        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
+        {"$lookup": {
+            "from": "clips",
+            "localField": "clipId",
+            "foreignField": "id",
+            "as": "clip",
+        }},
+        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": False}},
+        {"$group": {
+            "_id": "$clip.contributorName",
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": 10},
+    ])
+    by_contributor: dict[str, int] = {}
+    async for row in by_contributor_cursor:
+        name = row.get("_id") or "(unknown)"
+        by_contributor[name] = int(row.get("count") or 0)
+
+    # Daily 7d — buckets each play into its UTC day, split by source so
+    # the line chart can stack app vs public_c.
+    daily_cursor = db.clip_plays.aggregate([
+        {"$match": {"playedAt": {"$gte": cutoff_7d}}},
+        {"$group": {
+            "_id": {
+                "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$playedAt"}},
+                "source": {"$ifNull": ["$source", "app"]},
+            },
+            "count": {"$sum": 1},
+        }},
+    ])
+    daily_map: dict[str, dict[str, int]] = {}
+    async for row in daily_cursor:
+        rid = row.get("_id") or {}
+        date_key = rid.get("date")
+        src = rid.get("source") or "app"
+        if not date_key:
+            continue
+        bucket = daily_map.setdefault(date_key, {"app": 0, "public_c": 0})
+        if src not in bucket:
+            src = "app"
+        bucket[src] += int(row.get("count") or 0)
+
+    # Always emit 7 contiguous days (even zero-count days), oldest first.
+    daily_7d = []
+    for i in range(6, -1, -1):
+        day = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        b = daily_map.get(day, {"app": 0, "public_c": 0})
+        daily_7d.append({"date": day, "app": b.get("app", 0), "public_c": b.get("public_c", 0)})
+
+    return {
+        "totals": {
+            "plays_7d": plays_7d,
+            "plays_30d": plays_30d,
+            "plays_all": plays_all,
+            "wristband_taps_7d": wristband_taps_7d,
+            "unique_wristbands_30d": unique_wristbands_30d,
+            "avg_completion_pct_30d": avg_completion_pct_30d,
+        },
+        "top_clips": top_clips,
+        "by_source": by_source,
+        "by_category": by_category,
+        "by_contributor": by_contributor,
+        "daily_7d": daily_7d,
+    }
+
+
+@router.get("/plays-export")
+async def export_voices_plays(
+    days: int = Query(90, ge=1, le=365, description="Days back from now to include."),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_admin: Any = Depends(require_admin),
+) -> list[dict]:
+    """Flat-rows export of clip_plays for the last `days` days, joined to
+    contributorName so the CSV is self-describing.
+
+    Used by the admin Logs page's Export CSV button to also produce a
+    `voices-plays-YYYY-MM-DD.csv` sidecar file. Sorted newest-first.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cursor = db.clip_plays.aggregate([
+        {"$match": {"playedAt": {"$gte": cutoff}}},
+        {"$sort": {"playedAt": -1}},
+        {"$lookup": {
+            "from": "clips",
+            "localField": "clipId",
+            "foreignField": "id",
+            "as": "clip",
+        }},
+        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": True}},
+        {"$project": {
+            "_id": 0,
+            "playedAt": 1,
+            "clipId": 1,
+            "userId": 1,
+            "completion": 1,
+            "secondsPlayed": 1,
+            "totalDuration": 1,
+            "skipped": {"$ifNull": ["$skipped", False]},
+            "source": {"$ifNull": ["$source", "app"]},
+            "contributorName": {"$ifNull": ["$clip.contributorName", "(deleted)"]},
+        }},
+    ])
+    rows = await cursor.to_list(length=None)
+    # Stringify datetimes for the CSV consumer (avoids timezone-naive
+    # surprises in spreadsheet apps).
+    for r in rows:
+        played = r.get("playedAt")
+        if isinstance(played, datetime):
+            r["playedAt"] = played.isoformat()
+    return rows
 @router.get("/{clip_id}", response_model=ClipAdminResponse)
 async def get_clip_admin(
     clip_id: str,
@@ -757,257 +1011,3 @@ async def delete_clip(
 
     logger.info(f"[voices_admin] hard-deleted clip {clip_id}")
 
-
-# ---------------------------------------------------------------------------
-# Analytics endpoints (voices admin dashboard)
-# ---------------------------------------------------------------------------
-#
-# These two endpoints feed the "Voices Analytics" section in the existing
-# Logs & Analytics admin page. Both are gated by require_admin so they
-# never expose anonymous device IDs as a list (only as aggregate counts of
-# distinct IDs).
-#
-# Design notes
-# ------------
-# - All heavy lifting is in MongoDB aggregations ($lookup + $group). No
-#   in-process row loops over clip_plays — the collection grows linearly
-#   with plays and could become large in production.
-# - Legacy rows with no `source` field bucket under 'app' for back-compat
-#   (matches the default in the play endpoint).
-# - The 7d / 30d windows match the existing App Usage Analytics pattern
-#   in the admin portal; no custom date picker yet.
-
-@router.get("/analytics")
-async def get_voices_analytics(
-    db: AsyncIOMotorDatabase = Depends(get_db),
-    current_admin: Any = Depends(require_admin),
-) -> dict:
-    """Consolidated analytics payload for the voices dashboard.
-
-    Returns a single dict so the frontend makes one round-trip.
-
-    Top-level keys:
-      - totals: { plays_7d, plays_30d, plays_all, wristband_taps_7d,
-                  unique_wristbands_30d, avg_completion_pct_30d }
-      - top_clips: list of { clip_id, contributor_name, plays_30d }
-      - by_source: { app, public_c }
-      - by_category: { <category>: count }  (rolled up 30d)
-      - by_contributor: { <name>: count }   (rolled up 30d)
-      - daily_7d: [ { date: "YYYY-MM-DD", app: n, public_c: n }, ... ]
-    """
-    now = datetime.now(timezone.utc)
-    cutoff_7d = now - timedelta(days=7)
-    cutoff_30d = now - timedelta(days=30)
-
-    # Totals (one aggregation, three counts).
-    plays_all = await db.clip_plays.count_documents({})
-    plays_7d = await db.clip_plays.count_documents({"playedAt": {"$gte": cutoff_7d}})
-    plays_30d = await db.clip_plays.count_documents({"playedAt": {"$gte": cutoff_30d}})
-    wristband_taps_7d = await db.clip_plays.count_documents(
-        {"playedAt": {"$gte": cutoff_7d}, "source": "public_c"}
-    )
-
-    # Unique wristband devices (30d) — collapse anonymous user_ids into a
-    # distinct count. Anonymous IDs are stored as 'anon:<uuid>' from the
-    # /c route, so we count distinct on userId WHERE source=public_c.
-    unique_wristbands_30d_list = await db.clip_plays.distinct(
-        "userId",
-        {"playedAt": {"$gte": cutoff_30d}, "source": "public_c"},
-    )
-    unique_wristbands_30d = len(unique_wristbands_30d_list or [])
-
-    # Average completion % (30d). Only count rows where completion is set
-    # (avoids skewing on legacy rows that have no completion field).
-    avg_completion_cursor = db.clip_plays.aggregate([
-        {"$match": {
-            "playedAt": {"$gte": cutoff_30d},
-            "completion": {"$ne": None, "$exists": True},
-        }},
-        {"$group": {
-            "_id": None,
-            "avg": {"$avg": "$completion"},
-        }},
-    ])
-    avg_completion_docs = await avg_completion_cursor.to_list(length=1)
-    avg_completion_raw = (avg_completion_docs[0]["avg"]
-                          if avg_completion_docs and avg_completion_docs[0].get("avg") is not None
-                          else 0.0)
-    avg_completion_pct_30d = round(float(avg_completion_raw) * 100, 1)
-
-    # Top clips by plays (30d). $lookup pulls the contributor name without
-    # a follow-up query.
-    top_clips_cursor = db.clip_plays.aggregate([
-        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
-        {"$group": {"_id": "$clipId", "plays": {"$sum": 1}}},
-        {"$sort": {"plays": -1}},
-        {"$limit": 10},
-        {"$lookup": {
-            "from": "clips",
-            "localField": "_id",
-            "foreignField": "id",
-            "as": "clip",
-        }},
-        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": True}},
-        {"$project": {
-            "_id": 0,
-            "clip_id": "$_id",
-            "plays": 1,
-            "contributor_name": {"$ifNull": ["$clip.contributorName", "(deleted)"]},
-        }},
-    ])
-    top_clips = await top_clips_cursor.to_list(length=10)
-
-    # By source (30d) — bucket legacy/null source values under 'app' for
-    # back-compat.
-    by_source_cursor = db.clip_plays.aggregate([
-        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
-        {"$group": {
-            "_id": {"$ifNull": ["$source", "app"]},
-            "count": {"$sum": 1},
-        }},
-    ])
-    by_source: dict[str, int] = {"app": 0, "public_c": 0}
-    async for row in by_source_cursor:
-        src = row.get("_id") or "app"
-        if src in by_source:
-            by_source[src] += int(row.get("count") or 0)
-        else:
-            # Defensive: any unexpected legacy value rolls into 'app'
-            by_source["app"] += int(row.get("count") or 0)
-
-    # By category (30d) — clips can carry multiple categories, so we
-    # $unwind the categories array after the lookup. A play of a clip
-    # with N categories contributes 1 to each of N category buckets.
-    by_category_cursor = db.clip_plays.aggregate([
-        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
-        {"$lookup": {
-            "from": "clips",
-            "localField": "clipId",
-            "foreignField": "id",
-            "as": "clip",
-        }},
-        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": False}},
-        {"$unwind": "$clip.categories"},
-        {"$group": {"_id": "$clip.categories", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-    ])
-    by_category: dict[str, int] = {}
-    async for row in by_category_cursor:
-        key = row.get("_id") or "uncategorised"
-        by_category[key] = int(row.get("count") or 0)
-
-    # By contributor (30d). Top 10 to keep the payload small; the table
-    # in the UI shows the top names alongside their counts.
-    by_contributor_cursor = db.clip_plays.aggregate([
-        {"$match": {"playedAt": {"$gte": cutoff_30d}}},
-        {"$lookup": {
-            "from": "clips",
-            "localField": "clipId",
-            "foreignField": "id",
-            "as": "clip",
-        }},
-        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": False}},
-        {"$group": {
-            "_id": "$clip.contributorName",
-            "count": {"$sum": 1},
-        }},
-        {"$sort": {"count": -1}},
-        {"$limit": 10},
-    ])
-    by_contributor: dict[str, int] = {}
-    async for row in by_contributor_cursor:
-        name = row.get("_id") or "(unknown)"
-        by_contributor[name] = int(row.get("count") or 0)
-
-    # Daily 7d — buckets each play into its UTC day, split by source so
-    # the line chart can stack app vs public_c.
-    daily_cursor = db.clip_plays.aggregate([
-        {"$match": {"playedAt": {"$gte": cutoff_7d}}},
-        {"$group": {
-            "_id": {
-                "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$playedAt"}},
-                "source": {"$ifNull": ["$source", "app"]},
-            },
-            "count": {"$sum": 1},
-        }},
-    ])
-    daily_map: dict[str, dict[str, int]] = {}
-    async for row in daily_cursor:
-        rid = row.get("_id") or {}
-        date_key = rid.get("date")
-        src = rid.get("source") or "app"
-        if not date_key:
-            continue
-        bucket = daily_map.setdefault(date_key, {"app": 0, "public_c": 0})
-        if src not in bucket:
-            src = "app"
-        bucket[src] += int(row.get("count") or 0)
-
-    # Always emit 7 contiguous days (even zero-count days), oldest first.
-    daily_7d = []
-    for i in range(6, -1, -1):
-        day = (now - timedelta(days=i)).strftime("%Y-%m-%d")
-        b = daily_map.get(day, {"app": 0, "public_c": 0})
-        daily_7d.append({"date": day, "app": b.get("app", 0), "public_c": b.get("public_c", 0)})
-
-    return {
-        "totals": {
-            "plays_7d": plays_7d,
-            "plays_30d": plays_30d,
-            "plays_all": plays_all,
-            "wristband_taps_7d": wristband_taps_7d,
-            "unique_wristbands_30d": unique_wristbands_30d,
-            "avg_completion_pct_30d": avg_completion_pct_30d,
-        },
-        "top_clips": top_clips,
-        "by_source": by_source,
-        "by_category": by_category,
-        "by_contributor": by_contributor,
-        "daily_7d": daily_7d,
-    }
-
-
-@router.get("/plays-export")
-async def export_voices_plays(
-    days: int = Query(90, ge=1, le=365, description="Days back from now to include."),
-    db: AsyncIOMotorDatabase = Depends(get_db),
-    current_admin: Any = Depends(require_admin),
-) -> list[dict]:
-    """Flat-rows export of clip_plays for the last `days` days, joined to
-    contributorName so the CSV is self-describing.
-
-    Used by the admin Logs page's Export CSV button to also produce a
-    `voices-plays-YYYY-MM-DD.csv` sidecar file. Sorted newest-first.
-    """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    cursor = db.clip_plays.aggregate([
-        {"$match": {"playedAt": {"$gte": cutoff}}},
-        {"$sort": {"playedAt": -1}},
-        {"$lookup": {
-            "from": "clips",
-            "localField": "clipId",
-            "foreignField": "id",
-            "as": "clip",
-        }},
-        {"$unwind": {"path": "$clip", "preserveNullAndEmptyArrays": True}},
-        {"$project": {
-            "_id": 0,
-            "playedAt": 1,
-            "clipId": 1,
-            "userId": 1,
-            "completion": 1,
-            "secondsPlayed": 1,
-            "totalDuration": 1,
-            "skipped": {"$ifNull": ["$skipped", False]},
-            "source": {"$ifNull": ["$source", "app"]},
-            "contributorName": {"$ifNull": ["$clip.contributorName", "(deleted)"]},
-        }},
-    ])
-    rows = await cursor.to_list(length=None)
-    # Stringify datetimes for the CSV consumer (avoids timezone-naive
-    # surprises in spreadsheet apps).
-    for r in rows:
-        played = r.get("playedAt")
-        if isinstance(played, datetime):
-            r["playedAt"] = played.isoformat()
-    return rows
