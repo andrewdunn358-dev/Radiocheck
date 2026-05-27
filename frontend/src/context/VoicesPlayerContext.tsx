@@ -46,6 +46,7 @@ import {
   getCaptionsDefaultOn,
   getIncludeSensitive,
   recordPlay,
+  recordSkip,
   saveClip,
   setCaptionsDefaultOn as persistCaptionsDefault,
   setIncludeSensitive as persistIncludeSensitive,
@@ -220,11 +221,25 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
   }, [clip, currentEl]);
 
   const skipNext = useCallback(async () => {
+    // Record the skip event with the current position BEFORE we fetch
+    // the next clip. The 3%-of-end guard avoids double-counting natural
+    // ends as skips — onEnded already records a completion=1.0 row, and
+    // having the same playback both 'ended' and 'skipped' would skew
+    // the skip-rate metric in admin analytics.
+    if (clip) {
+      const el = currentEl();
+      const duration = el?.duration || clip.durationSeconds || 0;
+      const position = el?.currentTime ?? 0;
+      const nearEnd = duration > 0 && position / duration >= 0.97;
+      if (!nearEnd && duration > 0) {
+        recordSkip(clip.id, position, duration).catch(() => undefined);
+      }
+    }
     // Always pull a random next (matches the "two consecutive taps return
     // different clips" acceptance criterion — the backend last-served map
     // guarantees it).
     await playRandom();
-  }, [playRandom]);
+  }, [clip, currentEl, playRandom]);
 
   const replay = useCallback(() => {
     const el = currentEl();
@@ -238,6 +253,21 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     // Stop whatever's playing on either element, then drop the clip so
     // the mini-player unmounts itself. Used by the mini-player's X
     // button and by any "stop everything" path.
+    //
+    // Capture the close-time playback position FIRST so analytics
+    // gets an accurate completion% even when users close mid-clip.
+    // Skipped if we already recorded an end event for this clip (the
+    // 'ended' listener fires before close on natural completion).
+    if (clip && playedRecordedRef.current !== `closed:${clip.id}`) {
+      const el = currentEl();
+      const duration = el?.duration || clip.durationSeconds || 0;
+      const position = el?.currentTime ?? 0;
+      if (duration > 0) {
+        const completion = Math.max(0, Math.min(1, position / duration));
+        recordPlay(clip.id, completion, position, duration).catch(() => undefined);
+        playedRecordedRef.current = `closed:${clip.id}`;
+      }
+    }
     desiredPlayingRef.current = false;
     try {
       audioRef.current?.pause();
@@ -253,7 +283,7 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     setStatus('idle');
     setPositionSeconds(0);
     setClip(null);
-  }, []);
+  }, [clip, currentEl]);
 
   const toggleSave = useCallback(async (clipId: string) => {
     setSavedClipIds((prev) => {

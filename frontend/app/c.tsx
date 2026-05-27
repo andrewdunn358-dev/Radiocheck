@@ -150,18 +150,44 @@ export default function NfcPublicClipPage() {
   }, []);
 
   // Record play with source=public_c — fire-and-forget; analytics.
-  const recordPlay = useCallback((clipId: string, completion?: number) => {
-    if (!BACKEND) return;
-    const qs = new URLSearchParams({
-      user_id: `anon:${cookieRef.current.anon}`,
-      source: 'public_c',
-    });
-    if (typeof completion === 'number') {
-      qs.set('completion', String(Math.max(0, Math.min(1, completion))));
-    }
-    fetch(`${BACKEND}/api/clips/${clipId}/play?${qs.toString()}`, { method: 'POST' })
-      .catch(() => undefined);
-  }, []);
+  const recordPlay = useCallback(
+    (clipId: string, completion?: number, secondsPlayed?: number, totalDuration?: number) => {
+      if (!BACKEND) return;
+      const qs = new URLSearchParams({
+        user_id: `anon:${cookieRef.current.anon}`,
+        source: 'public_c',
+      });
+      if (typeof completion === 'number') {
+        qs.set('completion', String(Math.max(0, Math.min(1, completion))));
+      }
+      if (typeof secondsPlayed === 'number') {
+        qs.set('seconds_played', secondsPlayed.toFixed(2));
+      }
+      if (typeof totalDuration === 'number') {
+        qs.set('total_duration', totalDuration.toFixed(2));
+      }
+      fetch(`${BACKEND}/api/clips/${clipId}/play?${qs.toString()}`, { method: 'POST' })
+        .catch(() => undefined);
+    },
+    [],
+  );
+
+  // Record a skip — same fire-and-forget pattern. Both position params
+  // are REQUIRED by the backend (it derives completion from them).
+  const recordSkip = useCallback(
+    (clipId: string, secondsPlayed: number, totalDuration: number) => {
+      if (!BACKEND) return;
+      const qs = new URLSearchParams({
+        user_id: `anon:${cookieRef.current.anon}`,
+        source: 'public_c',
+        seconds_played: secondsPlayed.toFixed(2),
+        total_duration: totalDuration.toFixed(2),
+      });
+      fetch(`${BACKEND}/api/clips/${clipId}/skip?${qs.toString()}`, { method: 'POST' })
+        .catch(() => undefined);
+    },
+    [],
+  );
 
   const onPlayPress = useCallback(() => {
     if (!clip) return;
@@ -176,11 +202,23 @@ export default function NfcPublicClipPage() {
   }, [clip]);
 
   const onHearAnother = useCallback(() => {
-    if (clip) pushRecent(clip.id);
+    if (clip) {
+      pushRecent(clip.id);
+      // Record a skip if the user moved on before the natural end
+      // (97% threshold — natural ends are captured by onEnded as a
+      // completion=1.0 play row, not a skip).
+      const el = audioRef.current;
+      const duration = el?.duration || clip.durationSeconds || 0;
+      const position = el?.currentTime ?? 0;
+      const nearEnd = duration > 0 && position / duration >= 0.97;
+      if (!nearEnd && duration > 0) {
+        recordSkip(clip.id, position, duration);
+      }
+    }
     // Pause current playback so we don't double up while the new clip loads.
     try { audioRef.current?.pause(); } catch { /* ignore */ }
     fetchClip();
-  }, [clip, pushRecent, fetchClip]);
+  }, [clip, pushRecent, fetchClip, recordSkip]);
 
   const onTalkToSomeone = useCallback(() => {
     // Mirrors the in-app convention you just confirmed: back to /home.
@@ -205,7 +243,8 @@ export default function NfcPublicClipPage() {
     const onEnded = () => {
       setStatus('ended');
       // Record completion (we know it played to the end).
-      recordPlay(clip.id, 1.0);
+      const duration = el.duration || clip.durationSeconds || 0;
+      recordPlay(clip.id, 1.0, duration, duration);
     };
     const onTime = () => setPosition(el.currentTime);
     const onErr = () => { setStatus('error'); setError('Playback failed.'); };
@@ -223,6 +262,48 @@ export default function NfcPublicClipPage() {
       el.removeEventListener('error', onErr);
     };
   }, [clip, recordPlay]);
+
+  // ----- pagehide listener: capture partial listens on tab close --------
+  // Browsers throttle / block ordinary fetch() when the page is unloading,
+  // but `navigator.sendBeacon` is designed for exactly this case — it
+  // queues the request reliably even as the page goes away. We use it to
+  // record a final play row when the user backs out / closes the tab
+  // mid-clip, so wristband-driven plays don't get lost from analytics.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onPageHide = () => {
+      const el = audioRef.current;
+      if (!el || !clip || !BACKEND) return;
+      const duration = el.duration || clip.durationSeconds || 0;
+      const position = el.currentTime;
+      if (duration <= 0 || position <= 0) return;
+      const completion = Math.max(0, Math.min(1, position / duration));
+      // Already-ended clips don't need another record — onEnded handled it.
+      if (completion >= 0.97) return;
+      const qs = new URLSearchParams({
+        user_id: `anon:${cookieRef.current.anon}`,
+        source: 'public_c',
+        completion: completion.toFixed(2),
+        seconds_played: position.toFixed(2),
+        total_duration: duration.toFixed(2),
+      });
+      const url = `${BACKEND}/api/clips/${clip.id}/play?${qs.toString()}`;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+          navigator.sendBeacon(url);
+        } else {
+          // Fallback: keep-alive fetch (best-effort).
+          fetch(url, { method: 'POST', keepalive: true }).catch(() => undefined);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [clip]);
 
   const currentCaption = useMemo(() => {
     if (!captionsOn || !clip?.captions?.length) return '';

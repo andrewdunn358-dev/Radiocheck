@@ -357,6 +357,17 @@ export const api = {
   getAIChatStats: (token: string, days: number = 7) =>
     api.fetch<any>(`/ai-chat/stats?days=${days}`, { token }),
 
+  // Voices Analytics (admin-only). Single consolidated payload — one
+  // round-trip pulls totals, top clips, breakdowns, and the 7-day
+  // line-chart data. Backend does all aggregation in MongoDB.
+  getVoicesAnalytics: (token: string) =>
+    api.fetch<any>('/admin/clips/analytics', { token }),
+
+  // Flat-row export of clip_plays for the last N days, joined to
+  // contributorName. Used by the CSV export sidecar in LogsTab.
+  getVoicesPlaysExport: (token: string, days: number = 90) =>
+    api.fetch<any>(`/admin/clips/plays-export?days=${days}`, { token }),
+
   // Settings
   getSettings: (token: string) =>
     api.fetch<any>('/settings', { token }),

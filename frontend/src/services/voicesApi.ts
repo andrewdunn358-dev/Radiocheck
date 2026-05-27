@@ -147,9 +147,34 @@ export async function unsaveClip(clipId: string): Promise<void> {
   );
 }
 
-export async function recordPlay(clipId: string, completion?: number): Promise<void> {
+export async function recordPlay(
+  clipId: string,
+  completion?: number,
+  secondsPlayed?: number,
+  totalDuration?: number,
+): Promise<void> {
   const userId = await getVoicesUserId();
   const qs = new URLSearchParams({ user_id: userId });
   if (typeof completion === 'number') qs.set('completion', completion.toFixed(2));
+  if (typeof secondsPlayed === 'number') qs.set('seconds_played', secondsPlayed.toFixed(2));
+  if (typeof totalDuration === 'number') qs.set('total_duration', totalDuration.toFixed(2));
   await fetchJson<void>(`/api/clips/${clipId}/play?${qs.toString()}`, { method: 'POST' });
+}
+
+/** Record a skip (next pressed mid-clip). Powers the skip-rate metric in
+ * the admin dashboard. Both `secondsPlayed` and `totalDuration` are
+ * required by the backend so completion can be derived server-side.
+ */
+export async function recordSkip(
+  clipId: string,
+  secondsPlayed: number,
+  totalDuration: number,
+): Promise<void> {
+  const userId = await getVoicesUserId();
+  const qs = new URLSearchParams({
+    user_id: userId,
+    seconds_played: secondsPlayed.toFixed(2),
+    total_duration: totalDuration.toFixed(2),
+  });
+  await fetchJson<void>(`/api/clips/${clipId}/skip?${qs.toString()}`, { method: 'POST' });
 }

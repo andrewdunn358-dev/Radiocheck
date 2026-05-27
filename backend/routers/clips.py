@@ -575,6 +575,18 @@ async def record_clip_play(
     completion: Optional[float] = Query(
         None, ge=0.0, le=1.0, description="0.0-1.0; how much of the clip was heard."
     ),
+    seconds_played: Optional[float] = Query(
+        None, ge=0.0,
+        description="Exact playback position in seconds at the moment "
+                    "of recording (close, natural end, etc.). Optional; "
+                    "back-compat with legacy callers that only pass completion.",
+    ),
+    total_duration: Optional[float] = Query(
+        None, ge=0.0,
+        description="The clip's total duration in seconds, as known by "
+                    "the client at record time. Stored alongside "
+                    "secondsPlayed for analytics aggregation.",
+    ),
     source: Optional[str] = Query(
         "app",
         description="How the play was triggered. 'app' (in-app veteran, default) or 'public_c' (anonymous /c NFC/QR route).",
@@ -588,18 +600,82 @@ async def record_clip_play(
 
     The `source` field is indexed (see set_db) so future admin analytics
     can segment in-app plays vs public-route plays without a full scan.
+
+    `secondsPlayed` + `totalDuration` are optional, persisted when
+    provided. They unblock admin analytics that want to know exact close-
+    time position rather than only the (sometimes-rounded) completion
+    fraction.
     """
     clip = await db.clips.find_one(
         {"id": clip_id, "status": ClipStatus.published.value}, {"_id": 0, "id": 1}
     )
     if not clip:
         raise HTTPException(status_code=404, detail="Clip not found")
+    row: dict = {
+        "clipId": clip_id,
+        "userId": user_id,
+        "playedAt": datetime.now(timezone.utc),
+        "completion": float(completion) if completion is not None else None,
+        "source": source or "app",
+    }
+    if seconds_played is not None:
+        row["secondsPlayed"] = float(seconds_played)
+    if total_duration is not None:
+        row["totalDuration"] = float(total_duration)
+    await db.clip_plays.insert_one(row)
+
+
+@router.post("/clips/{clip_id}/skip", status_code=204)
+async def record_clip_skip(
+    clip_id: str,
+    user_id: str = Query(..., description="Veteran's local user_id (or anon:<uuid>)."),
+    seconds_played: float = Query(
+        ..., ge=0.0,
+        description="Playback position when the user skipped to next.",
+    ),
+    total_duration: float = Query(
+        ..., ge=0.0,
+        description="The clip's total duration in seconds at skip time.",
+    ),
+    source: Optional[str] = Query(
+        "app",
+        description="How the play was triggered. 'app' or 'public_c'.",
+        pattern="^(app|public_c)$",
+    ),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> None:
+    """Insert a SKIP event — a play row tagged `skipped=True`, with the
+    closing position captured.
+
+    Derived `completion` is `seconds_played / total_duration`, clamped
+    to [0, 1]. Zero-duration safely yields `None` (no NaN), so
+    aggregation `$avg` queries downstream don't poison their results.
+
+    Analytics consumers should filter `skipped=True` to get the skip
+    rate per clip, or aggregate `completion` across both skipped and
+    non-skipped rows for average completion %.
+    """
+    clip = await db.clips.find_one(
+        {"id": clip_id, "status": ClipStatus.published.value}, {"_id": 0, "id": 1}
+    )
+    if not clip:
+        raise HTTPException(status_code=404, detail="Clip not found")
+
+    completion: Optional[float]
+    if total_duration > 0:
+        completion = max(0.0, min(1.0, seconds_played / total_duration))
+    else:
+        completion = None
+
     await db.clip_plays.insert_one(
         {
             "clipId": clip_id,
             "userId": user_id,
             "playedAt": datetime.now(timezone.utc),
-            "completion": float(completion) if completion is not None else None,
+            "completion": completion,
+            "secondsPlayed": float(seconds_played),
+            "totalDuration": float(total_duration),
+            "skipped": True,
             "source": source or "app",
         }
     )
