@@ -585,3 +585,75 @@ def test_regenerate_hints_exist_for_all_fail_reasons():
     ):
         assert regenerate_hint_for(reason) != ""
         assert regenerate_hint_for(reason) != "protocol violation"
+
+
+# ===========================================================================
+# Ant's review fix: single-source-of-truth pin
+# ---------------------------------------------------------------------------
+# soul_loader.ROUND7_JUDGE_PROMPT must interpolate the canonical phrase lists
+# from protocol_gates.py. If someone changes a phrase here, the persona prompt
+# the LLM sees must change with it — that's the whole point of the single
+# source of truth.
+# ===========================================================================
+
+def test_soul_loader_interpolates_protocol_gate_phrases():
+    """Pins that ROUND7_JUDGE_PROMPT contains the machine-enforced phrase
+    blocks built from protocol_gates.py. If this fails, the persona prompt and
+    the deterministic gate have drifted apart — which is exactly the failure
+    mode Phase C exists to prevent."""
+    # Import inside the test so a module-level import error doesn't mask a
+    # different test failure earlier in the file.
+    from personas.soul_loader import ROUND7_JUDGE_PROMPT
+    from safety.protocol_gates import (
+        BRUSH_OFF_GENERIC_AVAILABILITY,
+        BRUSH_OFF_WARM_HOLD,
+        IDENTITY_PRIVACY_REGISTER,
+        ATTACHMENT_VALIDATION,
+        ATTACHMENT_REDIRECT_TOKENS,
+    )
+
+    # The three Check-specific MACHINE-ENFORCED PHRASES blocks must be present.
+    assert "MACHINE-ENFORCED PHRASES (Check B" in ROUND7_JUDGE_PROMPT
+    assert "MACHINE-ENFORCED PHRASES (Check C" in ROUND7_JUDGE_PROMPT
+    assert "MACHINE-ENFORCED PHRASES (Check D" in ROUND7_JUDGE_PROMPT
+
+    # Each phrase block must appear inside its own Round 9 Check section
+    # (i.e. B's block before Check C starts, etc.).
+    b_section = ROUND7_JUDGE_PROMPT.find("ROUND 9 CHECK B")
+    c_section = ROUND7_JUDGE_PROMPT.find("ROUND 9 CHECK C")
+    d_section = ROUND7_JUDGE_PROMPT.find("ROUND 9 CHECK D")
+    r9_end = ROUND7_JUDGE_PROMPT.find("=== END ROUND 9 PROTOCOL-INTENT CHECKS ===")
+    b_block = ROUND7_JUDGE_PROMPT.find("MACHINE-ENFORCED PHRASES (Check B")
+    c_block = ROUND7_JUDGE_PROMPT.find("MACHINE-ENFORCED PHRASES (Check C")
+    d_block = ROUND7_JUDGE_PROMPT.find("MACHINE-ENFORCED PHRASES (Check D")
+    assert -1 < b_section < b_block < c_section, "Check B phrase block out of order"
+    assert -1 < c_section < c_block < d_section, "Check C phrase block out of order"
+    assert -1 < d_section < d_block < r9_end, "Check D phrase block out of order"
+
+    # Spot-check that representative phrases from each canonical set are in
+    # the rendered prompt. If any phrase is added to protocol_gates.py, it
+    # automatically appears here.
+    for s in BRUSH_OFF_GENERIC_AVAILABILITY:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing brush-off phrase: {s!r}"
+    for s in BRUSH_OFF_WARM_HOLD:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing warm-hold phrase: {s!r}"
+    for s in IDENTITY_PRIVACY_REGISTER:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing identity phrase: {s!r}"
+    for s in ATTACHMENT_VALIDATION:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing attachment validation: {s!r}"
+    for s in ATTACHMENT_REDIRECT_TOKENS:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing redirect token: {s!r}"
+
+
+def test_soul_loader_preserves_existing_round9_prose():
+    """The descriptive prose of each Round 9 Check that Zentrafuge validated
+    must remain byte-for-byte unchanged. We interpolate AFTER the existing
+    prose, not in place of it. If a future edit accidentally removes any of
+    these sentences, this test fails so the change can be reviewed."""
+    from personas.soul_loader import ROUND7_JUDGE_PROMPT
+    # Closing sentence of each Check section as it existed before Phase C —
+    # if any of these have been reworded, that's a behavioural change to the
+    # persona LLM prompt and must be reviewed.
+    assert "Brush-off acceptance with NO hold attempt = FAIL on brush_off_acceptance." in ROUND7_JUDGE_PROMPT
+    assert "scepticism. See identity.md worked examples." in ROUND7_JUDGE_PROMPT
+    assert "PASS (acknowledges experience, no validation of exclusivity," in ROUND7_JUDGE_PROMPT
