@@ -332,6 +332,104 @@ class TestRegenerateLoop:
 
 
 # ===========================================================================
+# Ant's review fix: regen-error must route to micro-fallback
+# ---------------------------------------------------------------------------
+# If the OpenAI regenerate call raises (timeout / network / quota), the gate
+# must route DIRECTLY to micro-fallback rather than handing the original
+# failing reply to the LLM judge. The gate is the hard line; a technical
+# error in the regen path does not change that.
+# ===========================================================================
+
+class _FailingOpenAI:
+    """Returns the initial reply on the FIRST call, then RAISES on regen.
+
+    Models the OpenAI infrastructure failure path (timeout / network error /
+    quota exceeded) we need to guard against — see Ant's review fix 1.
+    """
+    def __init__(self, initial_reply):
+        self._initial = initial_reply
+        self.calls = 0
+
+        class _Completions:
+            def __init__(self, outer):
+                self._outer = outer
+
+            def create(self, **kwargs):
+                self._outer.calls += 1
+                if self._outer.calls == 1:
+                    return _FakeCompletion(self._outer._initial)
+                raise RuntimeError("simulated OpenAI failure on regen")
+
+        class _Chat:
+            def __init__(self, outer):
+                self.completions = _Completions(outer)
+
+        self.chat = _Chat(self)
+
+
+def _run_gate_loop_with_regen_error_fallback(
+    primary_protocol, user_message, client, fallback_reply, max_retries=2,
+):
+    """Mirror of server.buddy_chat's gate loop including the Ant-fix path:
+    if the regen call raises, route DIRECTLY to micro-fallback instead of
+    handing the original failing reply to the LLM judge.
+    """
+    reply = client.chat.completions.create().choices[0].message.content
+    verdict = run_protocol_gates(
+        primary_protocol=primary_protocol, reply=reply, user_message=user_message,
+    )
+    gate_finalised = False
+    attempt = 1
+    while not verdict.passed and attempt <= max_retries:
+        if attempt < max_retries:
+            try:
+                reply = client.chat.completions.create().choices[0].message.content
+            except Exception:
+                # Ant's fix: regen error → micro-fallback, NOT LLM judge.
+                reply = fallback_reply
+                gate_finalised = True
+                break
+        else:
+            reply = fallback_reply
+            gate_finalised = True
+            break
+        attempt += 1
+        verdict = run_protocol_gates(
+            primary_protocol=primary_protocol, reply=reply, user_message=user_message,
+        )
+    return reply, verdict, gate_finalised
+
+
+class TestRegenErrorRoutesToFallback:
+    """Ant's review fix: a technical failure during regenerate must NOT
+    cause the original failing reply to be handed to the LLM judge. The gate
+    is the hard line; a regen error doesn't weaken it."""
+
+    def test_regen_error_finalises_via_micro_fallback(self):
+        client = _FailingOpenAI(initial_reply="No worries, let me know if you need anything.")
+        reply, verdict, gate_finalised = _run_gate_loop_with_regen_error_fallback(
+            "brush_off", "ignore me", client, fallback_reply="I'm here, mate.",
+        )
+        assert gate_finalised is True
+        # Original failing reply MUST have been replaced.
+        assert reply != "No worries, let me know if you need anything."
+        # OpenAI was called once (initial), then raised on regen — exactly 2 calls.
+        assert client.calls == 2
+
+    def test_regen_error_does_not_leak_original_failing_reply(self):
+        """The failing 'No worries' line must NEVER be the final reply when a
+        regen error happened — that would mean the gate failed open."""
+        client = _FailingOpenAI(initial_reply="Fair enough mate. Give me a shout.")
+        reply, _, gate_finalised = _run_gate_loop_with_regen_error_fallback(
+            "brush_off", "forget i said anything", client,
+            fallback_reply="I'm here, mate.",
+        )
+        assert "fair enough" not in reply.lower()
+        assert "give me a shout" not in reply.lower()
+        assert gate_finalised is True
+
+
+# ===========================================================================
 # Audit log
 # ===========================================================================
 

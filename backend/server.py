@@ -6967,7 +6967,128 @@ Return ONLY the response text. No explanation. No labels."""
                     attempt=gate_attempt,
                 )
 
-            judge_prompt = f"""You are a strict behavioural judge for a veteran support AI.
+            # === ROUND 10 PHASE C: DETERMINISTIC PROTOCOL GATE (Checks B/C/D) ===
+            # Runs BEFORE the LLM judge below. Catches the exact failure-phrase
+            # patterns Zentrafuge documented for brush_off / identity /
+            # attachment that the persona LLM drops under pressure. Deterministic
+            # string + ordering checks — no LLM, cannot be argued out of.
+            #
+            # On FAIL: conditioned regenerate (max 2), re-checking the gate each
+            # time, then the SAME micro-fallback path the LLM judge uses. On
+            # PASS (or for any protocol outside B/C/D): fall through to the LLM
+            # judge, which stays as the second, softer line of defence.
+            #
+            # Phase C review fix (Ant): if the regenerate call ITSELF errors
+            # (OpenAI timeout / network), we MUST route to micro-fallback —
+            # NOT fall through to the LLM judge with the original failing
+            # reply. The gate is the hard line; a technical error in the
+            # regen path doesn't change that.
+            gate_verdict = run_protocol_gates(
+                primary_protocol=primary_protocol,
+                reply=reply,
+                user_message=request.message,
+            )
+            emit_gate_audit_log(
+                gate_verdict,
+                reply=reply,
+                session_id=request.sessionId,
+                character=getattr(request, 'character', '') or '',
+                attempt=1,
+            )
+
+            def _apply_gate_micro_fallback() -> str:
+                """The SAME context-aware fallback the LLM judge uses (Round 8
+                micro-fallback path preserved). Returns the safe reply text."""
+                if is_high_risk:
+                    logging.warning(f"[ProtocolGate] Safety override — high risk, spine entry - Session: {request.sessionId[:12]}")
+                    return "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
+                micro_reply = generate_micro_fallback(protocol_state)
+                if micro_reply:
+                    if contains_banter_or_humour(micro_reply):
+                        logging.warning(f"[ProtocolGate] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
+                        micro_reply = "I'm worried about what you just said, mate. That sounds heavy."
+                    if micro_reply == session.get('last_fallback_question'):
+                        micro_reply = micro_reply.rstrip('.?!') + ". Tell me more."
+                    session['last_fallback_question'] = micro_reply
+                    logging.info(f"[ProtocolGate] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']} - Session: {request.sessionId[:12]}")
+                    return micro_reply
+                logging.error(f"[ProtocolGate] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
+                return "I'm here, mate."
+
+            # Sentinel: when the gate has already produced its final reply (PASS
+            # after regen, or micro-fallback after FAIL twice / regen error), we
+            # must skip the LLM-judge block below — the gate's verdict is final
+            # for B/C/D protocols.
+            gate_finalised = False
+
+            max_gate_retries = 2
+            gate_attempt = 1
+            while not gate_verdict.passed and gate_attempt <= max_gate_retries:
+                hint = regenerate_hint_for(gate_verdict.reason)
+                logging.warning(
+                    f"[ProtocolGate] FAIL ({gate_verdict.reason}) attempt "
+                    f"{gate_attempt} - Session: {request.sessionId[:12]}"
+                )
+                if gate_attempt < max_gate_retries:
+                    # Conditioned regeneration — same mechanics as the LLM judge.
+                    try:
+                        retry_messages = messages.copy()
+                        retry_messages.append({"role": "assistant", "content": reply})
+                        retry_messages.append({
+                            "role": "system",
+                            "content": (
+                                f"Previous response failed because: {hint}. "
+                                f"You MUST correct this. Do NOT repeat the failure. "
+                                f"Follow the protocol strictly."
+                            ),
+                        })
+                        retry_completion = buddy_openai_client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=retry_messages,
+                            max_tokens=400,
+                            temperature=0.2,
+                            timeout=45,
+                        )
+                        reply = retry_completion.choices[0].message.content or reply
+                    except Exception as gate_regen_error:
+                        # Phase C review fix (Ant): regen error must NOT
+                        # fall through to the LLM judge with the original
+                        # failing reply. Route straight to micro-fallback.
+                        logging.error(
+                            f"[ProtocolGate] Regeneration error: {gate_regen_error} "
+                            f"— routing to micro-fallback "
+                            f"- Session: {request.sessionId[:12]}"
+                        )
+                        reply = _apply_gate_micro_fallback()
+                        gate_finalised = True
+                        break
+                else:
+                    # Max retries hit — micro-fallback.
+                    reply = _apply_gate_micro_fallback()
+                    gate_finalised = True
+                    break
+
+                # Re-check the gate on the regenerated reply.
+                gate_attempt += 1
+                gate_verdict = run_protocol_gates(
+                    primary_protocol=primary_protocol,
+                    reply=reply,
+                    user_message=request.message,
+                )
+                emit_gate_audit_log(
+                    gate_verdict,
+                    reply=reply,
+                    session_id=request.sessionId,
+                    character=getattr(request, 'character', '') or '',
+                    attempt=gate_attempt,
+                )
+
+            # Phase C review fix (Ant): skip the LLM judge if the gate already
+            # finalised the reply (regen error → micro-fallback, or FAIL twice →
+            # micro-fallback). The gate is the hard line; we must not re-judge
+            # the gate's chosen fallback with a weaker rule set.
+            if not gate_finalised:
+                judge_prompt = f"""You are a strict behavioural judge for a veteran support AI.
 Active protocols: {active_protocols_text}
 User message: "{request.message}"
 Assistant response: "{reply}"
@@ -6986,72 +7107,72 @@ FAIL: <reason>
 
 Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_shift, therapeutic_tone"""
             
-            max_judge_retries = 2
-            for judge_attempt in range(max_judge_retries):
-                try:
-                    judge_result = buddy_openai_client.chat.completions.create(
-                        model="gpt-4o",
-                        messages=[{"role": "system", "content": judge_prompt}],
-                        max_tokens=20,
-                        temperature=0,
-                        timeout=10
-                    )
-                    verdict = (judge_result.choices[0].message.content or "").strip()
+                max_judge_retries = 2
+                for judge_attempt in range(max_judge_retries):
+                    try:
+                        judge_result = buddy_openai_client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[{"role": "system", "content": judge_prompt}],
+                            max_tokens=20,
+                            temperature=0,
+                            timeout=10
+                        )
+                        verdict = (judge_result.choices[0].message.content or "").strip()
                     
-                    if verdict.startswith("PASS"):
-                        logging.info(f"[Judge] PASS on attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
-                        break
-                    elif verdict.startswith("FAIL"):
-                        fail_reason = verdict.replace("FAIL:", "").strip()
-                        logging.warning(f"[Judge] FAIL ({fail_reason}) attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
+                        if verdict.startswith("PASS"):
+                            logging.info(f"[Judge] PASS on attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
+                            break
+                        elif verdict.startswith("FAIL"):
+                            fail_reason = verdict.replace("FAIL:", "").strip()
+                            logging.warning(f"[Judge] FAIL ({fail_reason}) attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
                         
-                        if judge_attempt < max_judge_retries - 1:
-                            # Conditioned regeneration (Constraint 1)
-                            retry_messages = messages.copy()
-                            retry_messages.append({"role": "assistant", "content": reply})
-                            retry_messages.append({"role": "system", "content": f"Previous response failed because: {fail_reason}. You MUST correct this. Do NOT repeat the failure. Follow the protocol strictly."})
+                            if judge_attempt < max_judge_retries - 1:
+                                # Conditioned regeneration (Constraint 1)
+                                retry_messages = messages.copy()
+                                retry_messages.append({"role": "assistant", "content": reply})
+                                retry_messages.append({"role": "system", "content": f"Previous response failed because: {fail_reason}. You MUST correct this. Do NOT repeat the failure. Follow the protocol strictly."})
                             
-                            retry_completion = buddy_openai_client.chat.completions.create(
-                                model="gpt-4o",
-                                messages=retry_messages,
-                                max_tokens=400,
-                                temperature=0.2,
-                                timeout=45
-                            )
-                            reply = retry_completion.choices[0].message.content or reply
-                        else:
-                            # === Round 8: Context-aware fallback with safety guards ===
-                            
-                            # FIX 2: Pre-fallback safety override guard
-                            if is_high_risk:
-                                reply = "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
-                                logging.warning(f"[Fallback] Safety override — high risk detected, spine entry - Session: {request.sessionId[:12]}")
+                                retry_completion = buddy_openai_client.chat.completions.create(
+                                    model="gpt-4o",
+                                    messages=retry_messages,
+                                    max_tokens=400,
+                                    temperature=0.2,
+                                    timeout=45
+                                )
+                                reply = retry_completion.choices[0].message.content or reply
                             else:
-                                # FIX 4: Micro-generation call
-                                micro_reply = generate_micro_fallback(protocol_state)
-                                
-                                if micro_reply:
-                                    # FIX 5: Post-fallback safety filter
-                                    if contains_banter_or_humour(micro_reply):
-                                        micro_reply = "I'm worried about what you just said, mate. That sounds heavy."
-                                        logging.warning(f"[Fallback] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
-                                    
-                                    # Optional: Repetition prevention
-                                    if micro_reply == session.get('last_fallback_question'):
-                                        micro_reply = micro_reply.rstrip('.?!') + ". Tell me more."
-                                    session['last_fallback_question'] = micro_reply
-                                    
-                                    reply = micro_reply
-                                    logging.info(f"[Fallback] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']}, situation={protocol_state['situation']} - Session: {request.sessionId[:12]}")
-                                else:
-                                    # Micro-gen failed — use safe minimal response
-                                    reply = "I'm here, mate."
-                                    logging.error(f"[Fallback] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
+                                # === Round 8: Context-aware fallback with safety guards ===
                             
-                            logging.warning(f"[Judge] Fallback triggered for {primary_protocol} - Session: {request.sessionId[:12]}")
-                except Exception as judge_error:
-                    logging.error(f"[Judge] Error: {judge_error} - passing through")
-                    break  # Don't block on judge failure
+                                # FIX 2: Pre-fallback safety override guard
+                                if is_high_risk:
+                                    reply = "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
+                                    logging.warning(f"[Fallback] Safety override — high risk detected, spine entry - Session: {request.sessionId[:12]}")
+                                else:
+                                    # FIX 4: Micro-generation call
+                                    micro_reply = generate_micro_fallback(protocol_state)
+                                
+                                    if micro_reply:
+                                        # FIX 5: Post-fallback safety filter
+                                        if contains_banter_or_humour(micro_reply):
+                                            micro_reply = "I'm worried about what you just said, mate. That sounds heavy."
+                                            logging.warning(f"[Fallback] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
+                                    
+                                        # Optional: Repetition prevention
+                                        if micro_reply == session.get('last_fallback_question'):
+                                            micro_reply = micro_reply.rstrip('.?!') + ". Tell me more."
+                                        session['last_fallback_question'] = micro_reply
+                                    
+                                        reply = micro_reply
+                                        logging.info(f"[Fallback] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']}, situation={protocol_state['situation']} - Session: {request.sessionId[:12]}")
+                                    else:
+                                        # Micro-gen failed — use safe minimal response
+                                        reply = "I'm here, mate."
+                                        logging.error(f"[Fallback] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
+                            
+                                logging.warning(f"[Judge] Fallback triggered for {primary_protocol} - Session: {request.sessionId[:12]}")
+                    except Exception as judge_error:
+                        logging.error(f"[Judge] Error: {judge_error} - passing through")
+                        break  # Don't block on judge failure
         
         # ===== TRACK AI USAGE FOR COST MONITORING =====
         try:
