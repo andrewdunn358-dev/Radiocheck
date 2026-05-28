@@ -223,10 +223,31 @@ def transcode_to_mp3(input_path: str, output_path: str) -> None:
       2. Normalise sample rate / channels so the mobile player behaves
          consistently across browsers.
       3. Guarantee disk usage is predictable (96kbps mono = ~720KB / min).
+
+    Audio fix (May 2026): added a `loudnorm` filter applying EBU R128
+    broadcast normalisation (target -16 LUFS, true peak ceiling -1.5
+    dBTP). Why:
+      - Some OGG Opus voice uploads were arriving with peaks above 0
+        dBFS (e.g. +4 dBFS measured on a real contribution). When the
+        Opus decoder outputs float samples > 1.0 and ffmpeg converts
+        to int16 for MP3 encoding, the over-range samples wrap around
+        (e.g. +1.2 -> near minimum negative), producing audible
+        clicks / pops scattered through playback. Loudnorm prevents
+        this by bringing peaks into a defined headroom before the
+        float->int16 step.
+      - Loud and quiet uploads now sit at consistent perceived volume
+        in the player — no more "I can barely hear this one, the next
+        one's blowing my ears off" between clips.
+      - -16 LUFS / -1.5 dBTP is the de-facto standard for podcast /
+        voice content on Spotify, Apple Podcasts, BBC Sounds, etc.
     """
     proc = _run_ffmpeg([
         "-i", input_path,
         "-vn",  # discard any incidental video stream
+        # EBU R128 loudness normalisation (single-pass). The filter
+        # MUST run before the bitrate / encoding stage so the lame
+        # encoder sees a properly-ranged float signal.
+        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
         "-acodec", FFMPEG_TARGET_CODEC,
         "-ac", FFMPEG_TARGET_CHANNELS,
         "-ar", FFMPEG_TARGET_SAMPLE_RATE,
