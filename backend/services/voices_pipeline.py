@@ -508,6 +508,16 @@ async def transcribe_with_whisper(audio_path: str) -> tuple[str, List[dict]]:
                 file=fh,
                 response_format="verbose_json",
                 timestamp_granularities=["segment"],
+                # Pin source language to English. Without this, Whisper
+                # auto-detects per upload and is known to misidentify
+                # regional UK accents (Welsh / Scots / Geordie / strong
+                # northern English) as Welsh, Scots Gaelic or Irish
+                # Gaelic. When that happens it phonetically transcribes
+                # English speech THROUGH the wrong language model,
+                # producing fluent-looking text in the wrong language
+                # that translates to nonsense. Radio Check is UK
+                # veterans, English-only — pinning is safe.
+                language="en",
             )
 
     result = await asyncio.wait_for(_call(), timeout=WHISPER_TIMEOUT_SECONDS)
