@@ -63,6 +63,16 @@ from safety.unified_safety import (
     initialize_safety_system,
 )
 
+# Round 10 Phase C: deterministic protocol gates (Checks B/C/D). Run AFTER the
+# persona reply and BEFORE the existing LLM judge in buddy_chat. The LLM judge
+# stays as a second, softer line of defence. See safety/protocol_gates.py and
+# memory/PHASE_C_PR_DRAFT.md.
+from safety.protocol_gates import (
+    run_protocol_gates,
+    emit_gate_audit_log,
+    regenerate_hint_for,
+)
+
 # Import governance router for clinical safety & compliance
 from governance_router import governance_router, set_db as set_governance_db
 from case_router import case_router, set_dependencies as set_case_dependencies
@@ -6862,6 +6872,101 @@ Return ONLY the response text. No explanation. No labels."""
                 text_l = text.lower().strip()
                 return any(s in text_l for s in banter_signals)
             
+            # === ROUND 10 PHASE C: DETERMINISTIC PROTOCOL GATE (Checks B/C/D) ===
+            # Runs BEFORE the LLM judge below. Catches the exact failure-phrase
+            # patterns Zentrafuge documented for brush_off / identity /
+            # attachment that the persona LLM drops under pressure. Deterministic
+            # string + ordering checks — no LLM, cannot be argued out of.
+            #
+            # On FAIL: conditioned regenerate (max 2), re-checking the gate each
+            # time, then the SAME micro-fallback path the LLM judge uses. On
+            # PASS (or for any protocol outside B/C/D): fall through to the LLM
+            # judge, which stays as the second, softer line of defence.
+            gate_verdict = run_protocol_gates(
+                primary_protocol=primary_protocol,
+                reply=reply,
+                user_message=request.message,
+            )
+            emit_gate_audit_log(
+                gate_verdict,
+                reply=reply,
+                session_id=request.sessionId,
+                character=getattr(request, 'character', '') or '',
+                attempt=1,
+            )
+
+            max_gate_retries = 2
+            gate_attempt = 1
+            while not gate_verdict.passed and gate_attempt <= max_gate_retries:
+                hint = regenerate_hint_for(gate_verdict.reason)
+                logging.warning(
+                    f"[ProtocolGate] FAIL ({gate_verdict.reason}) attempt "
+                    f"{gate_attempt} - Session: {request.sessionId[:12]}"
+                )
+                if gate_attempt < max_gate_retries:
+                    # Conditioned regeneration — same mechanics as the LLM judge.
+                    try:
+                        retry_messages = messages.copy()
+                        retry_messages.append({"role": "assistant", "content": reply})
+                        retry_messages.append({
+                            "role": "system",
+                            "content": (
+                                f"Previous response failed because: {hint}. "
+                                f"You MUST correct this. Do NOT repeat the failure. "
+                                f"Follow the protocol strictly."
+                            ),
+                        })
+                        retry_completion = buddy_openai_client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=retry_messages,
+                            max_tokens=400,
+                            temperature=0.2,
+                            timeout=45,
+                        )
+                        reply = retry_completion.choices[0].message.content or reply
+                    except Exception as gate_regen_error:
+                        logging.error(
+                            f"[ProtocolGate] Regeneration error: {gate_regen_error} "
+                            f"- Session: {request.sessionId[:12]}"
+                        )
+                        break  # fall through to LLM judge on regen failure
+                else:
+                    # Max retries hit — use the SAME context-aware fallback the
+                    # LLM judge uses (Round 8 micro-fallback path preserved).
+                    if is_high_risk:
+                        reply = "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
+                        logging.warning(f"[ProtocolGate] Safety override — high risk, spine entry - Session: {request.sessionId[:12]}")
+                    else:
+                        micro_reply = generate_micro_fallback(protocol_state)
+                        if micro_reply:
+                            if contains_banter_or_humour(micro_reply):
+                                micro_reply = "I'm worried about what you just said, mate. That sounds heavy."
+                                logging.warning(f"[ProtocolGate] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
+                            if micro_reply == session.get('last_fallback_question'):
+                                micro_reply = micro_reply.rstrip('.?!') + ". Tell me more."
+                            session['last_fallback_question'] = micro_reply
+                            reply = micro_reply
+                            logging.info(f"[ProtocolGate] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']} - Session: {request.sessionId[:12]}")
+                        else:
+                            reply = "I'm here, mate."
+                            logging.error(f"[ProtocolGate] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
+                    break
+
+                # Re-check the gate on the regenerated reply.
+                gate_attempt += 1
+                gate_verdict = run_protocol_gates(
+                    primary_protocol=primary_protocol,
+                    reply=reply,
+                    user_message=request.message,
+                )
+                emit_gate_audit_log(
+                    gate_verdict,
+                    reply=reply,
+                    session_id=request.sessionId,
+                    character=getattr(request, 'character', '') or '',
+                    attempt=gate_attempt,
+                )
+
             judge_prompt = f"""You are a strict behavioural judge for a veteran support AI.
 Active protocols: {active_protocols_text}
 User message: "{request.message}"
