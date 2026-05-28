@@ -332,6 +332,7 @@ class TestRegenerateLoop:
 
 
 # ===========================================================================
+# ===========================================================================
 # Ant's review fix: regen-error must route to micro-fallback
 # ---------------------------------------------------------------------------
 # If the OpenAI regenerate call raises (timeout / network / quota), the gate
@@ -427,6 +428,67 @@ class TestRegenErrorRoutesToFallback:
         assert "fair enough" not in reply.lower()
         assert "give me a shout" not in reply.lower()
         assert gate_finalised is True
+
+
+# ===========================================================================
+# Ant's review fix: punctuation must be stripped during normalisation
+# ---------------------------------------------------------------------------
+# Punctuation in the reply must NOT prevent a canonical phrase from matching.
+# The server's own safe-default fallback string is "I'm here, mate." —
+# without punctuation stripping, that comma would prevent matching of
+# "i'm here mate" and the gate would fail open on the one input Ant flagged.
+# ===========================================================================
+
+class TestPunctuationNormalisation:
+    """Ant's review fix: punctuation in the reply must NOT prevent a
+    canonical phrase from matching. The server's own safe-default string is
+    'I'm here, mate.' — without punctuation stripping, that comma would
+    prevent matching of 'i'm here mate' and the gate would fail open on the
+    one input Ant specifically flagged."""
+
+    def test_normalise_strips_commas(self):
+        assert _normalise("I'm here, mate.") == "i'm here mate"
+
+    def test_normalise_strips_periods_and_exclamations(self):
+        assert _normalise("No worries! Fair enough.") == "no worries fair enough"
+
+    def test_normalise_preserves_apostrophe(self):
+        """Apostrophes are part of canonical phrases ('i'm', 'didn't', 'don't')
+        and MUST survive normalisation."""
+        assert "'" in _normalise("I'm here")
+        assert _normalise("didn't sound like nothing") == "didn't sound like nothing"
+
+    def test_normalise_normalises_curly_apostrophes(self):
+        # Smart-quote apostrophe (U+2019) → straight apostrophe.
+        assert _normalise("I\u2019m here mate") == "i'm here mate"
+
+    def test_brush_off_fail_matches_safe_default_with_comma(self):
+        """The exact server fallback string 'I'm here, mate.' must match
+        'i'm here mate' in the canonical list, so the gate catches it if
+        somehow that line reaches a judge layer."""
+        v = check_brush_off(_normalise("I'm here, mate."))
+        # 'i'm here mate' is in BRUSH_OFF_GENERIC_AVAILABILITY with no warm
+        # hold → must FAIL.
+        assert v.passed is False
+        assert v.reason == REASON_BRUSH_OFF_GENERIC_NO_HOLD
+
+    def test_brush_off_realworld_punctuated_pass(self):
+        """A genuine warm-hold reply with commas and periods PASSES — the
+        punctuation strip doesn't change correct verdicts, only fixes the
+        false-negative caused by punctuation in failing replies."""
+        reply = "That didn't sound like nothing, mate. Tell me more."
+        v = check_brush_off(_normalise(reply))
+        assert v.passed is True
+
+    def test_identity_fail_punctuated_privacy_register(self):
+        """A privacy-register reply with sentence punctuation must still
+        match the canonical 'your data is safe' fail phrase."""
+        v = check_identity(
+            _normalise("Your data is safe; we won't share it. Promise."),
+            _normalise("are you a bot?"),
+        )
+        assert v.passed is False
+        assert v.reason == REASON_IDENTITY_PRIVACY_UNSOLICITED
 
 
 # ===========================================================================

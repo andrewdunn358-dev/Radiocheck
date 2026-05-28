@@ -239,18 +239,36 @@ class GateVerdict:
 # ============================================================================
 
 def _normalise(text: str) -> str:
-    """Lowercase + collapse all whitespace runs to a single space + strip.
+    """Lowercase + strip non-apostrophe punctuation + collapse all whitespace
+    runs to a single space + strip.
 
     Applied once to the reply and once to the user message at the top of
     run_protocol_gates so every phrase comparison is against the same shape.
-    Apostrophe variants are NOT normalised away — the phrase lists carry both
-    the straight-apostrophe and no-apostrophe spellings explicitly, which keeps
-    matching predictable and avoids over-broadening.
+
+    Why strip punctuation (Phase C review fix — Ant): the server's own
+    fallback strings use sentence punctuation (e.g. "I'm here, mate." with a
+    comma) and persona LLM output is similarly punctuated. Without this strip,
+    "I'm here, mate." does not match the canonical "i'm here mate" because
+    the comma survives — which would silently let a flagged phrase through.
+    Stripping commas, periods, semicolons, dashes, etc. before whitespace
+    collapse closes that gap.
+
+    The APOSTROPHE is intentionally preserved (it is part of "i'm", "didn't",
+    "don't" in the canonical phrase lists). Curly apostrophes are normalised
+    to straight first so both render to the same token. Hyphens are kept too
+    — they appear in canonical user-trigger phrases like "data protection"
+    boundaries and would over-broaden matching if removed.
     """
     if not text:
         return ""
-    # Normalise common curly apostrophes to straight so "i'm" matches "i'm".
+    # Normalise curly quotes/apostrophes to straight so "i\u2019m" == "i'm".
     text = text.replace("\u2019", "'").replace("\u2018", "'")
+    text = text.replace("\u201c", '"').replace("\u201d", '"')
+    # Strip sentence punctuation that would otherwise prevent a phrase from
+    # matching across a comma or period. Apostrophe and hyphen are preserved
+    # (see docstring). The replacement target is a single space so adjacent
+    # words don't accidentally merge.
+    text = re.sub(r"[.,;:!?\"()\[\]{}/\\<>|`~@#$%^&*+=]", " ", text)
     return re.sub(r"\s+", " ", text).lower().strip()
 
 
