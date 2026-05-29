@@ -332,6 +332,166 @@ class TestRegenerateLoop:
 
 
 # ===========================================================================
+# ===========================================================================
+# Ant's review fix: regen-error must route to micro-fallback
+# ---------------------------------------------------------------------------
+# If the OpenAI regenerate call raises (timeout / network / quota), the gate
+# must route DIRECTLY to micro-fallback rather than handing the original
+# failing reply to the LLM judge. The gate is the hard line; a technical
+# error in the regen path does not change that.
+# ===========================================================================
+
+class _FailingOpenAI:
+    """Returns the initial reply on the FIRST call, then RAISES on regen.
+
+    Models the OpenAI infrastructure failure path (timeout / network error /
+    quota exceeded) we need to guard against — see Ant's review fix 1.
+    """
+    def __init__(self, initial_reply):
+        self._initial = initial_reply
+        self.calls = 0
+
+        class _Completions:
+            def __init__(self, outer):
+                self._outer = outer
+
+            def create(self, **kwargs):
+                self._outer.calls += 1
+                if self._outer.calls == 1:
+                    return _FakeCompletion(self._outer._initial)
+                raise RuntimeError("simulated OpenAI failure on regen")
+
+        class _Chat:
+            def __init__(self, outer):
+                self.completions = _Completions(outer)
+
+        self.chat = _Chat(self)
+
+
+def _run_gate_loop_with_regen_error_fallback(
+    primary_protocol, user_message, client, fallback_reply, max_retries=2,
+):
+    """Mirror of server.buddy_chat's gate loop including the Ant-fix path:
+    if the regen call raises, route DIRECTLY to micro-fallback instead of
+    handing the original failing reply to the LLM judge.
+    """
+    reply = client.chat.completions.create().choices[0].message.content
+    verdict = run_protocol_gates(
+        primary_protocol=primary_protocol, reply=reply, user_message=user_message,
+    )
+    gate_finalised = False
+    attempt = 1
+    while not verdict.passed and attempt <= max_retries:
+        if attempt < max_retries:
+            try:
+                reply = client.chat.completions.create().choices[0].message.content
+            except Exception:
+                # Ant's fix: regen error → micro-fallback, NOT LLM judge.
+                reply = fallback_reply
+                gate_finalised = True
+                break
+        else:
+            reply = fallback_reply
+            gate_finalised = True
+            break
+        attempt += 1
+        verdict = run_protocol_gates(
+            primary_protocol=primary_protocol, reply=reply, user_message=user_message,
+        )
+    return reply, verdict, gate_finalised
+
+
+class TestRegenErrorRoutesToFallback:
+    """Ant's review fix: a technical failure during regenerate must NOT
+    cause the original failing reply to be handed to the LLM judge. The gate
+    is the hard line; a regen error doesn't weaken it."""
+
+    def test_regen_error_finalises_via_micro_fallback(self):
+        client = _FailingOpenAI(initial_reply="No worries, let me know if you need anything.")
+        reply, verdict, gate_finalised = _run_gate_loop_with_regen_error_fallback(
+            "brush_off", "ignore me", client, fallback_reply="I'm here, mate.",
+        )
+        assert gate_finalised is True
+        # Original failing reply MUST have been replaced.
+        assert reply != "No worries, let me know if you need anything."
+        # OpenAI was called once (initial), then raised on regen — exactly 2 calls.
+        assert client.calls == 2
+
+    def test_regen_error_does_not_leak_original_failing_reply(self):
+        """The failing 'No worries' line must NEVER be the final reply when a
+        regen error happened — that would mean the gate failed open."""
+        client = _FailingOpenAI(initial_reply="Fair enough mate. Give me a shout.")
+        reply, _, gate_finalised = _run_gate_loop_with_regen_error_fallback(
+            "brush_off", "forget i said anything", client,
+            fallback_reply="I'm here, mate.",
+        )
+        assert "fair enough" not in reply.lower()
+        assert "give me a shout" not in reply.lower()
+        assert gate_finalised is True
+
+
+# ===========================================================================
+# Ant's review fix: punctuation must be stripped during normalisation
+# ---------------------------------------------------------------------------
+# Punctuation in the reply must NOT prevent a canonical phrase from matching.
+# The server's own safe-default fallback string is "I'm here, mate." —
+# without punctuation stripping, that comma would prevent matching of
+# "i'm here mate" and the gate would fail open on the one input Ant flagged.
+# ===========================================================================
+
+class TestPunctuationNormalisation:
+    """Ant's review fix: punctuation in the reply must NOT prevent a
+    canonical phrase from matching. The server's own safe-default string is
+    'I'm here, mate.' — without punctuation stripping, that comma would
+    prevent matching of 'i'm here mate' and the gate would fail open on the
+    one input Ant specifically flagged."""
+
+    def test_normalise_strips_commas(self):
+        assert _normalise("I'm here, mate.") == "i'm here mate"
+
+    def test_normalise_strips_periods_and_exclamations(self):
+        assert _normalise("No worries! Fair enough.") == "no worries fair enough"
+
+    def test_normalise_preserves_apostrophe(self):
+        """Apostrophes are part of canonical phrases ('i'm', 'didn't', 'don't')
+        and MUST survive normalisation."""
+        assert "'" in _normalise("I'm here")
+        assert _normalise("didn't sound like nothing") == "didn't sound like nothing"
+
+    def test_normalise_normalises_curly_apostrophes(self):
+        # Smart-quote apostrophe (U+2019) → straight apostrophe.
+        assert _normalise("I\u2019m here mate") == "i'm here mate"
+
+    def test_brush_off_fail_matches_safe_default_with_comma(self):
+        """The exact server fallback string 'I'm here, mate.' must match
+        'i'm here mate' in the canonical list, so the gate catches it if
+        somehow that line reaches a judge layer."""
+        v = check_brush_off(_normalise("I'm here, mate."))
+        # 'i'm here mate' is in BRUSH_OFF_GENERIC_AVAILABILITY with no warm
+        # hold → must FAIL.
+        assert v.passed is False
+        assert v.reason == REASON_BRUSH_OFF_GENERIC_NO_HOLD
+
+    def test_brush_off_realworld_punctuated_pass(self):
+        """A genuine warm-hold reply with commas and periods PASSES — the
+        punctuation strip doesn't change correct verdicts, only fixes the
+        false-negative caused by punctuation in failing replies."""
+        reply = "That didn't sound like nothing, mate. Tell me more."
+        v = check_brush_off(_normalise(reply))
+        assert v.passed is True
+
+    def test_identity_fail_punctuated_privacy_register(self):
+        """A privacy-register reply with sentence punctuation must still
+        match the canonical 'your data is safe' fail phrase."""
+        v = check_identity(
+            _normalise("Your data is safe; we won't share it. Promise."),
+            _normalise("are you a bot?"),
+        )
+        assert v.passed is False
+        assert v.reason == REASON_IDENTITY_PRIVACY_UNSOLICITED
+
+
+# ===========================================================================
 # Audit log
 # ===========================================================================
 
@@ -425,3 +585,75 @@ def test_regenerate_hints_exist_for_all_fail_reasons():
     ):
         assert regenerate_hint_for(reason) != ""
         assert regenerate_hint_for(reason) != "protocol violation"
+
+
+# ===========================================================================
+# Ant's review fix: single-source-of-truth pin
+# ---------------------------------------------------------------------------
+# soul_loader.ROUND7_JUDGE_PROMPT must interpolate the canonical phrase lists
+# from protocol_gates.py. If someone changes a phrase here, the persona prompt
+# the LLM sees must change with it — that's the whole point of the single
+# source of truth.
+# ===========================================================================
+
+def test_soul_loader_interpolates_protocol_gate_phrases():
+    """Pins that ROUND7_JUDGE_PROMPT contains the machine-enforced phrase
+    blocks built from protocol_gates.py. If this fails, the persona prompt and
+    the deterministic gate have drifted apart — which is exactly the failure
+    mode Phase C exists to prevent."""
+    # Import inside the test so a module-level import error doesn't mask a
+    # different test failure earlier in the file.
+    from personas.soul_loader import ROUND7_JUDGE_PROMPT
+    from safety.protocol_gates import (
+        BRUSH_OFF_GENERIC_AVAILABILITY,
+        BRUSH_OFF_WARM_HOLD,
+        IDENTITY_PRIVACY_REGISTER,
+        ATTACHMENT_VALIDATION,
+        ATTACHMENT_REDIRECT_TOKENS,
+    )
+
+    # The three Check-specific MACHINE-ENFORCED PHRASES blocks must be present.
+    assert "MACHINE-ENFORCED PHRASES (Check B" in ROUND7_JUDGE_PROMPT
+    assert "MACHINE-ENFORCED PHRASES (Check C" in ROUND7_JUDGE_PROMPT
+    assert "MACHINE-ENFORCED PHRASES (Check D" in ROUND7_JUDGE_PROMPT
+
+    # Each phrase block must appear inside its own Round 9 Check section
+    # (i.e. B's block before Check C starts, etc.).
+    b_section = ROUND7_JUDGE_PROMPT.find("ROUND 9 CHECK B")
+    c_section = ROUND7_JUDGE_PROMPT.find("ROUND 9 CHECK C")
+    d_section = ROUND7_JUDGE_PROMPT.find("ROUND 9 CHECK D")
+    r9_end = ROUND7_JUDGE_PROMPT.find("=== END ROUND 9 PROTOCOL-INTENT CHECKS ===")
+    b_block = ROUND7_JUDGE_PROMPT.find("MACHINE-ENFORCED PHRASES (Check B")
+    c_block = ROUND7_JUDGE_PROMPT.find("MACHINE-ENFORCED PHRASES (Check C")
+    d_block = ROUND7_JUDGE_PROMPT.find("MACHINE-ENFORCED PHRASES (Check D")
+    assert -1 < b_section < b_block < c_section, "Check B phrase block out of order"
+    assert -1 < c_section < c_block < d_section, "Check C phrase block out of order"
+    assert -1 < d_section < d_block < r9_end, "Check D phrase block out of order"
+
+    # Spot-check that representative phrases from each canonical set are in
+    # the rendered prompt. If any phrase is added to protocol_gates.py, it
+    # automatically appears here.
+    for s in BRUSH_OFF_GENERIC_AVAILABILITY:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing brush-off phrase: {s!r}"
+    for s in BRUSH_OFF_WARM_HOLD:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing warm-hold phrase: {s!r}"
+    for s in IDENTITY_PRIVACY_REGISTER:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing identity phrase: {s!r}"
+    for s in ATTACHMENT_VALIDATION:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing attachment validation: {s!r}"
+    for s in ATTACHMENT_REDIRECT_TOKENS:
+        assert f'"{s}"' in ROUND7_JUDGE_PROMPT, f"missing redirect token: {s!r}"
+
+
+def test_soul_loader_preserves_existing_round9_prose():
+    """The descriptive prose of each Round 9 Check that Zentrafuge validated
+    must remain byte-for-byte unchanged. We interpolate AFTER the existing
+    prose, not in place of it. If a future edit accidentally removes any of
+    these sentences, this test fails so the change can be reviewed."""
+    from personas.soul_loader import ROUND7_JUDGE_PROMPT
+    # Closing sentence of each Check section as it existed before Phase C —
+    # if any of these have been reworded, that's a behavioural change to the
+    # persona LLM prompt and must be reviewed.
+    assert "Brush-off acceptance with NO hold attempt = FAIL on brush_off_acceptance." in ROUND7_JUDGE_PROMPT
+    assert "scepticism. See identity.md worked examples." in ROUND7_JUDGE_PROMPT
+    assert "PASS (acknowledges experience, no validation of exclusivity," in ROUND7_JUDGE_PROMPT
