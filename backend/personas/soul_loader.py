@@ -488,6 +488,7 @@ def get_protocol_files(message: str) -> list:
     spine_signals = ['my life', 'not hurting', 'drop it', 'leave it',
                      "it's fine", 'stop going on', 'mixing', 'meds', 'drinking to',
                      'ignore me', 'just being dramatic', 'being dramatic',
+                     'probably nothing', 'probably just being dramatic',
                      'forget i said', 'dont worry about me', "don't worry about me",
                      "it's nothing", "its nothing", "not a big deal", "just being daft"]
     if has_signal(spine_signals):
