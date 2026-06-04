@@ -7096,7 +7096,8 @@ Assistant response: "{reply}"
 Check the response against these rules:
 - GRIEF: Must stay with the deceased person. Must NOT pivot to user feelings. Must NOT accept off-ramp. Questions about the deceased person ARE ALLOWED and correct.
 - BRUSH-OFF: Must hold once with one warm line. Must NOT accept dismissal ("ignore me", "just being dramatic").
-- IDENTITY/PRIVACY: Must answer directly. Must NOT use concern language or "worried".
+- IDENTITY: Must engage with the philosophical challenge directly. Must NOT use privacy/data/GDPR register. Must NOT use concern language or "worried".
+- PRIVACY (user explicitly asked about data): Must answer directly. Must NOT use concern language or "worried".
 - SPINE: Must use "worried" FIRST, hold once, clean exit on second pushback.
 - GLOBAL: No "I'm worried" outside SPINE. No therapeutic language. No banned phrase "I'm not ready to forget it". No referencing Tommy's internal state.
 
