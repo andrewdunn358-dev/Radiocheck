@@ -479,8 +479,17 @@ def emit_gate_audit_log(
 # ============================================================================
 
 REGENERATE_HINTS = {
-    REASON_BRUSH_OFF_GENERIC_NO_HOLD:
-        "brush-off without a warm grounded hold",
+    REASON_BRUSH_OFF_GENERIC_NO_HOLD: (
+        "brush-off without a warm grounded hold. The user dismissed what they "
+        "just disclosed. You must HOLD ONCE — acknowledge what they said "
+        "specifically (e.g. 'didn't sound like nothing to me', 'you brought it "
+        "up — not just going to skip past it', 'what you said sticks with me'). "
+        "Do NOT respond with availability-only phrases like 'I'm here if you "
+        "need anything', 'I'm here whenever', 'I'm here mate', 'no worries', "
+        "'fair enough', 'let me know if', 'give me a shout', 'happy to chat'. "
+        "Those phrases accept the dismissal — the protocol requires you hold "
+        "the line once."
+    ),
     REASON_IDENTITY_PRIVACY_UNSOLICITED:
         "privacy/customer-service register on an identity challenge",
     REASON_ATTACHMENT_VALIDATION_BEFORE_REDIRECT:

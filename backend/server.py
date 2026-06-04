@@ -6746,7 +6746,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             # If brush-off signals are present AND NOT high risk AND NOT grief,
             # override primary_protocol to brush_off for correct fallback routing.
             BRUSH_OFF_SIGNALS = ['ignore me', 'just being dramatic', "don't mind me", "dont mind me",
-                                 'just being daft', 'being dramatic', 'forget i said']
+                                 'just being daft', 'being dramatic', 'forget i said',
+                                 'probably nothing', 'probably just being dramatic']
             msg_lower_judge = request.message.lower()
             is_brush_off = any(s in msg_lower_judge for s in BRUSH_OFF_SIGNALS)
             is_grief_active = 'grief.md' in protocol_files
@@ -6834,8 +6835,15 @@ GRIEF:
 - If Turn 2+ → continue memory, do NOT repeat opening question
 
 BRUSH_OFF:
-- Ignore dismissal
-- One grounded line only
+- The user just dismissed what they disclosed ("ignore me", "probably nothing", "just being dramatic", etc.)
+- HOLD THE LINE ONCE — acknowledge what they said specifically, do not accept the dismissal
+- Pattern: name what they brought up + signal you're not skipping past it
+- Good examples: "Didn't sound like nothing to me." / "You brought it up — not just going to skip past it." / "What you said sticks with me, mate."
+- BANNED — these are availability-only phrases that ACCEPT the dismissal (Check B FAIL):
+  * "I'm here if you need anything" / "I'm here whenever" / "I'm here mate"
+  * "Here if you need" / "Let me know if" / "Give me a shout"
+  * "No worries" / "Fair enough" / "Happy to chat" / "Say the word"
+- One grounded line only — do not turn this into a monologue
 
 SPINE:
 - Turn 1 → express concern ("I'm worried...")
@@ -6948,7 +6956,7 @@ Return ONLY the response text. No explanation. No labels."""
                             reply = micro_reply
                             logging.info(f"[ProtocolGate] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']} - Session: {request.sessionId[:12]}")
                         else:
-                            reply = "I'm here, mate."
+                            reply = "What you said sticks with me, mate."
                             logging.error(f"[ProtocolGate] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
                     break
 
@@ -7013,7 +7021,7 @@ Return ONLY the response text. No explanation. No labels."""
                     logging.info(f"[ProtocolGate] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']} - Session: {request.sessionId[:12]}")
                     return micro_reply
                 logging.error(f"[ProtocolGate] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
-                return "I'm here, mate."
+                return "What you said sticks with me, mate."
 
             # Sentinel: when the gate has already produced its final reply (PASS
             # after regen, or micro-fallback after FAIL twice / regen error), we
@@ -7167,7 +7175,7 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_s
                                         logging.info(f"[Fallback] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']}, situation={protocol_state['situation']} - Session: {request.sessionId[:12]}")
                                     else:
                                         # Micro-gen failed — use safe minimal response
-                                        reply = "I'm here, mate."
+                                        reply = "What you said sticks with me, mate."
                                         logging.error(f"[Fallback] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
                             
                                 logging.warning(f"[Judge] Fallback triggered for {primary_protocol} - Session: {request.sessionId[:12]}")
