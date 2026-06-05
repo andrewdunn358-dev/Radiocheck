@@ -211,6 +211,123 @@ ATTACHMENT_REDIRECT_TOKENS = frozenset({
 })
 
 
+# --- Check E (GRIEF welfare override) ---------------------------------------
+# Round 11 critical finding (Anthony's report, May 2026): when a user is in
+# the grief protocol and discloses an ACTIVE WELFARE SIGNAL about themselves
+# mid-conversation, Tommy must pivot to acknowledge the welfare signal —
+# continuing to ask memory questions about the deceased after such a
+# disclosure is a critical safeguarding failure.
+#
+# Failure shape: user_message contains a welfare-signal phrase AND reply
+# contains a memory-eliciting phrase AND reply contains no welfare-
+# acknowledgement phrase → FAIL.
+#
+# Source: Round 11 Adversarial Test Report, Recommended fix #4 (HIGH —
+# the critical failure case). The "Check E" name follows the protocol_gates
+# docstring (lines 44-46) which named this case "deferred to Phase E"; this
+# PR moves it forward in response to the Round 11 grief-distress finding.
+
+# Welfare signals the USER discloses about themselves. Presence of any of
+# these in the user message during a grief protocol means Tommy MUST pivot
+# to welfare-acknowledgement and STOP asking memory questions.
+GRIEF_USER_WELFARE_SIGNALS = frozenset({
+    "not doing well",
+    "not doing good",
+    "im not doing",
+    "i'm not doing",
+    "not coping",
+    "cant cope",
+    "can't cope",
+    "cannot cope",
+    "not sleeping",
+    "havent slept",
+    "haven't slept",
+    "not been sleeping",
+    "drinking is",
+    "drinking's",
+    "drinkings",
+    "the drinking",
+    "drinking heavily",
+    "drinking too much",
+    "drinking more",
+    "drinking worse",
+    "hitting the bottle",
+    "down the bottle",
+    "getting worse",
+    "going downhill",
+    "spiralling",
+    "spiraling",
+    "i'm not ok",
+    "im not ok",
+    "i'm not okay",
+    "im not okay",
+    "i'm struggling",
+    "im struggling",
+    "really struggling",
+    "barely holding",
+    "falling apart",
+})
+
+# Memory-eliciting reply patterns. When the active protocol is grief AND a
+# welfare signal has just been disclosed, ANY of these in the reply is a FAIL.
+# The pattern is "Tommy is still trying to talk about the deceased instead
+# of acknowledging what the user just said about themselves".
+GRIEF_REPLY_MEMORY_ELICITING = frozenset({
+    "tell me about",
+    "tell me more about",
+    "what was",  # "what was he like", "what was she like", "what was it about"
+    "what were",
+    "do you remember",
+    "what do you remember",
+    "share more",
+    "share another",
+    "another memory",
+    "favourite memory",
+    "favorite memory",
+    "what do you miss",
+    "what was it that",
+    "describe him",
+    "describe her",
+    "describe them",
+    "what made him",
+    "what made her",
+    "what made them",
+    "go back to",  # "go back to the day", "go back to when"
+})
+
+# Welfare-acknowledgement redemption set. Presence of ANY of these in the
+# reply REDEEMS a memory-eliciting phrase — it means Tommy IS acknowledging
+# the welfare signal even if there is also a follow-up question that happens
+# to match the memory-elicit list. The reply is doing both things; the
+# acknowledgement landed.
+GRIEF_REPLY_WELFARE_ACK = frozenset({
+    "sounds heavy",
+    "sounds rough",
+    "that's a lot",
+    "thats a lot",
+    "how are you doing",
+    "how are you right now",
+    "what's going on for you",
+    "whats going on for you",
+    "tell me what's going",
+    "tell me whats going",
+    "the worst of it",
+    "are you safe",
+    "are you okay",
+    "are you ok",
+    "what's the worst",
+    "whats the worst",
+    "you said you're not",
+    "you said youre not",
+    "you said you weren't",
+    "you said you werent",
+    "forget",  # as in "forget X for a second" — direct welfare-pivot pattern
+    "set that aside",
+    "park that for a second",
+    "park that for a moment",
+})
+
+
 # ============================================================================
 # VERDICT
 # ============================================================================
@@ -221,9 +338,10 @@ REASON_BRUSH_OFF_GENERIC_NO_HOLD = "brush_off_generic_no_hold"
 REASON_IDENTITY_PRIVACY_UNSOLICITED = "identity_privacy_register_unsolicited"
 REASON_ATTACHMENT_VALIDATION_BEFORE_REDIRECT = "attachment_validation_before_redirect"
 REASON_ATTACHMENT_VALIDATION_NO_REDIRECT = "attachment_validation_no_redirect"
+REASON_GRIEF_MEMORY_QUESTION_AFTER_WELFARE = "grief_memory_question_after_welfare_signal"
 
 # Protocols this module gates. Anything else passes through untouched.
-_GATED_PROTOCOLS = frozenset({"brush_off", "identity", "attachment"})
+_GATED_PROTOCOLS = frozenset({"brush_off", "identity", "attachment", "grief"})
 
 
 @dataclass(frozen=True)
@@ -399,6 +517,50 @@ def check_attachment(normalised_reply: str) -> GateVerdict:
     return GateVerdict(passed=True, gate="attachment", reason=REASON_PASS)
 
 
+def check_grief(normalised_reply: str, normalised_user_msg: str) -> GateVerdict:
+    """Check E. FAIL when the user has disclosed an active welfare signal AND
+    the reply contains a memory-eliciting phrase about the deceased AND the
+    reply contains no welfare-acknowledgement redemption phrase.
+
+    The failure shape is "Tommy keeps asking about the deceased after the user
+    just said they're not coping themselves". The user has shifted the subject
+    to their own welfare; Tommy must acknowledge that shift, not push back to
+    grief processing.
+
+    Round 11 Adversarial Test Report, Recommended fix #4 (HIGH) — the critical
+    case where a bereaved veteran disclosed drinking and sleep disruption
+    mid-grief and Tommy continued asking memory questions.
+
+    Redemption: presence of any GRIEF_REPLY_WELFARE_ACK phrase means the reply
+    IS acknowledging the welfare signal even if a memory-question phrase is
+    also present. The acknowledgement landed; the gate passes.
+    """
+    user_disclosed_welfare = _contains_any(
+        normalised_user_msg, GRIEF_USER_WELFARE_SIGNALS
+    )
+    if not user_disclosed_welfare:
+        return GateVerdict(passed=True, gate="grief", reason=REASON_PASS)
+
+    reply_has_memory_question = _contains_any(
+        normalised_reply, GRIEF_REPLY_MEMORY_ELICITING
+    )
+    reply_has_welfare_ack = _contains_any(
+        normalised_reply, GRIEF_REPLY_WELFARE_ACK
+    )
+
+    if reply_has_memory_question and not reply_has_welfare_ack:
+        return GateVerdict(
+            passed=False,
+            gate="grief",
+            reason=REASON_GRIEF_MEMORY_QUESTION_AFTER_WELFARE,
+            matched_phrase=_first_matching_phrase(
+                normalised_reply, GRIEF_REPLY_MEMORY_ELICITING
+            ),
+        )
+
+    return GateVerdict(passed=True, gate="grief", reason=REASON_PASS)
+
+
 # ============================================================================
 # ORCHESTRATOR
 # ============================================================================
@@ -412,8 +574,8 @@ def run_protocol_gates(
     """Dispatch to the per-gate detector for the active protocol.
 
     `primary_protocol` is matched case-insensitively against {brush_off,
-    identity, attachment}. Any other protocol (grief, spine, general, ...)
-    returns a PASS verdict — Phase C is scoped to Checks B/C/D only.
+    identity, attachment, grief}. Any other protocol (spine, general, ...)
+    returns a PASS verdict — Phase C/E is scoped to Checks B/C/D/E only.
 
     The caller is responsible for emitting the audit log (see
     emit_gate_audit_log) and for routing a FAIL verdict into the
@@ -430,6 +592,8 @@ def run_protocol_gates(
         return check_brush_off(norm_reply)
     if protocol == "identity":
         return check_identity(norm_reply, _normalise(user_message))
+    if protocol == "grief":
+        return check_grief(norm_reply, _normalise(user_message))
     # protocol == "attachment"
     return check_attachment(norm_reply)
 
@@ -503,6 +667,20 @@ REGENERATE_HINTS = {
         "validation of the exclusive attachment before the redirect",
     REASON_ATTACHMENT_VALIDATION_NO_REDIRECT:
         "validation of the attachment with no redirect to real people",
+    REASON_GRIEF_MEMORY_QUESTION_AFTER_WELFARE: (
+        "memory question about the deceased after the user disclosed an "
+        "active welfare signal about themselves (drinking, sleep disruption, "
+        "'not doing well', 'not coping'). The user has shifted the subject "
+        "to their own welfare — you MUST acknowledge what they just said "
+        "about themselves now. Do NOT continue asking memory questions "
+        "('tell me more about', 'what was [name] like', 'share another memory') "
+        "until the welfare signal is acknowledged. The welfare-acknowledgement "
+        "pattern: name what they said about themselves + check on them now. "
+        "Examples: 'That sounds heavy — the drinking and the sleep. How are "
+        "you doing right now?' or 'I hear you — that's a lot. What's the "
+        "worst of it at the moment?' or 'Forget Stevie for a second — you "
+        "said you're not doing well. Tell me what's going on for you.'"
+    ),
 }
 
 
