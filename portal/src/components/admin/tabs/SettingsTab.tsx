@@ -302,6 +302,45 @@ export default function SettingsTab({ token, userEmail, onSuccess, onError }: Se
           ))}
         </div>
       </div>
+
+      {/* Safeguarding Response Mode */}
+      <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h3 className="font-semibold mb-2 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-red-400" />
+          Safeguarding Response
+        </h3>
+        <p className="text-sm text-gray-400 mb-4">
+          Signpost mode points users to external services on a safeguarding alert instead of escalating to the staff queue. The alert is still recorded. Do NOT enable until the signpost overlay has been verified on production.
+        </p>
+        <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+          <div>
+            <p className="font-medium">Signpost mode (vs escalate)</p>
+            <p className="text-sm text-gray-400">On = signpost to external services; Off = escalate to the staff queue</p>
+          </div>
+          <button
+            data-testid="toggle-signpost-mode"
+            onClick={async () => {
+              try {
+                const newMode = systemSettings.safeguarding_response_mode === 'signpost' ? 'escalate' : 'signpost';
+                await api.updateSettings(token!, { safeguarding_response_mode: newMode });
+                setSystemSettings({ ...systemSettings, safeguarding_response_mode: newMode });
+                onSuccess('Safeguarding response mode: ' + newMode);
+              } catch (err: any) {
+                onError('Failed to update setting: ' + err.message);
+              }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              systemSettings.safeguarding_response_mode === 'signpost' ? 'bg-red-600' : 'bg-gray-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                systemSettings.safeguarding_response_mode === 'signpost' ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

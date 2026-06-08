@@ -29,6 +29,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
 import { API_URL } from '../../src/config/api';
+import { useFeatureFlags } from '../../src/hooks/useFeatureFlags';
 
 // Avatar image mapping for React Native local images
 const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
@@ -185,6 +186,10 @@ export default function DynamicAIChat() {
   // Global consent key - same for all AI chats
   const GLOBAL_AI_CONSENT_KEY = 'radiocheck_ai_consent_accepted';
   
+  // Tenant feature flags — drives signpost vs escalate behaviour in the overlay
+  const { features: rcFeatures, crisisResources, supportOrgs } = useFeatureFlags();
+  const signpostMode = rcFeatures.safeguarding_response_mode === 'signpost';
+
   // Safeguarding state
   const [showSafeguardingModal, setShowSafeguardingModal] = useState(false);
   const [currentAlertId, setCurrentAlertId] = useState<string | null>(null);
@@ -848,10 +853,12 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
                 </View>
                 
                 <Text style={styles.safeguardingText}>
-                  It sounds like you might be going through something difficult. 
-                  Would you like to speak with a real person right now?
+                  {signpostMode
+                    ? "It sounds like you might be going through something difficult. Here are some people you can reach out to right now."
+                    : "It sounds like you might be going through something difficult. Would you like to speak with a real person right now?"}
                 </Text>
                 
+                {!signpostMode && (
                 <View style={{ gap: 12, marginVertical: 16 }}>
                   {/* Call a Supporter Button */}
                   <TouchableOpacity
@@ -956,6 +963,41 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
                     <FontAwesome5 name="chevron-right" size={14} color="#64748b" />
                   </TouchableOpacity>
                 </View>
+                )}
+
+                {signpostMode && (
+                  <View style={{ gap: 10, marginVertical: 16 }}>
+                    {crisisResources.filter((r: any) => r && r.phone).map((r: any, i: number) => (
+                      <TouchableOpacity
+                        key={'cr-' + i}
+                        style={[styles.safeguardingOption, { backgroundColor: '#dcfce7', borderColor: '#16a34a', borderWidth: 2 }]}
+                        onPress={() => Linking.openURL('tel:' + String(r.phone).replace(/\s+/g, ''))}
+                      >
+                        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center' }}>
+                          <FontAwesome5 name="phone-alt" size={20} color="#ffffff" />
+                        </View>
+                        <View style={styles.safeguardingOptionContent}>
+                          <Text style={[styles.safeguardingOptionTitle, { color: '#16a34a', fontSize: 16 }]}>{r.name} · {r.phone}</Text>
+                          {!!r.description && <Text style={styles.safeguardingOptionDesc}>{r.description}</Text>}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                    {supportOrgs.filter((o: any) => o && o.url).map((o: any, i: number) => (
+                      <TouchableOpacity
+                        key={'so-' + i}
+                        style={[styles.safeguardingOption, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
+                        onPress={() => Linking.openURL(o.url)}
+                      >
+                        <FontAwesome5 name="external-link-alt" size={18} color="#64748b" />
+                        <View style={styles.safeguardingOptionContent}>
+                          <Text style={[styles.safeguardingOptionTitle, { color: '#64748b', fontSize: 15 }]}>{o.name}</Text>
+                          {!!o.description && <Text style={[styles.safeguardingOptionDesc, { fontSize: 12 }]}>{o.description}</Text>}
+                        </View>
+                        <FontAwesome5 name="chevron-right" size={14} color="#64748b" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
 
                 <View style={styles.emergencyNote}>
                   <FontAwesome5 name="exclamation-triangle" size={16} color={isDark ? '#fcd34d' : '#92400e'} />
