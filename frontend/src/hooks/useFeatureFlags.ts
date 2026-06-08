@@ -10,11 +10,13 @@ export interface FeatureFlags {
 
 export interface CrisisResource { name: string; phone?: string; description?: string; }
 export interface SupportOrg { name: string; url?: string; description?: string; }
+export interface OverlayContent { title: string; signpost_text: string; escalate_text: string; }
 
 interface TenantConfigData {
   features: FeatureFlags;
   crisisResources: CrisisResource[];
   supportOrgs: SupportOrg[];
+  overlay: OverlayContent;
 }
 
 /**
@@ -32,6 +34,11 @@ const SAFE_DEFAULTS: TenantConfigData = {
   },
   crisisResources: [],
   supportOrgs: [],
+  overlay: {
+    title: "We're Here For You",
+    signpost_text: "It sounds like you might be going through something difficult. Here are some people you can reach out to right now.",
+    escalate_text: "It sounds like you might be going through something difficult. Would you like to speak with a real person right now?",
+  },
 };
 
 // Module-level cache so the config is fetched once and shared across screens.
@@ -56,6 +63,7 @@ async function loadConfig(): Promise<TenantConfigData> {
         },
         crisisResources: Array.isArray(data?.crisis_resources) ? data.crisis_resources : [],
         supportOrgs: Array.isArray(data?.support_organisations) ? data.support_organisations : [],
+        overlay: { ...SAFE_DEFAULTS.overlay, ...((data && data.overlay) || {}) },
       };
       return _cache;
     } catch (err) {
@@ -88,6 +96,7 @@ export function useFeatureFlags() {
     features: data.features,
     crisisResources: data.crisisResources,
     supportOrgs: data.supportOrgs,
+    overlay: data.overlay,
     loaded,
   };
 }
