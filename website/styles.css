@@ -977,3 +977,16 @@ h1, h2, h3, h4 {
         justify-content: center;
     }
 }
+
+/* ============================================================
+   Go-to-market (OFF) mode toggle
+   Activated by the `rc-offmode` class on <html> (set in the page
+   <head> via RC_OFFMODE). Reinstate by setting RC_OFFMODE = false.
+     .rc-on         shown normally, hidden in off mode (paired with .rc-off)
+     .rc-off        hidden normally, shown in off mode
+     .rc-escalation shown normally, hidden in off mode
+   ============================================================ */
+.rc-off { display: none; }
+html.rc-offmode .rc-on { display: none; }
+html.rc-offmode .rc-off { display: inline; }
+html.rc-offmode .rc-escalation { display: none !important; }
