@@ -6584,17 +6584,34 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             # Get safety wrapper for crisis response message
             # ALWAYS use the Radio Check formatted crisis response (human options primary)
             # Tommy gets his own voice for the pre-text
-            if character == "tommy":
+            # On-platform human-support claims must reflect the go-to-market flags.
+            # In off-mode (peer + counsellor disabled, or signpost mode) we must NOT
+            # point a person in crisis at services that are switched off. We remove
+            # only the on-platform lines and fall back to the neutral preamble + the
+            # always-real external resources — no new crisis wording is authored here.
+            _counsellor_on = _site_settings.get("counsellor_enabled", True)
+            _peer_on = _site_settings.get("peer_to_peer_enabled", True)
+            _human_support = (_counsellor_on or _peer_on) and not signpost_mode
+
+            if character == "tommy" and _human_support:
                 crisis_preamble = "Right. I'm not going to leave you with that. There are real people on here who can help — proper veterans and counsellors. Worth knowing that's there. I'm still here too."
             else:
                 crisis_preamble = "Right, I need to be straight with you. What you're telling me is serious and I'm worried."
+
+            _onplatform = ""
+            if _human_support:
+                _onplatform = "There are real people on this platform who can help right now:\n"
+                if _counsellor_on:
+                    _onplatform += "**Connect with Counsellors** — trained professionals, veterans who get it\n"
+                if _peer_on:
+                    _onplatform += "**Peer Support Network** — real people on Radio Check, not AI\n"
+                _onplatform += "\n"
+
             crisis_response = (
                 f"{crisis_preamble}\n\n"
-                "There are real people on this platform who can help right now:\n"
-                "**Connect with Counsellors** — trained professionals, veterans who get it\n"
-                "**Peer Support Network** — real people on Radio Check, not AI\n\n"
-                "Or reach out directly:\n"
-                "**Samaritans**: 116 123 (free, 24/7)\n"
+                f"{_onplatform}"
+                + ("Or reach out directly:\n" if _human_support else "")
+                + "**Samaritans**: 116 123 (free, 24/7)\n"
                 "**Combat Stress**: 0800 138 1619 (veterans, free, 24/7)\n"
                 "**Emergency**: 999\n\n"
                 "I'm still here if you want to keep chatting — I'm not going anywhere."
