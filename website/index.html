@@ -4,12 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radio Check - Mental Health Support for UK Armed Forces</title>
+    <!-- OFF-MODE (go-to-market): peer-support / counsellor wording removed. ON-MODE originals preserved in the comment below for reinstate. -->
+    <meta name="description" content="Radio Check provides free, confidential 24/7 mental health support for UK veterans, serving personnel, and their families. AI companions and practical resources.">
+    <meta name="keywords" content="veteran support, mental health, UK armed forces, PTSD help, serving personnel">
+    <!-- ON-MODE originals (reinstate):
     <meta name="description" content="Radio Check provides free, confidential 24/7 mental health and peer support for UK veterans, serving personnel, and their families. AI companions, live chat with counsellors, and practical resources.">
     <meta name="keywords" content="veteran support, mental health, UK armed forces, peer support, PTSD help, military counselling, serving personnel">
+    -->
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/favicon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <!-- ============================================================
+         GO-TO-MARKET (OFF) MODE — single switch for this page.
+         Hides peer-support, counsellor & callback copy and swaps
+         affected wording to the AI-companion / support framing.
+         Set RC_OFFMODE = false to reinstate the full site. Nothing
+         is deleted — the on-mode copy stays in the markup.
+         ============================================================ -->
+    <script>
+      window.RC_OFFMODE = true;
+      if (window.RC_OFFMODE) document.documentElement.classList.add('rc-offmode');
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -40,7 +56,7 @@
             <h1>Radio Check</h1>
             <p class="hero-tagline">Free, Confidential Mental Health Support</p>
             <p class="hero-description">
-                24/7 peer support and counselling for UK Armed Forces personnel, veterans, and their families. 
+                <span class="rc-on">24/7 peer support and counselling for UK Armed Forces personnel, veterans, and their families.</span><span class="rc-off">24/7 support for UK Armed Forces personnel, veterans, and their families.</span> 
                 Because sometimes you just need to know someone's listening.
             </p>
             <div class="hero-buttons">
@@ -59,7 +75,7 @@
         <div class="container">
             <h2 style="color: white; text-align: center; margin-bottom: 20px;">What is Radio Check?</h2>
             <p style="text-align: center; font-size: 1.2rem; max-width: 800px; margin: 0 auto 40px; opacity: 0.9; line-height: 1.8;">
-                Radio Check is a <strong>free, completely confidential</strong> mental health and peer support service 
+                Radio Check is a <strong>free, completely confidential</strong> <span class="rc-on">mental health and peer support service</span><span class="rc-off">mental health and wellbeing service</span> 
                 built by veterans, for the UK Armed Forces community. Whether you're currently serving, a veteran, 
                 a reservist, or a family member - we're here for you, day or night.
             </p>
@@ -72,7 +88,7 @@
                 <div style="background: rgba(255,255,255,0.1); padding: 24px; border-radius: 12px; text-align: center;">
                     <i class="fas fa-clock" style="font-size: 2.5rem; margin-bottom: 16px; color: #3b82f6;"></i>
                     <h3 style="color: white; margin-bottom: 12px;">Available 24/7</h3>
-                    <p style="opacity: 0.9;">Our AI Battle Buddies are always online. Human counsellors and peer supporters available during staffed hours.</p>
+                    <p style="opacity: 0.9;"><span class="rc-on">Our AI Battle Buddies are always online. Human counsellors and peer supporters available during staffed hours.</span><span class="rc-off">Our AI Battle Buddies are always online, day or night.</span></p>
                 </div>
                 <div style="background: rgba(255,255,255,0.1); padding: 24px; border-radius: 12px; text-align: center;">
                     <i class="fas fa-hand-holding-heart" style="font-size: 2.5rem; margin-bottom: 16px; color: #ec4899;"></i>
@@ -99,7 +115,7 @@
                     <p class="feature-short">9 AI companions with unique personalities, available 24/7 for a chat whenever you need it.</p>
                     <p class="feature-expanded">Our AI Battle Buddies understand military culture and speak your language. From Tommy's laid-back chat to Bob's straight-talking Para banter, Frankie's PTI fitness motivation to Rachel's warm, caring support - there's someone for every mood. They're trained to listen without judgment, offer coping strategies, and know when to guide you to human support. Perfect for those 3am moments.</p>
                 </div>
-                <div class="feature-card" data-expanded="false">
+                <div class="feature-card rc-escalation" data-expanded="false">
                     <div class="feature-icon">
                         <i class="fas fa-comments"></i>
                     </div>
@@ -107,7 +123,7 @@
                     <p class="feature-short">Text chat with real counsellors and peer supporters who understand military life.</p>
                     <p class="feature-expanded">Connect instantly via text chat with trained peer supporters and qualified counsellors. Our team includes veterans from all three services who've completed specialist mental health training. No phone calls needed - just type when you're ready. Conversations are encrypted and confidential. Request a callback if you'd prefer to talk voice-to-voice.</p>
                 </div>
-                <div class="feature-card" data-expanded="false">
+                <div class="feature-card rc-escalation" data-expanded="false">
                     <div class="feature-icon">
                         <i class="fas fa-phone-alt"></i>
                     </div>
