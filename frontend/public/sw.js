@@ -13,7 +13,16 @@ self.addEventListener('install', () => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      // Purge any caches left by a previous (caching) service worker, so a
+      // stale bundle can never be served. Important here: a cached old bundle
+      // could mask backend safeguarding/feature-flag changes.
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })()
+  );
 });
 
 self.addEventListener('fetch', (event) => {
