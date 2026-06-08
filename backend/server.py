@@ -3811,6 +3811,58 @@ async def update_settings(
     
     return {"message": "Settings updated successfully"}
 
+
+# ============ EDITABLE POP-UP / CRISIS CONTENT (per tenant) ============
+
+DEFAULT_OVERLAY = {
+    "title": "We're Here For You",
+    "signpost_text": "It sounds like you might be going through something difficult. Here are some people you can reach out to right now.",
+    "escalate_text": "It sounds like you might be going through something difficult. Would you like to speak with a real person right now?",
+}
+
+
+class TenantContentUpdate(BaseModel):
+    crisis_resources: Optional[list] = None
+    support_organisations: Optional[list] = None
+    overlay: Optional[dict] = None
+
+
+@api_router.get("/tenant-content/{tenant_id}")
+async def get_tenant_content(tenant_id: str, current_user: User = Depends(require_role("admin"))):
+    """Editable pop-up content for a tenant — DB override merged over hardcoded defaults."""
+    base = get_tenant_by_id(tenant_id)
+    content = await db.settings.find_one({"_id": f"tenant_content:{tenant_id}"}, {"_id": 0}) or {}
+    return {
+        "tenant_id": tenant_id,
+        "crisis_resources": content["crisis_resources"] if isinstance(content.get("crisis_resources"), list) else base["crisis_resources"],
+        "support_organisations": content["support_organisations"] if isinstance(content.get("support_organisations"), list) else base["support_organisations"],
+        "overlay": {**DEFAULT_OVERLAY, **(content.get("overlay") or {})},
+    }
+
+
+@api_router.put("/tenant-content/{tenant_id}")
+async def update_tenant_content(
+    tenant_id: str,
+    payload: TenantContentUpdate,
+    current_user: User = Depends(require_role("admin")),
+):
+    """Save editable pop-up content for a tenant (admin only)."""
+    update_data = {k: v for k, v in payload.dict().items() if v is not None}
+    await db.settings.update_one(
+        {"_id": f"tenant_content:{tenant_id}"},
+        {"$set": update_data},
+        upsert=True,
+    )
+    await audit_admin_action(
+        db,
+        user_id=current_user.id,
+        email=current_user.email,
+        action="tenant_content_changed",
+        details={"tenant_id": tenant_id, "changed_fields": list(update_data.keys())},
+    )
+    return {"message": "Tenant content updated"}
+
+
 # ============ GRACE FRONT PAGE TOGGLE ============
 
 @api_router.get("/settings/grace-greeter")
@@ -9198,14 +9250,20 @@ async def get_tenant_config_endpoint(req: Request):
         "front_page_crisis_cta_enabled": s.get("front_page_crisis_cta_enabled", True),
         "safeguarding_response_mode": s.get("safeguarding_response_mode", "escalate"),
     }
+    # Admin-editable pop-up content: DB override per tenant, else hardcoded defaults.
+    content = await db.settings.find_one({"_id": f"tenant_content:{config['id']}"}) or {}
+    overlay = {**DEFAULT_OVERLAY, **(content.get("overlay") or {})}
+    crisis_resources = content["crisis_resources"] if isinstance(content.get("crisis_resources"), list) else config["crisis_resources"]
+    support_organisations = content["support_organisations"] if isinstance(content.get("support_organisations"), list) else config["support_organisations"]
     return {
         "id": config["id"],
         "name": config["name"],
         "tagline": config["tagline"],
         "colors": config["colors"],
         "personas": config["personas"],
-        "crisis_resources": config["crisis_resources"],
-        "support_organisations": config["support_organisations"],
+        "crisis_resources": crisis_resources,
+        "support_organisations": support_organisations,
+        "overlay": overlay,
         "features": features,
     }
 

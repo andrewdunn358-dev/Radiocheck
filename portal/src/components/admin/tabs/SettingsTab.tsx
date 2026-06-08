@@ -30,6 +30,20 @@ export default function SettingsTab({ token, userEmail, onSuccess, onError }: Se
   const [clearLogsType, setClearLogsType] = useState<string>('');
   const [clearLogsConfirmText, setClearLogsConfirmText] = useState('');
 
+  // Editable pop-up content (crisis resources + overlay wording), per tenant
+  const [popupTenant, setPopupTenant] = useState('radiocheck');
+  const [popup, setPopup] = useState<any>(null);
+  const loadPopup = useCallback(async (tid: string) => {
+    if (!token) return;
+    try {
+      const c = await api.getTenantContent(token, tid);
+      setPopup(c);
+    } catch (e: any) {
+      onError('Failed to load pop-up content: ' + e.message);
+    }
+  }, [token, onError]);
+  useEffect(() => { loadPopup(popupTenant); }, [popupTenant, loadPopup]);
+
   // Load settings
   const loadSettings = useCallback(async () => {
     if (!token) return;
@@ -301,6 +315,142 @@ export default function SettingsTab({ token, userEmail, onSuccess, onError }: Se
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Safeguarding Response Mode */}
+      <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h3 className="font-semibold mb-2 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-red-400" />
+          Safeguarding Response
+        </h3>
+        <p className="text-sm text-gray-400 mb-4">
+          Signpost mode points users to external services on a safeguarding alert instead of escalating to the staff queue. The alert is still recorded. Do NOT enable until the signpost overlay has been verified on production.
+        </p>
+        <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+          <div>
+            <p className="font-medium">Signpost mode (vs escalate)</p>
+            <p className="text-sm text-gray-400">On = signpost to external services; Off = escalate to the staff queue</p>
+          </div>
+          <button
+            data-testid="toggle-signpost-mode"
+            onClick={async () => {
+              try {
+                const newMode = systemSettings.safeguarding_response_mode === 'signpost' ? 'escalate' : 'signpost';
+                await api.updateSettings(token!, { safeguarding_response_mode: newMode });
+                setSystemSettings({ ...systemSettings, safeguarding_response_mode: newMode });
+                onSuccess('Safeguarding response mode: ' + newMode);
+              } catch (err: any) {
+                onError('Failed to update setting: ' + err.message);
+              }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              systemSettings.safeguarding_response_mode === 'signpost' ? 'bg-red-600' : 'bg-gray-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                systemSettings.safeguarding_response_mode === 'signpost' ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Editable Pop-up / Crisis Resources */}
+      <div className="mt-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h3 className="font-semibold mb-2 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-blue-400" />
+          Pop-up / Crisis Resources
+        </h3>
+        <p className="text-sm text-gray-400 mb-4">
+          Edit the safeguarding pop-up wording and the crisis numbers / support organisations shown to users. Applies to the app and website.
+        </p>
+
+        <div className="flex gap-2 mb-4">
+          {['radiocheck', 'bluelight'].map((t) => (
+            <button
+              key={t}
+              onClick={() => setPopupTenant(t)}
+              className={`px-3 py-1.5 rounded-lg text-sm ${popupTenant === t ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+            >
+              {t === 'radiocheck' ? 'Radio Check' : 'Blue Light'}
+            </button>
+          ))}
+        </div>
+
+        {!popup ? (
+          <p className="text-sm text-gray-500">Loading…</p>
+        ) : (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-300">Wording</p>
+              <input className="w-full bg-gray-700 rounded p-2 text-sm" placeholder="Title"
+                value={popup.overlay?.title || ''}
+                onChange={(e) => setPopup({ ...popup, overlay: { ...popup.overlay, title: e.target.value } })} />
+              <textarea className="w-full bg-gray-700 rounded p-2 text-sm" placeholder="Signpost intro text" rows={2}
+                value={popup.overlay?.signpost_text || ''}
+                onChange={(e) => setPopup({ ...popup, overlay: { ...popup.overlay, signpost_text: e.target.value } })} />
+              <textarea className="w-full bg-gray-700 rounded p-2 text-sm" placeholder="Escalate intro text" rows={2}
+                value={popup.overlay?.escalate_text || ''}
+                onChange={(e) => setPopup({ ...popup, overlay: { ...popup.overlay, escalate_text: e.target.value } })} />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-300">Crisis numbers</p>
+              {(popup.crisis_resources || []).map((r: any, i: number) => (
+                <div key={i} className="flex gap-2">
+                  <input className="flex-1 bg-gray-700 rounded p-2 text-sm" placeholder="Name" value={r.name || ''}
+                    onChange={(e) => { const a = [...popup.crisis_resources]; a[i] = { ...a[i], name: e.target.value }; setPopup({ ...popup, crisis_resources: a }); }} />
+                  <input className="w-24 bg-gray-700 rounded p-2 text-sm" placeholder="Phone" value={r.phone || ''}
+                    onChange={(e) => { const a = [...popup.crisis_resources]; a[i] = { ...a[i], phone: e.target.value }; setPopup({ ...popup, crisis_resources: a }); }} />
+                  <input className="flex-1 bg-gray-700 rounded p-2 text-sm" placeholder="Description" value={r.description || ''}
+                    onChange={(e) => { const a = [...popup.crisis_resources]; a[i] = { ...a[i], description: e.target.value }; setPopup({ ...popup, crisis_resources: a }); }} />
+                  <button className="text-red-400 px-2" onClick={() => setPopup({ ...popup, crisis_resources: popup.crisis_resources.filter((_: any, j: number) => j !== i) })}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button className="text-sm text-blue-400" onClick={() => setPopup({ ...popup, crisis_resources: [...(popup.crisis_resources || []), { name: '', phone: '', description: '' }] })}>+ Add number</button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-300">Support organisations</p>
+              {(popup.support_organisations || []).map((o: any, i: number) => (
+                <div key={i} className="flex gap-2">
+                  <input className="flex-1 bg-gray-700 rounded p-2 text-sm" placeholder="Name" value={o.name || ''}
+                    onChange={(e) => { const a = [...popup.support_organisations]; a[i] = { ...a[i], name: e.target.value }; setPopup({ ...popup, support_organisations: a }); }} />
+                  <input className="flex-1 bg-gray-700 rounded p-2 text-sm" placeholder="URL" value={o.url || ''}
+                    onChange={(e) => { const a = [...popup.support_organisations]; a[i] = { ...a[i], url: e.target.value }; setPopup({ ...popup, support_organisations: a }); }} />
+                  <input className="flex-1 bg-gray-700 rounded p-2 text-sm" placeholder="Description" value={o.description || ''}
+                    onChange={(e) => { const a = [...popup.support_organisations]; a[i] = { ...a[i], description: e.target.value }; setPopup({ ...popup, support_organisations: a }); }} />
+                  <button className="text-red-400 px-2" onClick={() => setPopup({ ...popup, support_organisations: popup.support_organisations.filter((_: any, j: number) => j !== i) })}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button className="text-sm text-blue-400" onClick={() => setPopup({ ...popup, support_organisations: [...(popup.support_organisations || []), { name: '', url: '', description: '' }] })}>+ Add organisation</button>
+            </div>
+
+            <button
+              data-testid="save-popup-content"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium"
+              onClick={async () => {
+                try {
+                  await api.updateTenantContent(token!, popupTenant, {
+                    crisis_resources: popup.crisis_resources,
+                    support_organisations: popup.support_organisations,
+                    overlay: popup.overlay,
+                  });
+                  onSuccess('Pop-up content saved');
+                } catch (e: any) {
+                  onError('Failed to save pop-up content: ' + e.message);
+                }
+              }}
+            >
+              Save pop-up content
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

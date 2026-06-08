@@ -378,6 +378,16 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(settings) 
     }),
+
+  getTenantContent: (token: string, tenantId: string) =>
+    api.fetch<any>(`/tenant-content/${tenantId}`, { token }),
+
+  updateTenantContent: (token: string, tenantId: string, content: any) =>
+    api.fetch<any>(`/tenant-content/${tenantId}`, {
+      token,
+      method: 'PUT',
+      body: JSON.stringify(content),
+    }),
   
   clearLogs: (token: string, logType: string) =>
     api.fetch<any>('/admin/clear-logs', { 

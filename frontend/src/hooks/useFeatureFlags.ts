@@ -8,25 +8,44 @@ export interface FeatureFlags {
   safeguarding_response_mode: string; // "escalate" | "signpost"
 }
 
+export interface CrisisResource { name: string; phone?: string; description?: string; }
+export interface SupportOrg { name: string; url?: string; description?: string; }
+export interface OverlayContent { title: string; signpost_text: string; escalate_text: string; }
+
+interface TenantConfigData {
+  features: FeatureFlags;
+  crisisResources: CrisisResource[];
+  supportOrgs: SupportOrg[];
+  overlay: OverlayContent;
+}
+
 /**
  * Safe defaults: gated features start OFF (hidden) until the config confirms
- * they're enabled. A slow or failed fetch therefore leaves the app hiding
- * features rather than offering peer / counsellor / callback paths that may be
- * switched off and have no one to respond. In go-to-market (off) mode this also
- * means there is no flash — the surfaces simply stay hidden.
+ * they're enabled, so a slow/failed fetch never offers a switched-off service.
+ * safeguarding_response_mode defaults to "escalate" — so if the fetch fails the
+ * overlay shows the normal staff view, NOT an empty signpost view.
  */
-const SAFE_DEFAULTS: FeatureFlags = {
-  peer_to_peer_enabled: false,
-  counsellor_enabled: false,
-  front_page_crisis_cta_enabled: false,
-  safeguarding_response_mode: 'escalate',
+const SAFE_DEFAULTS: TenantConfigData = {
+  features: {
+    peer_to_peer_enabled: false,
+    counsellor_enabled: false,
+    front_page_crisis_cta_enabled: false,
+    safeguarding_response_mode: 'escalate',
+  },
+  crisisResources: [],
+  supportOrgs: [],
+  overlay: {
+    title: "We're Here For You",
+    signpost_text: "It sounds like you might be going through something difficult. Here are some people you can reach out to right now.",
+    escalate_text: "It sounds like you might be going through something difficult. Would you like to speak with a real person right now?",
+  },
 };
 
 // Module-level cache so the config is fetched once and shared across screens.
-let _cache: FeatureFlags | null = null;
-let _inflight: Promise<FeatureFlags> | null = null;
+let _cache: TenantConfigData | null = null;
+let _inflight: Promise<TenantConfigData> | null = null;
 
-async function loadFeatures(): Promise<FeatureFlags> {
+async function loadConfig(): Promise<TenantConfigData> {
   if (_cache) return _cache;
   if (_inflight) return _inflight;
   _inflight = (async () => {
@@ -36,10 +55,15 @@ async function loadFeatures(): Promise<FeatureFlags> {
       const data = await res.json();
       const f = (data && data.features) || {};
       _cache = {
-        peer_to_peer_enabled: f.peer_to_peer_enabled !== false,
-        counsellor_enabled: f.counsellor_enabled !== false,
-        front_page_crisis_cta_enabled: f.front_page_crisis_cta_enabled !== false,
-        safeguarding_response_mode: f.safeguarding_response_mode || 'escalate',
+        features: {
+          peer_to_peer_enabled: f.peer_to_peer_enabled !== false,
+          counsellor_enabled: f.counsellor_enabled !== false,
+          front_page_crisis_cta_enabled: f.front_page_crisis_cta_enabled !== false,
+          safeguarding_response_mode: f.safeguarding_response_mode || 'escalate',
+        },
+        crisisResources: Array.isArray(data?.crisis_resources) ? data.crisis_resources : [],
+        supportOrgs: Array.isArray(data?.support_organisations) ? data.support_organisations : [],
+        overlay: { ...SAFE_DEFAULTS.overlay, ...((data && data.overlay) || {}) },
       };
       return _cache;
     } catch (err) {
@@ -54,19 +78,25 @@ async function loadFeatures(): Promise<FeatureFlags> {
 }
 
 export function useFeatureFlags() {
-  const [features, setFeatures] = useState<FeatureFlags>(_cache || SAFE_DEFAULTS);
+  const [data, setData] = useState<TenantConfigData>(_cache || SAFE_DEFAULTS);
   const [loaded, setLoaded] = useState<boolean>(_cache != null);
 
   useEffect(() => {
     let cancelled = false;
-    loadFeatures().then((f) => {
+    loadConfig().then((d) => {
       if (!cancelled) {
-        setFeatures(f);
+        setData(d);
         setLoaded(true);
       }
     });
     return () => { cancelled = true; };
   }, []);
 
-  return { features, loaded };
+  return {
+    features: data.features,
+    crisisResources: data.crisisResources,
+    supportOrgs: data.supportOrgs,
+    overlay: data.overlay,
+    loaded,
+  };
 }
