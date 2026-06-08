@@ -267,6 +267,9 @@ export default function SettingsTab({ token, userEmail, onSuccess, onError }: Se
             { key: 'callbacks_enabled', name: 'Callback Requests', desc: 'Allow users to request phone callbacks', testId: 'toggle-callbacks' },
             { key: 'events_enabled', name: 'Events', desc: 'Enable community events feature', testId: 'toggle-events' },
             { key: 'panic_button_enabled', name: 'Panic Button', desc: 'Enable emergency panic button for users', testId: 'toggle-panic' },
+            { key: 'peer_to_peer_enabled', name: 'Peer-to-Peer Support', desc: 'Show peer-to-peer support across the app and website', testId: 'toggle-p2p' },
+            { key: 'counsellor_enabled', name: 'Counsellor Support', desc: 'Show counsellor live chat & callback options across the app and website', testId: 'toggle-counsellor' },
+            { key: 'front_page_crisis_cta_enabled', name: 'Front Page "Speak to Someone"', desc: 'Show the "Do you need to speak with someone right now?" prompt on the app front page', testId: 'toggle-frontpage-cta' },
           ].map((toggle) => (
             <div key={toggle.key} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
               <div>
