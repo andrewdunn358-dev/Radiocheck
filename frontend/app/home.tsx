@@ -10,6 +10,7 @@ import AgeGateModal from '../src/components/AgeGateModal';
 import BetaSurvey from '../src/components/BetaSurvey';
 import EventsSection from '../src/components/EventsSection';
 import VoicesHeroCard from '../src/components/voices/VoicesHeroCard';
+import { useFeatureFlags } from '../src/hooks/useFeatureFlags';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -156,6 +157,7 @@ const FALLBACK_AI_TEAM: AITeamMember[] = [
 
 export default function Index() {
   const router = useRouter();
+  const { features } = useFeatureFlags();
   const { colors, theme } = useTheme();
   const styles = createStyles(colors);
   const [showAITeam, setShowAITeam] = useState(false);
@@ -475,7 +477,8 @@ export default function Index() {
           )}
         </View>
 
-        {/* Request a Callback - Full Width Banner */}
+        {/* Request a Callback - Full Width Banner (counsellor support only) */}
+        {features.counsellor_enabled && (
         <TouchableOpacity 
           style={styles.callbackBanner}
           onPress={() => router.push('/callback' as any)}
@@ -493,10 +496,11 @@ export default function Index() {
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
+        )}
 
         {/* Main Menu Cards - 2-Column Grid Layout */}
         <View style={styles.menuContainer}>
-          {menuItems.map((item, index) => (
+          {menuItems.filter((item) => features.peer_to_peer_enabled || item.route !== '/peer-support').map((item, index) => (
             <TouchableOpacity 
               key={index}
               style={[

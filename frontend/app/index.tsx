@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAgeGateContext } from '../src/context/AgeGateContext';
 import AgeGateModal from '../src/components/AgeGateModal';
+import { useFeatureFlags } from '../src/hooks/useFeatureFlags';
 
 // Local images
 const NEW_LOGO = require('../assets/images/logo.png');
@@ -17,6 +18,7 @@ const isSmallScreen = SCREEN_HEIGHT < 700;
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { features } = useFeatureFlags();
   const [showCookieNotice, setShowCookieNotice] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showAgeGateModal, setShowAgeGateModal] = useState(false);
@@ -227,25 +229,29 @@ export default function SplashScreen() {
             <Text style={styles.learnMoreText}>Learn more about Radio Check</Text>
           </TouchableOpacity>
 
-          {/* Question */}
-          <View style={styles.questionContainer}>
-            <Text style={styles.questionText}>
-              Do you need to speak with someone right now?
-            </Text>
-          </View>
+          {/* Question — only in escalate/CTA-on mode */}
+          {features.front_page_crisis_cta_enabled && (
+            <View style={styles.questionContainer}>
+              <Text style={styles.questionText}>
+                Do you need to speak with someone right now?
+              </Text>
+            </View>
+          )}
 
           {/* Buttons */}
           <View style={styles.buttonContainer}>
-            {/* Yes - Primary action - Calming teal/green */}
-            <TouchableOpacity 
-              style={styles.yesButton} 
-              onPress={handleYes} 
-              data-testid="splash-yes-btn"
-              activeOpacity={0.8}
-            >
-              <Ionicons name="chatbubbles" size={22} color="#ffffff" />
-              <Text style={styles.yesButtonText}>Yes, connect me now</Text>
-            </TouchableOpacity>
+            {/* Yes - Primary action - Calming teal/green (only in CTA-on mode) */}
+            {features.front_page_crisis_cta_enabled && (
+              <TouchableOpacity 
+                style={styles.yesButton} 
+                onPress={handleYes} 
+                data-testid="splash-yes-btn"
+                activeOpacity={0.8}
+              >
+                <Ionicons name="chatbubbles" size={22} color="#ffffff" />
+                <Text style={styles.yesButtonText}>Yes, connect me now</Text>
+              </TouchableOpacity>
+            )}
 
             {/* No - Secondary action - Clear and visible */}
             <TouchableOpacity 
@@ -255,7 +261,7 @@ export default function SplashScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="apps" size={20} color="#ffffff" />
-              <Text style={styles.noButtonText}>{"I'm ok, take me to the app"}</Text>
+              <Text style={styles.noButtonText}>{features.front_page_crisis_cta_enabled ? "I'm ok, take me to the app" : "Continue to Radio Check"}</Text>
             </TouchableOpacity>
           </View>
 
