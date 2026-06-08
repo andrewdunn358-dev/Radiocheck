@@ -6453,6 +6453,14 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 )
                 failsafe_should_fire = False
         
+        # --- Go-to-market: in signpost mode the staff-queue notification is
+        # suppressed, but the alert RECORD is still written (governance) by
+        # writing it as status="audit_only" — the same mechanism the reconciler
+        # already uses. ONE read here drives BOTH alert-write sites below
+        # (failsafe + normal), so the signpost decision has a single authority. ---
+        _site_settings = await db.settings.find_one({"_id": "site_settings"}) or {}
+        signpost_mode = _site_settings.get("safeguarding_response_mode") == "signpost"
+
         if failsafe_should_fire:
             failsafe_reason = final_verdict.failsafe_reason or "unknown"
             logging.warning(
@@ -6474,6 +6482,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 risk_level="RED",
                 risk_score=unified_safety.get("risk_score", 999),
                 triggered_indicators=[failsafe_reason],
+                # Signpost mode: record the alert but keep it off the active staff queue.
+                status=("audit_only" if signpost_mode else "active"),
                 client_ip=client_ip,
                 user_agent=user_agent,
                 conversation_history=conversation_history
@@ -7245,7 +7255,8 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_s
             # never mutate the classifier cache or any in-memory verdict —
             # the mapping is local to the persisted record.
             is_audit_only = not failsafe_should_fire
-            alert_status = "audit_only" if is_audit_only else "active"
+            # Signpost mode also writes audit_only: record kept, staff queue suppressed.
+            alert_status = "audit_only" if (is_audit_only or signpost_mode) else "active"
 
             db_risk_level = risk_level
             if is_audit_only:
