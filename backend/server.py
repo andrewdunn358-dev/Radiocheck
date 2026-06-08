@@ -3764,6 +3764,11 @@ class SiteSettings(BaseModel):
     peer_registration_notification_email: Optional[str] = None  # Email to notify when someone registers for peer support
     admin_notification_email: Optional[str] = None  # Email for safeguarding alerts
     cso_email: Optional[str] = None  # Clinical Safety Officer email for governance notifications
+    # --- Go-to-market feature switches (persisted so the admin toggles actually take effect) ---
+    peer_to_peer_enabled: Optional[bool] = None            # show peer-to-peer support across app + website
+    counsellor_enabled: Optional[bool] = None              # show counsellor live chat & callback options
+    front_page_crisis_cta_enabled: Optional[bool] = None   # show the "speak to someone now" prompt on the app front page
+    safeguarding_response_mode: Optional[str] = None        # "escalate" | "signpost" — BEHAVIOUR wired in the safeguarding (Anthony) PR, not here
 
 @api_router.get("/settings")
 async def get_settings():
@@ -3774,7 +3779,11 @@ async def get_settings():
         "site_name": "Radio Check",
         "peer_registration_notification_email": None,
         "admin_notification_email": None,
-        "cso_email": None
+        "cso_email": None,
+        "peer_to_peer_enabled": True,
+        "counsellor_enabled": True,
+        "front_page_crisis_cta_enabled": True,
+        "safeguarding_response_mode": "escalate"
     }
 
 @api_router.put("/settings")
@@ -9168,6 +9177,16 @@ async def serve_bluelight_portal():
 async def get_tenant_config_endpoint(req: Request):
     hostname = req.headers.get("x-forwarded-host", req.headers.get("host", ""))
     config = get_tenant_config(hostname)
+    # Go-to-market feature switches (admin-controlled, with safe defaults that
+    # preserve current behaviour). Surfaces — app front page, tiles, website,
+    # and the safeguarding overlay — read these instead of hardcoding.
+    s = await db.settings.find_one({"_id": "site_settings"}) or {}
+    features = {
+        "peer_to_peer_enabled": s.get("peer_to_peer_enabled", True),
+        "counsellor_enabled": s.get("counsellor_enabled", True),
+        "front_page_crisis_cta_enabled": s.get("front_page_crisis_cta_enabled", True),
+        "safeguarding_response_mode": s.get("safeguarding_response_mode", "escalate"),
+    }
     return {
         "id": config["id"],
         "name": config["name"],
@@ -9176,6 +9195,7 @@ async def get_tenant_config_endpoint(req: Request):
         "personas": config["personas"],
         "crisis_resources": config["crisis_resources"],
         "support_organisations": config["support_organisations"],
+        "features": features,
     }
 
 
