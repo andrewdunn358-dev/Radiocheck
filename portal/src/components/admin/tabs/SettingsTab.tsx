@@ -344,7 +344,7 @@ export default function SettingsTab({ token, userEmail, onSuccess, onError }: Se
               }
             }}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              systemSettings.safeguarding_response_mode === 'signpost' ? 'bg-red-600' : 'bg-gray-600'
+              systemSettings.safeguarding_response_mode === 'signpost' ? 'bg-green-600' : 'bg-gray-600'
             }`}
           >
             <span
