@@ -10,11 +10,13 @@ export interface FeatureFlags {
 
 export interface CrisisResource { name: string; phone?: string; description?: string; }
 export interface SupportOrg { name: string; url?: string; description?: string; }
+export interface OverlayContent { title: string; signpost_text: string; escalate_text: string; }
 
 interface TenantConfigData {
   features: FeatureFlags;
   crisisResources: CrisisResource[];
   supportOrgs: SupportOrg[];
+  overlay: OverlayContent;
 }
 
 /**

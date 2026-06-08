@@ -188,6 +188,7 @@ export default function DynamicAIChat() {
   
   // Tenant feature flags — drives signpost vs escalate behaviour in the overlay
   const { features: rcFeatures, crisisResources, supportOrgs } = useFeatureFlags();
+  const { features: rcFeatures, crisisResources, supportOrgs, overlay: rcOverlay } = useFeatureFlags();
   const signpostMode = rcFeatures.safeguarding_response_mode === 'signpost';
 
   // Safeguarding state
@@ -849,7 +850,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
               <>
                 <View style={styles.safeguardingHeader}>
                   <FontAwesome5 name="heart" size={32} color="#dc2626" />
-                  <Text style={styles.safeguardingTitle}>We're Here For You</Text>
+                  <Text style={styles.safeguardingTitle}>{rcOverlay.title}</Text>
                 </View>
                 
                 <Text style={styles.safeguardingText}>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   MessageCircle, Phone, Dumbbell, Heart, BookOpen, Users,
   Shield, Clock, UserCheck, ChevronDown, ExternalLink,
@@ -186,13 +186,15 @@ const features = [
     icon: Users,
     title: 'Live Chat Support',
     description: 'Text chat with real counsellors and peer supporters who understand military life.',
-    color: 'bg-blue-500/20 text-blue-400'
+    color: 'bg-blue-500/20 text-blue-400',
+    requires: ['counsellor_enabled', 'peer_to_peer_enabled']
   },
   {
     icon: Phone,
     title: 'Callback Service',
     description: 'Request a call from a counsellor at a time that suits you.',
-    color: 'bg-purple-500/20 text-purple-400'
+    color: 'bg-purple-500/20 text-purple-400',
+    requires: ['counsellor_enabled']
   },
   {
     icon: Dumbbell,
@@ -223,6 +225,18 @@ const stats = [
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Admin-controlled feature flags (same toggles as the app). Cards tagged with
+  // `requires` only show when those flags are on. Default is hidden-until-loaded
+  // so suppressed features never flash in before the flags arrive.
+  const [flags, setFlags] = useState<Record<string, boolean> | null>(null);
+  useEffect(() => {
+    const API = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
+    fetch(`${API}/api/tenant/config`)
+      .then((r) => r.json())
+      .then((d) => setFlags(d?.features || {}))
+      .catch(() => setFlags({}));
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-dark text-white">
@@ -376,7 +390,12 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
+            {features.filter((feature) => {
+              const reqs = (feature as { requires?: string[] }).requires;
+              if (!reqs || reqs.length === 0) return true;       // always-on cards
+              if (!flags) return false;                          // hide gated cards until flags load
+              return reqs.every((k) => flags[k] !== false);      // show only when all required flags are on
+            }).map((feature, index) => (
               <div 
                 key={index}
                 className="bg-card rounded-2xl p-6 border border-border hover:border-secondary/50 transition group"

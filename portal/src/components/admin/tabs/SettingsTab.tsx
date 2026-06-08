@@ -30,6 +30,20 @@ export default function SettingsTab({ token, userEmail, onSuccess, onError }: Se
   const [clearLogsType, setClearLogsType] = useState<string>('');
   const [clearLogsConfirmText, setClearLogsConfirmText] = useState('');
 
+  // Editable pop-up content (crisis resources + overlay wording), per tenant
+  const [popupTenant, setPopupTenant] = useState('radiocheck');
+  const [popup, setPopup] = useState<any>(null);
+  const loadPopup = useCallback(async (tid: string) => {
+    if (!token) return;
+    try {
+      const c = await api.getTenantContent(token, tid);
+      setPopup(c);
+    } catch (e: any) {
+      onError('Failed to load pop-up content: ' + e.message);
+    }
+  }, [token, onError]);
+  useEffect(() => { loadPopup(popupTenant); }, [popupTenant, loadPopup]);
+
   // Load settings
   const loadSettings = useCallback(async () => {
     if (!token) return;
