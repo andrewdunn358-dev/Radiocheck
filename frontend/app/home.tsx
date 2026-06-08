@@ -312,7 +312,7 @@ export default function Index() {
             />
           </View>
           <Text style={styles.headerTitle}>Radio Check</Text>
-          <Text style={styles.taglineEnglish}>24/7 Mental Health & Peer Support</Text>
+          <Text style={styles.taglineEnglish}>{features.peer_to_peer_enabled ? '24/7 Mental Health & Peer Support' : '24/7 Mental Health Support'}</Text>
         </View>
 
         {/* Veteran Voices — hero CTA (above the fold). PR #C. */}
@@ -364,21 +364,23 @@ export default function Index() {
           {showAbout && (
             <View style={styles.aboutCardContent}>
               <Text style={styles.aboutText}>
-                Radio Check is a free, confidential mental health and peer support service built for the UK Armed Forces community. Whether you're currently serving, a veteran, or a family member — we're here for you, day or night.
+                Radio Check is a free, confidential {features.peer_to_peer_enabled ? 'mental health and peer support service' : 'mental health and wellbeing service'} built for the UK Armed Forces community. Whether you're currently serving, a veteran, or a family member — we're here for you, day or night.
               </Text>
               
               <View style={styles.featureList}>
+                {features.counsellor_enabled && (
                 <View style={styles.featureItem}>
                   <Ionicons name="chatbubbles" size={18} color="#22c55e" />
                   <Text style={styles.featureText}>Talk to real veterans and trained counsellors via live chat</Text>
                 </View>
+                )}
                 <View style={styles.featureItem}>
                   <Ionicons name="shield-checkmark" size={18} color="#3b82f6" />
                   <Text style={styles.featureText}>100% confidential — no names, no records, no judgement</Text>
                 </View>
                 <View style={styles.featureItem}>
                   <Ionicons name="time" size={18} color="#8b5cf6" />
-                  <Text style={styles.featureText}>AI Battle Buddies available 24/7 when humans aren't online</Text>
+                  <Text style={styles.featureText}>{features.counsellor_enabled ? "AI Battle Buddies available 24/7 when humans aren't online" : "AI Battle Buddies available 24/7, day or night"}</Text>
                 </View>
                 <View style={styles.featureItem}>
                   <Ionicons name="fitness" size={18} color="#f59e0b" />
