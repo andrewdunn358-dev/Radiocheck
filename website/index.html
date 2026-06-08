@@ -16,15 +16,30 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <!-- ============================================================
-         GO-TO-MARKET (OFF) MODE — single switch for this page.
-         Hides peer-support, counsellor & callback copy and swaps
-         affected wording to the AI-companion / support framing.
-         Set RC_OFFMODE = false to reinstate the full site. Nothing
-         is deleted — the on-mode copy stays in the markup.
+         GO-TO-MARKET MODE — driven by the admin Feature Toggles.
+         Reads /api/tenant/config and hides peer-support / counsellor copy
+         per the same switches as the app:
+           features.counsellor_enabled   -> Counsellor Support toggle
+           features.peer_to_peer_enabled -> Peer-to-Peer Support toggle
+         DEFAULT IS OFF: the page paints with these hidden, then reveals
+         each one only if the config confirms it's enabled. So a failed /
+         blocked fetch leaves the site in the safe state (never claims a
+         service that may be switched off). Change it in admin, not here.
          ============================================================ -->
     <script>
-      window.RC_OFFMODE = true;
-      if (window.RC_OFFMODE) document.documentElement.classList.add('rc-offmode');
+      // Safe default: hide counsellor + peer copy until the config confirms otherwise.
+      document.documentElement.classList.add('rc-no-counsellor', 'rc-no-p2p');
+      (function () {
+        var API = 'https://veterans-support-api.onrender.com';
+        fetch(API + '/api/tenant/config')
+          .then(function (r) { return r.json(); })
+          .then(function (cfg) {
+            var f = (cfg && cfg.features) || {};
+            if (f.counsellor_enabled !== false) document.documentElement.classList.remove('rc-no-counsellor');
+            if (f.peer_to_peer_enabled !== false) document.documentElement.classList.remove('rc-no-p2p');
+          })
+          .catch(function () { /* stay in the safe (off) state */ });
+      })();
     </script>
 </head>
 <body>
@@ -115,7 +130,7 @@
                     <p class="feature-short">9 AI companions with unique personalities, available 24/7 for a chat whenever you need it.</p>
                     <p class="feature-expanded">Our AI Battle Buddies understand military culture and speak your language. From Tommy's laid-back chat to Bob's straight-talking Para banter, Frankie's PTI fitness motivation to Rachel's warm, caring support - there's someone for every mood. They're trained to listen without judgment, offer coping strategies, and know when to guide you to human support. Perfect for those 3am moments.</p>
                 </div>
-                <div class="feature-card rc-escalation" data-expanded="false">
+                <div class="feature-card rc-counsellor" data-expanded="false">
                     <div class="feature-icon">
                         <i class="fas fa-comments"></i>
                     </div>
@@ -123,7 +138,7 @@
                     <p class="feature-short">Text chat with real counsellors and peer supporters who understand military life.</p>
                     <p class="feature-expanded">Connect instantly via text chat with trained peer supporters and qualified counsellors. Our team includes veterans from all three services who've completed specialist mental health training. No phone calls needed - just type when you're ready. Conversations are encrypted and confidential. Request a callback if you'd prefer to talk voice-to-voice.</p>
                 </div>
-                <div class="feature-card rc-escalation" data-expanded="false">
+                <div class="feature-card rc-counsellor" data-expanded="false">
                     <div class="feature-icon">
                         <i class="fas fa-phone-alt"></i>
                     </div>

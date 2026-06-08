@@ -979,14 +979,20 @@ h1, h2, h3, h4 {
 }
 
 /* ============================================================
-   Go-to-market (OFF) mode toggle
-   Activated by the `rc-offmode` class on <html> (set in the page
-   <head> via RC_OFFMODE). Reinstate by setting RC_OFFMODE = false.
-     .rc-on         shown normally, hidden in off mode (paired with .rc-off)
-     .rc-off        hidden normally, shown in off mode
-     .rc-escalation shown normally, hidden in off mode
+   Go-to-market mode — driven by admin Feature Toggles via /api/tenant/config.
+   Classes added to <html> by the head script (default ON = hidden):
+     rc-no-counsellor  when Counsellor Support is off
+     rc-no-p2p         when Peer-to-Peer Support is off
+   Element classes:
+     .rc-counsellor  counsellor cards/copy — hidden when counsellor off
+     .rc-peer        peer-only copy — hidden when p2p off
+     .rc-on / .rc-off  dual-text bundling peer + counselling — off-version
+                       shown if EITHER counsellor or p2p is off
    ============================================================ */
+html.rc-no-counsellor .rc-counsellor { display: none !important; }
+html.rc-no-p2p .rc-peer { display: none !important; }
 .rc-off { display: none; }
-html.rc-offmode .rc-on { display: none; }
-html.rc-offmode .rc-off { display: inline; }
-html.rc-offmode .rc-escalation { display: none !important; }
+html.rc-no-counsellor .rc-on,
+html.rc-no-p2p .rc-on { display: none; }
+html.rc-no-counsellor .rc-off,
+html.rc-no-p2p .rc-off { display: inline; }
