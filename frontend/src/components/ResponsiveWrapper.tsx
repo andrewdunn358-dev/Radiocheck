@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Platform, Image, Text } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useFeatureFlags } from '../hooks/useFeatureFlags';
 
 interface ResponsiveWrapperProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ const MAX_MOBILE_WIDTH = 430; // iPhone 14 Pro Max width
 
 export default function ResponsiveWrapper({ children, showDesktopShell = true }: ResponsiveWrapperProps) {
   const { colors, theme } = useTheme();
+  const { features } = useFeatureFlags();
   const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -57,8 +59,12 @@ export default function ResponsiveWrapper({ children, showDesktopShell = true }:
         <View style={styles.featureList}>
           <FeatureItem icon="🎖️" text="Veterans & Serving Personnel" theme={theme} />
           <FeatureItem icon="💬" text="24/7 AI Support Buddies" theme={theme} />
-          <FeatureItem icon="📞" text="Connect with Counsellors" theme={theme} />
-          <FeatureItem icon="👥" text="Peer Support Network" theme={theme} />
+          {features.counsellor_enabled && (
+            <FeatureItem icon="📞" text="Connect with Counsellors" theme={theme} />
+          )}
+          {features.peer_to_peer_enabled && (
+            <FeatureItem icon="👥" text="Peer Support Network" theme={theme} />
+          )}
         </View>
       </View>
 
