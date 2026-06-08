@@ -26,6 +26,7 @@ TENANTS = {
         ],
         "crisis_resources": [
             {"name": "Samaritans", "phone": "116 123", "description": "24/7 emotional support"},
+            {"name": "NHS 111 (option 2)", "phone": "111", "description": "Mental health crisis line — select option 2"},
             {"name": "Combat Stress", "phone": "0800 138 1619", "description": "Veterans mental health helpline"},
             {"name": "Emergency", "phone": "999", "description": "Immediate danger"},
             {"name": "Veterans Gateway", "phone": "0808 802 1212", "description": "First point of contact for veterans"},
@@ -49,6 +50,7 @@ TENANTS = {
         "personas": ["steve", "claire"],
         "crisis_resources": [
             {"name": "Samaritans", "phone": "116 123", "description": "24/7 emotional support"},
+            {"name": "NHS 111 (option 2)", "phone": "111", "description": "Mental health crisis line — select option 2"},
             {"name": "Police Care UK", "phone": "0300 012 0030", "description": "Support for police officers and families"},
             {"name": "Emergency", "phone": "999", "description": "Immediate danger"},
             {"name": "Oscar Kilo", "phone": "", "description": "National police wellbeing service — oscarkilowell.org.uk"},
