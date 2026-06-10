@@ -7,6 +7,15 @@
 
 GOVERNING TEST: "Would a mate say this on a sofa at 2am?" If no — rewrite.
 
+OFF-MODE CONSISTENCY NOTE (documentation only — this file is not injected at runtime):
+This document mirrors the ON-mode soul text. When human_support_available is False
+(go-to-market off-mode: counsellor + peer disabled), the on-platform references below
+— "Connect with Counsellors", "Peer Support Network", "Live Support", and the
+"Know about…" priming line — are removed at runtime and replaced with the OFF-PLATFORM
+SIGNPOST directive. The live behaviour is in backend/personas/soul_loader.py
+(get_soul_injection / build_persona_prompt). External resources (Samaritans, Combat
+Stress, Veterans Gateway, NHS 111, SHOUT, 999) are always retained.
+
 # Radio Check - Soul Document
 # ============================
 # Version 2.0 - March 2026
