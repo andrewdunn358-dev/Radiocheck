@@ -408,9 +408,49 @@ ROUND7_JUDGE_PROMPT = (
 )
 
 
-def get_soul_injection() -> str:
-    """Returns the condensed soul document rules for prompt injection."""
-    return SOUL_INJECTION
+_OFF_PLATFORM_SUPPORT_DIRECTIVE = """HUMAN SUPPORT AVAILABILITY: OFF-PLATFORM SIGNPOST MODE.
+There is currently NO on-platform counsellor, peer support, or callback service.
+Do NOT offer, imply, or reference on-platform human support of any kind.
+Do NOT say "real people on here", "counsellors on this platform", "peer network",
+"callback", or any equivalent. These services are not available.
+In welfare or crisis moments, signpost EXTERNAL organisations ONLY:
+Samaritans: 116 123 (free, 24/7)
+Combat Stress: 0800 138 1619 (veterans, free, 24/7)
+Veterans Gateway: 0808 802 1212
+NHS Mental Health: 111, Option 2 (free, 24/7)
+Text SHOUT: 85258 (free, 24/7)
+Emergency: 999"""
+
+
+def get_soul_injection(human_support_available: bool = True) -> str:
+    """Returns the condensed soul document rules for prompt injection.
+
+    When human_support_available is False (off-mode), the on-platform
+    counsellor/peer references are removed and replaced with an off-platform
+    signpost directive (wording signed off by Anthony). The ON case returns the
+    document byte-for-byte unchanged.
+    """
+    if human_support_available:
+        return SOUL_INJECTION
+
+    soul = SOUL_INJECTION
+    # Drop the two on-platform lines from the IMMINENT RISK options.
+    soul = soul.replace(
+        "  Connect with Counsellors (on this platform — real veterans and professionals)\n"
+        "  Peer Support Network (on this platform — people who get it)\n",
+        "",
+    )
+    # Gate the softer "Know about" priming line.
+    soul = soul.replace(
+        "- Know about: human counsellors, Peer Support Network, Live Support",
+        "- Know about: EXTERNAL signposting only — no on-platform counsellors, peer support, or live support are available",
+    )
+    # Insert the governing off-mode directive immediately before the distress guidance.
+    soul = soul.replace(
+        "TIERED DISTRESS RESPONSE:",
+        f"{_OFF_PLATFORM_SUPPORT_DIRECTIVE}\n\nTIERED DISTRESS RESPONSE:",
+    )
+    return soul
 
 def load_full_soul_document() -> str:
     """Loads the full soul document from the markdown file."""
@@ -497,7 +537,7 @@ def get_protocol_files(message: str) -> list:
     return protocols
 
 
-def build_persona_prompt(persona_prompt: str, protocol_files: list = None) -> str:
+def build_persona_prompt(persona_prompt: str, protocol_files: list = None, human_support_available: bool = True) -> str:
     """
     Build a complete persona prompt with layered protocol injection.
     
@@ -526,7 +566,7 @@ def build_persona_prompt(persona_prompt: str, protocol_files: list = None) -> st
         if content:
             protocols += content + '\n\n'
 
-    soul = get_soul_injection()
+    soul = get_soul_injection(human_support_available)
 
     return f'{ROUND7_JUDGE_PROMPT}\n\n{hard_stop}\n\n{protocols}{persona_prompt}\n\n{soul}'
 

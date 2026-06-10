@@ -6521,6 +6521,10 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # (failsafe + normal), so the signpost decision has a single authority. ---
         _site_settings = await db.settings.find_one({"_id": "site_settings"}) or {}
         signpost_mode = _site_settings.get("safeguarding_response_mode") == "signpost"
+        # Single authority (per Anthony): human support is "available" only when
+        # BOTH service flags are on. This one value drives the failsafe crisis
+        # message AND the persona prompt below — never re-derived per site.
+        human_support_available = bool(_site_settings.get("counsellor_enabled", True)) and bool(_site_settings.get("peer_to_peer_enabled", True))
 
         if failsafe_should_fire:
             failsafe_reason = final_verdict.failsafe_reason or "unknown"
@@ -6583,39 +6587,40 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             
             # Get safety wrapper for crisis response message
             # ALWAYS use the Radio Check formatted crisis response (human options primary)
-            # Tommy gets his own voice for the pre-text
-            # On-platform human-support claims must reflect the go-to-market flags.
-            # In off-mode (peer + counsellor disabled, or signpost mode) we must NOT
-            # point a person in crisis at services that are switched off. We remove
-            # only the on-platform lines and fall back to the neutral preamble + the
-            # always-real external resources — no new crisis wording is authored here.
-            _counsellor_on = _site_settings.get("counsellor_enabled", True)
-            _peer_on = _site_settings.get("peer_to_peer_enabled", True)
-            _human_support = (_counsellor_on or _peer_on) and not signpost_mode
-
-            if character == "tommy" and _human_support:
-                crisis_preamble = "Right. I'm not going to leave you with that. There are real people on here who can help — proper veterans and counsellors. Worth knowing that's there. I'm still here too."
+            # Tommy gets his own voice for the pre-text.
+            # Human-support claims gate on the single human_support_available
+            # (derived once above). When off: neutral preamble for ALL personas
+            # (Tommy's preamble itself names on-platform counsellors), the
+            # on-platform block is dropped, and we signpost external orgs only.
+            # Wording per Anthony's sign-off.
+            if human_support_available:
+                if character == "tommy":
+                    crisis_preamble = "Right. I'm not going to leave you with that. There are real people on here who can help — proper veterans and counsellors. Worth knowing that's there. I'm still here too."
+                else:
+                    crisis_preamble = "Right, I need to be straight with you. What you're telling me is serious and I'm worried."
+                crisis_response = (
+                    f"{crisis_preamble}\n\n"
+                    "There are real people on this platform who can help right now:\n"
+                    "**Connect with Counsellors** — trained professionals, veterans who get it\n"
+                    "**Peer Support Network** — real people on Radio Check, not AI\n\n"
+                    "Or reach out directly:\n"
+                    "**Samaritans**: 116 123 (free, 24/7)\n"
+                    "**Combat Stress**: 0800 138 1619 (veterans, free, 24/7)\n"
+                    "**Emergency**: 999\n\n"
+                    "I'm still here if you want to keep chatting — I'm not going anywhere."
+                )
             else:
                 crisis_preamble = "Right, I need to be straight with you. What you're telling me is serious and I'm worried."
-
-            _onplatform = ""
-            if _human_support:
-                _onplatform = "There are real people on this platform who can help right now:\n"
-                if _counsellor_on:
-                    _onplatform += "**Connect with Counsellors** — trained professionals, veterans who get it\n"
-                if _peer_on:
-                    _onplatform += "**Peer Support Network** — real people on Radio Check, not AI\n"
-                _onplatform += "\n"
-
-            crisis_response = (
-                f"{crisis_preamble}\n\n"
-                f"{_onplatform}"
-                + ("Or reach out directly:\n" if _human_support else "")
-                + "**Samaritans**: 116 123 (free, 24/7)\n"
-                "**Combat Stress**: 0800 138 1619 (veterans, free, 24/7)\n"
-                "**Emergency**: 999\n\n"
-                "I'm still here if you want to keep chatting — I'm not going anywhere."
-            )
+                crisis_response = (
+                    f"{crisis_preamble}\n\n"
+                    "Please reach out now:\n"
+                    "**Samaritans**: 116 123 (free, 24/7)\n"
+                    "**Combat Stress**: 0800 138 1619 (veterans, free, 24/7)\n"
+                    "**Veterans Gateway**: 0808 802 1212\n"
+                    "**NHS Mental Health**: 111, Option 2 (free, 24/7)\n"
+                    "**Emergency**: 999\n\n"
+                    "I'm still here if you want to keep chatting."
+                )
             
             # Return immediate safety response with the alert ID
             return BuddyChatResponse(
@@ -6752,7 +6757,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # IMPORTANT: Soul Document + Safeguarding addendum is added to ALL character prompts
         # Soul Document provides behavioral consistency across all personas (spine, dark humour, grief, etc.)
         # Modular protocol architecture: protocol_files already detected before safeguarding check
-        system_prompt = build_persona_prompt(char_config["prompt"], protocol_files)
+        system_prompt = build_persona_prompt(char_config["prompt"], protocol_files, human_support_available=human_support_available)
         if knowledge_context:
             system_prompt += knowledge_context
         
