@@ -537,6 +537,26 @@ def get_protocol_files(message: str) -> list:
     return protocols
 
 
+def _strip_on_platform_persona_refs(text: str) -> str:
+    """Off-mode only: remove on-platform human-support references that live in a
+    persona's own prompt text (Dave's signposting clause, Grace's service
+    navigation blocks), keeping external / crisis resources intact. Regex-based
+    so it tolerates whitespace; a no-op for personas without these references."""
+    import re
+    # Dave (Protocol 11): drop the on-platform clause, keep the external
+    # Andy's Man Club mention; the mention's closing quote stays.
+    text = re.sub(r"\s*Or there's real people on this app[^\"]*", "", text)
+    # Grace (navigator): drop the on-platform route blocks (Peer Support Network,
+    # Counsellors, Live Support); keep the external crisis resources that follow.
+    text = re.sub(
+        r"Peer Support Network — /peer-support.*?(?=Crisis resources \(external)",
+        "",
+        text,
+        flags=re.DOTALL,
+    )
+    return text
+
+
 def build_persona_prompt(persona_prompt: str, protocol_files: list = None, human_support_available: bool = True) -> str:
     """
     Build a complete persona prompt with layered protocol injection.
@@ -557,6 +577,13 @@ def build_persona_prompt(persona_prompt: str, protocol_files: list = None, human
     """
     if protocol_files is None:
         protocol_files = []
+
+    # Belt-and-braces (Anthony's request): in off-mode, strip on-platform
+    # human-support references from the persona's own text so the model never
+    # sees them — not relying on the directive alone. No-op in on-mode and for
+    # personas that don't carry these references.
+    if not human_support_available:
+        persona_prompt = _strip_on_platform_persona_refs(persona_prompt)
 
     hard_stop = load_protocol_file('hard_stop.md')  # always loaded
 
