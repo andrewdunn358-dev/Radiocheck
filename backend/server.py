@@ -6415,12 +6415,20 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # 4. Semantic similarity analysis (detects intent even without exact keywords)
         # 5. Crisis pattern detection (escalation sequences)
         # Uses NORMALISED text for safety analysis
+        # Go-to-market off-mode flags — single authority, derived ONCE per request
+        # and threaded into the unified safety wrapper, the failsafe crisis message,
+        # and the persona prompt. (per Anthony)
+        _site_settings = await db.settings.find_one({"_id": "site_settings"}) or {}
+        signpost_mode = _site_settings.get("safeguarding_response_mode") == "signpost"
+        human_support_available = bool(_site_settings.get("counsellor_enabled", True)) and bool(_site_settings.get("peer_to_peer_enabled", True))
+
         unified_safety = analyze_message_unified(
             message=safeguarding_text,
             session_id=request.sessionId,
             user_id=request.sessionId,  # Anonymous users use session as ID
             character=character,
-            is_under_18=request.is_under_18
+            is_under_18=request.is_under_18,
+            human_support_available=human_support_available
         )
 
         # === ROUND 10 PHASE B: VERDICT RECONCILER ===
@@ -6517,14 +6525,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # --- Go-to-market: in signpost mode the staff-queue notification is
         # suppressed, but the alert RECORD is still written (governance) by
         # writing it as status="audit_only" — the same mechanism the reconciler
-        # already uses. ONE read here drives BOTH alert-write sites below
-        # (failsafe + normal), so the signpost decision has a single authority. ---
-        _site_settings = await db.settings.find_one({"_id": "site_settings"}) or {}
-        signpost_mode = _site_settings.get("safeguarding_response_mode") == "signpost"
-        # Single authority (per Anthony): human support is "available" only when
-        # BOTH service flags are on. This one value drives the failsafe crisis
-        # message AND the persona prompt below — never re-derived per site.
-        human_support_available = bool(_site_settings.get("counsellor_enabled", True)) and bool(_site_settings.get("peer_to_peer_enabled", True))
+        # already uses. signpost_mode + human_support_available are derived ONCE
+        # above (before the unified-safety call) — single authority for the whole
+        # request (unified wrapper + both alert-write sites + persona prompt). ---
 
         if failsafe_should_fire:
             failsafe_reason = final_verdict.failsafe_reason or "unknown"
