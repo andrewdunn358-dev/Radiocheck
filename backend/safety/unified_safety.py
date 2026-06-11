@@ -91,6 +91,7 @@ def analyze_message_unified(
     conversation_history: Optional[List[Dict]] = None,
     previous_sessions: Optional[List[Dict]] = None,  # NEW: for AI context
     is_under_18: bool = False,
+    human_support_available: bool = True,
 ) -> Dict[str, Any]:
     """
     Unified safety analysis combining all detection methods.
@@ -326,7 +327,7 @@ def analyze_message_unified(
     # =========================================================================
     safety_wrapper = None
     if show_crisis_resources:
-        safety_wrapper = _generate_safety_wrapper(final_risk_level, character)
+        safety_wrapper = _generate_safety_wrapper(final_risk_level, character, human_support_available)
     
     # =========================================================================
     # CANDIDATE PHRASE LEARNING
@@ -429,7 +430,7 @@ def _risk_level_to_score(level: str) -> int:
     return mapping.get(level.lower(), 0)
 
 
-def _generate_safety_wrapper(risk_level: str, character: str) -> Dict[str, Any]:
+def _generate_safety_wrapper(risk_level: str, character: str, human_support_available: bool = True) -> Dict[str, Any]:
     """Generate appropriate safety wrapper for AI response."""
     if risk_level == "IMMINENT":
         return {
@@ -451,15 +452,24 @@ def _generate_safety_wrapper(risk_level: str, character: str) -> Dict[str, Any]:
             ],
         }
     elif risk_level == "HIGH":
+        # Off-mode (no on-platform human support): signpost external only —
+        # do NOT offer "our support team". (per Anthony, option a)
+        if human_support_available:
+            high_append = (
+                "\n\nWould you like to speak to someone from our support team? "
+                "If you need immediate support, Samaritans are available 24/7 on 116 123."
+            )
+        else:
+            high_append = (
+                "\n\nIf you need support right now, Samaritans are available 24/7 on 116 123 "
+                "(free), and Combat Stress on 0800 138 1619 (veterans, free, 24/7)."
+            )
         return {
             "type": "concern",
             "prepend_message": (
                 "I'm concerned about what you're sharing with me. "
             ),
-            "append_message": (
-                "\n\nWould you like to speak to someone from our support team? "
-                "If you need immediate support, Samaritans are available 24/7 on 116 123."
-            ),
+            "append_message": high_append,
             "show_resources": True,
             "resources": [
                 {"name": "Samaritans", "number": "116 123", "type": "crisis", "available": "24/7"},
