@@ -6021,7 +6021,15 @@ def get_openai_client():
         return OpenAI(api_key=OPENAI_API_KEY)
     return None
 
-buddy_openai_client = get_openai_client()
+# Bound at app startup (see startup handler below), NOT at import time.
+# Binding here would create the client — and its underlying httpx connection
+# pool — in the import-time process before the server forks its workers. The
+# pooled transport then ends up shared across workers, and when an instance
+# cycles or cold-boots the socket is torn out from under it, surfacing as
+# "transport closed / handler is closed" on the next request. Creating it in
+# the startup handler runs per-worker, after fork, so each worker owns a fresh
+# client and transport.
+buddy_openai_client = None
 
 # Helper function to get character config from database with fallback to hardcoded
 async def get_character_config(character_id: str) -> dict:
@@ -8415,6 +8423,19 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def init_buddy_openai_client():
+    # Bind the shared OpenAI client here (per-worker, after fork) rather than at
+    # import time, so each worker owns its own client/transport. See the note at
+    # the buddy_openai_client definition for why import-time binding caused
+    # "transport closed / handler is closed" errors on instance cycling.
+    global buddy_openai_client
+    buddy_openai_client = get_openai_client()
+    if buddy_openai_client:
+        logger.info("[startup] buddy_openai_client initialised")
+    else:
+        logger.warning("[startup] buddy_openai_client NOT initialised — OPENAI_API_KEY missing")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
