@@ -94,10 +94,25 @@ FFMPEG_TARGET_CODEC = "libmp3lame"
 FFMPEG_TARGET_CHANNELS = "1"  # mono
 FFMPEG_TARGET_SAMPLE_RATE = "44100"
 
-# Whisper model name. `whisper-1` is the only currently exposed
-# OpenAI hosted Whisper endpoint and is what the project's existing
-# OpenAI usage tracker (`ai_usage_tracker.py`) is configured for.
-WHISPER_MODEL = "whisper-1"
+# --- Transcription provider -------------------------------------------------
+# Groq exposes an OpenAI-compatible Speech-to-Text endpoint, so the same
+# AsyncOpenAI SDK works against it by overriding base_url + api_key. When
+# GROQ_API_KEY is set, transcription routes to Groq's Whisper Large v3 Turbo
+# (~9x cheaper than OpenAI Whisper, with a generous free tier); otherwise it
+# falls back to OpenAI's hosted `whisper-1` exactly as before. This makes the
+# swap a pure env-var toggle on Render: set GROQ_API_KEY to enable, unset to
+# roll back. Only the Veterans' Voices pipeline uses this — consented,
+# publication-intended clips, not private user audio.
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_BASE_URL = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+
+# Whisper model name. Default tracks the active provider, but can be pinned via
+# the WHISPER_MODEL env var (e.g. "whisper-large-v3" for the full Groq model,
+# or "whisper-1" to force OpenAI even with a Groq key present).
+WHISPER_MODEL = os.environ.get(
+    "WHISPER_MODEL",
+    "whisper-large-v3-turbo" if GROQ_API_KEY else "whisper-1",
+)
 
 
 # Lazy singleton — building AsyncOpenAI at import time would crash any unit
@@ -106,16 +121,25 @@ _openai_client: Optional[AsyncOpenAI] = None
 
 
 def _get_openai_client() -> AsyncOpenAI:
-    """Return a shared AsyncOpenAI client. Raises if the key is missing."""
+    """Return a shared transcription client. Routes to Groq's OpenAI-compatible
+    STT endpoint when GROQ_API_KEY is set, otherwise OpenAI. Built lazily on
+    first use (constructing at import time would crash any unit test that
+    doesn't set a key). Raises if no key is available."""
     global _openai_client
     if _openai_client is None:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError(
-                "OPENAI_API_KEY is not set — cannot run the Voices "
-                "transcription pipeline. Set it in Render env vars."
+        if GROQ_API_KEY:
+            _openai_client = AsyncOpenAI(
+                api_key=GROQ_API_KEY, base_url=GROQ_BASE_URL
             )
-        _openai_client = AsyncOpenAI(api_key=api_key)
+        else:
+            api_key = os.environ.get("OPENAI_API_KEY")
+            if not api_key:
+                raise RuntimeError(
+                    "No transcription key set — provide GROQ_API_KEY (preferred) "
+                    "or OPENAI_API_KEY to run the Voices transcription pipeline. "
+                    "Set it in Render env vars."
+                )
+            _openai_client = AsyncOpenAI(api_key=api_key)
     return _openai_client
 
 
