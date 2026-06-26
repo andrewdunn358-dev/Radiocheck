@@ -35,6 +35,7 @@ text (Q4: don't encrypt internalNotes).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
@@ -55,8 +56,11 @@ from models.clips import (
 from services.voices_pipeline import (
     AUDIO_STORAGE_PATH,
     PHOTOS_SUBDIR,
+    WHISPER_MAX_BYTES,
+    _safe_unlink,
     delete_clip_file,
     delete_contributor_photo,
+    extract_audio_for_whisper,
     process_upload,
     save_contributor_photo,
     transcribe_with_whisper,
@@ -881,8 +885,24 @@ async def retranscribe_clip(
         },
     )
 
+    whisper_temp_path: Optional[str] = None
     try:
-        transcript, captions = await transcribe_with_whisper(audio_path)
+        # The stored file may be a delivery MP4 (video clips) or a long
+        # audio MP3 — either can exceed Whisper's 25 MB upload cap and 413.
+        # Mirror the upload pipeline: extract an audio-only mono 96 kbps MP3
+        # first, then transcribe that. Works for both audio and video.
+        whisper_temp_path = os.path.join(
+            AUDIO_STORAGE_PATH, f"_whisper_{clip_id}_{uuid.uuid4().hex[:8]}.mp3"
+        )
+        await asyncio.to_thread(
+            extract_audio_for_whisper, audio_path, whisper_temp_path
+        )
+        if os.path.getsize(whisper_temp_path) > WHISPER_MAX_BYTES:
+            raise RuntimeError(
+                "Audio too long to transcribe — exceeds the size cap even "
+                "after audio-only extraction (~33 min of speech max)."
+            )
+        transcript, captions = await transcribe_with_whisper(whisper_temp_path)
         await db.clips.update_one(
             {"id": clip_id},
             {
@@ -907,6 +927,8 @@ async def retranscribe_clip(
                 }
             },
         )
+    finally:
+        _safe_unlink(whisper_temp_path)
 
     doc = await db.clips.find_one({"id": clip_id}, {"_id": 0})
     assert doc is not None
