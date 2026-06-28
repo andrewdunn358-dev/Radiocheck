@@ -45,6 +45,26 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 AI_MODEL = "gpt-4o-mini"  # Fast model for low latency
 AI_PROVIDER = "openai"
 
+# Lazy-cached async OpenAI client. Built on first use (NOT at import) so the
+# API key is read from the environment when first needed, and reused across
+# calls rather than a fresh client per request (per-call clients churned httpx
+# transports and surfaced "handler is closed" errors under instance cycling).
+_async_client = None
+
+
+def _get_async_client():
+    """Return the shared AsyncOpenAI client, building it on first use.
+    Returns None if construction fails (e.g. no API key in env)."""
+    global _async_client
+    if _async_client is None:
+        try:
+            from openai import AsyncOpenAI
+            _async_client = AsyncOpenAI()  # reads OPENAI_API_KEY from env at first use
+        except Exception as e:
+            logger.error(f"[AISafetyClassifier] Failed to create AsyncOpenAI client: {e}")
+            return None
+    return _async_client
+
 # Risk level mapping
 RISK_LEVELS = {
     "none": 0,
@@ -231,7 +251,7 @@ async def classify_message_with_ai(
         default_response["reason"] = "OpenAI SDK not available"
         return default_response
     
-    if not OPENAI_API_KEY:
+    if not os.environ.get("OPENAI_API_KEY"):
         default_response["reason"] = "No OPENAI_API_KEY configured"
         return default_response
     
@@ -264,8 +284,11 @@ async def classify_message_with_ai(
             session_context=session_text
         )
         
-        # Call OpenAI directly using your own API key
-        client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        # Shared lazy-cached client (built on first use, reused across calls)
+        client = _get_async_client()
+        if client is None:
+            default_response["reason"] = "OpenAI client unavailable"
+            return default_response
         
         start_time = datetime.now(timezone.utc)
         completion = await client.chat.completions.create(

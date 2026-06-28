@@ -124,6 +124,7 @@ SEMANTIC_REFERENCE_PHRASES = {
 # ============================================================================
 
 _openai_client = None
+_async_openai_client = None
 _embedding_cache: Dict[str, List[float]] = {}
 _reference_embeddings: Dict[str, List[List[float]]] = {}
 _model_loaded = False
@@ -143,13 +144,18 @@ def _get_openai_client():
 
 
 def _get_async_openai_client():
-    """Get async OpenAI client for async operations."""
-    try:
-        from openai import AsyncOpenAI
-        return AsyncOpenAI()  # Uses OPENAI_API_KEY from env
-    except Exception as e:
-        logger.error(f"[SemanticSafetyModel] Failed to create AsyncOpenAI client: {e}")
-        return None
+    """Get or create the async OpenAI client. Lazy-cached singleton — built on
+    first use (not at import) so the API key is read from the env when first
+    needed, and reused across calls rather than instantiated per call."""
+    global _async_openai_client
+    if _async_openai_client is None:
+        try:
+            from openai import AsyncOpenAI
+            _async_openai_client = AsyncOpenAI()  # Uses OPENAI_API_KEY from env
+        except Exception as e:
+            logger.error(f"[SemanticSafetyModel] Failed to create AsyncOpenAI client: {e}")
+            return None
+    return _async_openai_client
 
 
 # ============================================================================
