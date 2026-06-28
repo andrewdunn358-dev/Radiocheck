@@ -26,6 +26,26 @@ logger = logging.getLogger(__name__)
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
+# Lazy-cached async OpenAI client. Built on first use (NOT at import) so the
+# API key is read from the environment when first needed, and reused across
+# calls rather than instantiated per request (per-call clients churned httpx
+# transports and surfaced "handler is closed" errors under instance cycling).
+_async_client = None
+
+
+def _get_async_client():
+    """Return the shared AsyncOpenAI client, building it on first use.
+    Returns None if construction fails (e.g. no API key in env)."""
+    global _async_client
+    if _async_client is None:
+        try:
+            from openai import AsyncOpenAI
+            _async_client = AsyncOpenAI()  # reads OPENAI_API_KEY from env at first use
+        except Exception as e:
+            logger.warning(f"[TextNormalizer] Failed to create AsyncOpenAI client: {e}")
+            return None
+    return _async_client
+
 # Single-word high-weight inputs — pass through unchanged, never normalise
 HIGH_WEIGHT_SINGLES = {"help", "done", "gone", "bye", "end", "stop", "please", "sorry", "nothing", "tired", "fuck", "shit"}
 
@@ -306,14 +326,16 @@ async def normalise_text(original_text: str) -> Tuple[str, bool]:
         return stripped, False
     
     # No API key — skip normalisation silently
-    if not OPENAI_API_KEY:
+    if not os.environ.get("OPENAI_API_KEY"):
         logger.warning("[TextNormalizer] No OPENAI_API_KEY — skipping normalisation")
         return stripped, False
     
     try:
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-        
+        client = _get_async_client()
+        if client is None:
+            logger.warning("[TextNormalizer] No OpenAI client — skipping normalisation")
+            return stripped, False
+
         completion = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
