@@ -6049,6 +6049,13 @@ MODEL_CONFIG = {
     # GBP), so the ceiling is enforced in GBP to avoid a unit mismatch.
     # GBP 4.00 is roughly USD 5/day. Adjust if a tighter cap is intended.
     "cost_threshold_gbp": 4.0,      # Daily spend ceiling before premium suppressed
+    # Turns past this conversation length escalate the MAIN chat to premium
+    # (gpt-4o) under the "deep_conversation" rule. Was hardcoded at 10, which
+    # meant a typical 20+ message check-in ran almost entirely on gpt-4o and
+    # wiped out the mini saving. Raised to 30 so a normal conversation stays on
+    # mini; genuinely long sessions still escalate. Anthony to confirm the
+    # quality intent of the original rule still holds at this threshold.
+    "deep_conversation_threshold": int(os.environ.get("DEEP_CONVO_THRESHOLD", "30")),
     "use_smart_routing": True,      # Master switch — False forces primary everywhere
     "enable_premium_for_crisis": False,  # Crisis uses emergency (mini), per Anthony
 }
@@ -6090,7 +6097,7 @@ def _select_model_for_turn(
         use_premium = True
         reasons.append("long_message")
 
-    if session_history_length > 10:
+    if session_history_length > MODEL_CONFIG["deep_conversation_threshold"]:
         use_premium = True
         reasons.append("deep_conversation")
 
