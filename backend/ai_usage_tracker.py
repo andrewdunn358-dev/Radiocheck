@@ -41,6 +41,23 @@ BUDGET_LIMITS = {
     "gemini": 10.00,   # £10/month for Gemini
 }
 
+# In-process running total of today's logged AI spend (GBP), reset at UTC
+# midnight. Read synchronously by the model router as a cost-ceiling backstop,
+# avoiding an async DB round-trip on the request path.
+# NOTE: per-process (not shared across workers, resets on restart) and counts
+# only calls routed through log_ai_usage (the main chat completion), so it is
+# an approximate safety valve — the authoritative figure is the ai_usage
+# collection. Good enough to suppress premium when a day is running hot.
+_daily_cost = {"date": None, "cost_gbp": 0.0}
+
+
+def get_daily_cost_sync() -> float:
+    """Return today's in-process logged AI spend in GBP (0.0 on a new day)."""
+    today = datetime.utcnow().date().isoformat()
+    if _daily_cost["date"] != today:
+        return 0.0
+    return _daily_cost["cost_gbp"]
+
 
 def count_openai_tokens(text: str, model: str = "gpt-4o-mini") -> int:
     """Count tokens for OpenAI models using tiktoken."""
@@ -106,6 +123,14 @@ async def log_ai_usage(
     }
     
     await db.ai_usage.insert_one(usage_record)
+
+    # Update the in-process daily cost backstop (see _daily_cost note above)
+    today = datetime.utcnow().date().isoformat()
+    if _daily_cost["date"] != today:
+        _daily_cost["date"] = today
+        _daily_cost["cost_gbp"] = 0.0
+    _daily_cost["cost_gbp"] += cost_gbp or 0.0
+
     return usage_record
 
 
