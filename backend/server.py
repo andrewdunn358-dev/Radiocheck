@@ -6031,6 +6031,99 @@ def get_openai_client():
 # client and transport.
 buddy_openai_client = None
 
+# Model configuration — single source of truth for all AI model decisions.
+# Tiered routing: cheap primary for most turns, premium only when justified,
+# with a hard daily cost ceiling. Per Anthony's spec; launch model is gpt-4o-mini.
+MODEL_CONFIG = {
+    "primary": "gpt-4o-mini",       # Default for most turns — launch model
+    "premium": "gpt-4o",            # Reserved for high-stakes, non-crisis moments
+    "fallback": "gpt-4o-mini",      # Used when primary fails
+    "emergency": "gpt-4o-mini",     # Crisis path — fast response is the priority
+    "max_tokens": 400,
+    "max_tokens_premium": 600,
+    "max_tokens_crisis": 400,
+    "temperature": 0.3,
+    "temperature_crisis": 0.2,
+    # NOTE (flagged for Anthony): the spec named this key cost_threshold_usd,
+    # but ai_usage_tracker is GBP-native (PRICING and BUDGET_LIMITS are all in
+    # GBP), so the ceiling is enforced in GBP to avoid a unit mismatch.
+    # GBP 4.00 is roughly USD 5/day. Adjust if a tighter cap is intended.
+    "cost_threshold_gbp": 4.0,      # Daily spend ceiling before premium suppressed
+    "use_smart_routing": True,      # Master switch — False forces primary everywhere
+    "enable_premium_for_crisis": False,  # Crisis uses emergency (mini), per Anthony
+}
+
+
+def _select_model_for_turn(
+    risk_level: str,
+    message: str,
+    session_history_length: int,
+    unified_risk: str = "NONE",
+) -> tuple:
+    """Select model, max_tokens, and temperature based on conversation signals.
+    Defaults to cheap primary (gpt-4o-mini). Escalates to premium only when
+    justified. Never exceeds the daily cost threshold.
+    Returns: (model_name, max_tokens, temperature)
+    """
+    if not MODEL_CONFIG.get("use_smart_routing", False):
+        # Master switch off — primary for everything (safe fallback / regression isolation)
+        return (
+            MODEL_CONFIG["primary"],
+            MODEL_CONFIG["max_tokens"],
+            MODEL_CONFIG["temperature"],
+        )
+
+    # Crisis path — fast, deterministic, always the emergency (mini) model.
+    # The crisis overlay fires regardless of model (per Anthony).
+    if risk_level in ["RED", "AMBER"] or unified_risk in ["IMMINENT", "HIGH"]:
+        logging.info("[ModelRouter] Crisis path — using emergency model")
+        return (
+            MODEL_CONFIG["emergency"],
+            MODEL_CONFIG["max_tokens_crisis"],
+            MODEL_CONFIG["temperature_crisis"],
+        )
+
+    use_premium = False
+    reasons = []
+
+    if len(message) > 500:
+        use_premium = True
+        reasons.append("long_message")
+
+    if session_history_length > 10:
+        use_premium = True
+        reasons.append("deep_conversation")
+
+    if risk_level == "AMBER" or unified_risk == "MEDIUM":
+        use_premium = True
+        reasons.append("elevated_risk")
+
+    # Cost ceiling — suppress premium if today's spend is over the threshold.
+    try:
+        from ai_usage_tracker import get_daily_cost_sync
+        daily_cost = get_daily_cost_sync()
+        if daily_cost > MODEL_CONFIG["cost_threshold_gbp"]:
+            use_premium = False
+            reasons.append("cost_ceiling_hit")
+            logging.warning("[ModelRouter] Daily cost ceiling reached — suppressing premium")
+    except Exception:
+        pass  # Usage tracker unavailable — proceed without cost check
+
+    if use_premium:
+        logging.info(f"[ModelRouter] Premium model selected: {', '.join(reasons)}")
+        return (
+            MODEL_CONFIG["premium"],
+            MODEL_CONFIG["max_tokens_premium"],
+            MODEL_CONFIG["temperature"],
+        )
+
+    logging.info("[ModelRouter] Primary (cheap) model selected")
+    return (
+        MODEL_CONFIG["primary"],
+        MODEL_CONFIG["max_tokens"],
+        MODEL_CONFIG["temperature"],
+    )
+
 # Helper function to get character config from database with fallback to hardcoded
 async def get_character_config(character_id: str) -> dict:
     """
@@ -6789,13 +6882,23 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         reply = None
         ai_provider_used = "openai"
         
+        # Smart model selection based on conversation signals (Anthony's spec).
+        # Applies to the MAIN chat completion only — Judge/retry/micro-gen calls
+        # stay on gpt-4o (see Step 4).
+        selected_model, selected_max_tokens, selected_temperature = _select_model_for_turn(
+            risk_level=risk_level,
+            message=request.message,
+            session_history_length=len(session.get("history", [])),
+            unified_risk=unified_risk,
+        )
+        
         # Try OpenAI first (primary)
         try:
             completion = buddy_openai_client.chat.completions.create(
-                model="gpt-4o",
+                model=selected_model,
                 messages=messages,
-                max_tokens=400,
-                temperature=0.3,
+                max_tokens=selected_max_tokens,
+                temperature=selected_temperature,
                 timeout=45
             )
             reply = completion.choices[0].message.content or ""
@@ -7299,7 +7402,7 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, topic_s
             if ai_provider_used == "openai":
                 input_tokens = count_openai_tokens(full_prompt, "gpt-4o")
                 output_tokens = count_openai_tokens(reply, "gpt-4o")
-                model_name = "gpt-4o"
+                model_name = selected_model
             else:  # gemini
                 input_tokens = estimate_gemini_tokens(full_prompt)
                 output_tokens = estimate_gemini_tokens(reply)
