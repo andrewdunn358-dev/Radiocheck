@@ -6895,7 +6895,11 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         selected_model, selected_max_tokens, selected_temperature = _select_model_for_turn(
             risk_level=risk_level,
             message=request.message,
-            session_history_length=len(session.get("history", [])),
+            # history stores 2 entries per turn (user + assistant), so divide by
+            # 2 to pass the conversation TURN count. Without this the threshold
+            # (30) was effectively ~15 turns, escalating to gpt-4o twice as early
+            # as intended.
+            session_history_length=len(session.get("history", [])) // 2,
             unified_risk=unified_risk,
         )
         
