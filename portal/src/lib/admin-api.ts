@@ -145,8 +145,13 @@ export const api = {
     api.fetch<ChatRoom[]>('/live-chat/rooms', { token }),
   
   // Logs - Safeguarding Alerts (old endpoint, kept for backward compatibility)
-  getSafeguardingAlerts: (token: string) =>
-    api.fetch<SafeguardingAlert[]>('/safeguarding-alerts', { token }),
+  // Pass includeAuditOnly to also return audit-only records (recorded for
+  // governance, kept off the active staff queue).
+  getSafeguardingAlerts: (token: string, includeAuditOnly = false) =>
+    api.fetch<SafeguardingAlert[]>(
+      `/safeguarding-alerts${includeAuditOnly ? '?include_audit_only=true' : ''}`,
+      { token }
+    ),
 
   // AI Characters - Correct endpoint is /ai-characters/admin/all
   getAICharacters: (token: string) =>
