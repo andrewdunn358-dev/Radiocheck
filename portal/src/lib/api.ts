@@ -423,8 +423,15 @@ export const staffApi = {
   },
 
   // Safeguarding Alerts
-  getSafeguardingAlerts: (token: string) =>
-    fetchAPI<SafeguardingAlert[]>('/safeguarding-alerts', { token }),
+  // includeAuditOnly: audit-only alerts are recorded for governance but kept off
+  // the active staff queue (e.g. when signpost mode is on, or when the reconciler
+  // suppressed the failsafe). The backend excludes them by default; pass true to
+  // surface them read-only so they remain reviewable.
+  getSafeguardingAlerts: (token: string, includeAuditOnly = false) =>
+    fetchAPI<SafeguardingAlert[]>(
+      `/safeguarding-alerts${includeAuditOnly ? '?include_audit_only=true' : ''}`,
+      { token }
+    ),
   acknowledgeSafeguardingAlert: (token: string, id: string) =>
     fetchAPI<ActionResponse>(`/safeguarding-alerts/${id}/acknowledge`, { token, method: 'PATCH' }),
   resolveSafeguardingAlert: (token: string, id: string, notes?: string) =>
@@ -688,7 +695,11 @@ export interface SafeguardingAlert {
   triggered_indicators?: string[];
   risk_level: string; // GREEN, YELLOW, AMBER, RED (backend uses uppercase)
   risk_score?: number;
-  status: 'active' | 'acknowledged' | 'resolved';
+  // 'audit_only': recorded for governance but held off the active staff queue —
+  // written when signpost mode is on, or when the reconciler suppressed the
+  // failsafe. The backend has always written this status; the frontend type
+  // never modelled it, which is part of why these alerts were invisible.
+  status: 'active' | 'acknowledged' | 'resolved' | 'audit_only';
   acknowledged_by?: string;
   acknowledged_at?: string;
   resolved_by?: string;

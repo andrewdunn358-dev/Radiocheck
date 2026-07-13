@@ -29,6 +29,10 @@ export default function AlertsTab({
   
   // Alert data state
   const [safeguardingAlerts, setSafeguardingAlerts] = useState<SafeguardingAlert[]>([]);
+  // Audit-only alerts are recorded for governance but excluded from the active
+  // staff queue by default (signpost mode on, or a reconciler-suppressed
+  // failsafe). Without this toggle there is no way to review them at all.
+  const [showAuditOnly, setShowAuditOnly] = useState(false);
   const [panicAlerts, setPanicAlerts] = useState<PanicAlert[]>([]);
   
   // Sound alert tracking refs
@@ -44,7 +48,7 @@ export default function AlertsTab({
     console.log('[AlertsTab] loadAlerts: Loading safeguarding and panic alerts...');
     try {
       const [safeguarding, panic] = await Promise.all([
-        staffApi.getSafeguardingAlerts(token),
+        staffApi.getSafeguardingAlerts(token, showAuditOnly),
         staffApi.getPanicAlerts(token),
       ]);
       console.log('[AlertsTab] loadAlerts: Received safeguarding:', safeguarding?.length || 0, 'alerts');
@@ -54,7 +58,7 @@ export default function AlertsTab({
     } catch (err) {
       console.error('[AlertsTab] loadAlerts: Failed to load alerts:', err);
     }
-  }, [token]);
+  }, [token, showAuditOnly]);
 
   // Initial load and polling - CRITICAL: Real-time polling for safety alerts
   useEffect(() => {
@@ -232,6 +236,41 @@ export default function AlertsTab({
       {/* Safeguarding Alerts Sub-tab */}
       {alertsSubTab === 'safeguarding' && (
         <div className="space-y-4">
+          {/* Audit-only visibility. These alerts are recorded for governance but
+              held off the active queue (signpost mode, or a suppressed failsafe).
+              They are read-only: not actionable, but they must be reviewable. */}
+          <div className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Show audit-only alerts</p>
+              <p className="text-xs text-muted-foreground">
+                Recorded for governance but not escalated to the staff queue (e.g. signpost mode). Read-only.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showAuditOnly}
+              data-testid="toggle-show-audit-only"
+              onClick={() => setShowAuditOnly((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                showAuditOnly ? 'bg-green-500' : 'bg-gray-500/40'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  showAuditOnly ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {safeguardingAlerts.length === 0 && (
+            <div className="bg-card border border-border rounded-xl p-6 text-sm text-muted-foreground">
+              No safeguarding alerts in the active queue.
+              {!showAuditOnly && ' Audit-only alerts are hidden — switch the toggle above to review them.'}
+            </div>
+          )}
+
           {safeguardingAlerts.map((alert) => (
             <div key={alert.id || alert._id} className={`bg-card border rounded-xl p-6 ${alert.status === 'active' ? 'border-red-500' : 'border-border'}`}>
               <div className="flex justify-between items-start mb-4">
@@ -243,9 +282,12 @@ export default function AlertsTab({
                     <span className={`px-2 py-1 rounded text-xs ${
                       alert.status === 'active' ? 'bg-red-500/20 text-red-400' :
                       alert.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400' :
+                      alert.status === 'audit_only' ? 'bg-slate-500/20 text-slate-300' :
                       'bg-green-500/20 text-green-400'
                     }`}>
-                      {(alert.status || 'unknown').toUpperCase()}
+                      {alert.status === 'audit_only'
+                        ? 'AUDIT ONLY — NOT ESCALATED'
+                        : (alert.status || 'unknown').toUpperCase()}
                     </span>
                     {/* Contact captured indicator */}
                     {alert.contact_captured ? (
@@ -320,7 +362,16 @@ export default function AlertsTab({
                 </details>
               )}
 
-              {alert.status !== 'resolved' && (
+              {/* Audit-only records were never escalated, so they are not
+                  actionable — show read-only rather than offering Acknowledge
+                  on an alert nobody was ever assigned. */}
+              {alert.status === 'audit_only' && (
+                <div className="text-xs text-muted-foreground border-t border-border pt-3">
+                  Recorded for governance. Not escalated to the staff queue, so there is nothing to acknowledge.
+                </div>
+              )}
+
+              {alert.status !== 'resolved' && alert.status !== 'audit_only' && (
                 <div className="flex gap-3">
                   {alert.status === 'active' && (
                     <button
