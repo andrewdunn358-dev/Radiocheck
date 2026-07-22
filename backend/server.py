@@ -7462,7 +7462,12 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
             # audit_only. Other classifier levels (low/high) pass through. We
             # never mutate the classifier cache or any in-memory verdict —
             # the mapping is local to the persisted record.
-            is_audit_only = not failsafe_should_fire
+            # Rule 2b (CLASSIFIER_HIGH_REVIEW) writes a VISIBLE alert without
+            # firing the overlay, so visibility can no longer be derived from
+            # failsafe_should_fire alone — that coupling is what made suppressed
+            # verdicts invisible to staff (Round 11 / 006).
+            staff_review_required = getattr(final_verdict, "staff_review_required", False)
+            is_audit_only = not (failsafe_should_fire or staff_review_required)
             # Signpost mode also writes audit_only: record kept, staff queue suppressed.
             alert_status = "audit_only" if (is_audit_only or signpost_mode) else "active"
 

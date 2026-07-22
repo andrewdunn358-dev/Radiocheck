@@ -192,9 +192,16 @@ class FinalVerdict:
     precedence_rule_fired: str   # one of: CLASSIFIER_UNAVAILABLE,
                                  #         CONTEXT_OVERRIDE,
                                  #         KEYWORD_FAILSAFE,
+                                 #         CLASSIFIER_HIGH_REVIEW,
                                  #         CLASSIFIER_ESCALATION,
                                  #         DEFAULT
     reconciliation_reason: str   # human-readable, written to audit log
+    # Rule 2b: staff must see this alert in the queue, but the user's chat UI is
+    # NOT interrupted by the full crisis overlay. Previously alert visibility was
+    # derived from failsafe_triggered alone, so "no overlay" always meant
+    # "audit_only / invisible". This decouples the two: a HIGH verdict can reach
+    # a human without triggering a resource dump at the user.
+    staff_review_required: bool = False
 
 
 # ============================================================================
@@ -324,6 +331,45 @@ def reconcile_verdicts(
         _emit_audit_log(final, keyword, classifier, message_lower,
                         session_id=session_id, character=character,
                         severity=logging.INFO)
+        return final
+
+    # ----- Rule 2b: CLASSIFIER_HIGH_REVIEW -----
+    # Classifier judged the turn "high" risk. Before this rule existed there was
+    # NO escalation path for "high" at all: Rule 3 requires "imminent", so a
+    # contextually obvious disclosure carrying no crisis keywords fell straight
+    # through to Rule 4 DEFAULT and was written audit_only — no overlay, and
+    # invisible to staff. (Round 11 scenario 006; also the 30 Jun
+    # Score 200/RED/audit_only turn, now a confirmed recurrence of the same
+    # defect rather than a one-off.)
+    #
+    # Deliberately does NOT fire the full "We're Here For You" overlay. Instead:
+    #   (a) staff_review_required=True  -> visible, non-audit_only alert flagged
+    #       HIGH so staff can prioritise it against genuine "imminent" cases;
+    #   (b) the chat reply gets a soft acknowledgment + gentle direct check-in
+    #       rather than a resource dump (handled at the persona layer).
+    #
+    # Per spec: fires regardless of contains_self_harm_intent — that flag is
+    # informative here, NOT gating, so it cannot suppress a "high" verdict.
+    # A subsequent confirming turn is re-evaluated by the classifier on its own
+    # merits and may reach Rule 3; "second confirmation" is intentionally not
+    # hardcoded as auto-escalation.
+    if classifier.risk_level == "high":
+        final = FinalVerdict(
+            risk_level="HIGH",
+            failsafe_triggered=False,
+            failsafe_reason=None,
+            risk_score=max(_classifier_risk_score(classifier), 75),
+            precedence_rule_fired="CLASSIFIER_HIGH_REVIEW",
+            reconciliation_reason=(
+                f"cls_high+conf={classifier.confidence:.2f}"
+                f"+intent={classifier.contains_self_harm_intent}"
+                f"+staff_review_no_overlay"
+            ),
+            staff_review_required=True,
+        )
+        _emit_audit_log(final, keyword, classifier, message_lower,
+                        session_id=session_id, character=character,
+                        severity=logging.WARNING)
         return final
 
     # ----- Rule 3: CLASSIFIER_ESCALATION -----

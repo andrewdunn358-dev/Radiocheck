@@ -735,8 +735,12 @@ def test_phase_b2_alert_gate_logic_audit_only_when_reconciler_suppresses():
     This isolates the mapping policy so future refactors can't silently
     regress it without breaking this test.
     """
-    def _gate(failsafe_should_fire: bool, classifier_risk: str, origin_risk: str):
-        is_audit_only = not failsafe_should_fire
+    def _gate(failsafe_should_fire: bool, classifier_risk: str, origin_risk: str,
+              staff_review_required: bool = False):
+        # Mirrors server.py: Rule 2b (CLASSIFIER_HIGH_REVIEW) writes a VISIBLE
+        # alert without firing the overlay, so visibility is no longer derived
+        # from failsafe_should_fire alone.
+        is_audit_only = not (failsafe_should_fire or staff_review_required)
         alert_status = "audit_only" if is_audit_only else "active"
         db_risk_level = origin_risk
         if is_audit_only:
@@ -752,9 +756,13 @@ def test_phase_b2_alert_gate_logic_audit_only_when_reconciler_suppresses():
     # Reconciler suppressed + classifier=low → audit_only, AMBER preserved.
     assert _gate(False, "low", "AMBER") == ("audit_only", "AMBER")
 
-    # Reconciler suppressed + classifier=high → audit_only, but high passes
-    # through (we never UPGRADE on audit_only — that would defeat the gate's
-    # noise-suppression intent — but we also never strip a high signal).
+    # Rule 2b: classifier=high now sets staff_review_required, so the alert is
+    # VISIBLE ("active") with no overlay. Previously this fell to DEFAULT and
+    # was written audit_only — invisible to staff (Round 11 / scenario 006).
+    assert _gate(False, "high", "AMBER", staff_review_required=True) == ("active", "AMBER")
+
+    # Legacy path: a suppressed "high" with no staff review still audit_only,
+    # and the high signal is never stripped.
     assert _gate(False, "high", "AMBER") == ("audit_only", "AMBER")
 
     # Reconciler suppressed + classifier missing/none → audit_only, preserved.
