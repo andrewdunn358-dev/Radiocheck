@@ -863,6 +863,110 @@ def test_integration_s009_b_writes_audit_only_alert_via_gate(monkeypatch):
             del server.buddy_sessions[sid]
 
 
+def test_integration_rule_2b_classifier_high_writes_active_alert(monkeypatch):
+    """End-to-end guard for Rule 2b (CLASSIFIER_HIGH_REVIEW) — the Round 11 /
+    scenario 006 case.
+
+    Drives POST /api/ai-buddies/chat with a message carrying NO crisis keywords
+    but a classifier verdict of "high", and asserts:
+
+      1. an alert with status="active" (NOT audit_only) lands in the DB, so a
+         human can actually see it; and
+      2. the user-facing crisis overlay does NOT fire (safeguardingTriggered
+         is falsy) — Rule 2b is a staff-review path, not a resource dump.
+
+    Why this test exists: the reconciler returning staff_review_required=True is
+    not sufficient on its own. The alert-write block in buddy_chat() is gated on
+    `should_escalate`, which comes from the legacy keyword scorer and is silent
+    for a zero-keyword message. The B³.5 `elif not failsafe_should_fire:` branch
+    also short-circuits before the unified_risk == "HIGH" branch that would set
+    it. Without the reconciler-authoritative override, the verdict says escalate
+    and nothing writes the alert — the original 006 failure shape, one layer
+    down. A unit test on the local _gate helper cannot catch that; only driving
+    the real endpoint can.
+    """
+    # Message deliberately carries no crisis keywords — the risk is contextual.
+    msg = "Yeah. More than once if I'm honest."
+
+    # 1) Classifier returns "high". Note contains_self_harm_intent=False on
+    #    purpose: per spec that flag is informative, not gating, so it must not
+    #    be able to suppress a "high" verdict.
+    async def _fake_classifier_high(message, conversation_history=None,
+                                    previous_sessions=None, use_cache=True):
+        return {
+            "ai_used": True,
+            "risk_level": "high",
+            "risk_score": 75,
+            "confidence": 0.85,
+            "contains_self_harm_intent": False,
+            "detected_indicators": ["recurrent passive ideation"],
+            "reason": "confirms recurrent thoughts in response to direct check-in",
+            "cached": False,
+            "processing_time_ms": 0,
+        }
+    monkeypatch.setattr(
+        "safety.unified_safety.classify_message_with_ai", _fake_classifier_high
+    )
+
+    # 2) Patch OpenAI buddy client.
+    class _FakeChoice:
+        message = type("M", (), {"content": "That sounds like a lot to carry, mate."})()
+    class _FakeCompletion:
+        choices = [_FakeChoice()]
+    class _FakeChatCompletions:
+        def create(self, *a, **kw):
+            return _FakeCompletion()
+    class _FakeChat:
+        completions = _FakeChatCompletions()
+    class _FakeOpenAI:
+        chat = _FakeChat()
+    monkeypatch.setattr(server, "buddy_openai_client", _FakeOpenAI())
+
+    # 3) Patch geolocation + email notification.
+    async def _no_geo(_ip):
+        return None
+    monkeypatch.setattr(server, "lookup_ip_geolocation", _no_geo)
+
+    async def _no_email(*a, **kw):
+        return None
+    monkeypatch.setattr(server, "send_safeguarding_email_notification", _no_email)
+
+    # 4) Drive the endpoint.
+    sid = "rule2b-classifier-high-integration"
+    client = TestClient(server.app)
+    resp = client.post(
+        "/api/ai-buddies/chat",
+        json={"message": msg, "sessionId": sid, "character": "tommy"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    try:
+        # 5a) The overlay must NOT fire — Rule 2b is staff-review, not crisis UI.
+        assert not body.get("safeguardingTriggered"), (
+            "Rule 2b must not fire the user-facing crisis overlay — "
+            f"got safeguardingTriggered={body.get('safeguardingTriggered')}"
+        )
+
+        # 5b) An alert must exist AND be visible to staff.
+        alerts = _find_alerts_by_session_sync(sid)
+        assert alerts, (
+            "Rule 2b wrote no alert at all. staff_review_required=True on the "
+            "verdict is not enough — should_escalate must be derived from it, "
+            "independent of the legacy keyword scorer (Round 11 / 006)."
+        )
+        for a in alerts:
+            assert a["status"] == "active", (
+                f"Rule 2b alert must be visible to staff, got status={a['status']!r}. "
+                "audit_only here means the classifier judged HIGH risk and no "
+                "human can see it — the 006 failure mode."
+            )
+    finally:
+        _delete_alerts_by_session_sync(sid)
+        if sid in getattr(server, "buddy_sessions", {}):
+            del server.buddy_sessions[sid]
+
+
 # ---------------------------------------------------------------------------
 # Round 10 Phase B³ — Overlay-Gate Reconciler Hotfix tests
 #
