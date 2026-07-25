@@ -6834,6 +6834,30 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             risk_level = "YELLOW"
             logging.info(f"Unified safety upgraded risk to YELLOW (MEDIUM)")
         
+        # === RULE 2b: STAFF REVIEW ESCALATION (reconciler-authoritative) ===
+        # Placed AFTER the B³.5 if/elif chain deliberately. Rule 2b sets
+        # failsafe_should_fire=False, so `elif not failsafe_should_fire:` above
+        # catches it first and short-circuits — the unified_risk == "HIGH" branch
+        # that would set should_escalate never runs. `should_escalate` otherwise
+        # comes only from the legacy keyword scorer (check_safeguarding), which
+        # is silent for the 006 case (zero keywords).
+        #
+        # Without this, staff_review_required=True comes back from the reconciler
+        # but the alert-write block gated on `if should_escalate:` never fires —
+        # the same failure shape as the original 006 bug, one layer down.
+        # Derived from the reconciler verdict, independent of the legacy scorer.
+        if getattr(final_verdict, "staff_review_required", False):
+            should_escalate = True
+            # Distinguish HIGH review alerts from genuine IMMINENT (RED) cases in
+            # the staff queue, so they can be prioritised against each other.
+            if risk_level in ("GREEN", "YELLOW"):
+                risk_level = "AMBER"
+            logging.warning(
+                f"CLASSIFIER_HIGH_REVIEW - staff review alert (no overlay) - "
+                f"Session: {request.sessionId[:12]} - risk_level={risk_level} "
+                f"(ReconcilerRule: {final_verdict.precedence_rule_fired})"
+            )
+
         # Also escalate on rapid escalation or concerning patterns
         # (but NOT if negation was confirmed, identity protocol active, or reconciler
         # authoritatively decided failsafe=False — Phase B³ reconciler-aware guard).
@@ -7462,7 +7486,12 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
             # audit_only. Other classifier levels (low/high) pass through. We
             # never mutate the classifier cache or any in-memory verdict —
             # the mapping is local to the persisted record.
-            is_audit_only = not failsafe_should_fire
+            # Rule 2b (CLASSIFIER_HIGH_REVIEW) writes a VISIBLE alert without
+            # firing the overlay, so visibility can no longer be derived from
+            # failsafe_should_fire alone — that coupling is what made suppressed
+            # verdicts invisible to staff (Round 11 / 006).
+            staff_review_required = getattr(final_verdict, "staff_review_required", False)
+            is_audit_only = not (failsafe_should_fire or staff_review_required)
             # Signpost mode also writes audit_only: record kept, staff queue suppressed.
             alert_status = "audit_only" if (is_audit_only or signpost_mode) else "active"
 
