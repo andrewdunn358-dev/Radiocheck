@@ -7045,6 +7045,49 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             }
             
             # === Round 8: Context-aware micro-generation function ===
+            def _is_model_refusal(text: str) -> bool:
+                """Return True if `text` looks like a model refusal / moderation
+                message rather than in-character Tommy content.
+
+                Round 12 critical (005 retest): the micro-fallback GPT-4o call can
+                succeed (HTTP 200) but return a refusal — "I'm sorry, I can't
+                assist with that" and similar — when the model declines the
+                generation prompt. Without this check that refusal was surfaced
+                to the user verbatim as if it were Tommy. When detected, the
+                caller discards it and uses the hardcoded safe default instead.
+
+                Deliberately conservative: matches well-known refusal/apology
+                openers and moderation phrasing, so it won't discard legitimate
+                in-character replies (Tommy's warm lines don't open this way).
+                """
+                if not text:
+                    return True
+                t = text.strip().lower()
+                refusal_markers = (
+                    "i'm sorry, i can't",
+                    "i'm sorry, but i can't",
+                    "i am sorry, i can't",
+                    "i cannot assist",
+                    "i can't assist",
+                    "i can't help with that",
+                    "i cannot help with that",
+                    "i'm unable to assist",
+                    "i am unable to assist",
+                    "i'm not able to help with that",
+                    "i can't provide",
+                    "i cannot provide",
+                    "as an ai",
+                    "i'm just an ai",
+                    "i cannot fulfill",
+                    "i can't fulfill",
+                    "i'm sorry, but i'm not able",
+                    "sorry, i can't assist",
+                    "unable to continue with that request",
+                    "i can't comply",
+                    "i cannot comply",
+                )
+                return any(t.startswith(m) or m in t for m in refusal_markers)
+
             def generate_micro_fallback(state):
                 """Generate a context-aware fallback using the Round 8 prompt."""
                 name_str = f"Name: {state['name']}" if state.get('name') else "Name: not known"
@@ -7114,7 +7157,24 @@ Return ONLY the response text. No explanation. No labels."""
                         temperature=0.2,
                         timeout=10
                     )
-                    return (micro_result.choices[0].message.content or "").strip().strip('"')
+                    raw = (micro_result.choices[0].message.content or "").strip().strip('"')
+                    # Round 12 critical (005 retest): a SUCCESSFUL call can still
+                    # return a model REFUSAL rather than in-character content
+                    # (e.g. "I'm sorry, I can't assist with that"). The old code
+                    # returned any non-empty string, so that refusal was surfaced
+                    # to the user as if it were Tommy — a veteran mid-disclosure
+                    # got a flat refusal with no overlay and no way back. Only the
+                    # exception path fell through to the safe default; a
+                    # refusal-with-200 did not. Validate the content and treat a
+                    # refusal as failure (return None) so the caller's existing
+                    # "else -> hardcoded safe default" path catches it.
+                    if _is_model_refusal(raw):
+                        logging.error(
+                            f"[Fallback] Micro-gen returned a model REFUSAL, not "
+                            f"in-character content — discarding. Raw: {raw!r}"
+                        )
+                        return None
+                    return raw
                 except Exception as e:
                     logging.error(f"[Fallback] Micro-generation failed: {e}")
                     return None
