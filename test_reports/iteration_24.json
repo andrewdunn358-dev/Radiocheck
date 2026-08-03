@@ -36,12 +36,7 @@
     "backend": "95% (19/20 tests passed)",
     "frontend": "N/A (backend-only testing as requested)"
   },
-  "test_credentials": {
-    "admin": {"email": "admin@veteran.dbty.co.uk", "password": "Admin123!"},
-    "supervisor": {"email": "supervisor@radiocheck.me", "password": "Sup123!"},
-    "test_counsellor_id": "f044736b-40a3-4e7b-b48a-0145689a52c8",
-    "test_peer_id": "4991a972-7430-4f1a-ae15-166a9d82b1f5"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Test created multiple supervisor users during testing. Existing supervisor@radiocheck.me confirmed working.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

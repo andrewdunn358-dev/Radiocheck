@@ -19,7 +19,7 @@
     "backend": "N/A (frontend-only testing)",
     "frontend": "100% - Age Gate Race Condition Fix verified"
   },
-  "test_credentials": {},
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Used AsyncStorage keys: @radio_check_dob='2010-01-15T00:00:00.000Z' and @radio_check_age_verified='true' to simulate under-18 user",
   "retest_needed": false,
   "should_main_agent_self_test": false,

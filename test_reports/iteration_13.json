@@ -40,10 +40,7 @@
   "success_rate": {
     "backend": "100% (22/22 tests passed, 1 skipped)"
   },
-  "test_credentials": {
-    "admin": "admin@veteran.dbty.co.uk / ChangeThisPassword123!",
-    "staff": "sarahm.counsellor@radiocheck.me / RadioCheck2026!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Created TEST_User shift during CRUD test (cleaned up)",
   "retest_needed": false,
   "main_agent_can_self_test": true,

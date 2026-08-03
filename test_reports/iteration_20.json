@@ -27,9 +27,7 @@
     "backend": "100% (23/23 tests passed)",
     "frontend": "N/A (backend-only testing)"
   },
-  "test_credentials": {
-    "admin": "admin@veteran.dbty.co.uk / ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Tests create and clean up test characters. 8 hardcoded characters already seeded in database.",
   "retest_needed": false,
   "should_main_agent_self_test": false,
@@ -79,7 +77,16 @@
   "database_verification": {
     "collection": "ai_characters",
     "characters_count": 8,
-    "characters": ["tommy", "doris", "bob", "sentry", "hugo", "margie", "rita", "catherine"],
+    "characters": [
+      "tommy",
+      "doris",
+      "bob",
+      "sentry",
+      "hugo",
+      "margie",
+      "rita",
+      "catherine"
+    ],
     "tommy_updated": "Description shows 'updated via CMS' or 'battle buddy' indicating CMS functionality works"
   }
 }

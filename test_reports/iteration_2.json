@@ -8,8 +8,18 @@
     "ui_bugs": [],
     "integration_issues": [],
     "design_issues": [
-      {"screen": "Admin Dashboard icons", "issues": ["Ionicons showing as placeholder boxes (font asset loading issue from previous iteration)"]},
-      {"screen": "Organizations list", "issues": ["Delete button icons appear as boxes due to font issue"]}
+      {
+        "screen": "Admin Dashboard icons",
+        "issues": [
+          "Ionicons showing as placeholder boxes (font asset loading issue from previous iteration)"
+        ]
+      },
+      {
+        "screen": "Organizations list",
+        "issues": [
+          "Delete button icons appear as boxes due to font issue"
+        ]
+      }
     ]
   },
   "test_report_links": [
@@ -25,10 +35,7 @@
     "backend": "100% (17/17 tests passed)",
     "frontend": "100% (all organization features working)"
   },
-  "test_credentials": {
-    "admin_email": "admin@veteran.dbty.co.uk",
-    "admin_password": "ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "8 UK veteran organizations seeded via API (Combat Stress, Samaritans, Veterans UK, CALM, SSAFA, Help for Heroes, Royal British Legion, NHS Urgent Mental Health Helpline)",
   "retest_needed": false,
   "main_agent_can_self_test": true,

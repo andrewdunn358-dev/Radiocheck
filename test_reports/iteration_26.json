@@ -22,17 +22,11 @@
     "backend": "100% (18/18 tests passed)",
     "frontend": "100% (learner portal login, dashboard, module view all working)"
   },
-  "test_credentials": {
-    "learner": {
-      "email": "test@example.com",
-      "password": "testpass123"
-    },
-    "preview_url": "https://phase-b2-alert.preview.emergentagent.com"
-  },
-  "seed_data_creation": "Test user test@example.com with password testpass123 already exists",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
+  "seed_data_creation": "Test user test@example.com with password REDACTED already exists",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "LMS learner authentication fully working. Learner portal at /api/training/ has login modal with email AND password fields. Test user test@example.com/testpass123 can login successfully. Module images display correctly. Admin module endpoint /api/lms/admin/module/{id} returns full quiz data including questions, options, correct answers, and explanations.",
+  "context_for_next_testing_agent": "LMS learner authentication fully working. Learner portal at /api/training/ has login modal with email AND password fields. Test user test@example.com/REDACTED can login successfully. Module images display correctly. Admin module endpoint /api/lms/admin/module/{id} returns full quiz data including questions, options, correct answers, and explanations.",
   "features_tested": {
     "learner_portal_ui_at_api_training": {
       "status": "PASS",
@@ -103,7 +97,7 @@
   "ui_tests_summary": {
     "learner_portal_landing": "PASS - Radio Check logo, Peer to Peer Training visible, 14 modules shown",
     "login_modal": "PASS - Email AND Password fields visible",
-    "login_flow": "PASS - test@example.com/testpass123 login successful",
+    "login_flow": "PASS - test@example.com/REDACTED login successful",
     "dashboard": "PASS - Shows 14 module cards, user name 'Test User'",
     "module_view": "PASS - Module image displays, Take Quiz button present"
   }

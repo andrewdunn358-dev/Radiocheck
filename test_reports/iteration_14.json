@@ -41,9 +41,7 @@
   "success_rate": {
     "backend": "100% (17/17 tests passed, 3 skipped - push token not integrated)"
   },
-  "test_credentials": {
-    "admin": "admin@veteran.dbty.co.uk / ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Used existing knowledge base seed data (11 entries), created test feedback entries",
   "retest_needed": false,
   "main_agent_can_self_test": true,

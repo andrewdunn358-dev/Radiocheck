@@ -10,7 +10,9 @@
     "design_issues": [
       {
         "screen": "My Availability page",
-        "issues": ["Shift shows 'Volunteer' instead of staff name when user not logged in - expected behavior for privacy"]
+        "issues": [
+          "Shift shows 'Volunteer' instead of staff name when user not logged in - expected behavior for privacy"
+        ]
       }
     ]
   },
@@ -27,9 +29,7 @@
     "backend": "100% (8/8 tests passed)",
     "frontend": "100%"
   },
-  "test_credentials": {
-    "staff_user": "sarahm.counsellor@radiocheck.me / RadioCheck2026!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Test shift exists for 2026-02-25 (Sarah M., 10:00-16:00)",
   "retest_needed": false,
   "main_agent_can_self_test": true,

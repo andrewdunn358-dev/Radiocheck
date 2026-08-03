@@ -24,9 +24,7 @@
     "backend": "N/A (frontend-only testing as requested)",
     "frontend": "100% (8/8 tests passed)"
   },
-  "test_credentials": {
-    "site_password": "radiocheck1358"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "",
   "retest_needed": false,
   "should_main_agent_self_test": false,

@@ -34,10 +34,7 @@
     "backend": "100% (13/13 pytest tests passed)",
     "frontend": "80% (P2 Legal Disclaimer working, P0 VoIP Tab blocked by navigation bug)"
   },
-  "test_credentials": {
-    "admin_email": "admin@veteran.dbty.co.uk",
-    "admin_password": "ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "None - used existing admin account",
   "retest_needed": true,
   "main_agent_can_self_test": false,

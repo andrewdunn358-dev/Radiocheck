@@ -6,11 +6,21 @@
   },
   "frontend_issues": {
     "ui_bugs": [
-      {"component": "AI Chat TextInput", "issue": "React Native Web TextInput not easily accessible via Playwright automation - uses non-standard DOM elements", "selector": "TextInput placeholder='Type a message...'", "priority": "LOW"}
+      {
+        "component": "AI Chat TextInput",
+        "issue": "React Native Web TextInput not easily accessible via Playwright automation - uses non-standard DOM elements",
+        "selector": "TextInput placeholder='Type a message...'",
+        "priority": "LOW"
+      }
     ],
     "integration_issues": [],
     "design_issues": [
-      {"screen": "All pages", "issues": ["Console warnings about deprecated shadow* style props (should use boxShadow)"]}
+      {
+        "screen": "All pages",
+        "issues": [
+          "Console warnings about deprecated shadow* style props (should use boxShadow)"
+        ]
+      }
     ]
   },
   "test_report_links": [
@@ -31,10 +41,7 @@
     "backend": "100% (15/15 tests passed)",
     "frontend": "95% (All core features working)"
   },
-  "test_credentials": {
-    "admin_email": "admin@veteran.dbty.co.uk",
-    "admin_password": "ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Safeguarding alerts created via backend tests",
   "retest_needed": false,
   "main_agent_can_self_test": true,

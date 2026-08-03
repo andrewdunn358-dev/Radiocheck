@@ -16,7 +16,9 @@
       {
         "flow": "Navigation action buttons",
         "issue": "Action buttons (e.g., 'Yes, take me to Tommy') only appear when Grace mentions specific internal personas/routes. When Grace mentions external resources (like CTP), no action buttons appear. This is by design per the parseNavigationActions function.",
-        "affected_selectors": ["[data-testid^='grace-action']"],
+        "affected_selectors": [
+          "[data-testid^='grace-action']"
+        ],
         "priority": "INFO - Working as designed"
       }
     ],
@@ -41,7 +43,7 @@
     "backend": "86% - 12/14 tests passed (2 skipped)",
     "frontend": "100% - All UI elements verified"
   },
-  "test_credentials": "",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "",
   "retest_needed": false,
   "should_main_agent_self_test": true,
@@ -58,7 +60,7 @@
     },
     "frontend": {
       "Grace welcome page loads": "PASS - /grace-welcome route works",
-      "Grace opening message": "PASS - 'Hello. I'm Grace. Welcome to Radio Check. Take a breath — you've found the right place. What's brought you here today?'",
+      "Grace opening message": "PASS - 'Hello. I'm Grace. Welcome to Radio Check. Take a breath \u2014 you've found the right place. What's brought you here today?'",
       "Grace avatar displayed": "PASS - grace.png shown with green border",
       "Grace role displayed": "PASS - 'Welcome & Signposting'",
       "Message input": "PASS - 'Talk to Grace...' placeholder",

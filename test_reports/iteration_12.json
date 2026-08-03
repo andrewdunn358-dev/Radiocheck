@@ -22,10 +22,7 @@
     "backend": "100% (17/17 tests passed)",
     "frontend": "N/A - backend only testing"
   },
-  "test_credentials": {
-    "admin": "admin@veteran.dbty.co.uk / ChangeThisPassword123!",
-    "staff": "sarahm.counsellor@radiocheck.me / RadioCheck2026!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Created TEST_ prefixed call log entry during test (cleaned up)",
   "retest_needed": false,
   "main_agent_can_self_test": true,
@@ -61,8 +58,14 @@
   },
   "call_logs_metrics_example": {
     "total_calls": 3,
-    "calls_by_type": {"counsellor": 2, "peer": 1},
-    "calls_by_method": {"phone": 2, "webrtc": 1},
+    "calls_by_type": {
+      "counsellor": 2,
+      "peer": 1
+    },
+    "calls_by_method": {
+      "phone": 2,
+      "webrtc": 1
+    },
     "calls_by_day": "Object with date keys (YYYY-MM-DD) and count values"
   }
 }

@@ -30,7 +30,7 @@
     "backend": "98% - 59/60 tests passed",
     "frontend": "N/A - Code inspection only (Expo app not accessible via preview URL)"
   },
-  "test_credentials": "",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "",
   "retest_needed": false,
   "should_main_agent_self_test": true,

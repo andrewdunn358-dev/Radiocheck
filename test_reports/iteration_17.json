@@ -33,7 +33,7 @@
     "backend": "N/A (frontend-only testing)",
     "frontend": "50% (1/2 features working - Crisis Support Website Links PASS, Age Gate Bug Fix FAIL)"
   },
-  "test_credentials": {},
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "None - used DOB 2010-01-01 (age 16) for under-18 testing via localStorage",
   "retest_needed": true,
   "should_main_agent_self_test": false,

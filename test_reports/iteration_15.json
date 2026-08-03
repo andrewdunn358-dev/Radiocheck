@@ -10,7 +10,9 @@
     "design_issues": [
       {
         "screen": "Console warnings",
-        "issues": ["'shadow*' style props are deprecated. Use 'boxShadow' - this is a non-critical styling warning"]
+        "issues": [
+          "'shadow*' style props are deprecated. Use 'boxShadow' - this is a non-critical styling warning"
+        ]
       }
     ]
   },
@@ -32,10 +34,7 @@
     "backend": "100% (12/12 tests passed)",
     "frontend": "100% (All tested features working)"
   },
-  "test_credentials": {
-    "admin_email": "admin@veteran.dbty.co.uk",
-    "admin_password": "ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Used POST /api/auth/reset-admin-password to ensure admin user exists",
   "retest_needed": false,
   "main_agent_can_self_test": true,
@@ -63,7 +62,7 @@
     "logic": "If production build detects preview URL, falls back to production backend URL (veterans-support-api.onrender.com)",
     "files_using_safe_config": [
       "/app/frontend/app/ai-buddies.tsx",
-      "/app/frontend/app/ai-chat.tsx", 
+      "/app/frontend/app/ai-chat.tsx",
       "/app/frontend/app/mental-health-screening.tsx",
       "/app/frontend/app/podcasts.tsx"
     ]

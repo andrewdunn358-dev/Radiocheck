@@ -3,10 +3,26 @@
   "backend_issues": {
     "critical": [],
     "minor": [
-      {"endpoint": "/api/events/", "issue": "Returns 404 - Events API not found", "priority": "LOW"},
-      {"endpoint": "/api/governance/summary-report", "issue": "Returns 500 - Governance summary API error", "priority": "LOW"},
-      {"endpoint": "/api/learning/stats", "issue": "Returns 404 - Learning stats API not found", "priority": "LOW"},
-      {"endpoint": "/api/ai-feedback/moderation/queue", "issue": "Returns 404 - Moderation queue API not found", "priority": "LOW"}
+      {
+        "endpoint": "/api/events/",
+        "issue": "Returns 404 - Events API not found",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "/api/governance/summary-report",
+        "issue": "Returns 500 - Governance summary API error",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "/api/learning/stats",
+        "issue": "Returns 404 - Learning stats API not found",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "/api/ai-feedback/moderation/queue",
+        "issue": "Returns 404 - Moderation queue API not found",
+        "priority": "LOW"
+      }
     ]
   },
   "frontend_issues": {
@@ -15,11 +31,15 @@
     "design_issues": [
       {
         "screen": "AdminPortal component",
-        "issues": ["React warning: Each child in a list should have a unique 'key' prop in table rows - persisting from iteration_30"]
+        "issues": [
+          "React warning: Each child in a list should have a unique 'key' prop in table rows - persisting from iteration_30"
+        ]
       },
       {
         "screen": "Governance Tab",
-        "issues": ["Summary stats grid (Total Hazards, Open Hazards, Mitigated, KPIs Met) not displayed when governance summary API fails - graceful fallback but metrics not visible"]
+        "issues": [
+          "Summary stats grid (Total Hazards, Open Hazards, Mitigated, KPIs Met) not displayed when governance summary API fails - graceful fallback but metrics not visible"
+        ]
       }
     ]
   },
@@ -35,10 +55,7 @@
     "backend": "N/A - frontend only testing",
     "frontend": "100% - All 6 new tabs passed (Rota, CMS, Events, Compliance, Governance, AI Learning)"
   },
-  "test_credentials": {
-    "email": "admin@veteran.dbty.co.uk",
-    "password": "AS90155mm"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "N/A - used existing admin account",
   "retest_needed": false,
   "should_main_agent_self_test": false,

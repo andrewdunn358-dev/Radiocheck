@@ -22,11 +22,7 @@
     "backend": "100% (13/13 tests passed)",
     "frontend": "100% (UI verified working)"
   },
-  "test_credentials": {
-    "staff_email": "sharon@radiocheck.me",
-    "staff_password": "ChangeThisPassword123!",
-    "note": "sharon user was created during testing as it didn't exist"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Created user sharon@radiocheck.me with role 'counsellor' for staff portal access",
   "retest_needed": false,
   "should_main_agent_self_test": false,

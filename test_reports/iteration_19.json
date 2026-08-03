@@ -1,5 +1,5 @@
 {
-  "summary": "Backend Case Management API Testing Complete. All 27 pytest tests PASSED. Full case lifecycle (alert → case → session → safety plan → referral → handoff) verified end-to-end.",
+  "summary": "Backend Case Management API Testing Complete. All 27 pytest tests PASSED. Full case lifecycle (alert \u2192 case \u2192 session \u2192 safety plan \u2192 referral \u2192 handoff) verified end-to-end.",
   "backend_issues": {
     "critical": [],
     "minor": []
@@ -24,10 +24,7 @@
     "backend": "100% (27/27 tests passed)",
     "frontend": "N/A (backend-only testing)"
   },
-  "test_credentials": {
-    "admin": "admin@veteran.dbty.co.uk / ChangeThisPassword123!",
-    "staff": "sharon@radiocheck.me / ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Used existing safeguarding alerts and cases from database for testing",
   "retest_needed": false,
   "should_main_agent_self_test": false,
@@ -39,7 +36,11 @@
       "details": "Returns high_priority and standard alerts categorized by risk level"
     },
     "case_crud_api": {
-      "endpoints": ["GET /api/cases", "POST /api/cases", "GET /api/cases/{id}"],
+      "endpoints": [
+        "GET /api/cases",
+        "POST /api/cases",
+        "GET /api/cases/{id}"
+      ],
       "status": "PASS",
       "details": "All CRUD operations working, proper auth validation, status filtering"
     },
@@ -77,7 +78,7 @@
   "e2e_lifecycle_test_results": {
     "status": "PASS",
     "test_case": "RC-2026-2E74BB",
-    "flow_tested": "alert → case → session → safety plan → referral → handoff summary",
+    "flow_tested": "alert \u2192 case \u2192 session \u2192 safety plan \u2192 referral \u2192 handoff summary",
     "final_state": {
       "status": "monitoring",
       "session_count": 3,
