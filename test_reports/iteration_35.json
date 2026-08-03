@@ -23,7 +23,7 @@
     "backend": "100% - All 14 tests passed",
     "frontend": "100% - Portal displays all 20 AI team members"
   },
-  "test_credentials": "N/A",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Added dave, mo, helen, reg to ai_characters MongoDB collection",
   "retest_needed": false,
   "should_main_agent_self_test": false,

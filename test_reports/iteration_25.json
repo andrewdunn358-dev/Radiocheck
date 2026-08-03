@@ -16,7 +16,9 @@
     "design_issues": [
       {
         "screen": "Homepage onboarding",
-        "issues": ["Multiple modal dialogs (password, permissions, DOB) create friction for first-time users - may want to streamline"]
+        "issues": [
+          "Multiple modal dialogs (password, permissions, DOB) create friction for first-time users - may want to streamline"
+        ]
       }
     ]
   },
@@ -39,9 +41,7 @@
     "backend": "93% (14/15 passed, 1 skipped)",
     "frontend": "80% (app loads, onboarding works, LMS portals need routing fix)"
   },
-  "test_credentials": {
-    "preview_password": "radiocheck1358"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Created test volunteer registrations during API testing (TEST_ prefixed)",
   "retest_needed": false,
   "should_main_agent_self_test": true,
@@ -67,7 +67,7 @@
       "POST /api/events/{cancelled_id}/join - No cancelled events to test"
     ],
     "frontend_tested": [
-      "Password-protected access with radiocheck1358",
+      "Password-protected access with REDACTED",
       "Permissions modal (Maybe Later option)",
       "Storage notice (OK button)",
       "Date of Birth modal (requires dropdown selection)",

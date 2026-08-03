@@ -22,12 +22,7 @@
     "backend": "100% (14/14 tests passed)",
     "frontend": "100% (All UI tests passed)"
   },
-  "test_credentials": {
-    "email": "test@staff.com",
-    "password": "test123",
-    "user_id": "69bb1c83f3e67acd3b55b138",
-    "profile_id": "b0c9595e-76f0-434e-aca7-a635bf87a189"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "N/A - used existing test user",
   "retest_needed": false,
   "should_main_agent_self_test": false,
@@ -35,7 +30,7 @@
   "features_tested": {
     "staff_login": {
       "status": "PASS",
-      "details": "Login with test@staff.com/test123 returns user with id, role, name, and token"
+      "details": "Login with test@staff.com/REDACTED returns user with id, role, name, and token"
     },
     "profile_user_id_matching": {
       "status": "PASS",

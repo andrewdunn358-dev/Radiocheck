@@ -10,21 +10,29 @@
       {
         "flow": "data-testid selectors",
         "issue": "data-testid attributes on TouchableOpacity components not rendering in web DOM - must use text-based selectors for Playwright testing",
-        "affected_selectors": ["[data-testid=\"substance-support-btn\"]", "[data-testid=\"combat-stress-call-btn\"]"],
+        "affected_selectors": [
+          "[data-testid=\"substance-support-btn\"]",
+          "[data-testid=\"combat-stress-call-btn\"]"
+        ],
         "priority": "LOW",
         "workaround": "Use text-based selectors like 'text=Alcohol & Substance Support'"
       }
     ],
     "design_issues": []
   },
-  "test_report_links": ["/app/test_reports/iteration_9.json"],
+  "test_report_links": [
+    "/app/test_reports/iteration_9.json"
+  ],
   "action_items": [],
   "critical_code_review_comments": [
     "data-testid attributes may need testID prop (React Native) or explicit dataSet config for web compatibility - currently not blocking functionality"
   ],
   "updated_files": [],
-  "success_rate": {"backend": "N/A - frontend only test", "frontend": "100%"},
-  "test_credentials": "None required",
+  "success_rate": {
+    "backend": "N/A - frontend only test",
+    "frontend": "100%"
+  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "None",
   "retest_needed": false,
   "main_agent_can_self_test": true,
@@ -63,7 +71,7 @@
     "navigation": {
       "home_to_substance": "PASS",
       "overview_to_resources": "PASS",
-      "overview_to_selfhelp": "PASS", 
+      "overview_to_selfhelp": "PASS",
       "overview_to_warning": "PASS",
       "back_to_overview": "PASS - via header arrow",
       "back_to_home": "PASS - via header arrow from overview"

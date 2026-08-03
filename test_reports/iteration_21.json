@@ -28,16 +28,7 @@
     "backend": "100% (20/20 tests passed)",
     "frontend": "N/A (backend-only testing)"
   },
-  "test_credentials": {
-    "admin": {
-      "email": "admin@veteran.dbty.co.uk",
-      "password": "ChangeThisPassword123!"
-    },
-    "staff": {
-      "email": "sharon@radiocheck.me",
-      "password": "ChangeThisPassword123!"
-    }
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Tests create callback records with TEST_ prefix for testing. No cleanup performed.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

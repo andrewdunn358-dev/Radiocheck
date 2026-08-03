@@ -17,7 +17,9 @@
     "design_issues": [
       {
         "screen": "Chat Banner in Visual Editor",
-        "issues": ["Avatar shows 'HE' placeholder instead of actual Helen avatar due to incorrect URL path"]
+        "issues": [
+          "Avatar shows 'HE' placeholder instead of actual Helen avatar due to incorrect URL path"
+        ]
       }
     ]
   },
@@ -34,7 +36,7 @@
     "backend": "100% - All 96 tests passed",
     "frontend": "100% - Visual editor, icon picker, chat banner all working"
   },
-  "test_credentials": "admin@veteran.dbty.co.uk / ChangeThisPassword123!",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "13 new pages seeded via batch-seed endpoint + 3 previously migrated pages = 16 total pages",
   "retest_needed": false,
   "should_main_agent_self_test": false,
@@ -86,22 +88,71 @@
     }
   },
   "pages_verified": {
-    "about": {"blocks": 18, "has_callouts": true, "has_icons": true},
-    "criminal-justice": {"blocks": 16, "chat_banner_persona": "doris"},
-    "crisis-support": {"blocks": 14, "chat_banner_persona": "tommy", "has_support_cards": true},
-    "he-served": {"blocks": 29, "chat_banner_persona": "dave", "callouts_with_icons": 8},
-    "historical-investigations": {"blocks": 14, "chat_banner_persona": "james"},
-    "compensation-schemes": {"blocks": 19, "chat_banner_persona": "jack"},
-    "privacy-policy": {"blocks": 25},
-    "terms-of-service": {"blocks": 19},
-    "commonwealth-veterans": {"blocks": 23, "chat_banner_persona": "kofi"},
-    "faith-service": {"blocks": 20, "chat_banner_persona": "catherine"},
-    "substance-support": {"blocks": 18, "chat_banner_persona": "sam"},
-    "women-veterans": {"blocks": 18, "chat_banner_persona": "rita"},
-    "money-benefits": {"blocks": 18, "chat_banner_persona": "jack"},
-    "for-carers": {"blocks": 24, "chat_banner_persona": "helen"},
-    "serious-illness": {"blocks": 27, "chat_banner_persona": "reg"},
-    "recovery-support": {"blocks": 25, "chat_banner_persona": "mo"}
+    "about": {
+      "blocks": 18,
+      "has_callouts": true,
+      "has_icons": true
+    },
+    "criminal-justice": {
+      "blocks": 16,
+      "chat_banner_persona": "doris"
+    },
+    "crisis-support": {
+      "blocks": 14,
+      "chat_banner_persona": "tommy",
+      "has_support_cards": true
+    },
+    "he-served": {
+      "blocks": 29,
+      "chat_banner_persona": "dave",
+      "callouts_with_icons": 8
+    },
+    "historical-investigations": {
+      "blocks": 14,
+      "chat_banner_persona": "james"
+    },
+    "compensation-schemes": {
+      "blocks": 19,
+      "chat_banner_persona": "jack"
+    },
+    "privacy-policy": {
+      "blocks": 25
+    },
+    "terms-of-service": {
+      "blocks": 19
+    },
+    "commonwealth-veterans": {
+      "blocks": 23,
+      "chat_banner_persona": "kofi"
+    },
+    "faith-service": {
+      "blocks": 20,
+      "chat_banner_persona": "catherine"
+    },
+    "substance-support": {
+      "blocks": 18,
+      "chat_banner_persona": "sam"
+    },
+    "women-veterans": {
+      "blocks": 18,
+      "chat_banner_persona": "rita"
+    },
+    "money-benefits": {
+      "blocks": 18,
+      "chat_banner_persona": "jack"
+    },
+    "for-carers": {
+      "blocks": 24,
+      "chat_banner_persona": "helen"
+    },
+    "serious-illness": {
+      "blocks": 27,
+      "chat_banner_persona": "reg"
+    },
+    "recovery-support": {
+      "blocks": 25,
+      "chat_banner_persona": "mo"
+    }
   },
   "tests_executed": [
     "TestAdminPagesEndpoint::test_admin_pages_returns_200 - PASS",

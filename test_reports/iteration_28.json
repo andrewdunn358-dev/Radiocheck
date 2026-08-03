@@ -21,7 +21,7 @@
   "success_rate": {
     "backend": "100% (14/14 tests passed)"
   },
-  "test_credentials": "N/A - public endpoints tested",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "N/A",
   "retest_needed": false,
   "should_main_agent_self_test": false,
@@ -58,8 +58,24 @@
   },
   "refactoring_verification": {
     "personas_directory_structure": "/app/backend/personas/ contains 12 persona files + __init__.py + soul.md + soul_loader.py",
-    "characters_loaded": ["tommy", "doris", "sentry", "bob", "margie", "jack", "rita", "catherine", "frankie", "baz", "megan", "penny"],
-    "new_characters_added": ["megan (Women Veterans Specialist)", "penny (Benefits & Money Specialist)"],
+    "characters_loaded": [
+      "tommy",
+      "doris",
+      "sentry",
+      "bob",
+      "margie",
+      "jack",
+      "rita",
+      "catherine",
+      "frankie",
+      "baz",
+      "megan",
+      "penny"
+    ],
+    "new_characters_added": [
+      "megan (Women Veterans Specialist)",
+      "penny (Benefits & Money Specialist)"
+    ],
     "legacy_id_mappings": {
       "doris": "Rachel (backwards compatibility)",
       "sentry": "Finch (backwards compatibility)"

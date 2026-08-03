@@ -23,7 +23,7 @@
     "frontend": "N/A - Backend only testing requested",
     "expo_build": "PASS - Web export completed successfully"
   },
-  "test_credentials": "N/A - No auth required for CMS endpoints",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "for-carers page seeded with 24 blocks via POST /api/cms/admin/pages/for-carers/seed",
   "retest_needed": false,
   "should_main_agent_self_test": false,

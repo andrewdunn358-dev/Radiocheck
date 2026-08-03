@@ -10,19 +10,27 @@
       {
         "flow": "data-testid selectors",
         "issue": "data-testid attributes on React Native TouchableOpacity components not rendering in web DOM for Playwright - need text-based selectors",
-        "affected_selectors": ["[data-testid=\"grounding-tools-btn\"]", "[data-testid=\"local-services-btn\"]"],
+        "affected_selectors": [
+          "[data-testid=\"grounding-tools-btn\"]",
+          "[data-testid=\"local-services-btn\"]"
+        ],
         "priority": "LOW",
         "workaround": "Use text-based selectors - functionality works, only test automation affected"
       }
     ],
     "design_issues": []
   },
-  "test_report_links": ["/app/test_reports/iteration_10.json"],
+  "test_report_links": [
+    "/app/test_reports/iteration_10.json"
+  ],
   "action_items": [],
   "critical_code_review_comments": [],
   "updated_files": [],
-  "success_rate": {"backend": "N/A - frontend only test", "frontend": "100%"},
-  "test_credentials": "None required",
+  "success_rate": {
+    "backend": "N/A - frontend only test",
+    "frontend": "100%"
+  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "None",
   "retest_needed": false,
   "main_agent_can_self_test": true,

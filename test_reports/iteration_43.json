@@ -26,7 +26,7 @@
     "backend": "N/A - Frontend only testing",
     "frontend": "100% - Code review verified all requirements"
   },
-  "test_credentials": "",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "",
   "retest_needed": false,
   "should_main_agent_self_test": true,

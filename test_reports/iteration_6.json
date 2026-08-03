@@ -8,7 +8,12 @@
     "ui_bugs": [],
     "integration_issues": [],
     "design_issues": [
-      {"screen": "All pages", "issues": ["Console warnings about deprecated shadow* style props (use boxShadow) - cosmetic only"]}
+      {
+        "screen": "All pages",
+        "issues": [
+          "Console warnings about deprecated shadow* style props (use boxShadow) - cosmetic only"
+        ]
+      }
     ]
   },
   "test_report_links": [
@@ -31,10 +36,7 @@
     "backend": "100% (15/15 tests passed)",
     "frontend": "100% (Close button confirmed working)"
   },
-  "test_credentials": {
-    "admin_email": "admin@veteran.dbty.co.uk",
-    "admin_password": "ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Live chat rooms created during backend testing",
   "retest_needed": false,
   "main_agent_can_self_test": true,

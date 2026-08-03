@@ -192,38 +192,11 @@ async def seed_admin():
     return {"message": "Admin user created", "email": "admin@veteran.dbty.co.uk"}
 
 
-@router.post("/reset-admin-password")
-async def reset_admin_password():
-    """Reset admin password - TEMPORARY ENDPOINT FOR RECOVERY"""
-    db = get_database()
-
-    try:
-        seed_password = get_admin_seed_password()
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
-
-    # Find admin user
-    admin = await db.users.find_one({"email": "admin@veteran.dbty.co.uk"})
-    if not admin:
-        # Create if doesn't exist
-        user_id = str(uuid.uuid4())
-        admin_data = {
-            "id": user_id,
-            "email": "admin@veteran.dbty.co.uk",
-            "hashed_password": hash_password(seed_password),
-            "role": "admin",
-            "name": "Admin",
-            "created_at": datetime.utcnow()
-        }
-        await db.users.insert_one(admin_data)
-        return {"message": "Admin user created", "email": "admin@veteran.dbty.co.uk"}
-
-    # Reset password
-    await db.users.update_one(
-        {"email": "admin@veteran.dbty.co.uk"},
-        {"$set": {"hashed_password": hash_password(seed_password), "id": admin.get("id") or str(uuid.uuid4())}}
-    )
-    return {"message": "Admin password reset", "email": "admin@veteran.dbty.co.uk"}
+# NOTE: /reset-admin-password (unauthenticated admin password reset) was removed
+# in the Aug 2026 security pass — remediation plan item 9.2. It allowed anyone who
+# could reach the API to reset the admin account to ADMIN_SEED_PASSWORD while that
+# env var was set. Admin recovery now requires direct DB access or /seed-admin
+# (which only acts when no admin exists).
 
 
 @router.post("/seed-staff")

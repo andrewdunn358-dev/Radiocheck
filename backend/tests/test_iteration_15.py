@@ -17,16 +17,15 @@ ADMIN_PASSWORD = os.environ["TEST_ADMIN_PASSWORD"]  # set via CI repo secret
 
 
 class TestAdminPasswordReset:
-    """Test admin password reset endpoint (prerequisite for login)"""
-    
-    def test_reset_admin_password(self):
-        """POST /api/auth/reset-admin-password should reset/create admin"""
+    """The unauthenticated reset endpoint was removed (Aug 2026 security pass, item 9.2)."""
+
+    def test_reset_admin_password_removed(self):
+        """POST /api/auth/reset-admin-password must no longer exist (404/405)"""
         response = requests.post(f"{BASE_URL}/api/auth/reset-admin-password")
-        assert response.status_code == 200
-        data = response.json()
-        assert "message" in data
-        assert data["email"] == ADMIN_EMAIL
-        print(f"SUCCESS: Admin password reset - {data['message']}")
+        assert response.status_code in (404, 405), (
+            "SECURITY REGRESSION: unauthenticated /reset-admin-password is reachable again"
+        )
+        print("SUCCESS: reset-admin-password endpoint is gone")
 
 
 class TestAuthentication:

@@ -3,15 +3,28 @@
   "backend_issues": {
     "critical": [],
     "minor": [
-      {"endpoint": "/api/auth/forgot-password", "issue": "Returns reset token in response when Resend not configured - intended for dev mode but should be hidden in production"}
+      {
+        "endpoint": "/api/auth/forgot-password",
+        "issue": "Returns reset token in response when Resend not configured - intended for dev mode but should be hidden in production"
+      }
     ]
   },
   "frontend_issues": {
     "ui_bugs": [],
     "integration_issues": [],
     "design_issues": [
-      {"screen": "Login page", "issues": ["Shield icon showing as placeholder box - font asset loading error (520 status)"]},
-      {"screen": "Admin Dashboard icons", "issues": ["Ionicons not loading - may need font preloading fix"]}
+      {
+        "screen": "Login page",
+        "issues": [
+          "Shield icon showing as placeholder box - font asset loading error (520 status)"
+        ]
+      },
+      {
+        "screen": "Admin Dashboard icons",
+        "issues": [
+          "Ionicons not loading - may need font preloading fix"
+        ]
+      }
     ]
   },
   "test_report_links": [
@@ -32,10 +45,7 @@
     "backend": "100% (20/20 tests passed)",
     "frontend": "95% (all flows working, minor icon display issues)"
   },
-  "test_credentials": {
-    "admin_email": "admin@veteran.dbty.co.uk",
-    "admin_password": "ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "CMS content seeded via API and Load Default Content button",
   "retest_needed": false,
   "main_agent_can_self_test": true,

@@ -10,11 +10,15 @@
     "design_issues": [
       {
         "screen": "AI Personas Tab",
-        "issues": ["Avatar images returning 404 errors - 12 missing avatar images (from console logs). The avatars show fallback text instead."]
+        "issues": [
+          "Avatar images returning 404 errors - 12 missing avatar images (from console logs). The avatars show fallback text instead."
+        ]
       },
       {
         "screen": "AdminPortal component",
-        "issues": ["React warning: Each child in a list should have a unique 'key' prop in table rows"]
+        "issues": [
+          "React warning: Each child in a list should have a unique 'key' prop in table rows"
+        ]
       }
     ]
   },
@@ -30,10 +34,7 @@
     "backend": "N/A - frontend only testing",
     "frontend": "100% - All 9 requested features passed"
   },
-  "test_credentials": {
-    "email": "admin@veteran.dbty.co.uk",
-    "password": "AS90155mm"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "N/A - used existing admin account",
   "retest_needed": false,
   "should_main_agent_self_test": false,
@@ -41,7 +42,7 @@
   "features_tested": {
     "admin_login": {
       "status": "PASS",
-      "details": "Login with admin@veteran.dbty.co.uk/AS90155mm successful"
+      "details": "Login with admin@veteran.dbty.co.uk/REDACTED successful"
     },
     "staff_tab_with_data": {
       "status": "PASS",
@@ -69,7 +70,7 @@
     },
     "ai_usage": {
       "status": "PASS",
-      "details": "AI Usage tab displays Total Tokens (17,269), Total Cost (£0.0021), Providers section with OpenAI breakdown"
+      "details": "AI Usage tab displays Total Tokens (17,269), Total Cost (\u00a30.0021), Providers section with OpenAI breakdown"
     },
     "monitoring": {
       "status": "PASS",

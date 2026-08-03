@@ -17,7 +17,9 @@
     "design_issues": [
       {
         "screen": "Chat Banner in Visual Editor",
-        "issues": ["Avatar image shows 'HE' placeholder instead of actual Helen avatar due to incorrect URL path (/api/images/ vs /images/)"]
+        "issues": [
+          "Avatar image shows 'HE' placeholder instead of actual Helen avatar due to incorrect URL path (/api/images/ vs /images/)"
+        ]
       }
     ]
   },
@@ -36,7 +38,7 @@
     "backend": "100% - All 23 tests passed",
     "frontend": "100% - All visual editor features working"
   },
-  "test_credentials": "admin@veteran.dbty.co.uk / ChangeThisPassword123!",
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "for-carers page already seeded with 24 blocks",
   "retest_needed": false,
   "should_main_agent_self_test": false,

@@ -6,12 +6,27 @@
   },
   "frontend_issues": {
     "ui_bugs": [
-      {"component": "Login Button", "issue": "React Native Web TouchableOpacity click events not triggering via Playwright automation", "selector": "button:has-text(\"Login\")", "priority": "MEDIUM"},
-      {"component": "Admin Dashboard", "issue": "Router navigation error when accessing /admin without authentication", "selector": "N/A", "priority": "LOW"}
+      {
+        "component": "Login Button",
+        "issue": "React Native Web TouchableOpacity click events not triggering via Playwright automation",
+        "selector": "button:has-text(\"Login\")",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "Admin Dashboard",
+        "issue": "Router navigation error when accessing /admin without authentication",
+        "selector": "N/A",
+        "priority": "LOW"
+      }
     ],
     "integration_issues": [],
     "design_issues": [
-      {"screen": "All pages", "issues": ["Ionicons font showing as placeholder boxes (font asset loading issue from previous iteration)"]}
+      {
+        "screen": "All pages",
+        "issues": [
+          "Ionicons font showing as placeholder boxes (font asset loading issue from previous iteration)"
+        ]
+      }
     ]
   },
   "test_report_links": [
@@ -36,10 +51,7 @@
     "backend": "100% (24/24 tests passed)",
     "frontend": "80% (Callback form works, Admin login UI issue with React Native Web)"
   },
-  "test_credentials": {
-    "admin_email": "admin@veteran.dbty.co.uk",
-    "admin_password": "ChangeThisPassword123!"
-  },
+  "test_credentials": "REDACTED - credentials removed and rotated (Aug 2026 security pass)",
   "seed_data_creation": "Test callbacks and panic alerts created via backend tests",
   "retest_needed": true,
   "main_agent_can_self_test": false,
