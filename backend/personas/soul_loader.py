@@ -492,17 +492,35 @@ GRIEF_RELATIONSHIP_NOUNS = ['wife', 'husband', 'mum', 'dad', 'mother', 'father',
                             'brother', 'sister', 'son', 'daughter', 'mate',
                             'friend', 'nan', 'grandad', 'comrade']
 # Same exclusion set as the buddy_chat grief_name extraction (capitalised
-# grief keywords at sentence start are not names).
+# grief keywords at sentence start are not names), extended per Ant's review
+# with a stoplist of common sentence-openers — English capitalises the start
+# of every sentence, so these must never count as names.
 _GRIEF_NAME_EXCLUSIONS = {'lost', 'died', 'dead', 'killed', 'passed', 'gone',
-                          'mate', 'sorry', 'still', 'anyway'}
+                          'mate', 'sorry', 'still', 'anyway',
+                          # sentence-opener stoplist (Ant, Item 4 review)
+                          'yesterday', 'today', 'tomorrow', 'sometimes',
+                          'when', 'after', 'before', 'since', 'now', 'then',
+                          'also', 'however'}
 
 
 def _has_capitalised_name(message: str) -> bool:
     """Person-reference check (b): a capitalised word that isn't a known
-    non-name. Reuses the regex from buddy_chat's grief_name extraction."""
+    non-name. Reuses the regex from buddy_chat's grief_name extraction.
+
+    Per Ant's Item 4 review: the FIRST word of the message never counts as
+    a name (it is capitalised because English capitalises sentence starts),
+    and the stoplist above excludes common sentence-openers wherever they
+    appear. Known consequence (flagged to Ant): a message that OPENS with
+    the name itself ("Dave passed away") no longer counts the name — it
+    still fires if any other person-reference or second signal is present.
+    """
     import re
-    for candidate in re.findall(r'\b([A-Z][a-z]{2,})\b', message):
-        if candidate.lower() not in _GRIEF_NAME_EXCLUSIONS:
+    stripped = message.lstrip()
+    first_word_offset = len(message) - len(stripped)
+    for m in re.finditer(r'\b([A-Z][a-z]{2,})\b', message):
+        if m.start() == first_word_offset:
+            continue  # first word of the message is a sentence start, not a name
+        if m.group(1).lower() not in _GRIEF_NAME_EXCLUSIONS:
             return True
     return False
 

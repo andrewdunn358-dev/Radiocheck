@@ -86,13 +86,16 @@ def test_tier_b_with_relationship_noun_fires():
 def test_tier_b_with_capitalised_name_fires():
     phrases = [
         "i lost Dave two years ago",
-        "Steve passed away in march",
+        "my head's been all over since Steve passed away in march",
         "it's been a year since Karen was killed",
     ]
     for p in phrases:
         assert "grief.md" in get_protocol_files(p), (
             f"Tier B + capitalised name failed to fire grief.md: {p!r}"
         )
+    # NOTE: a name as the FIRST word ("Steve passed away") is the documented
+    # consequence of Ant's sentence-opener fix — see
+    # test_message_opening_with_name_documented_consequence below.
 
 
 # ---------- Tier B + (c) second signal: fires ----------
@@ -123,16 +126,49 @@ def test_vague_plurals_do_not_count_as_person_reference():
         )
 
 
-# ---------- Known caveat, documented for Ant's review ----------
+# ---------- Sentence-opener fix (Ant's Item 4 review follow-up) ----------
 
-def test_sentence_initial_capital_caveat():
-    """CAVEAT (flagged in PR): the reused name regex treats any capitalised
-    word (length >= 3, not in the exclusion set) as a name — including an
-    ordinary sentence-initial capital. A Tier B phrase that begins with a
-    capitalised non-name word therefore still fires. Documented here so the
-    behaviour is visible; whether to tighten is Ant's call."""
-    protocols = get_protocol_files("Yesterday i lost my keys")
-    assert "grief.md" in protocols  # fires due to capitalised "Yesterday"
+def test_first_word_capital_does_not_count_as_name():
+    """Ant's review fix: the first word of the message never counts as a
+    name, and common sentence-openers are stoplisted wherever they appear."""
+    phrases = [
+        "Yesterday i lost my keys",        # first word + stoplist
+        "Today my phone is dead",
+        "Honestly i lost the plot at work",  # first word, not in stoplist
+        "it was fine. However, i lost track of it all",  # stoplist mid-message
+        "Sometimes things get lost in the post",
+    ]
+    for p in phrases:
+        assert "grief.md" not in get_protocol_files(p), (
+            f"Sentence-opener capital counted as a name: {p!r}"
+        )
+
+
+def test_mid_message_names_still_count():
+    """The fix must not break genuine names appearing after the first word."""
+    phrases = [
+        "i lost Dave two years ago",
+        "it's been a year since Karen was killed",
+        "last month Steve passed and i can't settle",
+    ]
+    for p in phrases:
+        assert "grief.md" in get_protocol_files(p), (
+            f"Mid-message name failed to fire grief.md: {p!r}"
+        )
+
+
+def test_message_opening_with_name_documented_consequence():
+    """DOCUMENTED CONSEQUENCE (flagged to Ant): a message that opens with
+    the name itself no longer counts that name as a person-reference, so a
+    single Tier B signal alone does not fire. It still fires when any other
+    person-reference or a second signal is present."""
+    # Name is the first word, single Tier B signal -> no fire
+    assert "grief.md" not in get_protocol_files("Dave passed away")
+    # But with a relationship noun or second signal it fires as normal
+    assert "grief.md" in get_protocol_files("Dave passed away. my best mate")
+    assert "grief.md" in get_protocol_files("Dave passed away. he's gone")
+    # And Tier A is unaffected by name handling entirely
+    assert "grief.md" in get_protocol_files("Dave died last week")
 
 
 # ---------- Regression: other protocols unaffected ----------
