@@ -158,12 +158,11 @@ def test_mid_message_names_still_count():
 
 
 def test_message_opening_with_name_documented_consequence():
-    """DOCUMENTED CONSEQUENCE (flagged to Ant): a message that opens with
-    the name itself no longer counts that name as a person-reference, so a
-    single Tier B signal alone does not fire. It still fires when any other
-    person-reference or a second signal is present."""
-    # Name is the first word, single Tier B signal -> no fire
-    assert "grief.md" not in get_protocol_files("Dave passed away")
+    """Per Ant's follow-up ruling: the first word is skipped ONLY when it is
+    in the stoplist, so a message that opens with the name itself does count
+    that name as a person-reference and a single Tier B signal fires."""
+    # Name is the first word and not stoplisted -> counts as a name, fires
+    assert "grief.md" in get_protocol_files("Dave passed away")
     # But with a relationship noun or second signal it fires as normal
     assert "grief.md" in get_protocol_files("Dave passed away. my best mate")
     assert "grief.md" in get_protocol_files("Dave passed away. he's gone")
