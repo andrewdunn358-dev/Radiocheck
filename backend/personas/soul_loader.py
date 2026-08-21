@@ -471,10 +471,98 @@ def load_protocol_file(filename: str) -> str:
         return ""
 
 
+# === GRIEF GATE — two-tier signal model (Round 12 prep, Ant's Item 4 spec) ===
+# Diagnosis (Round 11 findings 003/007/009): the previous single-word OR-gate
+# fired grief.md on ordinary English ("lost my keys", "phone is dead",
+# "gone to the shops", "passed the test").
+#
+# Tier A signals are rare enough in ordinary speech to fire alone.
+# Tier B signals are ordinary English and only fire when the message ALSO
+# contains a person-reference: (a) a relationship noun, (b) a capitalised
+# name (same regex + exclusions as the grief_name extraction in buddy_chat,
+# moved here to gate entry per spec), or (c) a second Tier A/B signal in the
+# same message.
+#
+# Deliberately deferred per spec: vague plurals ("everyone"/"them") do NOT
+# count as a person-reference — test without first, add only if under-firing
+# proves the bigger problem.
+GRIEF_TIER_A = ['died', 'funeral', 'buried', 'memorial', 'ied']
+GRIEF_TIER_B = ['lost', 'dead', 'killed', 'gone', 'passed']
+GRIEF_RELATIONSHIP_NOUNS = ['wife', 'husband', 'mum', 'dad', 'mother', 'father',
+                            'brother', 'sister', 'son', 'daughter', 'mate',
+                            'friend', 'nan', 'grandad', 'comrade']
+# Same exclusion set as the buddy_chat grief_name extraction (capitalised
+# grief keywords at sentence start are not names), extended per Ant's review
+# with a stoplist of common sentence-openers — English capitalises the start
+# of every sentence, so these must never count as names.
+_GRIEF_NAME_EXCLUSIONS = {'lost', 'died', 'dead', 'killed', 'passed', 'gone',
+                          'mate', 'sorry', 'still', 'anyway',
+                          # sentence-opener stoplist (Ant, Item 4 review)
+                          'yesterday', 'today', 'tomorrow', 'sometimes',
+                          'when', 'after', 'before', 'since', 'now', 'then',
+                          'also', 'however',
+                          # extended stoplist (Ant, Item 4 follow-up ruling)
+                          'honestly', 'basically', 'look', 'listen',
+                          'seriously', 'literally', 'actually', 'frankly',
+                          'well', 'right', 'christ', 'god', 'jesus',
+                          'ok', 'okay', 'so', 'unfortunately', 'thankfully',
+                          'hopefully', 'weirdly', 'obviously', 'clearly',
+                          'apparently', 'personally'}
+
+
+def _has_capitalised_name(message: str) -> bool:
+    """Person-reference check (b): a capitalised word that isn't a known
+    non-name. Reuses the regex from buddy_chat's grief_name extraction.
+
+    Per Ant's Item 4 follow-up ruling: there is NO position check. Any
+    capitalised word not in the exclusion set counts as a name, wherever it
+    appears. Sentence-opening capitals are handled purely by the stoplist,
+    so a message that opens with the name itself ("Dave passed away") does
+    count that name and fires on a single Tier B signal.
+    """
+    import re
+    for m in re.finditer(r'\b([A-Z][a-z]{2,})\b', message):
+        if m.group(1).lower() not in _GRIEF_NAME_EXCLUSIONS:
+            return True
+    return False
+
+
+def _grief_gate_fires(message: str, msg_lower: str) -> bool:
+    """Two-tier grief.md entry gate. See block comment above."""
+    import re
+
+    def _hits(signals):
+        return [s for s in signals
+                if re.search(r'\b' + re.escape(s) + r'\b', msg_lower)]
+
+    tier_a = _hits(GRIEF_TIER_A)
+    if tier_a:
+        return True
+
+    tier_b = _hits(GRIEF_TIER_B)
+    if not tier_b:
+        return False
+
+    # (c) a second Tier A or Tier B signal in the same message
+    # (Tier A is empty at this point, so "second signal" == 2+ Tier B hits)
+    if len(tier_b) >= 2:
+        return True
+    # (a) relationship noun
+    if any(re.search(r'\b' + re.escape(n) + r'\b', msg_lower)
+           for n in GRIEF_RELATIONSHIP_NOUNS):
+        return True
+    # (b) capitalised name
+    if _has_capitalised_name(message):
+        return True
+
+    return False
+
+
 def get_protocol_files(message: str) -> list:
     """
     Detect which protocol files to load based on signal keywords in user message.
     Uses word-boundary matching to prevent substring false positives.
+    Grief uses a two-tier gate (see _grief_gate_fires) rather than a flat OR.
     """
     import re
     protocols = []
@@ -484,12 +572,10 @@ def get_protocol_files(message: str) -> list:
         return any(re.search(r'\b' + re.escape(s) + r'\b', msg_lower) for s in signals)
 
     # --- Phase 1: ACTIVE ---
-    grief_signals = ['died', 'dead', 'killed', 'lost', 'ied', 'gone', 'passed',
-                     'funeral', 'buried', 'memorial']
     anger_signals = ['angry', 'furious', 'rage', 'raging', 'sick of', 'pissed off',
                      'fucking', 'fed up', 'sick and tired', 'wind me up', 'winding me up']
 
-    if has_signal(grief_signals):
+    if _grief_gate_fires(message, msg_lower):
         protocols.append('grief.md')
     if has_signal(anger_signals):
         protocols.append('venting.md')
