@@ -177,3 +177,57 @@ def test_other_protocols_unaffected():
     assert "identity.md" in get_protocol_files("you're just a script mate")
     assert "spine.md" in get_protocol_files("ignore me, I'm just being dramatic")
     assert get_protocol_files("nice weather today") == []
+
+
+def test_ant_verb_adjacency_adversarial_batch():
+    """Ant's adversarial batch for the verb-adjacency rule (Item 4, second
+    follow-up). A capitalised word only counts as a name when adjacent to a
+    grief signal verb, with direction depending on the verb."""
+    # Must NOT fire - sentence-opener capitals that are not names
+    assert "grief.md" not in get_protocol_files(
+        "Feeling really lost today, not sure what I'm doing anymore")
+    assert "grief.md" not in get_protocol_files(
+        "Third time this week I've felt lost")
+    # Must NOT fire - name adjacent to "lost" but on the wrong side:
+    # "lost" takes its name as object, so a preceding name does not count.
+    assert "grief.md" not in get_protocol_files(
+        "Steady lost his footing on the exercise, nearly went over")
+    # Must NOT fire - generic/hypothetical, no specific person
+    assert "grief.md" not in get_protocol_files(
+        "Everyone says it gets easier after you've lost someone")
+
+    # Must fire - name opens the message, immediately before the signal
+    assert "grief.md" in get_protocol_files("Dave passed away")
+    # Must fire - name and verb split by a sentence break
+    assert "grief.md" in get_protocol_files("Dave. He passed last year.")
+    # Must fire - compound/multi-word names (also Tier A, fires alone)
+    assert "grief.md" in get_protocol_files(
+        "Big Dave and Little Dave both died in the same incident")
+    # Must fire - stoplist word adjacent to the signal, relationship noun carries it
+    assert "grief.md" in get_protocol_files("Recently lost my dad")
+
+
+def test_verb_adjacency_preserves_genuine_bereavement():
+    """The adjacency rule must not cost us true positives."""
+    for msg in ["i lost Dave two years ago",
+                "My wife passed last year",
+                "Dave died in Helmand",
+                "lost my mate Steve",
+                "Karen is gone",
+                "I lost my brother",
+                "Tommo was killed in the blast"]:
+        assert "grief.md" in get_protocol_files(msg), msg
+
+
+def test_verb_adjacency_kills_sentence_opener_false_positives():
+    """The false-positive class that the stoplist-only version reopened."""
+    for msg in ["The pain of it all, i feel so lost",
+                "Just feels like everything is gone",
+                "Recently i lost all motivation",
+                "Sadly i lost my job",
+                "Work has been dead this week",
+                "Everyone thinks i lost it",
+                "Feels like my spark has gone",
+                "Honestly i lost the plot at work",
+                "Lately everything feels dead"]:
+        assert "grief.md" not in get_protocol_files(msg), msg
