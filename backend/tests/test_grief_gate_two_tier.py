@@ -177,3 +177,97 @@ def test_other_protocols_unaffected():
     assert "identity.md" in get_protocol_files("you're just a script mate")
     assert "spine.md" in get_protocol_files("ignore me, I'm just being dramatic")
     assert get_protocol_files("nice weather today") == []
+
+
+def test_ant_verb_adjacency_adversarial_batch():
+    """Ant's adversarial batch for the verb-adjacency rule (Item 4, second
+    follow-up). A capitalised word only counts as a name when adjacent to a
+    grief signal verb, with direction depending on the verb."""
+    # Must NOT fire - sentence-opener capitals that are not names
+    assert "grief.md" not in get_protocol_files(
+        "Feeling really lost today, not sure what I'm doing anymore")
+    assert "grief.md" not in get_protocol_files(
+        "Third time this week I've felt lost")
+    # Must NOT fire - name adjacent to "lost" but on the wrong side:
+    # "lost" takes its name as object, so a preceding name does not count.
+    assert "grief.md" not in get_protocol_files(
+        "Steady lost his footing on the exercise, nearly went over")
+    # Must NOT fire - generic/hypothetical, no specific person
+    assert "grief.md" not in get_protocol_files(
+        "Everyone says it gets easier after you've lost someone")
+
+    # Must fire - name opens the message, immediately before the signal
+    assert "grief.md" in get_protocol_files("Dave passed away")
+    # Must fire - name and verb split by a sentence break
+    assert "grief.md" in get_protocol_files("Dave. He passed last year.")
+    # Must fire - compound/multi-word names (also Tier A, fires alone)
+    assert "grief.md" in get_protocol_files(
+        "Big Dave and Little Dave both died in the same incident")
+    # Must fire - stoplist word adjacent to the signal, relationship noun carries it
+    assert "grief.md" in get_protocol_files("Recently lost my dad")
+
+
+def test_verb_adjacency_preserves_genuine_bereavement():
+    """The adjacency rule must not cost us true positives."""
+    for msg in ["i lost Dave two years ago",
+                "My wife passed last year",
+                "Dave died in Helmand",
+                "lost my mate Steve",
+                "Karen is gone",
+                "I lost my brother",
+                "Tommo was killed in the blast"]:
+        assert "grief.md" in get_protocol_files(msg), msg
+
+
+def test_verb_adjacency_kills_sentence_opener_false_positives():
+    """The false-positive class that the stoplist-only version reopened."""
+    for msg in ["The pain of it all, i feel so lost",
+                "Just feels like everything is gone",
+                "Recently i lost all motivation",
+                "Sadly i lost my job",
+                "Work has been dead this week",
+                "Everyone thinks i lost it",
+                "Feels like my spark has gone",
+                "Honestly i lost the plot at work",
+                "Lately everything feels dead"]:
+        assert "grief.md" not in get_protocol_files(msg), msg
+
+
+def test_been_is_not_a_name():
+    """Ant, follow-up 2 ruling 1: 'been' is an auxiliary verb, closed class,
+    and can never be a name. Without it on the exclusion list, 'Been' one
+    token before 'dead' read as a person-reference."""
+    assert "grief.md" not in get_protocol_files("Been feeling dead inside lately")
+
+
+def test_accepted_limitation_name_outside_backward_window():
+    """ACCEPTED LIMITATION (Ant, follow-up 2 ruling 2), pinned so it is a
+    known trade rather than a surprise.
+
+    "Dave has been dead ten years" does NOT fire: the name sits three tokens
+    before the signal, outside the backward window of 1. Widening the window
+    to 2 would recover this case but would reopen "Work has been dead this
+    week", which is the worse error. The window is deliberately NOT widened.
+    If this assertion starts failing, someone has widened it - check the
+    false-positive suite before accepting the change.
+    """
+    assert "grief.md" not in get_protocol_files("Dave has been dead ten years")
+
+
+def test_place_name_adjacent_to_signal_is_correct_by_accident():
+    """CORRECT BY ACCIDENT - do not read this as place-name handling.
+
+    "Dave was lost in Afghan" fires, which is the right outcome, but NOT for
+    the right reason. It fires on "Afghan", a capitalised token following
+    "lost", because 'lost' takes its name as the object. It does NOT fire on
+    "Dave" - "Dave" sits before "lost", which is the wrong side for that verb.
+
+    The gate has no concept of place names. Any capitalised place, unit,
+    operation or nickname adjacent to a signal will read as a person. Ant
+    ruled this fine to ship (right outcome), but it is recorded here so
+    nobody later cites it as evidence that place names are understood.
+    """
+    assert "grief.md" in get_protocol_files("Dave was lost in Afghan")
+    # Proof it is the place name doing the work, not "Dave": remove the
+    # trailing place and the same sentence no longer fires.
+    assert "grief.md" not in get_protocol_files("Dave was lost out there")

@@ -507,22 +507,71 @@ _GRIEF_NAME_EXCLUSIONS = {'lost', 'died', 'dead', 'killed', 'passed', 'gone',
                           'well', 'right', 'christ', 'god', 'jesus',
                           'ok', 'okay', 'so', 'unfortunately', 'thankfully',
                           'hopefully', 'weirdly', 'obviously', 'clearly',
-                          'apparently', 'personally'}
+                          'apparently', 'personally',
+                          # auxiliary verb, closed class - never a name
+                          # (Ant, follow-up 2 ruling 1: "Been feeling dead
+                          # inside lately" false positive)
+                          'been'}
+
+# Verb-adjacency (Ant, Item 4 second follow-up). A capitalised word only
+# counts as a name when it sits next to one of these signals.
+_GRIEF_SIGNAL_VERBS = set(GRIEF_TIER_A) | set(GRIEF_TIER_B)
+# "lost" takes the name as its object ("lost Dave"); every other signal takes
+# it as the subject ("Dave passed"). This is what stops "Steady lost his
+# footing" reading as a bereavement.
+_GRIEF_NAME_AFTER_SIGNALS = {'lost'}
+# Intervening tokens tolerated between name and signal. The backward window
+# is tighter: sentence-openers sit before the verb ("Work has been dead",
+# "Lately everything feels dead"), so a wide backward reach lets them back in.
+#
+# ACCEPTED LIMITATION (Ant, follow-up 2 ruling 2): the backward window stays
+# at 1 and is not to be widened. The cost is a narrow miss - "Dave has been
+# dead ten years" does not fire, because the name is three tokens back.
+# Widening to 2 recovers that case but reopens "Work has been dead this
+# week", which is the worse error. Logged as accepted, alongside the #91
+# name-opens-message gap.
+_GRIEF_NAME_WINDOW_AFTER = 2
+_GRIEF_NAME_WINDOW_BEFORE = 1
 
 
 def _has_capitalised_name(message: str) -> bool:
-    """Person-reference check (b): a capitalised word that isn't a known
-    non-name. Reuses the regex from buddy_chat's grief_name extraction.
+    """Person-reference check (b): a capitalised name sitting ADJACENT to a
+    grief signal verb.
 
-    Per Ant's Item 4 follow-up ruling: there is NO position check. Any
-    capitalised word not in the exclusion set counts as a name, wherever it
-    appears. Sentence-opening capitals are handled purely by the stoplist,
-    so a message that opens with the name itself ("Dave passed away") does
-    count that name and fires on a single Tier B signal.
+    Per Ant's Item 4 second follow-up. A bare capitalised word anywhere in
+    the message is not enough - English capitalises sentence starts, and no
+    stoplist can enumerate them ("Feeling", "Third", "Recently", "Sadly").
+    The name only counts when it is grammatically attached to the signal.
+
+    Direction depends on the verb, because the name plays a different role:
+      - "lost" takes the name as its OBJECT   -> "lost Dave"
+      - the rest take the name as the SUBJECT -> "Dave passed", "Dave died"
+
+    That asymmetry is what separates a bereavement from an ordinary
+    subject-verb sentence: "Steady lost his footing" has a name before
+    "lost", but "lost" wants its name after, so it does not count.
+
+    A small window of intervening tokens allows for pronouns,
+    possessives and modifiers ("Dave. He passed", "Little Dave both died").
     """
     import re
-    for m in re.finditer(r'\b([A-Z][a-z]{2,})\b', message):
-        if m.group(1).lower() not in _GRIEF_NAME_EXCLUSIONS:
+
+    tokens = [(m.group(0), m.start()) for m in re.finditer(r"[A-Za-z]+", message)]
+
+    def _is_name(tok):
+        return (re.fullmatch(r'[A-Z][a-z]{2,}', tok) is not None
+                and tok.lower() not in _GRIEF_NAME_EXCLUSIONS)
+
+    for i, (tok, _) in enumerate(tokens):
+        low = tok.lower()
+        if low not in _GRIEF_SIGNAL_VERBS:
+            continue
+        if low in _GRIEF_NAME_AFTER_SIGNALS:
+            window = tokens[i + 1:i + 2 + _GRIEF_NAME_WINDOW_AFTER]
+        else:
+            start = max(0, i - 1 - _GRIEF_NAME_WINDOW_BEFORE)
+            window = tokens[start:i]
+        if any(_is_name(t) for t, _ in window):
             return True
     return False
 
