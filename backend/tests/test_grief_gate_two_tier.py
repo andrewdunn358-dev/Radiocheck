@@ -231,3 +231,43 @@ def test_verb_adjacency_kills_sentence_opener_false_positives():
                 "Honestly i lost the plot at work",
                 "Lately everything feels dead"]:
         assert "grief.md" not in get_protocol_files(msg), msg
+
+
+def test_been_is_not_a_name():
+    """Ant, follow-up 2 ruling 1: 'been' is an auxiliary verb, closed class,
+    and can never be a name. Without it on the exclusion list, 'Been' one
+    token before 'dead' read as a person-reference."""
+    assert "grief.md" not in get_protocol_files("Been feeling dead inside lately")
+
+
+def test_accepted_limitation_name_outside_backward_window():
+    """ACCEPTED LIMITATION (Ant, follow-up 2 ruling 2), pinned so it is a
+    known trade rather than a surprise.
+
+    "Dave has been dead ten years" does NOT fire: the name sits three tokens
+    before the signal, outside the backward window of 1. Widening the window
+    to 2 would recover this case but would reopen "Work has been dead this
+    week", which is the worse error. The window is deliberately NOT widened.
+    If this assertion starts failing, someone has widened it - check the
+    false-positive suite before accepting the change.
+    """
+    assert "grief.md" not in get_protocol_files("Dave has been dead ten years")
+
+
+def test_place_name_adjacent_to_signal_is_correct_by_accident():
+    """CORRECT BY ACCIDENT - do not read this as place-name handling.
+
+    "Dave was lost in Afghan" fires, which is the right outcome, but NOT for
+    the right reason. It fires on "Afghan", a capitalised token following
+    "lost", because 'lost' takes its name as the object. It does NOT fire on
+    "Dave" - "Dave" sits before "lost", which is the wrong side for that verb.
+
+    The gate has no concept of place names. Any capitalised place, unit,
+    operation or nickname adjacent to a signal will read as a person. Ant
+    ruled this fine to ship (right outcome), but it is recorded here so
+    nobody later cites it as evidence that place names are understood.
+    """
+    assert "grief.md" in get_protocol_files("Dave was lost in Afghan")
+    # Proof it is the place name doing the work, not "Dave": remove the
+    # trailing place and the same sentence no longer fires.
+    assert "grief.md" not in get_protocol_files("Dave was lost out there")

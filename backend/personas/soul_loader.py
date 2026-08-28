@@ -507,7 +507,11 @@ _GRIEF_NAME_EXCLUSIONS = {'lost', 'died', 'dead', 'killed', 'passed', 'gone',
                           'well', 'right', 'christ', 'god', 'jesus',
                           'ok', 'okay', 'so', 'unfortunately', 'thankfully',
                           'hopefully', 'weirdly', 'obviously', 'clearly',
-                          'apparently', 'personally'}
+                          'apparently', 'personally',
+                          # auxiliary verb, closed class - never a name
+                          # (Ant, follow-up 2 ruling 1: "Been feeling dead
+                          # inside lately" false positive)
+                          'been'}
 
 # Verb-adjacency (Ant, Item 4 second follow-up). A capitalised word only
 # counts as a name when it sits next to one of these signals.
@@ -519,6 +523,13 @@ _GRIEF_NAME_AFTER_SIGNALS = {'lost'}
 # Intervening tokens tolerated between name and signal. The backward window
 # is tighter: sentence-openers sit before the verb ("Work has been dead",
 # "Lately everything feels dead"), so a wide backward reach lets them back in.
+#
+# ACCEPTED LIMITATION (Ant, follow-up 2 ruling 2): the backward window stays
+# at 1 and is not to be widened. The cost is a narrow miss - "Dave has been
+# dead ten years" does not fire, because the name is three tokens back.
+# Widening to 2 recovers that case but reopens "Work has been dead this
+# week", which is the worse error. Logged as accepted, alongside the #91
+# name-opens-message gap.
 _GRIEF_NAME_WINDOW_AFTER = 2
 _GRIEF_NAME_WINDOW_BEFORE = 1
 
