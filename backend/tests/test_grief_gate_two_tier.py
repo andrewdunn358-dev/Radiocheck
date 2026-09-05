@@ -271,3 +271,37 @@ def test_place_name_adjacent_to_signal_is_correct_by_accident():
     # Proof it is the place name doing the work, not "Dave": remove the
     # trailing place and the same sentence no longer fires.
     assert "grief.md" not in get_protocol_files("Dave was lost out there")
+
+
+def test_shared_extractor_kills_the_round12_yeah_bug():
+    """Round 12, Session A: Tommy replied "What you said sticks with me, Yeah."
+
+    server.py had its own copy of the name extraction with a four-word
+    exclusion list and no adjacency rule, so "Yeah, I'm cool, just forget I
+    said that" set grief_name = "Yeah". Both call sites now use this one
+    function, so the #94 logic can no longer be bypassed.
+    """
+    from personas.soul_loader import extract_grief_name
+
+    assert extract_grief_name("Yeah, I'm cool, just forget I said that") is None
+    assert extract_grief_name("Third time this week I've felt lost") is None
+    assert extract_grief_name("Feeling really lost today") is None
+    # still extracts genuine names
+    assert extract_grief_name("Dave passed away") == "Dave"
+    assert extract_grief_name("i lost Dave two years ago") == "Dave"
+    assert extract_grief_name("Dave. He passed last year.") == "Dave"
+    # wrong side of "lost" - not a bereavement
+    assert extract_grief_name("Steady lost his footing on the exercise") is None
+
+
+def test_name_extractor_and_gate_cannot_disagree():
+    """The gate and the extractor must stay in lockstep - a name found is a
+    person-reference, and vice versa. Guards against the split-authority
+    pattern that caused this bug in the first place."""
+    from personas.soul_loader import extract_grief_name, _has_capitalised_name
+
+    for msg in ["Dave passed away", "i lost Dave two years ago",
+                "Yeah, I'm cool, just forget I said that",
+                "Feeling really lost today", "Dave. He passed last year.",
+                "Steady lost his footing on the exercise"]:
+        assert (extract_grief_name(msg) is not None) == _has_capitalised_name(msg), msg

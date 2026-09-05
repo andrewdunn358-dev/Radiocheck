@@ -554,6 +554,19 @@ def _has_capitalised_name(message: str) -> bool:
     A small window of intervening tokens allows for pronouns,
     possessives and modifiers ("Dave. He passed", "Little Dave both died").
     """
+    return extract_grief_name(message) is not None
+
+
+def extract_grief_name(message: str):
+    """Return the first capitalised name sitting ADJACENT to a grief signal
+    verb, or None. This is the single source of truth for "is there a name,
+    and what is it" - _has_capitalised_name is a thin wrapper over it.
+
+    Round 12: server.py had its own copy of this extraction with a four-word
+    exclusion list and no adjacency rule, which is what produced Tommy
+    addressing a user as "Yeah". Per Ant's remediation package, the fix is to
+    reuse this logic rather than maintain a third parallel keyword system.
+    """
     import re
 
     tokens = [(m.group(0), m.start()) for m in re.finditer(r"[A-Za-z]+", message)]
@@ -571,9 +584,10 @@ def _has_capitalised_name(message: str) -> bool:
         else:
             start = max(0, i - 1 - _GRIEF_NAME_WINDOW_BEFORE)
             window = tokens[start:i]
-        if any(_is_name(t) for t, _ in window):
-            return True
-    return False
+        for t, _ in window:
+            if _is_name(t):
+                return t
+    return None
 
 
 def _grief_gate_fires(message: str, msg_lower: str) -> bool:
