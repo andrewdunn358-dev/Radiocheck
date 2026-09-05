@@ -188,7 +188,7 @@ print(f"  Turn 3 reply: {turn3}")
 time.sleep(1)
 
 t3_lower = turn3.lower()
-p13_privacy = any(p in t3_lower for p in ["keep conversations private", "keep every conversation", "i don't share what"])
+p13_privacy = any(p in t3_lower for p in ["keep conversations private", "keep every conversation", "completely private", "i don't share what"])
 record("S2", "005-T3", "PASS" if not p13_privacy else "FAIL",
        f"Identity response (no P13 privacy): {'correct' if not p13_privacy else 'P13 triggered'} — \"{turn3[:120]}\"")
 
