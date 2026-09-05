@@ -6461,16 +6461,17 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 session['grief_turn_count'] = session.get('grief_turn_count', 0) + 1
                 # === FIX 2 (partial): Grief Pronoun & Name Extraction (Round 8) ===
                 if session.get('grief_name') is None:
-                    import re
                     msg_text = request.message
-                    # Extract name: look for capitalised words near grief keywords
-                    name_match = re.findall(r'\b([A-Z][a-z]{2,})\b', msg_text)
-                    grief_keywords_in_msg = ['lost', 'died', 'dead', 'killed', 'passed', 'gone']
-                    if name_match:
-                        for n in name_match:
-                            if n.lower() not in grief_keywords_in_msg and n.lower() not in ['mate', 'sorry', 'still', 'anyway']:
-                                session['grief_name'] = n
-                                break
+                    # Round 12 fix: use the single shared extractor in
+                    # soul_loader (the #94 verb-adjacency logic) instead of a
+                    # second, weaker copy. The old inline version matched any
+                    # capitalised word against a four-word exclusion list,
+                    # which set grief_name = "Yeah" from "Yeah, I'm cool, just
+                    # forget I said that" and had Tommy address the user by it.
+                    from personas.soul_loader import extract_grief_name
+                    extracted = extract_grief_name(msg_text)
+                    if extracted:
+                        session['grief_name'] = extracted
                     # Detect pronoun from gendered language
                     msg_l = msg_text.lower()
                     if any(w in msg_l for w in ['wife', 'mum', 'mother', 'sister', 'daughter', 'her ', ' her', ' she']):
