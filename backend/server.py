@@ -6450,6 +6450,15 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             # Clear grief tracking — crisis language overrides persistence
             if 'grief_active_turns' in session:
                 session['grief_active_turns'] = 0
+            # Round 12: clear the grief SUBJECT too, not just the counter.
+            # grief_name/grief_pronoun were set once (guarded by `is None`)
+            # and never cleared anywhere, while being injected into
+            # protocol_state on EVERY turn outside any grief check. A name
+            # captured on turn 3 rode along in the prompt for the rest of
+            # the session.
+            session['grief_name'] = None
+            session['grief_pronoun'] = None
+            session['grief_turn_count'] = 0
             # Do NOT inject identity.md — let normal scoring proceed
         else:
             # === GRIEF CONTEXT PERSISTENCE (Round 7 Fix 2) ===
@@ -6488,6 +6497,20 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 session['grief_active_turns'] = session['grief_active_turns'] - 1
                 session['grief_turn_count'] = session.get('grief_turn_count', 0) + 1
                 logging.info(f"[Protocols] Grief persisted for session {request.sessionId[:12]} (remaining turns: {session['grief_active_turns']})")
+                # === Round 12: END-OF-EPISODE CLEAR-DOWN ===
+                # BEYOND Ant's spec, which asked only for the crisis_override
+                # path — flagged in the PR for his ruling.
+                #
+                # The crisis_override clear alone does not address the reported
+                # unprompted grief pivot, because that scenario involves no
+                # crisis language: the grief episode simply ENDS, the counter
+                # reaches 0, and the name persists in protocol_state forever.
+                # Clearing here means the subject dies with the episode.
+                if session['grief_active_turns'] == 0:
+                    session['grief_name'] = None
+                    session['grief_pronoun'] = None
+                    session['grief_turn_count'] = 0
+                    logging.info(f"[Protocols] Grief episode ended — subject cleared for session {request.sessionId[:12]}")
 
             # Track spine and brush-off turns
             if 'spine.md' in protocol_files:
