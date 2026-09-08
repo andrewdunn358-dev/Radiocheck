@@ -21,6 +21,18 @@ export interface AgeGateState {
   isLoading: boolean;
   isAgeVerified: boolean;
   isUnder18: boolean;
+  /**
+   * True when the user declined to give a date of birth.
+   *
+   * Deliberately SEPARATE from isUnder18. It raises safeguarding sensitivity
+   * server-side without withdrawing peer support features, because an adult
+   * who would rather not hand over a DOB should not lose access to the thing
+   * the platform exists to provide. isUnder18 stays false - we are not
+   * claiming they are a minor, only declining to assume they are not.
+   */
+  isAgeUnverified: boolean;
+  /** What the chat endpoint should send: declared minor OR unverified. */
+  applyMinorSafeguarding: boolean;
   dateOfBirth: Date | null;
   ageInYears: number | null;
 }
@@ -62,6 +74,7 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
   const [isLoading, setIsLoading] = useState(true);
   const [isAgeVerified, setIsAgeVerified] = useState(false);
   const [isUnder18, setIsUnder18] = useState(false);
+  const [isAgeUnverified, setIsAgeUnverified] = useState(false);
   const [dateOfBirth, setDateOfBirthState] = useState<Date | null>(null);
   const [ageInYears, setAgeInYears] = useState<number | null>(null);
 
@@ -162,7 +175,10 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
    * are not. Per safety_monitor.py: assume risk rather than dismiss it.
    */
   const setAgeUnverifiedProtected = useCallback(async () => {
-    setIsUnder18(true);
+    // NOT setIsUnder18(true) - that would strip peer matching and direct
+    // calls from adults who simply declined to give a DOB. The protective
+    // assumption belongs in the risk thresholds, not in withdrawing support.
+    setIsAgeUnverified(true);
     setIsAgeVerified(false);
     await AsyncStorage.setItem(AGE_GATE_SKIPPED_KEY, 'true');
   }, []);
@@ -176,6 +192,8 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
     isLoading,
     isAgeVerified,
     isUnder18,
+    isAgeUnverified,
+    applyMinorSafeguarding: isUnder18 || isAgeUnverified,
     dateOfBirth,
     ageInYears,
     setDateOfBirth,

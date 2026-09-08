@@ -58,7 +58,7 @@ export default function UnifiedAIChat() {
   const isDark = theme === 'dark';
   
   // Age gate context - for enhanced safeguarding
-  const { isUnder18 } = useAgeGateContext();
+  const { isUnder18, applyMinorSafeguarding } = useAgeGateContext();
   
   // Location permission context - for safeguarding GPS
   const { requestLocation, locationCoords, hasLocationPermission } = useLocationPermission();
@@ -515,7 +515,7 @@ export default function UnifiedAIChat() {
           message: messageText,
           character: character.id,
           sessionId: sessionId,
-          is_under_18: isUnder18,
+          is_under_18: applyMinorSafeguarding,  // declared minor OR unverified age
         }),
       });
 

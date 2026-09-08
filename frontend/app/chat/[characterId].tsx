@@ -90,7 +90,7 @@ export default function DynamicAIChat() {
   const isDark = theme === 'dark';
   
   // Age gate context - for enhanced safeguarding
-  const { isUnder18 } = useAgeGateContext();
+  const { isUnder18, applyMinorSafeguarding } = useAgeGateContext();
   
   // Location permission context - for safeguarding GPS
   const { requestLocation, locationCoords, hasLocationPermission } = useLocationPermission();
@@ -535,7 +535,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
           message: messageText,
           character: character.id,
           sessionId: sessionId,
-          is_under_18: isUnder18,
+          is_under_18: applyMinorSafeguarding,  // declared minor OR unverified age
           // Include previous conversation context for AI memory
           conversation_context: conversationContext,
         }),
