@@ -61,6 +61,32 @@ UNIFIED_THRESHOLD_MEDIUM = 40
 UNIFIED_THRESHOLD_HIGH = 60
 UNIFIED_THRESHOLD_IMMINENT = 80
 
+# Under-18 sensitivity (Ant, Safety Architecture Spec section 0).
+# Applied to the THRESHOLDS, not to the score. The old enhanced_safety_layer
+# multiplied the score by 1.3, but final_score is capped at 100 here, so a
+# message already scoring 100 would gain nothing from multiplication - the
+# effect would vanish for exactly the highest-risk messages. Lowering the
+# thresholds produces the equivalent sensitivity shift at every score.
+# Same mechanism as calculate_safeguarding_score's red_threshold dampening,
+# applied in the opposite direction.
+UNDER_18_SENSITIVITY_FACTOR = 1.3
+
+
+def _thresholds_for(is_under_18: bool):
+    """Return (medium, high, imminent) thresholds for this user.
+
+    Minors get proportionally lower thresholds, so the same message reaches a
+    higher risk level sooner. Returns ints; the adult path is unchanged.
+    """
+    if not is_under_18:
+        return (UNIFIED_THRESHOLD_MEDIUM,
+                UNIFIED_THRESHOLD_HIGH,
+                UNIFIED_THRESHOLD_IMMINENT)
+    f = UNDER_18_SENSITIVITY_FACTOR
+    return (int(round(UNIFIED_THRESHOLD_MEDIUM / f)),
+            int(round(UNIFIED_THRESHOLD_HIGH / f)),
+            int(round(UNIFIED_THRESHOLD_IMMINENT / f)))
+
 # Component weights for final score
 COMPONENT_WEIGHTS = {
     "keyword": 0.30,        # Keyword-based detection
@@ -286,14 +312,16 @@ def analyze_message_unified(
     # =========================================================================
     # DETERMINE FINAL RISK LEVEL
     # =========================================================================
+    t_medium, t_high, t_imminent = _thresholds_for(is_under_18)
+
     if failsafe_triggered:
         final_risk_level = "IMMINENT"
         final_score = max(final_score, 95)
-    elif final_score >= UNIFIED_THRESHOLD_IMMINENT:
+    elif final_score >= t_imminent:
         final_risk_level = "IMMINENT"
-    elif final_score >= UNIFIED_THRESHOLD_HIGH:
+    elif final_score >= t_high:
         final_risk_level = "HIGH"
-    elif final_score >= UNIFIED_THRESHOLD_MEDIUM:
+    elif final_score >= t_medium:
         final_risk_level = "MEDIUM"
     elif final_score > 0:
         final_risk_level = "LOW"
@@ -409,6 +437,14 @@ def analyze_message_unified(
         
         # Under-18 flag
         "is_under_18": is_under_18,
+        # Evidence that the flag was received AND changed behaviour - not
+        # verification, but a record that the gate fired (Ant, section 0 q2).
+        "age_protections_applied": bool(is_under_18),
+        "thresholds_applied": {
+            "medium": t_medium,
+            "high": t_high,
+            "imminent": t_imminent,
+        },
     }
 
 

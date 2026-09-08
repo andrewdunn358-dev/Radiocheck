@@ -6540,6 +6540,30 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             human_support_available=human_support_available
         )
 
+        # === SECTION 0: UNDER-18 AUDIT RECORD ===
+        # Per Ant's spec: this is NOT verification (the flag is client-asserted
+        # and the DOB deliberately never leaves the device). It is evidence
+        # that the flag was received and that it changed behaviour, so a past
+        # session can be answered for. Deliberately stores no DOB and no age -
+        # only the boolean, the thresholds it produced, and a timestamp.
+        if request.is_under_18:
+            try:
+                await log_audit_event(
+                    db,
+                    event_type=AuditEventType.SAFEGUARDING_ALERT,
+                    session_id=request.sessionId,
+                    resource_type="under_18_protections",
+                    action_details={
+                        "is_under_18": True,
+                        "thresholds_applied": unified_safety.get("thresholds_applied"),
+                        "age_protections_applied": unified_safety.get("age_protections_applied"),
+                        "source": "client_asserted_age_gate",
+                    },
+                    risk_level=unified_safety.get("risk_level"),
+                )
+            except Exception as e:
+                logging.error(f"[Under18Audit] failed to log: {e}")
+
         # === ROUND 10 PHASE B: VERDICT RECONCILER ===
         # The unified pipeline produces both a keyword/failsafe verdict and an
         # AI-classifier verdict. Pre-Round-10 the chat endpoint consumed only

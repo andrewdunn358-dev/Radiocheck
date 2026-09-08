@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AGE_GATE_KEY = '@radio_check_dob';
 const AGE_VERIFIED_KEY = '@radio_check_age_verified';
+const AGE_GATE_SKIPPED_KEY = '@radio_check_age_gate_skipped';
 
 export interface AgeGateState {
   isLoading: boolean;
@@ -26,6 +27,7 @@ export interface AgeGateState {
 
 export interface AgeGateActions {
   setDateOfBirth: (dob: Date) => Promise<void>;
+  setAgeUnverifiedProtected: () => Promise<void>;
   clearAgeData: () => Promise<void>;
   checkAge: () => Promise<boolean>;
 }
@@ -146,6 +148,25 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
     return isUnder18;
   }, [loadAgeData, isUnder18]);
 
+  /**
+   * Skip path - FAILS SAFE.
+   *
+   * If the user declines to give a date of birth we do NOT get to assume they
+   * are an adult. isUnder18 defaults to false (useState(false)), so before
+   * this existed, skipping the gate produced full adult treatment: adult risk
+   * thresholds, peer matching, direct calls. That made the gate optional for
+   * exactly the people it protects.
+   *
+   * We record no DOB (there isn't one) and leave isAgeVerified false, so this
+   * is not a claim that the user is a minor - it is a refusal to assume they
+   * are not. Per safety_monitor.py: assume risk rather than dismiss it.
+   */
+  const setAgeUnverifiedProtected = useCallback(async () => {
+    setIsUnder18(true);
+    setIsAgeVerified(false);
+    await AsyncStorage.setItem(AGE_GATE_SKIPPED_KEY, 'true');
+  }, []);
+
   // Load age data on mount
   useEffect(() => {
     loadAgeData();
@@ -158,6 +179,7 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
     dateOfBirth,
     ageInYears,
     setDateOfBirth,
+    setAgeUnverifiedProtected,
     clearAgeData,
     checkAge,
   };

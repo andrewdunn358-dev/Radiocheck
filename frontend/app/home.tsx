@@ -168,7 +168,7 @@ export default function Index() {
   const [userId, setUserId] = useState<string>('');
   
   // Age gate context - show modal if not verified
-  const { isAgeVerified, isLoading: ageLoading, setDateOfBirth } = useAgeGateContext();
+  const { isAgeVerified, isLoading: ageLoading, setDateOfBirth, setAgeUnverifiedProtected } = useAgeGateContext();
   const [showAgeGateModal, setShowAgeGateModal] = useState(false);
   
   // Show age gate on home page if not verified (fallback for direct navigation)
@@ -184,6 +184,18 @@ export default function Index() {
   // Handle age gate submission
   const handleAgeSubmit = async (dob: Date) => {
     await setDateOfBirth(dob);
+    setShowAgeGateModal(false);
+  };
+
+  // Handle age gate skip - FAILS SAFE.
+  // Previously this only dismissed the modal, leaving isUnder18 at its
+  // useState(false) default, so skipping the gate produced full adult
+  // treatment: adult thresholds, peer matching, direct calls. Anyone wanting
+  // to bypass age protections just skipped. Per safety_monitor.py's stated
+  // philosophy - assume risk rather than dismiss it - an unanswered gate is
+  // now treated as the more protective case, not the less.
+  const handleAgeSkip = async () => {
+    await setAgeUnverifiedProtected();
     setShowAgeGateModal(false);
   };
   
@@ -628,7 +640,7 @@ export default function Index() {
       <AgeGateModal
         visible={showAgeGateModal}
         onSubmit={handleAgeSubmit}
-        onSkip={() => setShowAgeGateModal(false)}
+        onSkip={handleAgeSkip}
       />
     </SafeAreaView>
   );
