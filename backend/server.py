@@ -6592,9 +6592,30 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             "not going to hurt", "not gonna hurt", "not gonna kil",
             "not gonna kill", "not gonna top", "not going to top",
             "not gonna do", "not going to do", "wouldn't", "won't",
-            "don't want to die", "dont want to die", "not like that",
-            "just venting", "just angry", "just fed up", "just tired"
+            "don't want to die", "dont want to die", "not like that"
         ]
+        # REMOVED (Round 12, Ant's ruling): "just venting", "just angry",
+        # "just fed up", "just tired".
+        #
+        # These were never negations of intent. They are mood descriptions
+        # that happen to share a register with genuine venting, so they
+        # suppressed on emotional register rather than on actual denial.
+        # Confirmed live 8 Sept: an escalating, angry user was classified
+        # LOW and suppressed to GREEN by this list. negation_confirmed also
+        # gates failsafe_should_fire below, so the same match would have
+        # suppressed a hard failsafe.
+        #
+        # Deliberately NOT replaced. A user who is genuinely venting should
+        # be handled by venting/darkhumour protocol detection, which exists
+        # elsewhere in the stack - not by a fake negation acting as a
+        # backdoor suppression of escalation.
+        #
+        # NOTE: this is the FIFTH independent negation implementation in the
+        # codebase (with ai_safety_classifier, conversation_monitor,
+        # safety_monitor, text_normalizer). It is the one that gates the
+        # failsafe. Folding all five into one canonical implementation is
+        # tracked under the architecture consolidation item - do not add a
+        # sixth.
         reversal_phrases = [
             "actually yes", "yes i am", "actually i am", "wait yes",
             "changed my mind", "actually maybe", "actually i will",
