@@ -24,14 +24,13 @@ export interface AgeGateState {
   /**
    * True when the user declined to give a date of birth.
    *
-   * Deliberately SEPARATE from isUnder18. It raises safeguarding sensitivity
-   * server-side without withdrawing peer support features, because an adult
-   * who would rather not hand over a DOB should not lose access to the thing
-   * the platform exists to provide. isUnder18 stays false - we are not
-   * claiming they are a minor, only declining to assume they are not.
+   * This does NOT weaken protection - an unverified user is treated exactly
+   * as a minor for both thresholds AND feature restrictions (Ant's ruling).
+   * The flag exists only so the UI can explain WHY a feature is locked and
+   * offer the way out, rather than showing a silent block.
    */
   isAgeUnverified: boolean;
-  /** What the chat endpoint should send: declared minor OR unverified. */
+  /** Declared minor OR unverified - the single flag everything gates on. */
   applyMinorSafeguarding: boolean;
   dateOfBirth: Date | null;
   ageInYears: number | null;
@@ -175,9 +174,17 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
    * are not. Per safety_monitor.py: assume risk rather than dismiss it.
    */
   const setAgeUnverifiedProtected = useCallback(async () => {
-    // NOT setIsUnder18(true) - that would strip peer matching and direct
-    // calls from adults who simply declined to give a DOB. The protective
-    // assumption belongs in the risk thresholds, not in withdrawing support.
+    // Ant's ruling: an unverified user is treated as a minor for BOTH the
+    // risk thresholds AND the feature restrictions. Lowering a threshold
+    // only protects against missing distress inside the chat. It does
+    // nothing about unsupervised adult-minor contact, which is a different
+    // and much harder-to-reverse risk - so peer matching and direct calls
+    // stay closed until age is actually confirmed.
+    //
+    // isAgeUnverified is set alongside so the UI can say "verify your age to
+    // unlock this" instead of showing a silent block. The exit is cheap:
+    // complete the DOB check.
+    setIsUnder18(true);
     setIsAgeUnverified(true);
     setIsAgeVerified(false);
     await AsyncStorage.setItem(AGE_GATE_SKIPPED_KEY, 'true');
