@@ -28,7 +28,11 @@ export default function PeerSupport() {
   const { colors, isDark } = useTheme();
   
   // Age gate context - for restricting direct peer calls
-  const { isUnder18, isAgeVerified, isLoading: isAgeLoading } = useAgeGateContext();
+  const { isUnder18, isAgeVerified, isAgeUnverified, isLoading: isAgeLoading } = useAgeGateContext();
+  // Gates ONLY on the feature check, exactly as buddy-finder.tsx does.
+  // Previously this also tested isAgeVerified, so a user who skipped the age
+  // gate (isAgeVerified false, isUnder18 true) was blocked on buddy-finder
+  // but admitted here - same flag, opposite outcome on two screens.
   const canMakePeerCalls = isFeatureAvailable('direct_peer_calls', isUnder18);
   
   const [email, setEmail] = useState('');
@@ -580,8 +584,8 @@ export default function PeerSupport() {
         </View>
       )}
       
-      {/* Age Restriction Screen - shown for under-18 users */}
-      {!isAgeLoading && isAgeVerified && isUnder18 && !canMakePeerCalls && (
+      {/* Age Restriction Screen - shown whenever the feature is unavailable */}
+      {!isAgeLoading && !canMakePeerCalls && (
         <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', position: 'absolute', top: 16, left: 0 }}>
@@ -611,7 +615,7 @@ export default function PeerSupport() {
               textAlign: 'center',
               marginBottom: 12
             }}>
-              Extra Protection Active
+              {isAgeUnverified ? 'Verify Your Age to Unlock' : 'Extra Protection Active'}
             </Text>
             
             <Text style={{ 
@@ -621,7 +625,9 @@ export default function PeerSupport() {
               lineHeight: 24,
               marginBottom: 32
             }}>
-              {getRestrictionMessage('direct_peer_calls')}
+              {isAgeUnverified
+                ? "You skipped the age check, so we're keeping peer calls closed for now. That's not a judgement - we just can't match people with strangers unless we know they're over 18. Add your date of birth and this unlocks straight away."
+                : getRestrictionMessage('direct_peer_calls')}
             </Text>
             
             {/* Alternative Options */}
@@ -681,7 +687,7 @@ export default function PeerSupport() {
       )}
       
       {/* Main Content - only shown if not age-restricted and not loading */}
-      {!isAgeLoading && (!isAgeVerified || !isUnder18 || canMakePeerCalls) && (
+      {!isAgeLoading && canMakePeerCalls && (
         <>
       {/* Waiting for Support Screen - shown when user clicked "Call a Supporter" from safeguarding */}
       {isWaitingForSupport && !showCallModal && (

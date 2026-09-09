@@ -15,17 +15,30 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AGE_GATE_KEY = '@radio_check_dob';
 const AGE_VERIFIED_KEY = '@radio_check_age_verified';
+const AGE_GATE_SKIPPED_KEY = '@radio_check_age_gate_skipped';
 
 export interface AgeGateState {
   isLoading: boolean;
   isAgeVerified: boolean;
   isUnder18: boolean;
+  /**
+   * True when the user declined to give a date of birth.
+   *
+   * This does NOT weaken protection - an unverified user is treated exactly
+   * as a minor for both thresholds AND feature restrictions (Ant's ruling).
+   * The flag exists only so the UI can explain WHY a feature is locked and
+   * offer the way out, rather than showing a silent block.
+   */
+  isAgeUnverified: boolean;
+  /** Declared minor OR unverified - the single flag everything gates on. */
+  applyMinorSafeguarding: boolean;
   dateOfBirth: Date | null;
   ageInYears: number | null;
 }
 
 export interface AgeGateActions {
   setDateOfBirth: (dob: Date) => Promise<void>;
+  setAgeUnverifiedProtected: () => Promise<void>;
   clearAgeData: () => Promise<void>;
   checkAge: () => Promise<boolean>;
 }
@@ -60,6 +73,7 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
   const [isLoading, setIsLoading] = useState(true);
   const [isAgeVerified, setIsAgeVerified] = useState(false);
   const [isUnder18, setIsUnder18] = useState(false);
+  const [isAgeUnverified, setIsAgeUnverified] = useState(false);
   const [dateOfBirth, setDateOfBirthState] = useState<Date | null>(null);
   const [ageInYears, setAgeInYears] = useState<number | null>(null);
 
@@ -146,6 +160,36 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
     return isUnder18;
   }, [loadAgeData, isUnder18]);
 
+  /**
+   * Skip path - FAILS SAFE.
+   *
+   * If the user declines to give a date of birth we do NOT get to assume they
+   * are an adult. isUnder18 defaults to false (useState(false)), so before
+   * this existed, skipping the gate produced full adult treatment: adult risk
+   * thresholds, peer matching, direct calls. That made the gate optional for
+   * exactly the people it protects.
+   *
+   * We record no DOB (there isn't one) and leave isAgeVerified false, so this
+   * is not a claim that the user is a minor - it is a refusal to assume they
+   * are not. Per safety_monitor.py: assume risk rather than dismiss it.
+   */
+  const setAgeUnverifiedProtected = useCallback(async () => {
+    // Ant's ruling: an unverified user is treated as a minor for BOTH the
+    // risk thresholds AND the feature restrictions. Lowering a threshold
+    // only protects against missing distress inside the chat. It does
+    // nothing about unsupervised adult-minor contact, which is a different
+    // and much harder-to-reverse risk - so peer matching and direct calls
+    // stay closed until age is actually confirmed.
+    //
+    // isAgeUnverified is set alongside so the UI can say "verify your age to
+    // unlock this" instead of showing a silent block. The exit is cheap:
+    // complete the DOB check.
+    setIsUnder18(true);
+    setIsAgeUnverified(true);
+    setIsAgeVerified(false);
+    await AsyncStorage.setItem(AGE_GATE_SKIPPED_KEY, 'true');
+  }, []);
+
   // Load age data on mount
   useEffect(() => {
     loadAgeData();
@@ -155,9 +199,12 @@ export function useAgeGate(): AgeGateState & AgeGateActions {
     isLoading,
     isAgeVerified,
     isUnder18,
+    isAgeUnverified,
+    applyMinorSafeguarding: isUnder18 || isAgeUnverified,
     dateOfBirth,
     ageInYears,
     setDateOfBirth,
+    setAgeUnverifiedProtected,
     clearAgeData,
     checkAge,
   };

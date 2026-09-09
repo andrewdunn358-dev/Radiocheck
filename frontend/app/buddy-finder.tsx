@@ -52,7 +52,7 @@ export default function BuddyFinderPage() {
   const [branches, setBranches] = useState<string[]>([]);
   
   // Age gate check
-  const { isUnder18, isLoading: ageLoading, isAgeVerified } = useAgeGateContext();
+  const { isUnder18, isLoading: ageLoading, isAgeVerified, isAgeUnverified } = useAgeGateContext();
   const canAccessFeature = isFeatureAvailable('peer_matching', isUnder18);
   
   // Message modal state
@@ -673,7 +673,7 @@ export default function BuddyFinderPage() {
       </View>
 
       {/* Show restriction banner for under-18 users */}
-      {!ageLoading && isAgeVerified && !canAccessFeature ? (
+      {!ageLoading && !canAccessFeature ? (
         <AgeRestrictedBanner feature="peer_matching" showAlternatives={true} />
       ) : (
         <>
