@@ -88,3 +88,43 @@ def test_euphemisms_are_tier_c_and_never_fire_alone():
     assert hit.tier == "C"
     assert hit.fires_alone is False
     assert not means_requires_overlay(hit)
+
+
+def test_possession_markers_must_govern_the_means_noun():
+    """Ant's review of PR #100. The first version unioned tokens from both
+    sides of the means noun and accepted any marker in range. Because "my" is
+    both a possession marker and one of the commonest words in English, that
+    fired on messages where "my" governs something else entirely.
+
+    Same lesson as extract_grief_name() in #94: direction is what separates a
+    real disclosure from a word that merely sits nearby.
+    """
+    for msg in ["Pills won't fix my mood",
+                "pills don't work for me",
+                "the rope broke on my washing line",
+                "the gun went off in the film"]:
+        assert not _fires(msg), msg
+
+
+def test_directional_fix_did_not_cost_the_true_positives():
+    """The possession window reaches backward far enough for real
+    disclosures, where the marker can sit several tokens ahead of the noun."""
+    for msg in ["I've saved up enough of my blood pressure pills",
+                "I've been stockpiling my prescription tablets",
+                "I've still got my service revolver"]:
+        assert _fires(msg), msg
+
+
+def test_known_open_case_bare_possession_without_intent():
+    """FLAGGED FOR ANT, not a bug per his spec.
+
+    "he took my pills by mistake" still fires. Direction does not fix it,
+    because "my pills" genuinely IS possession sitting before the noun - the
+    user does have pills, and Ant's Tier B is defined as "access/possession
+    disclosure, high weight, CONTEXT-INDEPENDENT".
+
+    So by the spec this is correct behaviour. Pinned here so the decision is
+    visible rather than buried: if bare possession without any intent signal
+    should NOT warrant a mandatory overlay, this assertion is what to flip.
+    """
+    assert _fires("he took my pills by mistake")

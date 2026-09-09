@@ -80,11 +80,17 @@ POSSESSION_MARKERS = frozenset({
     "loaded", "ready", "cleaned", "bought", "ordered", "picked",
 })
 
-# Intent / use. "enough pills to finish it"
-INTENT_MARKERS = frozenset({
+# Intent / use, appearing BEFORE the means noun. "enough pills"
+INTENT_BEFORE = frozenset({
     "use", "using", "take", "taking", "swallow", "enough", "all",
-    "whole", "lot", "finish", "end", "do", "quick", "quickest",
-    "painless", "fast", "work", "works", "hurt", "hurts",
+    "whole", "lot", "quick", "quickest", "painless", "fast",
+})
+
+# Intent appearing AFTER the means noun. "pills to finish it"
+# Deliberately narrow: generic words like "work" or "hurt" trail means nouns
+# in ordinary sentences ("pills don't work for me") and cannot carry intent.
+INTENT_AFTER = frozenset({
+    "finish", "end", "ends", "ending", "sort", "job",
 })
 
 # Negation of possession. "I haven't got a gun." Must not fire.
@@ -155,7 +161,20 @@ QUANTITY_FINALITY = frozenset({
     "hoarded", "hoarding", "squirrelled", "stashing",
 })
 
-MEANS_WINDOW = 3  # intervening tokens tolerated between means and marker
+# Window sizes. Possession and pre-intent reach BACKWARD only.
+#
+# Round 12, Ant's review of PR #100: the first version unioned tokens from
+# both sides and checked for any marker anywhere in the span. Because "my" is
+# both a possession marker and one of the commonest words in English, that
+# fired on "Pills won't fix my mood" - "my" governs "mood", not "pills".
+#
+# Same lesson as extract_grief_name() in #94: direction is what separates a
+# real disclosure from a word that merely sits nearby. English puts
+# possessives and possession verbs BEFORE the noun they govern ("my
+# revolver", "got a gun", "saved up enough of my pills"), so a marker sitting
+# after the means noun does not govern it.
+MEANS_WINDOW_BEFORE = 5
+MEANS_WINDOW_AFTER = 3
 
 
 @dataclass
@@ -206,16 +225,19 @@ def detect_means(message: str) -> Optional[MeansHit]:
             continue
         if _negated_near(tokens, i, low):
             continue
-        lo = max(0, i - 1 - MEANS_WINDOW)
-        hi = min(len(tokens), i + 2 + MEANS_WINDOW)
-        window = set(tokens[lo:i]) | set(tokens[i + 1:hi])
-        if window & DISPOSAL_MARKERS:
+        lo = max(0, i - MEANS_WINDOW_BEFORE)
+        hi = min(len(tokens), i + 1 + MEANS_WINDOW_AFTER)
+        before = set(tokens[lo:i])
+        after = set(tokens[i + 1:hi])
+        if (before | after) & DISPOSAL_MARKERS:
             continue
         if (tok in MEANS_OVERDOSE
                 and any(c in low for c in BENIGN_MEDICAL_CONTEXT)
                 and not (set(tokens) & QUANTITY_FINALITY)):
             continue
-        if window & (POSSESSION_MARKERS | INTENT_MARKERS):
+        governed = bool(before & (POSSESSION_MARKERS | INTENT_BEFORE)
+                        or after & INTENT_AFTER)
+        if governed:
             if tok in MEANS_FIREARM:
                 category, weight = "firearm", 95
             elif tok in MEANS_OVERDOSE:
