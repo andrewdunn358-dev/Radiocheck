@@ -4553,6 +4553,21 @@ async def create_panic_alert(alert_input: PanicAlertCreate):
         
         # Send urgent notification to counsellors
         await send_panic_alert_to_counsellors(alert.dict())
+
+        # === DECISION PROVENANCE: USER-INITIATED SAFETY ACTION ===
+        # Per Ant's ruling: a panic button is not a verdict. The user
+        # explicitly requested escalation; no Protocol decision was needed
+        # and none is recorded. Provenance distinguishes this from
+        # system-detected escalation. Not routed through the reconciler.
+        try:
+            from safety.provenance import start_user_initiated_action
+            _prov = start_user_initiated_action(
+                getattr(alert, "session_id", None) or getattr(alert, "id", None),
+                None, "panic_button")
+            _prov.finish(alert_created=True, staff_notified=True,
+                         alert_id=getattr(alert, "id", None))
+        except Exception as _pe:
+            logging.error(f"[Provenance] panic finish failed: {_pe}")
         
         logging.warning(f"PANIC ALERT CREATED: {alert.id}")
         
@@ -6401,6 +6416,13 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
     try:
         session = get_or_create_buddy_session(request.sessionId, character)
         session["message_count"] += 1
+
+        # === DECISION PROVENANCE (Discovery Session 2) ===
+        # Observation only. Records what each component decided and how it
+        # propagated. Never content. Never alters a decision. See
+        # safety/provenance.py for the record shape and privacy rules.
+        from safety.provenance import start_system_verdict
+        prov = start_system_verdict(request.sessionId, character, request.message, request.is_under_18)
         
         # Rate limit check
         if session["message_count"] > BUDDY_MAX_MESSAGES:
@@ -6534,6 +6556,20 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character, protocol_files=protocol_files)
         alert_id = None
         risk_level = risk_data["risk_level"]
+        try:
+            prov.stage("input_context", source="server.buddy_chat",
+                       protocol_files=list(protocol_files or []),
+                       text_normalised=bool(was_normalised),
+                       grief_active_turns=session.get('grief_active_turns', 0),
+                       identity_active_turns=session.get('identity_active_turns', 0),
+                       crisis_override=bool(crisis_override))
+            prov.stage("legacy_result", source="server.calculate_safeguarding_score",
+                       risk_level=risk_data.get("risk_level"),
+                       score=risk_data.get("score"),
+                       should_escalate=bool(should_escalate),
+                       assigned_to_risk_level=True)
+        except Exception as _pe:
+            logging.error(f"[Provenance] stage failed: {_pe}")
         
         print(f"[SAFEGUARDING CHECK] Session: {request.sessionId[:20]}, Character: {character}, Message: {request.message[:50]}...")
         print(f"[SAFEGUARDING CHECK] Score: {risk_data['score']}, Level: {risk_level}, Should Escalate: {should_escalate}")
@@ -6562,6 +6598,17 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             is_under_18=request.is_under_18,
             human_support_available=human_support_available
         )
+        try:
+            prov.stage("raw_unified_result", source="safety.analyze_message_unified",
+                       risk_level=unified_safety.get("risk_level"),
+                       risk_score=unified_safety.get("risk_score"),
+                       failsafe_triggered=unified_safety.get("failsafe_triggered"),
+                       failsafe_reason=unified_safety.get("failsafe_reason"),
+                       ai_invoked=bool((unified_safety.get("ai_analysis") or {}).get("invoked")) if isinstance(unified_safety.get("ai_analysis"), dict) else None,
+                       thresholds_applied=unified_safety.get("thresholds_applied"),
+                       age_protections_applied=unified_safety.get("age_protections_applied"))
+        except Exception as _pe:
+            logging.error(f"[Provenance] stage failed: {_pe}")
 
         # === SECTION 0: UNDER-18 AUDIT RECORD ===
         # Per Ant's spec: this is NOT verification (the flag is client-asserted
@@ -6610,6 +6657,19 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             session_id=request.sessionId,
             character=character,
         )
+        try:
+            prov.stage("reconciled_result", source="safety.reconcile_verdicts",
+                       risk_level=getattr(final_verdict, "risk_level", None),
+                       failsafe_triggered=getattr(final_verdict, "failsafe_triggered", None),
+                       failsafe_reason=getattr(final_verdict, "failsafe_reason", None),
+                       staff_review_required=getattr(final_verdict, "staff_review_required", None),
+                       precedence_rule_fired=getattr(final_verdict, "precedence_rule_fired", None),
+                       kw_verdict=getattr(kw_verdict, "risk_level", None),
+                       cls_verdict=getattr(cls_verdict, "risk_level", None),
+                       cls_error=bool(cls_error),
+                       risk_level_assigned_from_this=False)
+        except Exception as _pe:
+            logging.error(f"[Provenance] stage failed: {_pe}")
 
         # Log the unified safety analysis for debugging
         logging.info(
@@ -6629,6 +6689,15 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # not from unified_safety (raw). The reconciler has already applied the
         # bereavement-context override where applicable.
         failsafe_should_fire = final_verdict.failsafe_triggered
+        try:
+            prov.stage("authoritative_runtime_vars", source="server.buddy_chat",
+                       risk_level=risk_level,
+                       risk_level_source="legacy_scorer",
+                       should_escalate=bool(should_escalate),
+                       failsafe_should_fire=bool(failsafe_should_fire),
+                       failsafe_source="reconciler")
+        except Exception as _pe:
+            logging.error(f"[Provenance] stage failed: {_pe}")
         
         # === NEGATION DETECTION (applies to BOTH failsafe AND risk-level upgrade) ===
         # If the user explicitly negates suicidal intent, ALL safety escalation
@@ -6679,6 +6748,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 f"FAILSAFE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
                 f"Reason: {failsafe_reason} - Negation detected in: '{safeguarding_text[:60]}'"
             )
+            try:
+                prov.override("negation_suppression", source="server.inline_negation_phrases",
+                              variable="failsafe_should_fire", before=True, after=False,
+                              reason=str(failsafe_reason))
+            except Exception as _pe:
+                logging.error(f"[Provenance] override failed: {_pe}")
             failsafe_should_fire = False
         elif failsafe_should_fire and has_negation and has_reversal:
             logging.warning(
@@ -6697,6 +6772,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     f"FAILSAFE SUPPRESSED BY IDENTITY PROTOCOL - Session: {request.sessionId[:12]} - "
                     f"Reason: {failsafe_reason} - Identity challenge trajectory, not genuine crisis"
                 )
+                try:
+                    prov.override("identity_suppression", source="server.identity_active_check",
+                                  variable="failsafe_should_fire", before=True, after=False,
+                                  reason=str(failsafe_reason))
+                except Exception as _pe:
+                    logging.error(f"[Provenance] override failed: {_pe}")
                 failsafe_should_fire = False
         
         # --- Go-to-market: in signpost mode the staff-queue notification is
@@ -6847,6 +6928,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         if not failsafe_should_fire and risk_level == "RED":
             _previous_risk_level = risk_level
             risk_level = "AMBER"
+            try:
+                prov.override("b35_initial_assignment_corrective", source="server.corrective_block",
+                              variable="risk_level", before=_previous_risk_level, after=risk_level,
+                              reason="legacy RED but reconciler failsafe False")
+            except Exception as _pe:
+                logging.error(f"[Provenance] override failed: {_pe}")
             logging.info(
                 f"INITIAL RISK LEVEL DOWNGRADED BY RECONCILER - Session: {request.sessionId[:12]} - "
                 f"Was: {_previous_risk_level} (from check_safeguarding), Now: {risk_level} "
@@ -6892,16 +6979,34 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 f"Unified risk was {unified_risk}, keeping {risk_level} (ReconcilerRule: {final_verdict.precedence_rule_fired})"
             )
         elif unified_risk == "IMMINENT" and risk_level != "RED":
+            _hf_before = risk_level
             risk_level = "RED"
             should_escalate = True
             logging.warning(f"Unified safety escalated to RED (IMMINENT) - Session: {request.sessionId[:12]}")
+            try:
+                prov.override("b35_overlay_gate_hotfix", source="server.corrective_block(reads RAW unified, not reconciler)",
+                              variable="risk_level", before=_hf_before, after="RED", reason=f"unified_risk={unified_risk}")
+            except Exception as _pe:
+                logging.error(f"[Provenance] override failed: {_pe}")
         elif unified_risk == "HIGH" and risk_level not in ["RED", "AMBER"]:
+            _hf_before = risk_level
             risk_level = "AMBER"
             should_escalate = True
             logging.info(f"Unified safety upgraded risk to AMBER (HIGH)")
+            try:
+                prov.override("b35_overlay_gate_hotfix", source="server.corrective_block(reads RAW unified, not reconciler)",
+                              variable="risk_level", before=_hf_before, after="AMBER", reason=f"unified_risk={unified_risk}")
+            except Exception as _pe:
+                logging.error(f"[Provenance] override failed: {_pe}")
         elif unified_risk == "MEDIUM" and risk_level == "GREEN":
+            _hf_before = risk_level
             risk_level = "YELLOW"
             logging.info(f"Unified safety upgraded risk to YELLOW (MEDIUM)")
+            try:
+                prov.override("b35_overlay_gate_hotfix", source="server.corrective_block(reads RAW unified, not reconciler)",
+                              variable="risk_level", before=_hf_before, after="YELLOW", reason=f"unified_risk={unified_risk}")
+            except Exception as _pe:
+                logging.error(f"[Provenance] override failed: {_pe}")
         
         # === RULE 2b: STAFF REVIEW ESCALATION (reconciler-authoritative) ===
         # Placed AFTER the B³.5 if/elif chain deliberately. Rule 2b sets
@@ -6916,11 +7021,18 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # the same failure shape as the original 006 bug, one layer down.
         # Derived from the reconciler verdict, independent of the legacy scorer.
         if getattr(final_verdict, "staff_review_required", False):
+            _r2b_before = risk_level
             should_escalate = True
             # Distinguish HIGH review alerts from genuine IMMINENT (RED) cases in
             # the staff queue, so they can be prioritised against each other.
             if risk_level in ("GREEN", "YELLOW"):
                 risk_level = "AMBER"
+            try:
+                prov.override("rule_2b_staff_review", source="server.corrective_block(reads reconciler.staff_review_required)",
+                              variable="risk_level", before=_r2b_before, after=risk_level,
+                              reason="reconciler staff_review_required=True; should_escalate set True")
+            except Exception as _pe:
+                logging.error(f"[Provenance] override failed: {_pe}")
             logging.warning(
                 f"CLASSIFIER_HIGH_REVIEW - staff review alert (no overlay) - "
                 f"Session: {request.sessionId[:12]} - risk_level={risk_level} "
@@ -6931,8 +7043,14 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # (but NOT if negation was confirmed, identity protocol active, or reconciler
         # authoritatively decided failsafe=False — Phase B³ reconciler-aware guard).
         if not negation_confirmed and not identity_active and failsafe_should_fire and unified_safety.get("rapid_escalation") and not should_escalate:
+            _re_before = risk_level
             should_escalate = True
             risk_level = "AMBER" if risk_level == "GREEN" else risk_level
+            try:
+                prov.override("rapid_escalation", source="server.corrective_block(reads RAW unified.rapid_escalation)",
+                              variable="risk_level", before=_re_before, after=risk_level, reason="rapid_escalation")
+            except Exception as _pe:
+                logging.error(f"[Provenance] override failed: {_pe}")
             logging.warning(f"Rapid escalation detected - Session: {request.sessionId[:12]}")
         
         if not negation_confirmed and not identity_active and failsafe_should_fire and unified_safety.get("detected_patterns"):
@@ -7276,6 +7394,15 @@ Return ONLY the response text. No explanation. No labels."""
                 reply=reply,
                 user_message=request.message,
             )
+            try:
+                prov.stage("protocol_gate", source="safety.run_protocol_gates",
+                           primary_protocol=primary_protocol,
+                           passed=getattr(gate_verdict, "passed", None),
+                           reason=getattr(gate_verdict, "reason", None),
+                           situation=current_situation,
+                           protocol_turn=current_protocol_turn)
+            except Exception as _pe:
+                logging.error(f"[Provenance] stage failed: {_pe}")
             emit_gate_audit_log(
                 gate_verdict,
                 reply=reply,
@@ -7291,6 +7418,13 @@ Return ONLY the response text. No explanation. No labels."""
                     logging.warning(f"[ProtocolGate] Safety override — high risk, spine entry - Session: {request.sessionId[:12]}")
                     return "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
                 micro_reply = generate_micro_fallback(protocol_state)
+                try:
+                    prov.stage("fallback_generation", source="server.generate_micro_fallback",
+                               protocol=protocol_state.get("protocol"),
+                               situation=protocol_state.get("situation"),
+                               turn=protocol_state.get("turn"))
+                except Exception as _pe:
+                    logging.error(f"[Provenance] stage failed: {_pe}")
                 if micro_reply:
                     if contains_banter_or_humour(micro_reply):
                         logging.warning(f"[ProtocolGate] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
@@ -7439,6 +7573,13 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
                                 else:
                                     # FIX 4: Micro-generation call
                                     micro_reply = generate_micro_fallback(protocol_state)
+                                    try:
+                                        prov.stage("fallback_generation", source="server.generate_micro_fallback",
+                                                   protocol=protocol_state.get("protocol"),
+                                                   situation=protocol_state.get("situation"),
+                                                   turn=protocol_state.get("turn"))
+                                    except Exception as _pe:
+                                        logging.error(f"[Provenance] stage failed: {_pe}")
                                 
                                     if micro_reply:
                                         # FIX 5: Post-fallback safety filter
@@ -7597,6 +7738,20 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
                 except Exception as email_err:
                     logging.error(f"Failed to send safeguarding email: {email_err}")
         
+        try:
+            prov.finish(
+                safeguarding_triggered=(risk_level == "RED"),
+                risk_level=risk_level,
+                risk_score=risk_data["score"],
+                risk_score_source="legacy_scorer",
+                should_escalate=bool(should_escalate),
+                failsafe_fired=bool(failsafe_should_fire),
+                alert_created=bool(alert_id),
+                signpost_mode=bool(signpost_mode) if 'signpost_mode' in dir() else None,
+            )
+        except Exception as _pe:
+            logging.error(f"[Provenance] finish failed: {_pe}")
+
         return BuddyChatResponse(
             reply=reply,
             sessionId=request.sessionId,
