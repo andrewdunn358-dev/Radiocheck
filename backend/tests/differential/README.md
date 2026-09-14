@@ -66,6 +66,39 @@ Test-file inventory (slow, ~6 min — one pytest process per file):
 python3 -m tests.differential.inventory --out tests/differential/results
 ```
 
+## Windows
+
+`python3`, `grep` and `VAR=value command` are all bash/Linux-only. Two working
+routes on Windows:
+
+**Docker (recommended — no Python install at all).** From the repo root:
+
+```
+docker build -t radiocheck-probe -f backend/tests/differential/Dockerfile .
+docker run --rm -it -v "%cd%:/repo" radiocheck-probe
+```
+
+Your working tree is mounted, so edits apply without rebuilding.
+
+**Native Python.** Install real Python from python.org (the "Microsoft Store"
+message means you have the stub, not Python), ticking *Add python.exe to PATH*.
+Then, once:
+
+```
+cd C:\path\to\Radiocheck\backend
+python -m tests.differential.setup_env
+```
+
+and after that:
+
+```
+tests\differential\probe.bat
+```
+
+`probe.bat` sets the environment variables, finds `py` or `python`, and forwards
+any arguments to the CLI. `setup_env.py` replaces the grep/heredoc pipeline and
+works on every platform.
+
 ## Hand-testing a message (the CLI probe)
 
 ```bash
@@ -98,6 +131,8 @@ Read-only. No writes, no database, no production behaviour touched.
 - `analyse.py` — markdown tables.
 - `inventory.py` — the test-file classification (68 files: 67 on main plus this PR's guard test).
 - `cli.py` — interactive probe, above.
+- `setup_env.py` — cross-platform dependency install + agora stub.
+- `probe.bat`, `Dockerfile` — Windows launchers.
 
 ## Why there is a transcription, and how it is kept honest
 
