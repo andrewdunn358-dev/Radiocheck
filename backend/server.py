@@ -6446,6 +6446,10 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         
         # Safeguarding uses NORMALISED text (catches degraded input)
         safeguarding_text = normalised_message
+        try:
+            prov.rekey(safeguarding_text)  # match the reconciler's hash input
+        except Exception as _pe:
+            logging.error(f"[Provenance] rekey failed: {_pe}")
         
         # Detect active protocols BEFORE safeguarding check (needed for identity threshold dampening)
         protocol_files = get_protocol_files(request.message)
