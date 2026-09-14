@@ -175,3 +175,37 @@ def test_every_outcome_reassignment_in_handler_has_provenance_nearby():
             if "prov.override(" not in window and "prov.stage(" not in window:
                 missing.append(f"{i + 1}: {lines[i].strip()[:60]}")
     assert not missing, "outcome reassignments without provenance:\n" + "\n".join(missing)
+
+
+def test_hash_matches_reconciler_convention_for_correlation():
+    """First production records (14 Sept) showed the provenance hash and the
+    round10.reconcile hash DIFFERED for the same message - provenance hashed
+    the raw text, the reconciler hashes the lowercased text. That defeated the
+    stated purpose of sharing the convention. Both must produce the same value
+    for the same input or the two log lines cannot be joined."""
+    import hashlib
+    from safety.provenance import _msg_hash
+    msg = "Feeling a bit lost tonight, not sure what I'm doing anymore"
+    reconciler_way = hashlib.sha256(msg.lower().encode("utf-8")).hexdigest()[:16]
+    assert _msg_hash(msg) == reconciler_way
+    # and it must be case-insensitive, since that's the whole bug
+    assert _msg_hash("HELLO") == _msg_hash("hello")
+
+
+def test_rekey_updates_hash_to_normalised_text():
+    out = _capture()
+    rec = start_system_verdict("s", "tommy", "Raw Input", False)
+    first = rec.msg_sha256_16
+    rec.rekey("normalised input")
+    assert rec.msg_sha256_16 != first
+    assert rec.msg_length == len("normalised input")
+    rec.finish()
+    assert out[0]["msg_sha256_16"] == rec.msg_sha256_16
+
+
+def test_server_rekeys_after_normalisation():
+    server = open(os.path.join(os.path.dirname(__file__), '..', 'server.py'), encoding='utf-8').read()
+    i_norm = server.index("safeguarding_text = normalised_message")
+    i_rekey = server.index("prov.rekey(safeguarding_text)")
+    assert i_rekey > i_norm, "rekey must happen after safeguarding_text is set"
+    assert i_rekey - i_norm < 300, "rekey should immediately follow normalisation"

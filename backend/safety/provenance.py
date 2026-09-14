@@ -56,9 +56,12 @@ SCHEMA_VERSION = "1.0"
 
 
 def _msg_hash(message: Optional[str]) -> Optional[str]:
+    """Same convention as verdict_reconciler.py:451 - sha256 of the LOWERCASED
+    text, first 16 hex chars - so a provenance line and a reconcile line for
+    the same request carry the same hash and can be joined."""
     if not message:
         return None
-    return hashlib.sha256(message.encode("utf-8", "ignore")).hexdigest()[:16]
+    return hashlib.sha256(message.lower().encode("utf-8", "ignore")).hexdigest()[:16]
 
 
 def _short_session(session_id: Optional[str]) -> Optional[str]:
@@ -87,6 +90,13 @@ class ProvenanceRecord:
     overrides: List[Dict[str, Any]] = field(default_factory=list)
     outcome: Dict[str, Any] = field(default_factory=dict)
     _t0: float = field(default_factory=time.time, repr=False)
+
+    def rekey(self, message: Optional[str]) -> None:
+        """Re-hash on the text the detectors actually see (post-normalisation).
+        The reconciler hashes safeguarding_text; provenance must match it or
+        the two lines cannot be correlated."""
+        self.msg_sha256_16 = _msg_hash(message)
+        self.msg_length = len(message) if message else None
 
     def stage(self, name: str, source: str, **values: Any) -> None:
         """Record a point in the chain. Values are copied as given; callers
