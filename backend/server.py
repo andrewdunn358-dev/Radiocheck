@@ -6604,7 +6604,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                        risk_score=unified_safety.get("risk_score"),
                        failsafe_triggered=unified_safety.get("failsafe_triggered"),
                        failsafe_reason=unified_safety.get("failsafe_reason"),
-                       ai_invoked=bool((unified_safety.get("ai_analysis") or {}).get("invoked")) if isinstance(unified_safety.get("ai_analysis"), dict) else None,
+                       ai_invoked=(unified_safety.get("ai_classification") or {}).get("invoked"),
+                       ai_risk_level=(unified_safety.get("ai_classification") or {}).get("risk_level"),
                        thresholds_applied=unified_safety.get("thresholds_applied"),
                        age_protections_applied=unified_safety.get("age_protections_applied"))
         except Exception as _pe:
@@ -7056,10 +7057,17 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         if not negation_confirmed and not identity_active and failsafe_should_fire and unified_safety.get("detected_patterns"):
             concerning_patterns = ["INTENT_ESCALATION", "METHOD_INTRODUCTION", "FINALITY_BEHAVIOR"]
             if any(p in unified_safety.get("detected_patterns", []) for p in concerning_patterns):
+                _cp_before = risk_level
                 should_escalate = True
                 if risk_level == "GREEN":
                     risk_level = "AMBER"
                 logging.warning(f"Concerning pattern detected: {unified_safety.get('detected_patterns')} - Session: {request.sessionId[:12]}")
+                try:
+                    prov.override("concerning_patterns", source="server.corrective_block(reads RAW unified.detected_patterns)",
+                                  variable="risk_level", before=_cp_before, after=risk_level,
+                                  reason=",".join(str(x) for x in unified_safety.get("detected_patterns", [])))
+                except Exception as _pe:
+                    logging.error(f"[Provenance] override failed: {_pe}")
         
         # Get safety wrapper text (appended to persona response, not replacing)
         # CRITICAL FIX (4C): AMBER without a RED indicator phrase = tone shift only.
@@ -7497,6 +7505,13 @@ Return ONLY the response text. No explanation. No labels."""
                     reply=reply,
                     user_message=request.message,
                 )
+                try:
+                    prov.stage("protocol_gate_regen", source="safety.run_protocol_gates",
+                               primary_protocol=primary_protocol,
+                               passed=getattr(gate_verdict, "passed", None),
+                               reason=getattr(gate_verdict, "reason", None))
+                except Exception as _pe:
+                    logging.error(f"[Provenance] stage failed: {_pe}")
                 emit_gate_audit_log(
                     gate_verdict,
                     reply=reply,
@@ -7544,10 +7559,22 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
                     
                         if verdict.startswith("PASS"):
                             logging.info(f"[Judge] PASS on attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
+                            try:
+                                prov.stage("llm_judge", source="server.ROUND7_JUDGE",
+                                           verdict="PASS", attempt=judge_attempt + 1,
+                                           protocol=primary_protocol)
+                            except Exception as _pe:
+                                logging.error(f"[Provenance] stage failed: {_pe}")
                             break
                         elif verdict.startswith("FAIL"):
                             fail_reason = verdict.replace("FAIL:", "").strip()
                             logging.warning(f"[Judge] FAIL ({fail_reason}) attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
+                            try:
+                                prov.stage("llm_judge", source="server.ROUND7_JUDGE",
+                                           verdict="FAIL", reason=fail_reason[:80],
+                                           attempt=judge_attempt + 1, protocol=primary_protocol)
+                            except Exception as _pe:
+                                logging.error(f"[Provenance] stage failed: {_pe}")
                         
                             if judge_attempt < max_judge_retries - 1:
                                 # Conditioned regeneration (Constraint 1)
@@ -7747,7 +7774,7 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
                 should_escalate=bool(should_escalate),
                 failsafe_fired=bool(failsafe_should_fire),
                 alert_created=bool(alert_id),
-                signpost_mode=bool(signpost_mode) if 'signpost_mode' in dir() else None,
+                signpost_mode=bool(signpost_mode),
             )
         except Exception as _pe:
             logging.error(f"[Provenance] finish failed: {_pe}")
@@ -7766,6 +7793,12 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
         
     except Exception as e:
         logging.error(f"AI Buddy chat error: {str(e)}")
+        try:
+            if 'prov' in locals():
+                prov.finish(error=type(e).__name__, safeguarding_triggered=False,
+                            risk_level="ERROR", note="handler raised; fallback reply sent, no verdict reached client")
+        except Exception:
+            pass
         
         # Provide a helpful fallback message instead of a hard error
         # This ensures users always get SOME response, especially in crisis

@@ -146,11 +146,32 @@ def test_server_instruments_every_stage_session1_identified():
     server = open(os.path.join(os.path.dirname(__file__), '..', 'server.py'), encoding='utf-8').read()
     for stage in ("input_context", "legacy_result", "raw_unified_result",
                   "reconciled_result", "authoritative_runtime_vars",
-                  "protocol_gate", "fallback_generation"):
+                  "protocol_gate", "protocol_gate_regen", "llm_judge",
+                  "fallback_generation"):
         assert f'prov.stage("{stage}"' in server, f"stage {stage!r} not instrumented"
     for override in ("negation_suppression", "identity_suppression",
                      "b35_initial_assignment_corrective", "b35_overlay_gate_hotfix",
-                     "rule_2b_staff_review", "rapid_escalation"):
+                     "rule_2b_staff_review", "rapid_escalation", "concerning_patterns"):
         assert f'prov.override("{override}"' in server, f"override {override!r} not instrumented"
-    assert "prov.finish(" in server
+    assert server.count("prov.finish(") >= 2, "both the normal exit and the exception path must emit"
     assert "start_user_initiated_action" in server
+
+
+def test_every_outcome_reassignment_in_handler_has_provenance_nearby():
+    """The double-check that caught concerning_patterns. Any line in the chat
+    handler that reassigns risk_level, should_escalate or failsafe_should_fire
+    must have a prov.override or prov.stage within 10 lines. If a new
+    corrective is added without provenance, this fails."""
+    import re
+    path = os.path.join(os.path.dirname(__file__), '..', 'server.py')
+    lines = open(path, encoding='utf-8').read().splitlines()
+    start = next(i for i, l in enumerate(lines) if '@api_router.post("/ai-buddies/chat"' in l)
+    end = next(i for i, l in enumerate(lines) if '@api_router.post("/smudge/chat")' in l)
+    pat = re.compile(r'^\s*(risk_level|should_escalate|failsafe_should_fire) = ')
+    missing = []
+    for i in range(start, end):
+        if pat.match(lines[i]):
+            window = "\n".join(lines[max(start, i - 10):min(end, i + 10)])
+            if "prov.override(" not in window and "prov.stage(" not in window:
+                missing.append(f"{i + 1}: {lines[i].strip()[:60]}")
+    assert not missing, "outcome reassignments without provenance:\n" + "\n".join(missing)
