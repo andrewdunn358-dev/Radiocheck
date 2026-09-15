@@ -25,6 +25,7 @@ outside `tests/differential/`. Its fidelity is guarded two ways:
      silently invalidating these results.
 
 Transcribed from main `76d41e01` (#102), 15 September 2026.
+Updated for the Scope 1 deferred clear-down, same day (branch safety/scope1-fallback-validation).
 
 STRUCTURAL NOTE — TWO EXITS
 ---------------------------
@@ -121,7 +122,7 @@ _REGIONS = [
 # Pinned at main 76d41e01. Regenerate deliberately with `python3 -m
 # tests.differential.runtime_chain --repin` and say so in the PR.
 PINNED_HASHES = {
-    "crisis_override_and_grief_state": "0cdcb20457431d47",
+    "crisis_override_and_grief_state": "5c3f2586d2a93155",
     "negation_and_identity_guards": "f1e24bc4619bd1b1",
     "correctives": "9c9d871f7a4b70ea",
 }
@@ -189,7 +190,7 @@ class StateTransition:
 
 
 _STATE_KEYS = [
-    "grief_active_turns", "grief_name", "grief_pronoun", "grief_turn_count",
+    "grief_active_turns", "grief_name", "grief_pronoun", "grief_turn_count", "grief_pending_clear",
     "identity_active_turns", "spine_turn_count", "brush_off_turn_count",
 ]
 
@@ -215,6 +216,13 @@ def apply_pre_scoring_state(
     msg_lower = message.lower()
     crisis_override = any(p in msg_lower for p in CRISIS_OVERRIDE_PHRASES)
     tr.crisis_override = crisis_override
+
+    # Session 4 Scope 1: deferred clear-down resolves at turn start.
+    if session.pop('grief_pending_clear', False):
+        session['grief_name'] = None
+        session['grief_pronoun'] = None
+        session['grief_turn_count'] = 0
+        tr.mutations.append("turn_start:deferred_grief_clear_applied")
 
     if crisis_override:
         if 'identity_active_turns' in session:
@@ -251,10 +259,8 @@ def apply_pre_scoring_state(
             session['grief_active_turns'] = session['grief_active_turns'] - 1
             session['grief_turn_count'] = session.get('grief_turn_count', 0) + 1
             if session['grief_active_turns'] == 0:
-                session['grief_name'] = None
-                session['grief_pronoun'] = None
-                session['grief_turn_count'] = 0
-                tr.mutations.append("grief_episode_ended:subject_cleared")
+                session['grief_pending_clear'] = True
+                tr.mutations.append("grief_episode_ending:clear_deferred_to_next_turn")
 
         if 'spine.md' in protocol_files:
             session['spine_turn_count'] = session.get('spine_turn_count', 0) + 1
