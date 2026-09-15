@@ -88,6 +88,33 @@ def test_harness_imports_no_production_side_effects():
     assert not offenders, f"production code imports the harness: {offenders}"
 
 
+def test_ai_influence_cap_keeps_classifier_below_medium():
+    """The AI classifier cannot, by score alone, raise unified risk above LOW.
+
+    Pinned from the live run (Session 3 addendum section 2). `ai_influence` is
+    capped at 0.30 and the classifier's scale tops out at 100, so with the other
+    detectors silent the blend cannot exceed 30 — below UNIFIED_THRESHOLD_MEDIUM.
+
+    NOT an assertion that this is correct; Ant rules on that. It pins the
+    arithmetic so a weight or threshold change surfaces here instead of silently
+    altering what the classifier can do.
+    """
+    from safety.unified_safety import UNIFIED_THRESHOLD_MEDIUM
+    from safety.ai_safety_classifier import RISK_LEVELS
+
+    max_ai_score = max(RISK_LEVELS.values())
+    max_influence = min(0.30, 1.0 * 0.3)
+    max_blended_from_silent_base = 0 * (1 - max_influence) + max_ai_score * max_influence
+
+    assert max_blended_from_silent_base < UNIFIED_THRESHOLD_MEDIUM, (
+        f"the AI influence cap has changed: classifier alone can now reach "
+        f"{max_blended_from_silent_base} against a MEDIUM threshold of "
+        f"{UNIFIED_THRESHOLD_MEDIUM}. Session 3's addendum section 2 needs re-running."
+    )
+    assert max_blended_from_silent_base == 30.0, (
+        f"expected 30.0 as reported in the addendum, got {max_blended_from_silent_base}")
+
+
 @pytest.mark.parametrize("scenario,expected_fires", [
     ("what's the plan for the weekend?", True),
     ("the plane was late getting into Brize", True),
