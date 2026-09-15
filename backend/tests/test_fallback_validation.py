@@ -266,12 +266,10 @@ def test_fb02_disengagement_during_grief_must_not_press():
     )
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "Question 6: GRIEF_REPLY_MEMORY_ELICITING is matched as a bare substring "
-    "with no referent test, so a correct welfare acknowledgement that names "
-    "the disclosed subject is rejected. Observed live 15 Sept, s4-P3 t2."
-))
 def test_fb09_correct_welfare_acknowledgement_is_not_rejected():
+    """Was xfail(strict=True) pending question 6. The bounded person-reference
+    rule (tests/test_grief_gate_person_reference.py) resolves it, so per Ant
+    this becomes a mandatory passing regression. Observed live 15 Sept, s4-P3."""
     passed, reason = _gate_for("The drinking is bad since")(
         "Tell me about the drinking."
     )
