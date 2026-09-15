@@ -1,7 +1,17 @@
 # Session 4 — Scope 1: Micro-fallback validation and bounded terminal safe behaviour
 
-_Drafted 15 September 2026 against main `0affc7fb`. **Scope only. No implementation.**
-For Ant's review before any runtime change._
+_Drafted 15 September 2026 against main `0affc7fb`. Revised the same day to carry
+Ant's rulings on questions 6 and 7, and the root-cause finding beneath them._
+
+> **Rulings received 15 Sept (evening).** Question 7: welfare-disclosure states
+> go **directly** to the deterministic terminal — no candidate generation, no
+> gate validation of a candidate, no judge call, because there is no candidate.
+> This is the intended behaviour, not a workaround. Do **not** pass the raw user
+> message into `generate_micro_fallback()`. Question 6: implement the smallest
+> bounded deterministic person-reference test for `GRIEF_REPLY_MEMORY_ELICITING`;
+> not an expanding exemption list, not a wider acknowledgement catalogue. Terminal
+> wording and the person-reference change go to Ant **together**. No runtime
+> change to `protocol_gates.py` and no activation of the wording until then.
 
 Ant's requirement, Priority 1:
 
@@ -113,7 +123,33 @@ mechanism, not a new one.
 Seven fallbacks have now been observed in production. Enough to answer whether
 re-validation works, and to find a problem with it.
 
-### 2.1 Three of seven fallbacks would be caught by the gate alone
+### 2.0 Root cause — the fallback never sees the user's message
+
+`generate_micro_fallback(state)` takes protocol state only: protocol, turn,
+name, pronoun, situation. **The user's message is not an input to it.** Both
+call sites pass `protocol_state` and nothing else.
+
+Three sessions, identical except for turn 2 — a welfare disclosure ("I have not
+been sleeping since the funeral"), a disengagement ("see you later then"), and
+an explicit request ("The drinking is bad since. Just ask me about the
+drinking.") — all returned exactly the same reply: *"What do you miss most
+about him?"* Identical protocol state, identical output, because state is all
+the generator has.
+
+Classification: **CONTEXT LOSS**, upstream of the VALIDATION BYPASS. It explains
+every observed fallback: three of seven were memory-eliciting questions not
+because the generator chose badly but because it had nothing else to go on.
+
+Consequence: validation alone cannot satisfy FB-01. A fallback that cannot see a
+welfare signal cannot acknowledge one. Hence Ant's question 7 ruling above.
+
+**Recorded, not answered (Ant's instruction):** does `generate_micro_fallback()`
+need to exist for the remaining non-welfare states, or should further resolved
+states eventually become direct-to-terminal? The evidence raises the question;
+it does not yet justify removing the generator generally. Scope 1 does not grow
+to answer it.
+
+### 2.1 Three of seven fallbacks would be caught by the gate alone — restated under question 7
 
 | Session | Delivered fallback | Re-gating catches it? |
 |---|---|---|
@@ -124,9 +160,16 @@ re-validation works, and to find a problem with it.
 | C7 t3 | "I'm here with you, thinking about them." | no — judge only |
 | s4-P1 t2, s4-P2 t2 | reply text not captured | unknown |
 
-The deterministic gate — zero latency, no model call — catches the majority. It
-is the primary validator, not the backstop. That supports Ant's complementary-
-validators ruling with numbers rather than argument.
+The deterministic gate — zero latency, no model call — catches the majority.
+
+**Restated under question 7:** two of those three (s4-A1, s4-P3) are welfare
+states and under the ruling never reach the gate — they go direct to the
+terminal. The gate's residual job in the fallback path is the non-welfare
+cases (C7 t2 shape, FB-02), where a memory question is permitted by the current
+protocol and so passes. The gate still matters — it validates every normal
+persona reply, which is why question 6 stands independently of the fallback
+change — but "three of seven caught" overstated its role in the *fallback* path
+specifically. Recorded rather than silently reduced.
 
 ### 2.2 The decisive case: s4-A2 turn 2
 
@@ -284,6 +327,7 @@ No component within a turn sees a different view.
 | FB-06 | Every terminal table entry | Passes the gate and the judge. |
 | FB-07 | Clear-down ordering | `protocol_files` and the episode counter agree within a single turn. |
 | FB-09 | s4-P3 t2 — a reply that acknowledges the disclosed welfare subject using "tell me about" | Records the gate false positive. **Expected to fail until question 6 is resolved.** |
+| FB-10 | Welfare disclosure → `terminal_direct`, generator and validators never called | Pins question 7. Passes exploding callables for generate/gate/judge; any call fails loudly. |
 | FB-08 | Latency | Added cost of re-validation measured and recorded against the C7 baseline (C7 t2 4009 ms, C7 t3 6761 ms; s4 runs ranged 11.5-20.9 s, with a single judge attempt taking 12.4 s). |
 
 FB-02 and FB-09 use `@pytest.mark.xfail(strict=True)`, not a permanently red
@@ -348,4 +392,44 @@ raised as its own PR rather than folded into anything else.
 
 ---
 
-**No implementation until this is reviewed.**
+---
+
+## 8. Baseline and predictions (revised under question 7)
+
+Captured before implementation, 15 Sept, sessions `base-fb01`, `base-fb02`,
+`base-fb09`, `base-hr`. All three turn-2 messages returned *"What do you miss
+most about him?"*.
+
+Predictions to compare the post-change evidence against — stated before it
+ships, not interpreted afterwards:
+
+| Case | Before | Predicted after |
+|---|---|---|
+| welfare disclosure (sleep) | memory question | **direct deterministic terminal, no micro-generation** |
+| explicit drinking disclosure/request | memory question | **direct deterministic terminal, no micro-generation** |
+| disengagement | memory question | **unchanged** — known Scope 4 gap (FB-02) |
+| high risk | fixed line, RED, riskScore 95 | unchanged |
+
+Latency: measure whether removing the welfare generation call gives the expected
+reduction. Baseline 11.5–20.9 s on the s4 runs. Do not assume it.
+
+## 9. Implementation status
+
+Built and green offline on branch `safety/scope1-fallback-validation`:
+`safety/fallback_validation.py`, `tests/test_fallback_validation.py` (19 passed,
+2 xfailed), both `server.py` call sites wired through `_run_validated_fallback`,
+judge prompt hoisted into a single builder, provenance stages
+`fallback_validation` and `terminal_safe_response` added. Diffed against
+unmodified main on the 19 passing suites: zero new failures, zero fixed.
+
+Not done: the clear-down ordering fix (§3.4) and the question-6 change to
+`protocol_gates.py`, which waits for the joint review with the wording.
+
+**Observed while wiring, for Ant's ruling, not changed:** the main judge path's
+`except Exception … "passing through"; break` (server.py ~7682) passes a normal
+persona reply to the user unvalidated if the judge call errors. Same principle
+as the fallback ruling — a validator error must not become a silent pass — but
+it is the main path, so it is a question rather than a Scope 1 change.
+
+**No activation of the terminal wording and no change to `protocol_gates.py`
+until the joint review.**
