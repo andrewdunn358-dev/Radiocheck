@@ -38,3 +38,29 @@ the first probe. Eight cases.
 4. `high_risk` and the drinking line are stable fails across four runs.
 
 No further wording changes made.
+
+---
+
+# Revision 2 — 16 September, runs 2 and 3
+
+Identical input to run 1. Seven of eight cases returned the same verdict on all
+three runs. One did not:
+
+| Case | 15 Sept ×3 | 16 Sept r1 | r2 | r3 |
+|---|---|---|---|---|
+| grief_active "Take your time." | PASS PASS PASS | FAIL therapeutic_tone | **PASS** | FAIL therapeutic_tone |
+
+**Six runs, identical prompt (fingerprint `92e9c814df2aaec2`), model, settings
+and input: 4 PASS, 2 FAIL.** The judge is non-deterministic on this input at
+temperature 0. Every other case was stable across all six runs.
+
+Stable across the revision 2 runs: `welfare_disclosed` FAIL ×3 (second
+wording; 7 consecutive fails across two wordings); `high_risk` FAIL spine_leak
+×3 (7 of 7 including 15 Sept); drinking line FAIL welfare_pivot ×3 (7 of 7);
+`brush_off`, `identity`, `privacy`, `unknown` PASS ×3.
+
+Consequence: "every terminal entry passes the judge in CI" cannot be a fixed
+property of the wording. Whether a line passes is, for at least one line, a
+coin-flip on the day. How the judge is used as a validator for deterministic
+terminals — N-of-M, gate-only, or a separate deterministic check — is a design
+question for Ant. No wording changed.
