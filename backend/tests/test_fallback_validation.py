@@ -282,3 +282,80 @@ def test_fb09_precondition_the_overlap_is_real():
     """Guards the premise of FB-09: the phrase really is on both sides."""
     assert any(p in "tell me about the drinking." for p in GRIEF_REPLY_MEMORY_ELICITING)
     assert any(p in "the drinking is bad since" for p in GRIEF_USER_WELFARE_SIGNALS)
+
+
+# --- FB-07: clear-down ordering (Session 4 Scope 1, Ant 15 Sept) -------------
+# Exercised through the hash-guarded transcription of the server's grief state
+# machine, which fails its own guard test if server.py drifts from it.
+
+def _grief_turns(messages):
+    from tests.differential.runtime_chain import apply_pre_scoring_state
+    from personas.soul_loader import get_protocol_files, extract_grief_name
+    session, out = {}, []
+    for m in messages:
+        tr = apply_pre_scoring_state(
+            message=m, session=session,
+            protocol_files=list(get_protocol_files(m) or []),
+            extract_grief_name=extract_grief_name)
+        out.append((tr.protocol_files, dict(tr.state_after), list(tr.mutations)))
+    return out
+
+
+def test_fb07_closing_turn_still_carries_subject_and_protocol_agree():
+    """On the turn the counter hits zero, grief.md is injected AND the subject
+    is still present — no component in that turn sees a cleared-out episode."""
+    turns = _grief_turns([
+        "Recently lost my dad, funeral was last month",
+        "see you later then",
+        "still not been sleeping much",
+    ])
+    files3, state3, mut3 = turns[2]
+    assert "grief.md" in files3
+    assert state3["grief_active_turns"] == 0
+    assert state3["grief_pending_clear"] is True
+    # "my dad" carries no capitalised name, so grief_name is legitimately None
+    # here (as it was in the live C7 case). The subject that IS set is the
+    # pronoun, and the turn count — both must survive the closing turn.
+    assert state3["grief_pronoun"] == "he", "subject cleared mid-turn — the desync"
+    assert state3["grief_turn_count"] > 0, "turn count zeroed mid-turn — the desync"
+    assert "grief_episode_ending:clear_deferred_to_next_turn" in mut3
+
+
+def test_fb07_named_subject_survives_the_closing_turn():
+    turns = _grief_turns([
+        "Lost my dad Dave last month, funeral was last week",
+        "see you later then",
+        "still not been sleeping much",
+    ])
+    _, state3, _ = turns[2]
+    assert state3["grief_active_turns"] == 0 and state3["grief_pending_clear"] is True
+    assert state3["grief_name"] == "Dave", "named subject cleared mid-turn — the desync"
+
+
+def test_fb07_deferred_clear_applies_at_next_turn_start():
+    turns = _grief_turns([
+        "Recently lost my dad, funeral was last month",
+        "see you later then",
+        "still not been sleeping much",
+        "anyway, what's the weather like",
+    ])
+    files4, state4, mut4 = turns[3]
+    assert "turn_start:deferred_grief_clear_applied" in mut4
+    assert state4["grief_name"] is None
+    assert state4["grief_turn_count"] == 0
+    assert "grief_pending_clear" not in state4 or not state4["grief_pending_clear"]
+    assert "grief.md" not in files4
+
+
+def test_fb07_crisis_override_and_deferred_clear_do_not_conflict():
+    """Both clear; order-independent; no exception on a crisis-override turn."""
+    turns = _grief_turns([
+        "Recently lost my dad, funeral was last month",
+        "see you later then",
+        "still not been sleeping much",
+        "I've got a plan and it's tonight",
+    ])
+    _, state4, mut4 = turns[3]
+    assert state4["grief_name"] is None
+    assert "turn_start:deferred_grief_clear_applied" in mut4
+    assert any(m.startswith("crisis_override") for m in mut4)

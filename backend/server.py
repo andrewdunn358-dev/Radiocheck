@@ -6474,6 +6474,17 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             'not going to be here', 'goodbye', "won't need this anymore"
         ]
         msg_lower = request.message.lower()
+        # === Session 4 Scope 1: resolve grief lifecycle ONCE, before protocol
+        # selection (Ant, 15 Sept). A grief episode that ended on the previous
+        # turn clears its subject HERE, at the start of the next turn — never
+        # mid-turn after grief.md has already been injected. Every downstream
+        # component in this turn therefore sees one consistent view.
+        if session.pop('grief_pending_clear', False):
+            session['grief_name'] = None
+            session['grief_pronoun'] = None
+            session['grief_turn_count'] = 0
+            logging.info(f"[Protocols] Grief subject cleared at turn start (episode ended last turn) for session {request.sessionId[:12]}")
+
         crisis_override = any(phrase in msg_lower for phrase in crisis_override_phrases)
 
         if crisis_override:
@@ -6541,10 +6552,13 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 # reaches 0, and the name persists in protocol_state forever.
                 # Clearing here means the subject dies with the episode.
                 if session['grief_active_turns'] == 0:
-                    session['grief_name'] = None
-                    session['grief_pronoun'] = None
-                    session['grief_turn_count'] = 0
-                    logging.info(f"[Protocols] Grief episode ended — subject cleared for session {request.sessionId[:12]}")
+                    # Session 4 Scope 1 (Ant): do NOT clear here. grief.md has
+                    # already been injected for THIS turn, so clearing now
+                    # leaves protocol_state reading turn 0 / grief_opening on
+                    # what is actually the closing turn (observed live: C7 t3,
+                    # s4 runs). Defer to the start of the next turn.
+                    session['grief_pending_clear'] = True
+                    logging.info(f"[Protocols] Grief episode ending — subject clears at next turn start for session {request.sessionId[:12]}")
 
             # Track spine and brush-off turns
             if 'spine.md' in protocol_files:
@@ -6562,6 +6576,18 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 protocol_files = protocol_files + ['identity.md']
                 session['identity_active_turns'] = session['identity_active_turns'] - 1
                 logging.info(f"[Protocols] Identity dampening persisted for session {request.sessionId[:12]} (remaining turns: {session['identity_active_turns']})")
+
+        # Session 4 Scope 1: single resolved view of the grief lifecycle for
+        # this turn. protocol_state and provenance read THIS, not the live
+        # session keys, so no component sees a mid-turn mutation.
+        grief_lifecycle = {
+            "active": 'grief.md' in protocol_files,
+            "turn": session.get('grief_turn_count', 1) or 1,
+            "name": session.get('grief_name'),
+            "pronoun": session.get('grief_pronoun', 'they'),
+            "closing": bool(session.get('grief_pending_clear', False)),
+        }
+
         
         # Check for safeguarding concerns using weighted scoring system
         # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
@@ -6573,6 +6599,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                        protocol_files=list(protocol_files or []),
                        text_normalised=bool(was_normalised),
                        grief_active_turns=session.get('grief_active_turns', 0),
+                       grief_turn=grief_lifecycle["turn"],
+                       grief_closing=grief_lifecycle["closing"],
                        identity_active_turns=session.get('identity_active_turns', 0),
                        crisis_override=bool(crisis_override))
             prov.stage("legacy_result", source="server.calculate_safeguarding_score",
@@ -7235,7 +7263,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             
             # Get per-protocol turn count
             protocol_turn_counts = {
-                'grief': session.get('grief_turn_count', 1),
+                'grief': grief_lifecycle["turn"],
                 'spine': session.get('spine_turn_count', 1),
                 'brush_off': session.get('brush_off_turn_count', 1),
             }
@@ -7246,9 +7274,10 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             protocol_state = {
                 "protocol": primary_protocol.upper(),
                 "turn": current_protocol_turn,
-                "name": session.get('grief_name'),
-                "pronoun": session.get('grief_pronoun', 'they'),
-                "situation": current_situation
+                "name": grief_lifecycle["name"],
+                "pronoun": grief_lifecycle["pronoun"],
+                "situation": current_situation,
+                "grief_closing": grief_lifecycle["closing"],
             }
             
             # === Round 8: Context-aware micro-generation function ===
