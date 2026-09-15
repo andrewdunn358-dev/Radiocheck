@@ -335,7 +335,7 @@ build. `strict=True` means the build fails if they ever start passing, so when
 Scope 4 (FB-02) or question 6 (FB-09) lands, CI forces the flip to a mandatory
 passing regression rather than letting it go green unnoticed.
 
-FB-02 deliberately ships red. A regression that documents a known specification
+FB-02 ships as a **strict expected failure, not a red build** — `@pytest.mark.xfail(strict=True)` keeps normal CI green while ensuring an unexpected pass requires deliberate review and conversion to a mandatory regression. A regression that documents a known specification
 gap is more useful than one quietly written to the current behaviour.
 
 ---
