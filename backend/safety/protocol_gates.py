@@ -295,6 +295,115 @@ GRIEF_REPLY_MEMORY_ELICITING = frozenset({
     "go back to",  # "go back to the day", "go back to when"
 })
 
+# ---------------------------------------------------------------------------
+# Session 4 Scope 1, question 6 (Ant, 15 Sept) — PROPOSED, FOR REVIEW.
+#
+# Observed live 15 Sept (s4-P3 t2): after the user disclosed drinking and asked
+# to be asked about it, the persona replied "Tell me about the drinking." — a
+# correct welfare acknowledgement — and the gate rejected it, because
+# GRIEF_REPLY_MEMORY_ELICITING was matched as a bare substring with no test of
+# what the phrase refers to. Regeneration then produced something else, the
+# judge failed it twice, and the fallback delivered a memory question about the
+# deceased. The validator rejected the right answer and the system delivered
+# the wrong one.
+#
+# The fix is the smallest bounded deterministic person-reference test, per
+# Ant. It is NOT an expanding welfare-subject exemption list, and NOT a wider
+# acknowledgement catalogue. The phrase list splits in two:
+#
+#   INTRINSIC   — memory-directed by their own words ("what do you remember",
+#                 "favourite memory", "describe him"). The rule always applies.
+#   STEMS       — elicitation openers that could be about anything ("tell me
+#                 about", "what was"). The rule applies ONLY when a person
+#                 reference follows within a short window.
+#
+# Person reference = a pronoun or relationship noun in the next PERSON_REF_WINDOW
+# words of the normalised reply, OR a capitalised name in the same window of the
+# raw reply (the soul_loader grief gate already uses this convention).
+#
+# The redemption clause (GRIEF_REPLY_WELFARE_ACK) is unchanged — defence in
+# depth, per Ant.
+# ---------------------------------------------------------------------------
+
+GRIEF_MEMORY_INTRINSIC = frozenset({
+    "do you remember",
+    "what do you remember",
+    "another memory",
+    "favourite memory",
+    "favorite memory",
+    "what do you miss",
+    "what was it that",
+    "describe him",
+    "describe her",
+    "describe them",
+    "what made him",
+    "what made her",
+    "what made them",
+    "go back to",
+    "share another",
+})
+
+GRIEF_ELICITATION_STEMS = frozenset({
+    "tell me about",
+    "tell me more about",
+    "what was",
+    "what were",
+    "share more",
+})
+
+# Everything in the original list is in exactly one of the two sets above.
+assert GRIEF_MEMORY_INTRINSIC | GRIEF_ELICITATION_STEMS == GRIEF_REPLY_MEMORY_ELICITING
+assert not (GRIEF_MEMORY_INTRINSIC & GRIEF_ELICITATION_STEMS)
+
+PERSON_REF_WINDOW = 3
+
+# Pronouns + the relationship nouns the grief gate in soul_loader already uses.
+_PERSON_REF_WORDS = frozenset({
+    "him", "her", "them", "he", "she", "they", "his", "hers", "their",
+    "dad", "mum", "mam", "mom", "father", "mother", "brother", "sister",
+    "son", "daughter", "wife", "husband", "mate", "friend", "nan", "nana",
+    "grandad", "granddad", "grandma", "grandmother", "grandfather",
+    "comrade", "oppo", "buddy",
+})
+
+# Capitalised token that is not sentence-initial and not a common opener.
+_NAME_STOP = frozenset({"i", "the", "what", "tell", "how", "do", "you", "your"})
+
+
+def _person_reference_follows(normalised_reply: str, raw_reply: str, stem: str) -> bool:
+    """True if a person reference appears within PERSON_REF_WINDOW words after
+    `stem` in the reply. Deterministic, bounded, no lists of welfare subjects."""
+    idx = normalised_reply.find(stem)
+    if idx == -1:
+        return False
+    after = normalised_reply[idx + len(stem):].split()[:PERSON_REF_WINDOW]
+    if any(w in _PERSON_REF_WORDS for w in after):
+        return True
+    # Capitalised-name check on the RAW reply (normalisation lowercases).
+    raw_lower = raw_reply.lower()
+    ridx = raw_lower.find(stem)
+    if ridx == -1:
+        return False
+    raw_after = raw_reply[ridx + len(stem):].split()[:PERSON_REF_WINDOW]
+    for tok in raw_after:
+        t = tok.strip(".,!?;:'\"")
+        if len(t) >= 3 and t[0].isupper() and t[1:].islower() and t.lower() not in _NAME_STOP:
+            return True
+    return False
+
+
+def _memory_elicitation_match(normalised_reply: str, raw_reply: str):
+    """Return the matched phrase if the memory rule applies, else None."""
+    for phrase in GRIEF_MEMORY_INTRINSIC:
+        if phrase in normalised_reply:
+            return phrase
+    for stem in GRIEF_ELICITATION_STEMS:
+        if stem in normalised_reply and _person_reference_follows(
+            normalised_reply, raw_reply, stem
+        ):
+            return stem
+    return None
+
 # Welfare-acknowledgement redemption set. Presence of ANY of these in the
 # reply REDEEMS a memory-eliciting phrase — it means Tommy IS acknowledging
 # the welfare signal even if there is also a follow-up question that happens
@@ -517,7 +626,8 @@ def check_attachment(normalised_reply: str) -> GateVerdict:
     return GateVerdict(passed=True, gate="attachment", reason=REASON_PASS)
 
 
-def check_grief(normalised_reply: str, normalised_user_msg: str) -> GateVerdict:
+def check_grief(normalised_reply: str, normalised_user_msg: str,
+                raw_reply: str = None) -> GateVerdict:
     """Check E. FAIL when the user has disclosed an active welfare signal AND
     the reply contains a memory-eliciting phrase about the deceased AND the
     reply contains no welfare-acknowledgement redemption phrase.
@@ -541,21 +651,21 @@ def check_grief(normalised_reply: str, normalised_user_msg: str) -> GateVerdict:
     if not user_disclosed_welfare:
         return GateVerdict(passed=True, gate="grief", reason=REASON_PASS)
 
-    reply_has_memory_question = _contains_any(
-        normalised_reply, GRIEF_REPLY_MEMORY_ELICITING
+    # Session 4 Scope 1, question 6: bounded person-reference test (see the
+    # block above GRIEF_MEMORY_INTRINSIC). Replaces the bare substring match.
+    memory_match = _memory_elicitation_match(
+        normalised_reply, raw_reply if raw_reply is not None else normalised_reply
     )
     reply_has_welfare_ack = _contains_any(
         normalised_reply, GRIEF_REPLY_WELFARE_ACK
     )
 
-    if reply_has_memory_question and not reply_has_welfare_ack:
+    if memory_match and not reply_has_welfare_ack:
         return GateVerdict(
             passed=False,
             gate="grief",
             reason=REASON_GRIEF_MEMORY_QUESTION_AFTER_WELFARE,
-            matched_phrase=_first_matching_phrase(
-                normalised_reply, GRIEF_REPLY_MEMORY_ELICITING
-            ),
+            matched_phrase=memory_match,
         )
 
     return GateVerdict(passed=True, gate="grief", reason=REASON_PASS)
@@ -593,7 +703,7 @@ def run_protocol_gates(
     if protocol == "identity":
         return check_identity(norm_reply, _normalise(user_message))
     if protocol == "grief":
-        return check_grief(norm_reply, _normalise(user_message))
+        return check_grief(norm_reply, _normalise(user_message), raw_reply=reply)
     # protocol == "attachment"
     return check_attachment(norm_reply)
 
