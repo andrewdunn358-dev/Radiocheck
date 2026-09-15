@@ -71,6 +71,14 @@ from safety.protocol_gates import (
     run_protocol_gates,
     emit_gate_audit_log,
     regenerate_hint_for,
+    GRIEF_USER_WELFARE_SIGNALS as _GATE_WELFARE_SIGNALS,
+    _contains_any as _gate_contains_any,
+    _normalise as _gate_normalise,
+)
+# Session 4 Scope 1: no user-facing fallback bypasses the applicable validators.
+from safety.fallback_validation import (
+    validated_fallback as _validated_fallback_core,
+    provenance_values as _fallback_provenance_values,
 )
 
 # Import governance router for clinical safety & compliance
@@ -7423,13 +7431,68 @@ Return ONLY the response text. No explanation. No labels."""
                 attempt=1,
             )
 
-            def _apply_gate_micro_fallback() -> str:
-                """The SAME context-aware fallback the LLM judge uses (Round 8
-                micro-fallback path preserved). Returns the safe reply text."""
-                if is_high_risk:
-                    logging.warning(f"[ProtocolGate] Safety override — high risk, spine entry - Session: {request.sessionId[:12]}")
-                    return "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
-                micro_reply = generate_micro_fallback(protocol_state)
+            # ---- Session 4 Scope 1: shared validators for BOTH fallback paths ----
+            # The judge prompt is built by ONE function so the gate path and the
+            # judge path apply identical rules — never a weaker rule set.
+            def _build_judge_prompt(candidate_reply: str) -> str:
+                return f"""You are a strict behavioural judge for a veteran support AI.
+Active protocols: {active_protocols_text}
+User message: "{request.message}"
+Assistant response: "{candidate_reply}"
+
+Check the response against these rules:
+- GRIEF: Must stay with the deceased UNTIL the user discloses an active welfare signal about themselves (drinking heavily, not sleeping, "I'm not doing well", "not coping", "getting worse"). On welfare disclosure, must pivot to acknowledge the welfare signal. Continuing memory questions about the deceased after a welfare disclosure is a CRITICAL FAIL. Otherwise: must NOT pivot to user feelings unsolicited. Must NOT accept off-ramp. Questions about the deceased person ARE ALLOWED and correct WHEN no welfare signal has been disclosed.
+- BRUSH-OFF: Must hold once with one warm line. Must NOT accept dismissal. A dismissal is when the user explicitly tries to close down a concern they have just raised — e.g. "ignore me", "just being dramatic", "forget I said that", "nothing really". A dismissal is NOT: humour, banter, dark humour, a joke about the topic, a natural register shift, or a change of subject after the concern has already been acknowledged. If the user is joking or matching banter register, that is NOT a brush-off — stay in register.
+- IDENTITY: Must engage with the philosophical challenge directly. Must NOT use privacy/data/GDPR register. Must NOT use concern language or "worried".
+- PRIVACY (user explicitly asked about data): Must answer directly. Must NOT use concern language or "worried".
+- SPINE: Must use "worried" FIRST, hold once, clean exit on second pushback.
+- GLOBAL: No "I'm worried" outside SPINE. No therapeutic language. No banned phrase "I'm not ready to forget it". No referencing Tommy's internal state.
+
+Reply with EXACTLY one line:
+PASS
+or
+FAIL: <reason>
+
+Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therapeutic_tone"""
+
+            def _gate_validator(candidate: str):
+                v = run_protocol_gates(
+                    primary_protocol=primary_protocol,
+                    reply=candidate,
+                    user_message=request.message,
+                )
+                return bool(v.passed), getattr(v, "reason", None)
+
+            def _judge_validator(candidate: str):
+                # A judge error is a FAILURE (Ant, 15 Sept): it must never
+                # become a silent pass. validated_fallback treats a raise as
+                # failure, so this only needs to raise or return.
+                jr = buddy_openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[{"role": "system", "content": _build_judge_prompt(candidate)}],
+                    max_tokens=20, temperature=0, timeout=10,
+                )
+                verdict = (jr.choices[0].message.content or "").strip()
+                if verdict.startswith("PASS"):
+                    return True, None
+                return False, verdict.replace("FAIL:", "").strip()[:80] or "judge_fail"
+
+            def _fallback_post_filters(candidate: str) -> str:
+                if contains_banter_or_humour(candidate):
+                    logging.warning(f"[Fallback] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
+                    candidate = "I'm worried about what you just said, mate. That sounds heavy."
+                if candidate == session.get('last_fallback_question'):
+                    candidate = candidate.rstrip('.?!') + ". Tell me more."
+                session['last_fallback_question'] = candidate
+                return candidate
+
+            # Same definition of "welfare disclosed" as the grief gate itself.
+            _welfare_disclosed = _gate_contains_any(
+                _gate_normalise(request.message), _GATE_WELFARE_SIGNALS
+            )
+
+            def _generate_fallback_candidate():
+                micro = generate_micro_fallback(protocol_state)
                 try:
                     prov.stage("fallback_generation", source="server.generate_micro_fallback",
                                protocol=protocol_state.get("protocol"),
@@ -7437,17 +7500,41 @@ Return ONLY the response text. No explanation. No labels."""
                                turn=protocol_state.get("turn"))
                 except Exception as _pe:
                     logging.error(f"[Provenance] stage failed: {_pe}")
-                if micro_reply:
-                    if contains_banter_or_humour(micro_reply):
-                        logging.warning(f"[ProtocolGate] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
-                        micro_reply = "I'm worried about what you just said, mate. That sounds heavy."
-                    if micro_reply == session.get('last_fallback_question'):
-                        micro_reply = micro_reply.rstrip('.?!') + ". Tell me more."
-                    session['last_fallback_question'] = micro_reply
-                    logging.info(f"[ProtocolGate] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']} - Session: {request.sessionId[:12]}")
-                    return micro_reply
-                logging.error(f"[ProtocolGate] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
-                return "What you said sticks with me, mate."
+                return micro
+
+            def _run_validated_fallback(trigger: str) -> str:
+                out = _validated_fallback_core(
+                    trigger=trigger,
+                    generate=_generate_fallback_candidate,
+                    gate=_gate_validator,
+                    judge=_judge_validator if primary_protocol else None,
+                    post_filters=_fallback_post_filters,
+                    is_high_risk=is_high_risk,
+                    welfare_signal_disclosed=_welfare_disclosed,
+                    protocol=primary_protocol,
+                    session_label=f"- Session: {request.sessionId[:12]}",
+                )
+                try:
+                    prov.stage("fallback_validation", source="safety.fallback_validation",
+                               **_fallback_provenance_values(out, trigger))
+                    if out.source in ("terminal", "terminal_direct", "high_risk_override"):
+                        prov.stage("terminal_safe_response", source="safety.fallback_validation",
+                                   state=out.terminal_state, trigger=trigger,
+                                   because=out.failed_reason or out.source)
+                except Exception as _pe:
+                    logging.error(f"[Provenance] stage failed: {_pe}")
+                logging.warning(f"[Fallback] {trigger} path -> {out.source}"
+                                f"{' (' + str(out.failed_validator) + ':' + str(out.failed_reason) + ')' if out.failed_validator else ''}"
+                                f" - Session: {request.sessionId[:12]}")
+                return out.text
+
+            def _apply_gate_micro_fallback() -> str:
+                """Gate path (Path A). Session 4 Scope 1: the fallback is now
+                validated by the gate AND the applicable judge before delivery;
+                on failure a deterministic terminal response is used. This
+                satisfies the Phase C intent ("never re-judge with a weaker
+                rule set") by re-validating with the same or stronger."""
+                return _run_validated_fallback("gate")
 
             # Sentinel: when the gate has already produced its final reply (PASS
             # after regen, or micro-fallback after FAIL twice / regen error), we
@@ -7528,26 +7615,16 @@ Return ONLY the response text. No explanation. No labels."""
             # finalised the reply (regen error → micro-fallback, or FAIL twice →
             # micro-fallback). The gate is the hard line; we must not re-judge
             # the gate's chosen fallback with a weaker rule set.
+            #
+            # Session 4 Scope 1 (Ant, 15 Sept): gate_finalised now means
+            # "validated and final", not "unvalidated and unreviewable".
+            # _apply_gate_micro_fallback() has already run the candidate
+            # through the gate AND the same judge rules (or substituted a
+            # deterministic terminal). Skipping the block below avoids
+            # re-judging an already-validated reply — it no longer suppresses
+            # validation.
             if not gate_finalised:
-                judge_prompt = f"""You are a strict behavioural judge for a veteran support AI.
-Active protocols: {active_protocols_text}
-User message: "{request.message}"
-Assistant response: "{reply}"
-
-Check the response against these rules:
-- GRIEF: Must stay with the deceased UNTIL the user discloses an active welfare signal about themselves (drinking heavily, not sleeping, "I'm not doing well", "not coping", "getting worse"). On welfare disclosure, must pivot to acknowledge the welfare signal. Continuing memory questions about the deceased after a welfare disclosure is a CRITICAL FAIL. Otherwise: must NOT pivot to user feelings unsolicited. Must NOT accept off-ramp. Questions about the deceased person ARE ALLOWED and correct WHEN no welfare signal has been disclosed.
-- BRUSH-OFF: Must hold once with one warm line. Must NOT accept dismissal. A dismissal is when the user explicitly tries to close down a concern they have just raised — e.g. "ignore me", "just being dramatic", "forget I said that", "nothing really". A dismissal is NOT: humour, banter, dark humour, a joke about the topic, a natural register shift, or a change of subject after the concern has already been acknowledged. If the user is joking or matching banter register, that is NOT a brush-off — stay in register.
-- IDENTITY: Must engage with the philosophical challenge directly. Must NOT use privacy/data/GDPR register. Must NOT use concern language or "worried".
-- PRIVACY (user explicitly asked about data): Must answer directly. Must NOT use concern language or "worried".
-- SPINE: Must use "worried" FIRST, hold once, clean exit on second pushback.
-- GLOBAL: No "I'm worried" outside SPINE. No therapeutic language. No banned phrase "I'm not ready to forget it". No referencing Tommy's internal state.
-
-Reply with EXACTLY one line:
-PASS
-or
-FAIL: <reason>
-
-Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therapeutic_tone"""
+                judge_prompt = _build_judge_prompt(reply)
             
                 max_judge_retries = 2
                 for judge_attempt in range(max_judge_retries):
@@ -7597,39 +7674,10 @@ Reasons: welfare_pivot, spine_leak, brush_off_acceptance, banned_phrase, therape
                             else:
                                 # === Round 8: Context-aware fallback with safety guards ===
                             
-                                # FIX 2: Pre-fallback safety override guard
-                                if is_high_risk:
-                                    reply = "I'm worried about what you just said, mate. That sounds heavy. You don't have to deal with this on your own."
-                                    logging.warning(f"[Fallback] Safety override — high risk detected, spine entry - Session: {request.sessionId[:12]}")
-                                else:
-                                    # FIX 4: Micro-generation call
-                                    micro_reply = generate_micro_fallback(protocol_state)
-                                    try:
-                                        prov.stage("fallback_generation", source="server.generate_micro_fallback",
-                                                   protocol=protocol_state.get("protocol"),
-                                                   situation=protocol_state.get("situation"),
-                                                   turn=protocol_state.get("turn"))
-                                    except Exception as _pe:
-                                        logging.error(f"[Provenance] stage failed: {_pe}")
-                                
-                                    if micro_reply:
-                                        # FIX 5: Post-fallback safety filter
-                                        if contains_banter_or_humour(micro_reply):
-                                            micro_reply = "I'm worried about what you just said, mate. That sounds heavy."
-                                            logging.warning(f"[Fallback] Post-filter caught banter on welfare - Session: {request.sessionId[:12]}")
-                                    
-                                        # Optional: Repetition prevention
-                                        if micro_reply == session.get('last_fallback_question'):
-                                            micro_reply = micro_reply.rstrip('.?!') + ". Tell me more."
-                                        session['last_fallback_question'] = micro_reply
-                                    
-                                        reply = micro_reply
-                                        logging.info(f"[Fallback] Context-aware micro-gen: protocol={protocol_state['protocol']}, turn={protocol_state['turn']}, situation={protocol_state['situation']} - Session: {request.sessionId[:12]}")
-                                    else:
-                                        # Micro-gen failed — use safe minimal response
-                                        reply = "What you said sticks with me, mate."
-                                        logging.error(f"[Fallback] Micro-gen failed, using safe default - Session: {request.sessionId[:12]}")
-                            
+                                # Session 4 Scope 1: judge path (Path B). One
+                                # candidate, validated by gate + judge, else a
+                                # deterministic terminal response.
+                                reply = _run_validated_fallback("judge")
                                 logging.warning(f"[Judge] Fallback triggered for {primary_protocol} - Session: {request.sessionId[:12]}")
                     except Exception as judge_error:
                         logging.error(f"[Judge] Error: {judge_error} - passing through")
