@@ -1,3 +1,0 @@
-VERSION: 2026-02-17-1035
-This file confirms you have the latest version from GitHub.
-If you see this file on your server, the upload worked correctly.
