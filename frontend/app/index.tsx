@@ -541,12 +541,19 @@ const styles = StyleSheet.create({
   supporterLogoWrapper: {
     padding: 4,
   },
+  // Logo boxes match each image's real aspect ratio. Previously both used
+  // boxes that fought the source: frankies-pod.png is 640x632 (1.01:1) in a
+  // 2:1 box, standing-tall.png is 297x130 (2.28:1) in a 1.33:1 box. With
+  // resizeMode="contain" the second shrank to fit the height and rendered
+  // tiny and cramped inside its white card.
   supporterLogo: {
-    width: isSmallScreen ? 70 : 100,
-    height: isSmallScreen ? 35 : 50,
+    // frankies-pod.png — 1.01:1, near square
+    width: isSmallScreen ? 44 : 60,
+    height: isSmallScreen ? 44 : 60,
   },
   supporterLogoStandingTall: {
-    width: isSmallScreen ? 56 : 80,
+    // standing-tall.png — 2.28:1, wide
+    width: isSmallScreen ? 96 : 137,
     height: isSmallScreen ? 42 : 60,
     backgroundColor: '#fff',
     borderRadius: 6,
