@@ -3006,3 +3006,7 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# build output - never commit
+portal/.next/
+.metro-cache/
