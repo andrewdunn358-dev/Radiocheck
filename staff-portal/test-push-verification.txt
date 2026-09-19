@@ -1,5 +1,0 @@
-This file was created to verify GitHub push is working.
-Created: Feb 19, 2026
-If you see this file on GitHub, the push is working correctly.
-
-DELETE THIS FILE after verification.

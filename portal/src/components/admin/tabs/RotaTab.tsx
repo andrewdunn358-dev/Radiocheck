@@ -204,7 +204,7 @@ export default function RotaTab({ token, onSuccess, onError }: RotaTabProps) {
       {/* Coverage Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg p-4">
-          <p className="text-green-200 text-sm">Counsellors Today</p>
+          <p className="text-green-200 text-sm">Counsellors on shift today</p>
           <p className="text-2xl font-bold">
             {shifts.filter(s => {
               if (s.date !== new Date().toISOString().split('T')[0]) return false;
@@ -214,7 +214,7 @@ export default function RotaTab({ token, onSuccess, onError }: RotaTabProps) {
           </p>
         </div>
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4">
-          <p className="text-blue-200 text-sm">Peers Today</p>
+          <p className="text-blue-200 text-sm">Peers on shift today</p>
           <p className="text-2xl font-bold">
             {shifts.filter(s => {
               if (s.date !== new Date().toISOString().split('T')[0]) return false;
@@ -237,7 +237,7 @@ export default function RotaTab({ token, onSuccess, onError }: RotaTabProps) {
         </div>
         {coverageGaps > 0 ? (
           <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-4">
-            <p className="text-red-200 text-sm">Coverage Gaps</p>
+            <p className="text-red-200 text-sm">Days with no shift booked</p>
             <p className="text-2xl font-bold">{coverageGaps} days</p>
           </div>
         ) : (

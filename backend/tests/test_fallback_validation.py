@@ -229,7 +229,8 @@ def test_terminal_wording_is_still_flagged_pending():
     ({"welfare_signal_disclosed": True, "protocol": "grief"}, "welfare_disclosed"),
     ({"protocol": "grief"}, "grief_active"),
     ({"protocol": "brush_off"}, "brush_off"),
-    ({"protocol": "identity"}, "identity_or_privacy"),
+    ({"protocol": "identity"}, "identity"),
+    ({"protocol": "privacy"}, "privacy"),
     ({"protocol": None}, "unknown"),
 ])
 def test_terminal_state_selection(kwargs, expected):

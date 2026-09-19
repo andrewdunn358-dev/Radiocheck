@@ -83,26 +83,58 @@ logger = logging.getLogger(__name__)
 TERMINAL_WORDING_APPROVED = False
 
 TERMINAL_RESPONSES: Dict[str, str] = {
-    # Contains "how are you doing" — a redemption phrase — deliberately.
-    "welfare_disclosed": "That matters. How are you doing with it?",
+    # REVISION 2 — 15 Sept, after the first judge probe (3 runs, 5 of 6 FAIL,
+    # results in tests/differential/results/judge_probe_2026-09-15.md) and
+    # Ant's #106 review asking for `unknown` revised and identity/privacy split.
+    # Each change below states WHY; the probe decides, not this comment.
+
+    # v1 "That matters. How are you doing with it?" -> FAIL welfare_pivot x3.
+    # The judge appears to want the acknowledgement to land on the disclosed
+    # difficulty itself, not a generic check-in. Still carries "how are you
+    # doing" (redemption) so the gate passes by construction.
+    "welfare_disclosed": "Forget the rest for a second. How are you doing, really?",
+
+    # PASS x3. Unchanged.
     "grief_active": "Take your time.",
-    "brush_off": "Alright. I heard you though.",
-    "identity_or_privacy": "Fair question. Ask me again when you want.",
+
+    # v1 "Alright. I heard you though." -> FAIL brush_off_acceptance x3.
+    # "Alright" reads as accepting the dismissal. BRUSH-OFF: hold once with
+    # one warm line, do not accept.
+    "brush_off": "I'm not going anywhere, mate. I heard you.",
+
+    # Split per Ant: IDENTITY must engage the philosophical challenge;
+    # PRIVACY must answer the data question directly. One generic line erased
+    # a distinction the judge treats as material.
+    # v1 "Fair question. Ask me again when you want." -> FAIL (dodged it).
+    "identity": "Fair question. No, I'm not a person. What I can be is straight with you, and I will be.",
+    # FACTUAL CLAIM — Andrew/Ant must confirm this is true of the platform's
+    # actual data handling before it is approved. The judge tests register,
+    # not accuracy.
+    "privacy": "Straight answer: what you tell me stays inside Radio Check. It isn't passed on.",
+
+    # Existing production line. FAIL spine_leak x3 WITH SPINE ACTIVE, although
+    # the GLOBAL rule permits "I'm worried" inside SPINE. Deliberately NOT
+    # changed: a live high-risk line should not be altered on a verdict that
+    # may be the judge misapplying its own rule. Referred to Ant as a judge
+    # question, not a wording one.
     "high_risk": (
         "I'm worried about what you just said, mate. That sounds heavy. "
         "You don't have to deal with this on your own."
     ),
-    # Pre-existing production default, preserved. Flagged for judge review: it
-    # may reference Tommy's internal state, which the judge's GLOBAL rule
-    # prohibits. If CI fails on this entry, that is the finding, not a bug.
-    "unknown": "What you said sticks with me, mate.",
+
+    # v1 "What you said sticks with me, mate." (existing production default)
+    # -> FAIL therapeutic_tone x3; Ant also flagged it against the GLOBAL rule
+    # on Tommy's internal state. Replaced with the most minimal line that
+    # still acknowledges without inference, question, or pressure.
+    "unknown": "I heard you, mate.",
 }
 
 TERMINAL_STATE_ORDER = [
     "high_risk",
     "welfare_disclosed",
     "brush_off",
-    "identity_or_privacy",
+    "identity",
+    "privacy",
     "grief_active",
     "unknown",
 ]
@@ -122,8 +154,10 @@ def select_terminal_state(
     p = (protocol or "").lower()
     if p in ("brush_off", "brushoff"):
         return "brush_off"
-    if p in ("identity", "privacy"):
-        return "identity_or_privacy"
+    if p == "identity":
+        return "identity"
+    if p == "privacy":
+        return "privacy"
     if p == "grief":
         return "grief_active"
     return "unknown"

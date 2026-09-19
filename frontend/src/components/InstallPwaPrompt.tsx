@@ -21,8 +21,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View, Modal } from 'react-native';
+import { usePathname } from 'expo-router';
 
 const DISMISS_KEY = 'rc_install_prompt_dismissed';
+
+// Routes where the banner must never appear. It is position:fixed at the
+// bottom of the viewport with zIndex 9999, so on the chat screen it sits
+// directly over the message input — a user in distress cannot reach the box
+// to type. Nothing is more important than that input being usable.
+const SUPPRESSED_ROUTES = ['/chat', '/crisis-support', '/safeguarding', '/live-chat', '/callback'];
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -35,18 +42,26 @@ export default function InstallPwaPrompt() {
   const [isIos, setIsIos] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     if (typeof window === 'undefined') return;
 
-    // Honour previous dismissal in the same session
+    // Honour a previous dismissal permanently, not just for this session.
+    // Previously this read sessionStorage, so the banner returned on every
+    // visit however many times it had been dismissed.
+    // localStorage is read first; the old sessionStorage key is still honoured
+    // so anyone who dismissed it this session is not shown it again mid-visit.
     try {
-      if (window.sessionStorage.getItem(DISMISS_KEY) === '1') {
+      if (
+        window.localStorage.getItem(DISMISS_KEY) === '1' ||
+        window.sessionStorage.getItem(DISMISS_KEY) === '1'
+      ) {
         setDismissed(true);
       }
     } catch {
-      // sessionStorage may be blocked (private mode etc.) — non-fatal
+      // storage may be blocked (private mode etc.) — non-fatal
     }
 
     // Register service worker — required for Chrome install eligibility.
@@ -86,6 +101,8 @@ export default function InstallPwaPrompt() {
 
   if (Platform.OS !== 'web' || isInstalled || dismissed) return null;
   if (!installEvent && !isIos) return null;
+  // Never over the chat input or a crisis screen.
+  if (SUPPRESSED_ROUTES.some((r) => (pathname || '').startsWith(r))) return null;
 
   const onTap = async () => {
     if (installEvent) {
@@ -106,6 +123,8 @@ export default function InstallPwaPrompt() {
   const onDismiss = () => {
     setDismissed(true);
     try {
+      // Permanent: dismissing once means dismissed for good on this device.
+      window.localStorage.setItem(DISMISS_KEY, '1');
       window.sessionStorage.setItem(DISMISS_KEY, '1');
     } catch {
       /* non-fatal */

@@ -164,16 +164,16 @@ export default function BetaTestingTab({ token, onSuccess, onError }: BetaTestin
           {betaStats?.pre_averages ? (
             <div className="space-y-3">
               <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
-                <span>Wellbeing Score</span>
+                <span>Wellbeing</span>
                 <span className="text-green-400 font-bold">{typeof betaStats.pre_averages.avg_wellbeing === 'number' ? betaStats.pre_averages.avg_wellbeing.toFixed(1) : (betaStats.pre_averages.avg_wellbeing || '--')}/10</span>
               </div>
               <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
-                <span>Anxiety Level</span>
-                <span className="text-yellow-400 font-bold">{typeof betaStats.pre_averages.avg_anxiety === 'number' ? betaStats.pre_averages.avg_anxiety.toFixed(1) : (betaStats.pre_averages.avg_anxiety || '--')}/10</span>
+                <span>Anxiety (GAD-2)</span>
+                <span className="text-yellow-400 font-bold">{typeof betaStats.pre_averages.avg_anxiety === 'number' ? betaStats.pre_averages.avg_anxiety.toFixed(1) : (betaStats.pre_averages.avg_anxiety || '--')}/3</span>
               </div>
               <div className="flex justify-between items-center bg-gray-700 p-3 rounded">
-                <span>Mood Score</span>
-                <span className="text-blue-400 font-bold">{typeof betaStats.pre_averages.avg_mood === 'number' ? betaStats.pre_averages.avg_mood.toFixed(1) : (betaStats.pre_averages.avg_mood || '--')}/10</span>
+                <span>Mood (PHQ-2)</span>
+                <span className="text-blue-400 font-bold">{typeof betaStats.pre_averages.avg_mood === 'number' ? betaStats.pre_averages.avg_mood.toFixed(1) : (betaStats.pre_averages.avg_mood || '--')}/3</span>
               </div>
             </div>
           ) : (
