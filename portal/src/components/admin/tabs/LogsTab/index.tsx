@@ -70,6 +70,10 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [safeguardingAlerts, setSafeguardingAlerts] = useState<SafeguardingAlert[]>([]);
+  // Header counters, loaded independently of the open sub-tab (see loadLogs).
+  const [counts, setCounts] = useState<{ safeguarding: number; panic: number; calls: number }>({
+    safeguarding: 0, panic: 0, calls: 0,
+  });
   const [screeningLogs, setScreeningLogs] = useState<any[]>([]);
   const [callbackLogs, setCallbackLogs] = useState<any[]>([]);
   const [panicLogs, setPanicLogs] = useState<any[]>([]);
@@ -97,6 +101,19 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
       setAiChatStats(aiStatsData);
       setLocationData(locData);
       setVoicesAnalytics(voicesData);
+
+      // The six counters at the top of this tab are always visible, but the
+      // switch below only loaded the data for the sub-tab currently open — so
+      // every other counter read 0. Safeguarding showed 0 while the staff
+      // portal showed 14 active alerts against the SAME endpoint. Counts are
+      // now loaded independently of which sub-tab is open.
+      const [sgCount, panicCount, callCount] = await Promise.all([
+        api.getSafeguardingLogs(token).then((r: any) => (r?.alerts || r || []).length).catch(() => 0),
+        api.getPanicLogs(token).then((r: any) => (r?.alerts || r || []).length).catch(() => 0),
+        api.getCallLogs(token).then((r: any) => r?.total_calls ?? (r?.recent_logs || r || []).length).catch(() => 0),
+      ]);
+      setCounts({ safeguarding: sgCount, panic: panicCount, calls: callCount });
+
       
       switch (activeLogSubTab) {
         case 'calls':
@@ -294,7 +311,7 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4">
           <p className="text-blue-200 text-sm">Total Calls</p>
-          <p className="text-2xl font-bold">{callLogs.length}</p>
+          <p className="text-2xl font-bold">{counts.calls}</p>
         </div>
         <div className="bg-gradient-to-br from-cyan-600 to-cyan-700 rounded-lg p-4">
           <p className="text-cyan-200 text-sm">Live Chats</p>
@@ -302,7 +319,7 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
         </div>
         <div className="bg-gradient-to-br from-yellow-600 to-yellow-700 rounded-lg p-4">
           <p className="text-yellow-200 text-sm">Safeguarding</p>
-          <p className="text-2xl font-bold">{safeguardingAlerts.length}</p>
+          <p className="text-2xl font-bold">{counts.safeguarding}</p>
         </div>
         <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-4">
           <p className="text-red-200 text-sm">Panic Alerts</p>

@@ -132,19 +132,19 @@ export default function TeamTab({
                 <div className="text-2xl font-bold text-green-400">
                   {teamMembers.filter(m => m.status === 'available').length}
                 </div>
-                <div className="text-xs text-gray-400">Available</div>
+                <div className="text-xs text-gray-400">Marked available</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-400">
                   {teamMembers.filter(m => m.status === 'busy' || m.status === 'limited').length}
                 </div>
-                <div className="text-xs text-gray-400">Busy</div>
+                <div className="text-xs text-gray-400">Marked busy</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-400">
                   {teamMembers.filter(m => m.status === 'offline' || m.status === 'unavailable').length}
                 </div>
-                <div className="text-xs text-gray-400">Offline</div>
+                <div className="text-xs text-gray-400">Offline / off duty</div>
               </div>
             </div>
           </div>
