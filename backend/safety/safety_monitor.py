@@ -294,6 +294,34 @@ def is_negated(text: str, match_start: int) -> bool:
 # SAFETY MONITOR
 # =============================================================================
 
+# ---------------------------------------------------------------------------
+# Comparative-preference guard (20 Sept 2026)
+#
+# A critical phrase inside a comparative preference frame — "I'd rather X than
+# Y", "I'd sooner X than Y" — is an expression of distaste for Y, not a
+# disclosure of intent. Bounded deterministic test, same shape as the Q6
+# person-reference rule: a comparative cue within COMPARATIVE_BEFORE words
+# before the match AND "than" within COMPARATIVE_AFTER words after it.
+#
+# DELIBERATELY NOT SUPPRESSED: "if" conditionals. "I'll top myself if she
+# leaves" is a recognised risk presentation, so conditional phrasing continues
+# to fire. This guard covers comparatives only.
+# ---------------------------------------------------------------------------
+
+COMPARATIVE_CUES = frozenset({"rather", "sooner"})
+COMPARATIVE_BEFORE = 4
+COMPARATIVE_AFTER = 8
+
+
+def _in_comparative_frame(text: str, match_start: int) -> bool:
+    """True when the match sits inside an 'X rather/sooner ... than Y' frame."""
+    before = text[:match_start].split()[-COMPARATIVE_BEFORE:]
+    if not any(w.strip(".,!?;:'\"") in COMPARATIVE_CUES for w in before):
+        return False
+    after = text[match_start:].split()[:COMPARATIVE_AFTER]
+    return any(w.strip(".,!?;:'\"") == "than" for w in after)
+
+
 class EnhancedSafetyMonitor:
     """
     Multi-level safety monitoring with crisis detection.
@@ -324,6 +352,32 @@ class EnhancedSafetyMonitor:
         # CRITICAL KEYWORDS — immediate danger
         # =====================================================================
         self.critical_keywords = [
+            # --- Coverage additions (20 Sept 2026) -------------------------
+            # Explicit self-killing statements present in server.RED_INDICATORS
+            # at score 100 but absent from this list, so unable to fire the
+            # deterministic failsafe. Rule: a phrase qualifies only if, standing
+            # alone, it denotes the act of killing oneself. Hopelessness,
+            # fragments and time permutations deliberately excluded.
+            "take my own life", "ending my life", "end myself", "ending myself",
+            "gonna end myself", "neck myself", "going to neck myself",
+            "gonna neck myself", "topping myself", "top meself", "topping meself",
+            "off meself", "do meself in", "finish myself", "delete myself",
+            "gonna delete myself", "unalive myself", "want to unalive",
+            "gonna unalive", "game end myself",
+            "kil myself", "kill meself", "kil meself", "killl myself",
+            "kll myself", "wnt to die", "want 2 die",
+            "suicidal", "suicid", "suacide", "sucide", "sueside", "suiccide",
+            "suicidie", "suicidle", "suiside", "sewercide", "sewerslide",
+            "sewer slide",
+            "slit my wrists", "slit me wrists", "throw myself off",
+            "chuck myself off", "yeet myself off",
+            "thinking about ending my life", "thought about ending my life",
+            "wish i were dead",
+            # Euphemistic non-existence, same family as the pre-existing
+            # "won't be here tomorrow" already in this list.
+            "can't see myself being here", "cant see myself being here",
+            "can't see myself being here tomorrow",
+            "cant see myself being here tomorrow",
             "kill myself", "end my life", "suicide", "want to die",
             "going to kill myself", "plan to die", "planning to die",
             "going to end it all", "end it all tonight", "end it all today",
@@ -439,6 +493,12 @@ class EnhancedSafetyMonitor:
                 if check_negation and is_negated(text, match.start()):
                     logger.info(
                         f"Negated match skipped: '{match.group()}' "
+                        f"user={self.user_id}"
+                    )
+                    continue
+                if check_negation and _in_comparative_frame(text, match.start()):
+                    logger.info(
+                        f"Comparative-frame match skipped: '{match.group()}' "
                         f"user={self.user_id}"
                     )
                     continue
