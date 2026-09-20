@@ -141,10 +141,22 @@ def is_overdose_bereavement_context(message_lower: str) -> bool:
     for pattern in _OVERDOSE_FIRST_PERSON_PATTERNS:
         if pattern in message_lower:
             return False
+    # Grief signals must match as whole words (20 Sept 2026). Bare substring
+    # matching let 'son' fire inside reason/person/poison and 'wake' inside
+    # awake, reclassifying first-person overdose disclosures as bereavement.
+    # Only this loop is tightened: it is the one that stands a crisis
+    # indicator DOWN. The first-person loop above deliberately stays a
+    # substring match, because a stricter match there would stand down more
+    # genuine crises, not fewer.
     for signal in _OVERDOSE_GRIEF_SIGNALS:
-        if signal in message_lower:
+        if _whole_phrase(signal, message_lower):
             return True
     return False
+
+
+def _whole_phrase(phrase: str, text: str) -> bool:
+    """True if phrase occurs in text bounded by non-word characters."""
+    return re.search(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)", text) is not None
 
 
 # ============================================================================
