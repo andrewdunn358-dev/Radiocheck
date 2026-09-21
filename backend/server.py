@@ -6633,6 +6633,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
 
         unified_safety = analyze_message_unified(
             message=safeguarding_text,
+            original_message=original_message,  # R12-03 hotfix
             session_id=request.sessionId,
             user_id=request.sessionId,  # Anonymous users use session as ID
             character=character,

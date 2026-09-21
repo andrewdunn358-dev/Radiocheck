@@ -118,6 +118,7 @@ def analyze_message_unified(
     previous_sessions: Optional[List[Dict]] = None,  # NEW: for AI context
     is_under_18: bool = False,
     human_support_available: bool = True,
+    original_message: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Unified safety analysis combining all detection methods.
@@ -283,9 +284,31 @@ def analyze_message_unified(
     failsafe_reason = None
     
     # Check 1: Explicit suicide plan (keyword)
-    if keyword_result.get("risk_level") == "critical":
+    #
+    # R12-03 hotfix (21 Sept 2026, per Ant): `message` is the NORMALISED text.
+    # A semantically clarifying rewrite ("top myself" -> "take my own life")
+    # can move an explicit statement out of the critical vocabulary, so the
+    # failsafe never fires. When the caller supplies the original and it
+    # differs, Check 1 also evaluates the original. This can only ADD a
+    # failsafe, never remove one, and is inert when no rewrite occurred.
+    # Bounded: Check 1 only. No change to scoring, Checks 2-4, the reconciler
+    # or any phrase list.
+    original_is_critical = False
+    if original_message and original_message != message:
+        try:
+            original_is_critical = (
+                assess_message_safety(original_message).get("risk_level") == "critical"
+            )
+        except Exception as exc:
+            logger.error(f"[UnifiedSafety] original-text Check 1 failed: {exc}")
+    if keyword_result.get("risk_level") == "critical" or original_is_critical:
         failsafe_triggered = True
         failsafe_reason = "explicit_suicide_plan"
+        if original_is_critical and keyword_result.get("risk_level") != "critical":
+            logger.warning(
+                "[UnifiedSafety] Check 1 fired on ORIGINAL text only - "
+                "normalised text was not critical (R12-03 class)"
+            )
     
     # Check 2: Imminent intent from conversation
     if conversation_result.get("conversation_risk_level") == "IMMINENT":
