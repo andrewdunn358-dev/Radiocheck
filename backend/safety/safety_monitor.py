@@ -123,6 +123,22 @@ NEGATION_PREFIXES = [
 NEGATION_WINDOW = 16  # Increased from 8 to catch in-sentence negations
 
 
+def _contains_phrase(haystack: str, phrase: str) -> bool:
+    """
+    Whole-word containment test for a negation cue.
+
+    The negation lists are matched against short windows of user text. A plain
+    `phrase in haystack` test lets a cue match inside an unrelated word: the
+    one-word entry "not" is a substring of "cannot", "nothing", "another",
+    "notice" and "notes", and "fear" is a substring of "fearless". Each of those
+    silently suppressed a real risk indicator in production (20 Sept matrix).
+
+    Boundaries are non-word lookarounds rather than \\b so that cues containing
+    an apostrophe ("i'm not", "won't") behave the same way.
+    """
+    return re.search(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)", haystack) is not None
+
+
 def is_negated(text: str, match_start: int) -> bool:
     """
     Check if a match is negated - checks BOTH before AND after the indicator.
@@ -241,7 +257,8 @@ def is_negated(text: str, match_start: int) -> bool:
     for negation in NEGATION_PREFIXES:
         word_count = len(negation.split())
         window = window_before_tight if word_count <= 2 else window_before_wide
-        if negation in window:
+        # Whole-word match: "not" must not fire inside "cannot" / "nothing".
+        if _contains_phrase(window, negation):
             # Skip safety affirmations if meta-negation is present
             if has_meta_negation and negation in safety_affirmations:
                 continue
@@ -266,7 +283,8 @@ def is_negated(text: str, match_start: int) -> bool:
     ]
     
     for negation in post_negations:
-        if negation in window_after:
+        # Same whole-word rule as the before-window: these also suppress.
+        if _contains_phrase(window_after, negation):
             return True
     
     return False
