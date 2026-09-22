@@ -12,7 +12,9 @@
  * initials). It must never appear next to a Buddy UI block.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View, Image } from 'react-native';
+import { toSecureMediaUrl } from '../../utils/media';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useVoicesPlayer } from '../../context/VoicesPlayerContext';
 
@@ -28,6 +30,7 @@ export default function VoicesMiniPlayer() {
     setExpanded,
     close,
   } = useVoicesPlayer();
+  const insets = useSafeAreaInsets();
 
   if (!clip) return null;
 
@@ -39,7 +42,8 @@ export default function VoicesMiniPlayer() {
         position: 'absolute',
         left: 12,
         right: 12,
-        bottom: 12,
+        // Native: sit above Android's navigation bar / the iPhone home bar.
+        bottom: Platform.OS === 'web' ? 12 : 12 + insets.bottom,
         height: PLAYER_HEIGHT,
         borderRadius: 12,
         paddingHorizontal: 12,
@@ -75,6 +79,13 @@ export default function VoicesMiniPlayer() {
             src={clip.contributorPhotoUrl}
             alt={clip.contributorName}
             style={{ width: 40, height: 40, objectFit: 'cover' }}
+          />
+        ) : clip.contributorPhotoUrl ? (
+          <Image
+            source={{ uri: toSecureMediaUrl(clip.contributorPhotoUrl) }}
+            style={{ width: 40, height: 40 }}
+            resizeMode="cover"
+            accessibilityLabel={clip.contributorName}
           />
         ) : clip.mediaType === 'video' ? (
           <Ionicons name="videocam" size={20} color={colors.text} />

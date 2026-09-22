@@ -53,6 +53,8 @@ import {
   unsaveClip,
   type VoicesClip,
 } from '../services/voicesApi';
+import NativeVoicesMedia from '../components/voices/NativeVoicesMedia';
+import { toSecureMediaUrl } from '../utils/media';
 
 type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended' | 'error';
 
@@ -98,6 +100,12 @@ interface VoicesPlayerState {
    * the bug where modal renders above the video).
    */
   setVideoSlot: (el: HTMLElement | null) => void;
+  /**
+   * Native app only: the expo-video player that plays every clip. The
+   * full-screen player renders it in a <VideoView> for video clips.
+   * Always null on web.
+   */
+  nativePlayer: any;
 }
 
 const VoicesPlayerContext = createContext<VoicesPlayerState | null>(null);
@@ -120,6 +128,14 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Native app: one expo-video player (audio + video) exposed through an
+  // HTMLMediaElement-like handle, so the logic below is shared with web.
+  const nativeRef = useRef<any>(null);
+  const [nativePlayer, setNativePlayer] = useState<any>(null);
+  const onNativeReady = useCallback((handle: any, player: any) => {
+    nativeRef.current = handle;
+    setNativePlayer(player);
+  }, []);
   const playedRecordedRef = useRef<string | null>(null);
   const lastClipDurationRef = useRef<number>(0);
   // Tracks whether the user (or hero card) asked us to start playing on
@@ -156,6 +172,7 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
   /** The element that's currently relevant for this clip's media type. */
   const currentEl = useCallback((): HTMLMediaElement | null => {
     if (!clip) return null;
+    if (Platform.OS !== 'web') return nativeRef.current as HTMLMediaElement | null;
     return clip.mediaType === 'video' ? videoRef.current : audioRef.current;
   }, [clip]);
 
@@ -279,6 +296,11 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
+    try {
+      nativeRef.current?.pause();
+    } catch {
+      // ignore
+    }
     setIsExpanded(false);
     setStatus('idle');
     setPositionSeconds(0);
@@ -334,7 +356,9 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     if (!clip) return;
     if (!desiredPlayingRef.current) return;
     desiredPlayingRef.current = false;
-    const el = clip.mediaType === 'video' ? videoRef.current : audioRef.current;
+    const el: HTMLMediaElement | null = Platform.OS !== 'web'
+      ? nativeRef.current
+      : clip.mediaType === 'video' ? videoRef.current : audioRef.current;
     if (!el) {
       setStatus('error');
       return;
@@ -432,12 +456,13 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
     isSaved,
     primeUserGesture,
     setVideoSlot,
+    nativePlayer,
   }), [
     clip, status, positionSeconds, isExpanded, savedClipIds,
     includeSensitive, captionsOn, captionsDefaultOn,
     loadAndPlay, playRandom, togglePlayPause, skipNext, replay, close,
     toggleCaptions, setCaptionsDefault, setSensitivity, toggleSave, isSaved,
-    primeUserGesture, setVideoSlot,
+    primeUserGesture, setVideoSlot, nativePlayer,
   ]);
 
   // ----- Single-source-of-truth media elements (web only) -------------
@@ -509,6 +534,12 @@ export function VoicesPlayerProvider({ children }: { children: ReactNode }) {
             videoTarget,
           )}
         </>
+      )}
+      {Platform.OS !== 'web' && (
+        <NativeVoicesMedia
+          src={clip ? toSecureMediaUrl(clip.audioUrl) : null}
+          onReady={onNativeReady}
+        />
       )}
       {children}
     </VoicesPlayerContext.Provider>

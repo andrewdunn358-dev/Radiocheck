@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -26,6 +27,9 @@ import {
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useVoicesPlayer } from '../../context/VoicesPlayerContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import NativeVoicesVideoView from './NativeVoicesVideoView';
+import { toSecureMediaUrl } from '../../utils/media';
 
 export default function VoicesFullScreenPlayer() {
   const { colors } = useTheme();
@@ -47,7 +51,9 @@ export default function VoicesFullScreenPlayer() {
     toggleSave,
     isSaved,
     setVideoSlot,
+    nativePlayer,
   } = useVoicesPlayer();
+  const insets = useSafeAreaInsets();
 
   const activeCaption = useMemo(() => {
     if (!clip) return null;
@@ -90,7 +96,7 @@ export default function VoicesFullScreenPlayer() {
             flexDirection: 'row',
             alignItems: 'center',
             paddingHorizontal: 16,
-            paddingTop: 48,
+            paddingTop: Platform.OS === 'web' ? 48 : Math.max(insets.top, 24) + 8,
             paddingBottom: 12,
             gap: 16,
           }}
@@ -185,8 +191,11 @@ export default function VoicesFullScreenPlayer() {
                   height: 240,
                   borderRadius: 12,
                   backgroundColor: '#000',
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                {nativePlayer && <NativeVoicesVideoView player={nativePlayer} />}
+              </View>
             )
           ) : (
             // Audio clip: contributor photo or initials
@@ -213,9 +222,12 @@ export default function VoicesFullScreenPlayer() {
                     style={{ width: 200, height: 200, objectFit: 'cover' }}
                   />
                 ) : (
-                  <Text style={{ color: colors.text, fontSize: 48, fontWeight: '700' }}>
-                    {clip.contributorName.slice(0, 1).toUpperCase()}
-                  </Text>
+                  <Image
+                    source={{ uri: toSecureMediaUrl(clip.contributorPhotoUrl) }}
+                    style={{ width: 200, height: 200 }}
+                    resizeMode="cover"
+                    accessibilityLabel={clip.contributorName}
+                  />
                 )
               ) : (
                 <Text style={{ color: colors.text, fontSize: 64, fontWeight: '700' }}>
@@ -347,7 +359,7 @@ export default function VoicesFullScreenPlayer() {
             }}
             data-testid="voices-fullscreen-talk-cta"
             style={({ pressed }) => ({
-              marginBottom: 28,
+              marginBottom: Platform.OS === 'web' ? 28 : Math.max(insets.bottom, 12) + 16,
               paddingVertical: 14,
               borderRadius: 12,
               backgroundColor: colors.text,
