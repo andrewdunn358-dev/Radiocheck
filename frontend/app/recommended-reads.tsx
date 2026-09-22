@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { goBack } from '../src/utils/navigation';
+import { resolveMediaUrl } from '../src/utils/media';
 
 interface Book {
   title: string;
@@ -566,7 +567,7 @@ export default function RecommendedReads() {
               <View style={styles.bookRow}>
                 {book.coverUrl ? (
                   <Image
-                    source={{ uri: book.coverUrl }}
+                    source={{ uri: resolveMediaUrl(book.coverUrl) }}
                     style={styles.bookCover}
                   />
                 ) : (

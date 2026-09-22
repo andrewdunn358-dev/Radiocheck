@@ -89,7 +89,7 @@ export default function Counsellors() {
       } catch (error) {
         console.error('WebRTC call failed:', error);
         setIsInitiatingCall(false);
-        if (typeof window !== 'undefined') {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
           window.alert('Call Failed: Unable to connect. Please try again.');
         }
       }

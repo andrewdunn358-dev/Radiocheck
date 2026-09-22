@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 import { goBack } from '../src/utils/navigation';
+import { resolveMediaUrl } from '../src/utils/media';
 
 // Baz's avatar URL
 const BAZ_AVATAR = '/images/baz.png';
@@ -95,7 +96,7 @@ export default function Organizations() {
             activeOpacity={0.8}
           >
             <Image 
-              source={{ uri: BAZ_AVATAR }} 
+              source={{ uri: resolveMediaUrl(BAZ_AVATAR) }} 
               style={{ width: 56, height: 56, borderRadius: 28, marginRight: 14 }}
             />
             <View style={{ flex: 1 }}>
@@ -133,7 +134,7 @@ export default function Organizations() {
             activeOpacity={0.8}
           >
             <Image 
-              source={{ uri: '/images/afvbc-logo.png' }} 
+              source={{ uri: resolveMediaUrl('/images/afvbc-logo.png') }} 
               style={{ width: 60, height: 60, borderRadius: 8, marginRight: 14, backgroundColor: '#fff' }}
               resizeMode="contain"
             />

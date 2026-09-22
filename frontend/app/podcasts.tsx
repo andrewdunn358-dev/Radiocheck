@@ -131,6 +131,7 @@ const HARDCODED_PODCASTS: Podcast[] = [
 // Backend URL for fetching latest episodes - using safe API config
 import { API_URL } from '../src/config/api';
 import { goBack } from '../src/utils/navigation';
+import { resolveMediaUrl } from '../src/utils/media';
 
 export default function PodcastsScreen() {
   const router = useRouter();
@@ -287,7 +288,7 @@ export default function PodcastsScreen() {
             // Use local logo for Frankie's Pod, remote URLs for others
             const logoSource = podcast.logo === 'local' 
               ? FRANKIES_POD_LOGO 
-              : { uri: podcast.logo };
+              : { uri: resolveMediaUrl(podcast.logo) };
             
             return (
               <View key={podcast.id} style={styles.podcastCard}>
@@ -319,7 +320,7 @@ export default function PodcastsScreen() {
                         data-testid={`play-${podcast.id}`}
                       >
                         <Image 
-                          source={{ uri: latestEp.thumbnail }}
+                          source={{ uri: resolveMediaUrl(latestEp.thumbnail) }}
                           style={styles.videoThumbnail}
                           resizeMode="cover"
                         />

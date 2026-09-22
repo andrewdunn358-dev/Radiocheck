@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { safeGoBack } from '../src/utils/navigation';
+import { resolveMediaUrl } from '../src/utils/media';
 
 // Catherine's avatar URL
 const CATHERINE_AVATAR = '/images/catherine.png';
@@ -68,7 +69,7 @@ export default function SelfCarePage() {
           data-testid="catherine-card"
         >
           <Image 
-            source={{ uri: CATHERINE_AVATAR }} 
+            source={{ uri: resolveMediaUrl(CATHERINE_AVATAR) }} 
             style={styles.hugoAvatar}
           />
           <View style={styles.hugoContent}>

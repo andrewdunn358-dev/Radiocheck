@@ -847,7 +847,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   // 2-column grid card styles
   gridCard: {
     width: '48%',
-    aspectRatio: 1, // Makes it square
+    // Web: square cards. Native: let the card grow with its text, so large
+    // phone font sizes don't spill over the next card or the disclaimer.
+    ...(Platform.OS === 'web' ? { aspectRatio: 1 } : { minHeight: 170 }),
     backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,

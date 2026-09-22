@@ -430,7 +430,7 @@ export default function LiveChat() {
     // Try to go back to the AI chat they came from
     // If we have an alertId, they came from safeguarding flow in AI chat
     // Use goBack(router) first, with fallback to home (where they can choose a buddy)
-    if (typeof window !== 'undefined' && window.history.length > 2) {
+    if (Platform.OS !== 'web' || (typeof window !== 'undefined' && window.history.length > 2)) {
       goBack(router);
     } else {
       // Can't go back - navigate to home where they can choose an AI buddy
