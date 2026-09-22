@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
+import { goBack } from '../src/utils/navigation';
 
 export default function CallbackRequest() {
   const router = useRouter();
@@ -129,7 +130,7 @@ export default function CallbackRequest() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => goBack(router)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Request a Callback</Text>

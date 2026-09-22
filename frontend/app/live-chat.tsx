@@ -16,7 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../src/config/api';
-import { safeGoBack } from '../src/utils/navigation';
+import { safeGoBack, goBack } from '../src/utils/navigation';
 import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
 import { useWebRTCCall, formatCallDuration } from '../hooks/useWebRTCCallWeb';
 
@@ -429,9 +429,9 @@ export default function LiveChat() {
 
     // Try to go back to the AI chat they came from
     // If we have an alertId, they came from safeguarding flow in AI chat
-    // Use router.back() first, with fallback to home (where they can choose a buddy)
+    // Use goBack(router) first, with fallback to home (where they can choose a buddy)
     if (typeof window !== 'undefined' && window.history.length > 2) {
-      router.back();
+      goBack(router);
     } else {
       // Can't go back - navigate to home where they can choose an AI buddy
       router.replace('/home');

@@ -35,6 +35,7 @@ import {
   type CategoryCount,
   type VoicesClip,
 } from '../src/services/voicesApi';
+import { goBack } from '../src/utils/navigation';
 
 type Tab = 'categories' | 'saved' | 'recent' | 'search';
 
@@ -161,7 +162,7 @@ export default function VoicesLibraryScreen() {
       style={{ flex: 1, backgroundColor: colors.background, paddingTop: 36 }}
       data-testid="voices-library-screen"
     >
-      {/* Header row: back arrow + title. Back uses router.back() when
+      {/* Header row: back arrow + title. Back uses goBack(router) when
           there's history; otherwise falls back to /home so the user
           never lands on a dead-end. */}
       <View
@@ -175,7 +176,7 @@ export default function VoicesLibraryScreen() {
         <Pressable
           onPress={() => {
             if (router.canGoBack && router.canGoBack()) {
-              router.back();
+              goBack(router);
             } else {
               router.replace('/home');
             }

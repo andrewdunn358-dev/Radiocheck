@@ -7,6 +7,7 @@ import { useWebRTCCall, formatCallDuration } from '../hooks/useWebRTCCallWeb';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
+import { goBack } from '../src/utils/navigation';
 
 interface Counsellor {
   id: string;
@@ -138,7 +139,7 @@ export default function Counsellors() {
       >
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
+          <TouchableOpacity onPress={() => goBack(router)} style={{ padding: 8, marginRight: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text }}>On-Duty Support</Text>
@@ -178,7 +179,7 @@ export default function Counsellors() {
             <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>Please try the crisis helplines or check back later</Text>
             <TouchableOpacity 
               style={{ marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }} 
-              onPress={() => router.back()}
+              onPress={() => goBack(router)}
             >
               <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 14 }}>Back to Crisis Support</Text>
             </TouchableOpacity>

@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 
 import { API_URL } from '../src/config/api';
+import { resolveMediaUrl } from '../src/utils/media';
 
 interface Character {
   id: string;
@@ -105,7 +106,7 @@ export default function AIBuddies() {
             activeOpacity={0.8}
             data-testid={`character-${char.id}`}
           >
-            <Image source={{ uri: char.avatar }} style={styles.characterAvatar} />
+            <Image source={{ uri: resolveMediaUrl(char.avatar) }} style={styles.characterAvatar} />
             <View style={styles.characterInfo}>
               <Text style={styles.characterName}>{char.name}</Text>
               <Text style={styles.characterDescription}>{char.description}</Text>

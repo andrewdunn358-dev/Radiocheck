@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Linking, ActivityIndicator, I
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { API_URL } from '../config/api';
+import { resolveMediaUrl } from '../utils/media';
 
 interface CMSBlock {
   type: string;
@@ -154,7 +156,6 @@ const TAG_COLORS: Record<string, { bg: string; text: string }> = {
 
 function ImageBlock({ url, alt }: { url: string; alt?: string }) {
   if (!url) return null;
-  const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
   const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
   return (
     <View style={{ marginBottom: 16 }}>
@@ -238,7 +239,7 @@ function ChatBannerBlock({ persona, colors, router }: { persona: string; colors:
       activeOpacity={0.85}
       data-testid={`chat-${persona}-banner`}
     >
-      <Image source={{ uri: data.avatar }} style={[styles.chatAvatar, { borderColor: data.color }]} />
+      <Image source={{ uri: resolveMediaUrl(data.avatar) }} style={[styles.chatAvatar, { borderColor: data.color }]} />
       <View style={{ flex: 1 }}>
         <Text style={[styles.chatName, { color: colors.text }]}>Talk to {data.name}</Text>
         <Text style={[styles.chatDesc, { color: colors.textSecondary }]}>{data.desc}</Text>
