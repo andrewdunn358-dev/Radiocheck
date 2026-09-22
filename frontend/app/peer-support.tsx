@@ -9,6 +9,7 @@ import { API_URL } from '../src/config/api';
 import { useAgeGateContext, isFeatureAvailable, getRestrictionMessage } from '../src/context/AgeGateContext';
 import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
 import { goBack } from '../src/utils/navigation';
+import { resolveMediaUrl } from '../src/utils/media';
 
 interface PeerVeteran {
   id: string;
@@ -79,7 +80,7 @@ export default function PeerSupport() {
     let alertIdParam: string | undefined | null = params.alertId;
     let sessionIdParam: string | undefined | null = params.sessionId;
     
-    if (typeof window !== 'undefined') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       if (!preferredType) preferredType = urlParams.get('preferredType');
       if (!alertIdParam) alertIdParam = urlParams.get('alertId');
@@ -283,7 +284,7 @@ export default function PeerSupport() {
         console.error('WebRTC call failed:', error);
         setIsInitiatingCall(false);
         // Use window.alert for web since RN Alert.alert doesn't work on web
-        if (typeof window !== 'undefined') {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
           window.alert('Call Failed: Unable to connect. Please try again.');
         } else {
           Alert.alert('Call Failed', 'Unable to connect. Please try again.');
@@ -791,7 +792,7 @@ export default function PeerSupport() {
               activeOpacity={0.9}
             >
               <Image 
-                source={{ uri: '/images/bob.png' }}
+                source={{ uri: resolveMediaUrl('/images/bob.png') }}
                 style={styles.bobAvatar}
               />
               <View style={styles.bobTextContainer}>

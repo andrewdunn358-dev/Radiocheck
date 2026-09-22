@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 import { goBack } from '../src/utils/navigation';
+import { resolveMediaUrl } from '../src/utils/media';
 
 interface Resource {
   id: string;
@@ -138,7 +139,7 @@ export default function Resources() {
             >
               {resource.image_url && (
                 <Image 
-                  source={{ uri: resource.image_url }} 
+                  source={{ uri: resolveMediaUrl(resource.image_url) }} 
                   style={styles.resourceImage}
                   resizeMode="cover"
                 />

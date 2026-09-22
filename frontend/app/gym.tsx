@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../src/context/ThemeContext';
 import { goBack } from '../src/utils/navigation';
+import { resolveMediaUrl } from '../src/utils/media';
 
 // Known veteran-friendly gyms (can be expanded)
 const VETERAN_FRIENDLY_GYMS = [
@@ -294,7 +295,7 @@ export default function GymScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Frankie Hero Section */}
         <View style={styles.heroSection}>
-          <Image source={{ uri: FRANKIE_AVATAR }} style={styles.frankieAvatar} />
+          <Image source={{ uri: resolveMediaUrl(FRANKIE_AVATAR) }} style={styles.frankieAvatar} />
           <View style={styles.heroContent}>
             <Text style={styles.heroTitle}>Meet Frankie</Text>
             <Text style={styles.heroSubtitle}>Your PTI - Physical Training Instructor</Text>
