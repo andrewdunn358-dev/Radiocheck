@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Veterans Support - Semel Servientes, Semper Uniti",
-    "slug": "veterans-support",
+    "name": "RadioCheck",
+    "slug": "radiocheck",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,15 +10,15 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "uk.co.dbty.veteran"
+      "bundleIdentifier": "me.radiocheck.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#1a2332"
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "uk.co.dbty.veteran"
+      "package": "me.radiocheck.app"
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +42,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "owner": "frankiedunns-team",
+    "extra": {
+      "eas": {
+        "projectId": "363713d2-992e-4e68-bad0-b8dd7fc9884c"
+      }
     }
   }
 }

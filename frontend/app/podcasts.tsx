@@ -130,6 +130,7 @@ const HARDCODED_PODCASTS: Podcast[] = [
 
 // Backend URL for fetching latest episodes - using safe API config
 import { API_URL } from '../src/config/api';
+import { goBack } from '../src/utils/navigation';
 
 export default function PodcastsScreen() {
   const router = useRouter();
@@ -252,7 +253,7 @@ export default function PodcastsScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => goBack(router)}
           data-testid="back-button"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />

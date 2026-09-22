@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
+import { goBack } from '../src/utils/navigation';
 
 interface Book {
   title: string;
@@ -408,7 +409,7 @@ export default function RecommendedReads() {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} data-testid="back-button">
+        <TouchableOpacity style={styles.backButton} onPress={() => goBack(router)} data-testid="back-button">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
           <Text style={[styles.backText, { color: colors.text }]}>Back</Text>
         </TouchableOpacity>

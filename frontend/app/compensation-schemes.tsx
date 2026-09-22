@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { useCMSBlocks } from '../src/hooks/useCMSBlocks';
 import { CMSBlockRenderer } from '../src/components/CMSBlockRenderer';
+import { goBack } from '../src/utils/navigation';
 
 export default function CompensationSchemesScreen() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function CompensationSchemesScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} data-testid="back-button">
+        <TouchableOpacity style={styles.backButton} onPress={() => goBack(router)} data-testid="back-button">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
           <Text style={[styles.backText, { color: colors.text }]}>Back</Text>
         </TouchableOpacity>

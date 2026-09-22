@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../src/config/api';
 import { useAgeGateContext, isFeatureAvailable } from '../src/context/AgeGateContext';
 import AgeRestrictedBanner from '../src/components/AgeRestrictedBanner';
+import { goBack } from '../src/utils/navigation';
 
 interface BuddyProfile {
   id: string;
@@ -665,7 +666,7 @@ export default function BuddyFinderPage() {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => goBack(router)} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Buddy Finder</Text>

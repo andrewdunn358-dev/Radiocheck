@@ -5,6 +5,7 @@ import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
+import { goBack } from '../src/utils/navigation';
 
 // Baz's avatar URL
 const BAZ_AVATAR = '/images/baz.png';
@@ -67,7 +68,7 @@ export default function Organizations() {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
+          <TouchableOpacity onPress={() => goBack(router)} style={{ padding: 8, marginRight: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>Support Organisations</Text>

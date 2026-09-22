@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../src/config/api';
+import { goBack } from '../src/utils/navigation';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -52,7 +53,7 @@ export default function ForgotPasswordScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBack(router)}>
             <Ionicons name="arrow-back" size={24} color="#ffffff" />
           </TouchableOpacity>
 
@@ -84,7 +85,7 @@ export default function ForgotPasswordScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => goBack(router)}>
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
 

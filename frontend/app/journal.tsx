@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../src/context/ThemeContext';
+import { goBack } from '../src/utils/navigation';
 
 interface JournalEntry {
   id: string;
@@ -212,7 +213,7 @@ export default function Journal() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => goBack(router)} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>My Journal</Text>

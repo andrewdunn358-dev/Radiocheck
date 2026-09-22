@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+import { API_URL } from '../config/api';
 
 interface CMSBlock {
   type: string;

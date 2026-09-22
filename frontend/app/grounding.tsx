@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
+import { goBack } from '../src/utils/navigation';
 
 // Grounding techniques data
 const GROUNDING_TECHNIQUES = [
@@ -272,7 +273,7 @@ export default function GroundingPage() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={() => activeTechnique ? setActiveTechnique(null) : router.back()} 
+          onPress={() => activeTechnique ? setActiveTechnique(null) : goBack(router)} 
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />

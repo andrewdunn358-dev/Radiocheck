@@ -8,6 +8,7 @@ import { useTheme } from '../src/context/ThemeContext';
 import { API_URL } from '../src/config/api';
 import { useAgeGateContext, isFeatureAvailable, getRestrictionMessage } from '../src/context/AgeGateContext';
 import WebRTCDebugOverlay from '../src/components/WebRTCDebugOverlay';
+import { goBack } from '../src/utils/navigation';
 
 interface PeerVeteran {
   id: string;
@@ -589,7 +590,7 @@ export default function PeerSupport() {
         <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', position: 'absolute', top: 16, left: 0 }}>
-            <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
+            <TouchableOpacity onPress={() => goBack(router)} style={{ padding: 8, marginRight: 12 }}>
               <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text }}>Peer Support</Text>
@@ -676,7 +677,7 @@ export default function PeerSupport() {
                   borderWidth: 1,
                   borderColor: colors.border
                 }}
-                onPress={() => router.back()}
+                onPress={() => goBack(router)}
               >
                 <Ionicons name="arrow-back" size={22} color={colors.textSecondary} />
                 <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>Go Back</Text>
@@ -733,7 +734,7 @@ export default function PeerSupport() {
               style={styles.waitingCancelButton}
               onPress={() => {
                 setIsWaitingForSupport(false);
-                router.back();
+                goBack(router);
               }}
             >
               <Text style={styles.waitingCancelText}>Cancel & Go Back</Text>
@@ -775,7 +776,7 @@ export default function PeerSupport() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => goBack(router)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Peer Support</Text>

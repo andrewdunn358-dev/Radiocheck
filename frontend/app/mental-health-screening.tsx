@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../src/config/api';
+import { goBack } from '../src/utils/navigation';
 
 // PHQ-9 Questions (Depression Screening)
 const PHQ9_QUESTIONS = [
@@ -351,7 +352,7 @@ export default function MentalHealthScreening() {
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} />
       
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => goBack(router)} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Mental Health Check</Text>

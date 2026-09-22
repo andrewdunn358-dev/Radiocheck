@@ -18,6 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 
 import { API_URL } from '../src/config/api';
+import { resolveMediaUrl } from '../src/utils/media';
+import { goBack } from '../src/utils/navigation';
 
 // Fallback data (used when CMS is unavailable)
 const FALLBACK_SIGNS_OF_CHANGE = [
@@ -181,7 +183,7 @@ export default function FamilyFriends() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => view === 'main' ? router.back() : setView('main')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => view === 'main' ? goBack(router) : setView('main')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Friends & Family</Text>
@@ -201,7 +203,7 @@ export default function FamilyFriends() {
               <View style={styles.ritaContent}>
                 {ritaCharacter?.avatar ? (
                   <Image 
-                    source={{ uri: ritaCharacter.avatar }} 
+                    source={{ uri: resolveMediaUrl(ritaCharacter.avatar) }} 
                     style={styles.ritaAvatar}
                   />
                 ) : (

@@ -61,8 +61,8 @@ const getAvatarSource = (avatar: string): ImageSourcePropType => {
   if (AVATAR_IMAGES[avatar]) {
     return AVATAR_IMAGES[avatar];
   }
-  // For CMS/remote images, use URI
-  return { uri: avatar };
+  // For CMS/remote images, use URI (prefixed with the site on native)
+  return { uri: resolveMediaUrl(avatar) };
 };
 import { getCharacter as getHardcodedCharacter, AICharacter } from '../../src/config/ai-characters';
 import { getCharacter as fetchCharacterFromAPI } from '../../src/services/characterService';
@@ -70,6 +70,8 @@ import AIConsentModal from '../../src/components/AIConsentModal';
 import { useAgeGateContext } from '../../src/context/AgeGateContext';
 import { useLocationPermission } from '../../src/context/LocationPermissionContext';
 import SafeguardingCallModal from '../../src/components/SafeguardingCallModal';
+import { resolveMediaUrl } from '../../src/utils/media';
+import { goBack } from '../../src/utils/navigation';
 
 interface Message {
   id: string;
@@ -659,7 +661,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
     if (typeof window !== 'undefined' && window.history.length <= 1) {
       router.replace('/home');
     } else {
-      router.back();
+      goBack(router);
     }
   };
 
@@ -701,7 +703,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
       <AIConsentModal
         visible={showAIConsent}
         onAccept={handleAcceptConsent}
-        onDecline={() => router.back()}
+        onDecline={() => goBack(router)}
         characterName={character.name}
       />
     );

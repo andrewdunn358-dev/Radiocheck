@@ -11,6 +11,7 @@ import BetaSurvey from '../src/components/BetaSurvey';
 import EventsSection from '../src/components/EventsSection';
 import VoicesHeroCard from '../src/components/voices/VoicesHeroCard';
 import { useFeatureFlags } from '../src/hooks/useFeatureFlags';
+import { resolveMediaUrl } from '../src/utils/media';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -49,8 +50,8 @@ const getAvatarSource = (avatar: string) => {
   if (AI_AVATARS[avatar]) {
     return AI_AVATARS[avatar];
   }
-  // For CMS images, use URI
-  return { uri: avatar };
+  // For CMS images, use URI (prefixed with the site on native)
+  return { uri: resolveMediaUrl(avatar) };
 };
 
 // AI Team member type
@@ -438,7 +439,7 @@ export default function Index() {
                   activeOpacity={0.8}
                   data-testid={`founder-top-${founder.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
                 >
-                  <Image source={{ uri: founder.avatar }} style={styles.founderTopAvatar} />
+                  <Image source={{ uri: resolveMediaUrl(founder.avatar) }} style={styles.founderTopAvatar} />
                   <View style={styles.founderTopInfo}>
                     <Text style={styles.founderTopName}>{founder.name}</Text>
                     <Text style={styles.founderTopRole}>{founder.role}</Text>
@@ -559,7 +560,7 @@ export default function Index() {
             <View style={styles.modalContent}>
               {selectedMember && (
                 <>
-                  <Image source={{ uri: selectedMember.avatar }} style={styles.modalAvatar} />
+                  <Image source={{ uri: resolveMediaUrl(selectedMember.avatar) }} style={styles.modalAvatar} />
                   <Text style={styles.modalName}>{selectedMember.name}</Text>
                   <Text style={styles.modalDescription}>{selectedMember.description}</Text>
                   <View style={styles.modalDivider} />
@@ -599,7 +600,7 @@ export default function Index() {
             <View style={styles.founderModalContent}>
               {selectedFounder && (
                 <>
-                  <Image source={{ uri: selectedFounder.avatar }} style={styles.founderModalAvatar} />
+                  <Image source={{ uri: resolveMediaUrl(selectedFounder.avatar) }} style={styles.founderModalAvatar} />
                   <Text style={styles.founderModalName}>{selectedFounder.name}</Text>
                   <Text style={styles.founderModalRole}>{selectedFounder.role}</Text>
                   <View style={styles.modalDivider} />
