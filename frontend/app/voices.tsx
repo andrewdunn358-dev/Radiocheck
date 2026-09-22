@@ -24,7 +24,9 @@ import {
   Text,
   TextInput,
   View,
+  Image,
 } from 'react-native';
+import { toSecureMediaUrl } from '../src/utils/media';
 import { useTheme } from '../src/context/ThemeContext';
 import { useVoicesPlayer } from '../src/context/VoicesPlayerContext';
 import {
@@ -134,6 +136,13 @@ export default function VoicesLibraryScreen() {
             src={clip.contributorPhotoUrl}
             alt={clip.contributorName}
             style={{ width: 44, height: 44, objectFit: 'cover' }}
+          />
+        ) : clip.contributorPhotoUrl ? (
+          <Image
+            source={{ uri: toSecureMediaUrl(clip.contributorPhotoUrl) }}
+            style={{ width: 44, height: 44 }}
+            resizeMode="cover"
+            accessibilityLabel={clip.contributorName}
           />
         ) : (
           <Text style={{ color: colors.text, fontWeight: '700' }}>
