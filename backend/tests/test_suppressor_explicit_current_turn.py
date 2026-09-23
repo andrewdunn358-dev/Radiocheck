@@ -176,8 +176,10 @@ def test_missing_field_defaults_to_existing_behaviour():
 # --- Documented behaviour change, pinned so it is a visible decision ---------
 
 def test_mixed_denial_and_wish_to_die_now_fires():
-    """BEHAVIOUR CHANGE, for Ant's ruling. Previously suppressed by "would never";
-    the keyword monitor rates it critical on "want to die", so it now fires."""
+    """BEHAVIOUR CHANGE, ruled by Ant 23 Sept 2026: retain RED/overlay.
+    Previously suppressed by the unscoped "would never". The scoped keyword
+    monitor has already evaluated this message and still rates it critical,
+    so the later unscoped suppression must not overturn that result."""
     unified, _, outcome = _run("i would never kill myself but i want to die")
     assert outcome.safeguarding_triggered is True
 

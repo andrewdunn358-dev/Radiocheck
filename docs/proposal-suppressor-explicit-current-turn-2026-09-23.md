@@ -1,6 +1,7 @@
 # PROPOSAL — failsafe suppressors must not switch off an explicit current-turn statement
 
-**Status:** for Ant's review. **Not merged. No safety behaviour has changed on `main`.**
+**Status:** **approved by Ant, 23 September 2026** (decisions recorded in §7). PR open for
+final diff and CI review; **not to be merged until Ant has reviewed both.**
 **Prepared:** 23 September 2026, against `main` at `e5edc8c`
 **Defect evidence:** `docs/zentrafuge-authoritative-consumption-falsification-2026-09-23.md`,
 "Read this first" section (preserved unchanged, as requested).
@@ -172,3 +173,21 @@ Each is real, and each is left alone because you asked for the smallest correcti
 
 On your approval I'll open the PR from the proposal branch exactly as reviewed, with no further
 changes except whatever you rule on above.
+
+## 7. Ant's rulings (23 September 2026)
+
+1. **Rule approved.** Neither downstream suppressor may switch off the failsafe where the
+   existing keyword monitor has rated the current message critical on either representation.
+2. **Mixed case retained as RED/overlay** and pinned by
+   `test_mixed_denial_and_wish_to_die_now_fires`. The scoped monitor has already evaluated the
+   current message and still classified it critical; the later unscoped suppression must not
+   overturn that result.
+3. **Negation contract test updated in this PR.** `test_negation_still_gates_the_failsafe` is
+   replaced by `test_negation_gates_only_non_explicit_failsafes`, which pins the bounded contract:
+   negation may continue to gate non-explicit failsafes but may not suppress an explicit
+   current-turn critical result. It asserts both branches exist, the explicit guard is evaluated
+   first, and the explicit branch never clears the failsafe.
+4. **CI:** `test_suppressor_explicit_current_turn.py` added to `safety-tests.yml`.
+
+Scope confirmed unchanged: no broader negation refactor, phrase-list, reconciler, normaliser,
+scoring or threshold changes.

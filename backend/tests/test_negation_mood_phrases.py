@@ -64,11 +64,28 @@ def test_genuine_negations_are_still_present():
         assert f'"{phrase}"' in listed, f"genuine negation {phrase!r} was removed"
 
 
-def test_negation_still_gates_the_failsafe():
-    """Pins why this list matters more than the other four: it is the one
-    wired to failsafe_should_fire. If that coupling is removed or changed,
-    this test should be revisited rather than silently passing."""
+def test_negation_gates_only_non_explicit_failsafes():
+    """Pins the bounded contract (Ant's ruling, 23 Sept 2026).
+
+    This list is still the one wired to failsafe_should_fire, so it may
+    continue to suppress NON-explicit failsafes (trajectory, semantic,
+    classifier). It may NOT suppress an explicit current-turn critical
+    result: when the keyword monitor rated the current message critical on
+    either representation (unified `current_turn_explicit`), the explicit
+    branch must be checked first and must not clear the failsafe.
+
+    Behaviour is pinned in test_suppressor_explicit_current_turn.py. If this
+    coupling changes again, revisit this test rather than letting it pass."""
     with open(SERVER, encoding='utf-8') as f:
         src = f.read()
-    assert "if failsafe_should_fire and negation_confirmed:" in src
-    assert "failsafe_should_fire = False" in src
+    explicit_guard = "if failsafe_should_fire and negation_confirmed and current_turn_explicit:"
+    suppression = "elif failsafe_should_fire and negation_confirmed:"
+    assert explicit_guard in src, "explicit current-turn guard missing"
+    assert suppression in src, "negation no longer gates non-explicit failsafes"
+    # Order matters: the explicit guard must be evaluated before suppression.
+    assert src.index(explicit_guard) < src.index(suppression)
+    # The explicit branch itself must not clear the failsafe.
+    guarded_branch = src[src.index(explicit_guard):src.index(suppression)]
+    assert "failsafe_should_fire = False" not in guarded_branch
+    # Suppression of non-explicit failsafes is still present.
+    assert "failsafe_should_fire = False" in src[src.index(suppression):]
