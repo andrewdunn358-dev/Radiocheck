@@ -301,7 +301,14 @@ def analyze_message_unified(
             )
         except Exception as exc:
             logger.error(f"[UnifiedSafety] original-text Check 1 failed: {exc}")
-    if keyword_result.get("risk_level") == "critical" or original_is_critical:
+    # Evidence, not a decision: the keyword monitor (which applies its own
+    # scoped negation) rated THIS message critical on at least one
+    # representation. Exposed so post-reconciler suppressors can tell an
+    # explicit current-turn statement from a trajectory/classifier failsafe.
+    current_turn_explicit = (
+        keyword_result.get("risk_level") == "critical" or original_is_critical
+    )
+    if current_turn_explicit:
         failsafe_triggered = True
         failsafe_reason = "explicit_suicide_plan"
         if original_is_critical and keyword_result.get("risk_level") != "critical":
@@ -430,6 +437,7 @@ def analyze_message_unified(
         # Failsafe status
         "failsafe_triggered": failsafe_triggered,
         "failsafe_reason": failsafe_reason,
+        "current_turn_explicit": current_turn_explicit,
         
         # Intervention flags
         "requires_intervention": requires_intervention,
