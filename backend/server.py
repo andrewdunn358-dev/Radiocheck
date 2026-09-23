@@ -6784,8 +6784,20 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         has_negation = any(neg in msg_lower for neg in negation_phrases)
         has_reversal = any(rev in msg_lower for rev in reversal_phrases) if has_negation else False
         negation_confirmed = has_negation and not has_reversal
-        
-        if failsafe_should_fire and negation_confirmed:
+
+        # Neither suppressor below may switch off a failsafe when the keyword
+        # monitor rated THIS message critical (it has already applied its own
+        # scoped negation). Unscoped phrases like "i'm not" / "won't" were
+        # switching off explicit statements ("i'm not coping, i'm going to
+        # kill myself tonight"). Suppression of trajectory/classifier
+        # failsafes on a non-critical message is unchanged.
+        current_turn_explicit = bool(unified_safety.get("current_turn_explicit", False))
+
+        if failsafe_should_fire and negation_confirmed and current_turn_explicit:
+            logging.warning(
+                f"NEGATION SUPPRESSION BLOCKED - current turn is explicit - Session: {request.sessionId[:12]}"
+            )
+        elif failsafe_should_fire and negation_confirmed:
             failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
             logging.info(
                 f"FAILSAFE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
@@ -6808,7 +6820,11 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # The failsafe_reason "imminent_intent" comes from conversation trajectory accumulation,
         # not from the current message containing explicit crisis phrases.
         identity_active = protocol_files and 'identity.md' in protocol_files
-        if failsafe_should_fire and identity_active:
+        if failsafe_should_fire and identity_active and current_turn_explicit:
+            logging.warning(
+                f"IDENTITY SUPPRESSION BLOCKED - current turn is explicit - Session: {request.sessionId[:12]}"
+            )
+        elif failsafe_should_fire and identity_active:
             failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
             if failsafe_reason == "imminent_intent":
                 logging.info(

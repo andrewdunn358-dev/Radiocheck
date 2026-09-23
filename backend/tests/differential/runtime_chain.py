@@ -123,7 +123,7 @@ _REGIONS = [
 # tests.differential.runtime_chain --repin` and say so in the PR.
 PINNED_HASHES = {
     "crisis_override_and_grief_state": "5c3f2586d2a93155",
-    "negation_and_identity_guards": "f1e24bc4619bd1b1",
+    "negation_and_identity_guards": "a8bd9937b02df27f",
     "correctives": "9c9d871f7a4b70ea",
 }
 
@@ -323,13 +323,19 @@ def apply_runtime_chain(
     has_reversal = any(rev in msg_lower for rev in REVERSAL_PHRASES) if has_negation else False
     negation_confirmed = has_negation and not has_reversal
 
-    if failsafe_should_fire and negation_confirmed:
+    current_turn_explicit = bool(unified.get("current_turn_explicit", False))
+
+    if failsafe_should_fire and negation_confirmed and current_turn_explicit:
+        overrides.append("negation_suppression_blocked_explicit")
+    elif failsafe_should_fire and negation_confirmed:
         failsafe_should_fire = False
         overrides.append("negation_suppression")
 
     # 6769–6787 — identity guard
     identity_active = bool(protocol_files) and 'identity.md' in protocol_files
-    if failsafe_should_fire and identity_active:
+    if failsafe_should_fire and identity_active and current_turn_explicit:
+        overrides.append("identity_suppression_blocked_explicit")
+    elif failsafe_should_fire and identity_active:
         if unified.get("failsafe_reason", "unknown") == "imminent_intent":
             failsafe_should_fire = False
             overrides.append("identity_suppression")
