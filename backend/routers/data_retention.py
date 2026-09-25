@@ -2,7 +2,23 @@
 Data Retention API Router
 
 Provides endpoints for managing data retention policies and running cleanup tasks.
-Admin only access.
+Admin only access — enforced by the router-level dependency below.
+
+CONTAINMENT, 25 September 2026
+-----------------------------
+Until this change, the "Admin only access" above was a docstring and nothing
+else. No route applied a dependency, the router declared none, server.py
+included it with none, and the only middleware on the app is CORS — so all five
+routes, including one that deletes from `users`, were reachable by an
+unauthenticated caller.
+
+The dependency is applied at router level rather than per route so that a route
+added later inherits the boundary by default instead of opting into it.
+
+`require_role` is Radio Check's existing admin gate (routers/auth.py:108) and is
+what already guards the comparable endpoints — `delete_user` (:647),
+`get_all_users` (:639) and `admin_reset_password` (:559). No new authentication
+mechanism is introduced here, and nothing else in this file is changed.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -16,8 +32,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 from services.database import get_database
+from routers.auth import require_role
 
-router = APIRouter(prefix="/api/admin/data-retention", tags=["Data Retention"])
+router = APIRouter(
+    prefix="/api/admin/data-retention",
+    tags=["Data Retention"],
+    dependencies=[Depends(require_role("admin"))],
+)
 
 
 @router.get("/status")
