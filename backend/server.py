@@ -7660,10 +7660,16 @@ Return ONLY the response text. No explanation. No labels."""
             # re-judging an already-validated reply — it no longer suppresses
             # validation.
             if not gate_finalised:
-                judge_prompt = _build_judge_prompt(reply)
-            
                 max_judge_retries = 2
                 for judge_attempt in range(max_judge_retries):
+                    # VALIDATION TARGET INTEGRITY (Zentrafuge invariant, 25 Sept
+                    # 2026). Built per attempt, from the CURRENT `reply`. It was
+                    # previously built once before this loop, so after a FAIL
+                    # regenerated a new reply below, attempt 2 re-examined the
+                    # discarded candidate and a PASS concerning it released a
+                    # reply nothing had judged. A validator result relied upon to
+                    # authorise release must apply to the artefact released.
+                    judge_prompt = _build_judge_prompt(reply)
                     try:
                         judge_result = buddy_openai_client.chat.completions.create(
                             model="gpt-4o",
@@ -7707,6 +7713,45 @@ Return ONLY the response text. No explanation. No labels."""
                                     timeout=45
                                 )
                                 reply = retry_completion.choices[0].message.content or reply
+
+                                # VALIDATION TARGET INTEGRITY, second half. The
+                                # regenerated reply is a different artefact from
+                                # the one `run_protocol_gates` passed before this
+                                # loop, so it must not inherit that verdict. The
+                                # gate is the hard line (Phase C), so a rejected
+                                # regeneration goes to the same bounded fallback
+                                # as a second judge FAIL — no extra generation.
+                                regen_gate_verdict = run_protocol_gates(
+                                    primary_protocol=primary_protocol,
+                                    reply=reply,
+                                    user_message=request.message,
+                                )
+                                try:
+                                    prov.stage("protocol_gate_judge_regen",
+                                               source="safety.run_protocol_gates",
+                                               primary_protocol=primary_protocol,
+                                               passed=getattr(regen_gate_verdict, "passed", None),
+                                               reason=getattr(regen_gate_verdict, "reason", None),
+                                               judge_attempt=judge_attempt + 1)
+                                except Exception as _pe:
+                                    logging.error(f"[Provenance] stage failed: {_pe}")
+                                # `attempt` counts gate decisions this turn, so a
+                                # judge-loop regeneration is the second one.
+                                emit_gate_audit_log(
+                                    regen_gate_verdict,
+                                    reply=reply,
+                                    session_id=request.sessionId,
+                                    character=getattr(request, 'character', '') or '',
+                                    attempt=judge_attempt + 2,
+                                )
+                                if not regen_gate_verdict.passed:
+                                    logging.warning(
+                                        f"[ProtocolGate] Regenerated reply FAILED "
+                                        f"({regen_gate_verdict.reason}) — routing to "
+                                        f"validated fallback - Session: {request.sessionId[:12]}"
+                                    )
+                                    reply = _run_validated_fallback("judge")
+                                    break
                             else:
                                 # === Round 8: Context-aware fallback with safety guards ===
                             

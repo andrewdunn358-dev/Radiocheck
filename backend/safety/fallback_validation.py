@@ -307,10 +307,20 @@ def validated_fallback(
 
 
 def provenance_values(outcome: FallbackOutcome, trigger: str) -> Dict[str, Any]:
-    """Shape for the `fallback_validation` provenance stage. No raw text."""
+    """Shape for the `fallback_validation` provenance stage. No raw text.
+
+    `outcome_source`, NOT `source`: these values are expanded into
+    ProvenanceRecord.stage(name, source, **values), whose own `source` names the
+    component that produced the stage. Naming the outcome's source `source` here
+    passed that keyword twice, raising TypeError on every fallback turn from 15
+    Sept 2026 until this was corrected; the caller swallowed the exception, so
+    neither this stage nor terminal_safe_response was ever recorded. Any key
+    added here must not collide with a stage() parameter — pinned by
+    test_target_e_no_provenance_value_key_can_shadow_a_stage_parameter.
+    """
     return {
         "trigger": trigger,
-        "source": outcome.source,
+        "outcome_source": outcome.source,
         "candidate_generated": outcome.candidate_generated,
         "validators_run": ",".join(outcome.validators_run) or "none",
         "failed_validator": outcome.failed_validator,
