@@ -12,6 +12,7 @@ import logging
 
 from services.database import get_database
 from models.schemas import ShiftCreate, Shift, ShiftUpdate
+from routers.auth import require_role
 
 router = APIRouter(prefix="/shifts", tags=["shifts"])
 logger = logging.getLogger(__name__)
@@ -292,19 +293,29 @@ async def register_push_token(user_id: str, push_token: str):
     return {"success": True}
 
 
-@router.post("/send-reminders")
+@router.post("/send-reminders", dependencies=[Depends(require_role("admin"))])
 async def send_shift_reminders():
     """
     Manually trigger shift reminder check.
     This will send email reminders to staff with shifts in the next 24 hours.
-    
-    In production, this should be called by a cron job every 15 minutes:
-    */15 * * * * curl -X POST https://api.radiocheck.me/api/shifts/send-reminders
+
+    ADMIN AUTHORISATION REQUIRED — containment, 25 September 2026
+    ------------------------------------------------------------
+    This route was previously unauthenticated, and it is the first link in a
+    demonstrated chain: importing `shift_reminders` below creates backend/logs/
+    as a side effect (scripts/shift_reminders.py:35), which removes the import
+    failure that is currently the only thing preventing an unauthenticated
+    POST /api/admin/data-retention/run?dry_run=false from reaching the
+    destructive retention sweep. It also sends real email to staff.
+
+    A caller that schedules this — the cron job the note below describes — must
+    now present an admin bearer token. That is deliberate: a route that sends
+    mail and mutates the filesystem should not be anonymous.
     """
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
-    
+
     from shift_reminders import check_and_send_reminders
     
     result = await check_and_send_reminders()

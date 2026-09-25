@@ -46,6 +46,7 @@ jobs:
             tests/test_validation_target_integrity.py \
             tests/test_terminal_path_reconstruction.py \
             tests/test_data_retention_router_access_control.py \
+            tests/test_shift_reminders_route_access_control.py \
             -v
         env:
           SKIP_LIVE_TESTS: "true"
