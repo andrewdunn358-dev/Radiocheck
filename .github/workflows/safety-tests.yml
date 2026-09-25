@@ -27,12 +27,25 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
+          # mongomock-motor backs tests/test_validation_target_integrity.py, which
+          # drives the real /api/ai-buddies/chat handler in-process. Without it that
+          # file importorskips and the Validation Target Integrity regressions would
+          # silently not run.
+          pip install mongomock-motor
 
       - name: Run safety tests
         run: |
           cd backend
           pip install pytest pytest-asyncio
-          python -m pytest tests/test_round9_items3_4_5_signals_judge.py tests/test_typographic_safety.py tests/test_negation_word_boundary.py tests/test_suppressor_explicit_current_turn.py -v
+          python -m pytest \
+            tests/test_round9_items3_4_5_signals_judge.py \
+            tests/test_typographic_safety.py \
+            tests/test_negation_word_boundary.py \
+            tests/test_suppressor_explicit_current_turn.py \
+            tests/test_fallback_validation.py \
+            tests/test_validation_target_integrity.py \
+            tests/test_terminal_path_reconstruction.py \
+            -v
         env:
           SKIP_LIVE_TESTS: "true"
           MONGO_URL: "mongodb://localhost:27017/ci_dummy"
