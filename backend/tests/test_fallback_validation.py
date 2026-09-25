@@ -358,3 +358,136 @@ def test_fb07_crisis_override_and_deferred_clear_do_not_conflict():
     assert state4["grief_name"] is None
     assert "turn_start:deferred_grief_clear_applied" in mut4
     assert any(m.startswith("crisis_override") for m in mut4)
+
+
+# --- Target E: fallback provenance must actually record ----------------------
+#
+# Live evidence, 24 Sept 2026 (Render, commit 0755836): every fallback turn
+# logged
+#
+#   [Provenance] stage failed: ProvenanceRecord.stage() got multiple values
+#   for keyword argument 'source'
+#
+# server.py calls
+#   prov.stage("fallback_validation", source="safety.fallback_validation",
+#              **provenance_values(out, trigger))
+# and provenance_values() also returns a "source" key (the OUTCOME source:
+# candidate / terminal / terminal_direct / high_risk_override). Two different
+# meanings, one name: ProvenanceRecord.stage()'s `source` is the component that
+# produced the values. The duplicate keyword raises TypeError, the caller
+# swallows it, and because the terminal_safe_response stage sits inside the same
+# try block it is skipped too. Neither stage has been recorded since Scope 1
+# shipped on 15 September 2026.
+#
+# Provenance/audit only — the reply delivered to the user is unaffected.
+
+from safety.fallback_validation import provenance_values  # noqa: E402
+from safety.provenance import start_system_verdict  # noqa: E402
+
+
+def _server_records_fallback_stages(out, trigger):
+    """Byte-for-byte what server.py:7553-7559 does, minus the except clause.
+
+    Kept as a mirror rather than an import because the call site lives inside
+    buddy_chat(). If server.py's call shape changes, update BOTH.
+    """
+    prov = start_system_verdict("sess-target-e", "tommy", "a message", False)
+    prov.stage("fallback_validation", source="safety.fallback_validation",
+               **provenance_values(out, trigger))
+    if out.source in ("terminal", "terminal_direct", "high_risk_override"):
+        prov.stage("terminal_safe_response", source="safety.fallback_validation",
+                   state=out.terminal_state, trigger=trigger,
+                   because=out.failed_reason or out.source)
+    return prov
+
+
+def test_target_e_terminal_outcome_records_both_provenance_stages():
+    """The attachment/brush-off shape seen live: candidate rejected -> terminal."""
+    out = validated_fallback(
+        trigger="judge",
+        generate=lambda: "a candidate reply",
+        gate=_always_pass,
+        judge=_always_fail("brush_off_acceptance"),
+        protocol="brush_off",
+    )
+    assert out.source == "terminal"
+
+    prov = _server_records_fallback_stages(out, "judge")
+
+    names = [s.name for s in prov.stages]
+    assert names == ["fallback_validation", "terminal_safe_response"], names
+
+    fb = prov.stages[0]
+    # stage.source stays the COMPONENT; the outcome's source travels in values
+    # under a name that cannot collide with it.
+    assert fb.source == "safety.fallback_validation"
+    assert fb.values["outcome_source"] == "terminal"
+    assert fb.values["failed_validator"] == "judge"
+    assert fb.values["terminal_state"] == "brush_off"
+
+    assert prov.stages[1].values["state"] == "brush_off"
+
+
+def test_target_e_candidate_outcome_records_the_validation_stage():
+    """A fallback candidate that passes validation records one stage, not two."""
+    out = validated_fallback(
+        trigger="gate",
+        generate=lambda: "a candidate reply",
+        gate=_always_pass,
+        judge=_always_pass,
+        protocol="brush_off",
+    )
+    assert out.source == "candidate"
+
+    prov = _server_records_fallback_stages(out, "gate")
+
+    assert [s.name for s in prov.stages] == ["fallback_validation"]
+    assert prov.stages[0].values["outcome_source"] == "candidate"
+    assert prov.stages[0].values["validators_run"] == "gate,judge"
+
+
+def test_target_e_direct_terminal_paths_record_both_stages():
+    """Welfare (Q7 direct terminal) and high-risk override: no candidate at all."""
+    for kwargs, expected_source, expected_state in (
+        ({"welfare_signal_disclosed": True}, "terminal_direct", "welfare_disclosed"),
+        ({"is_high_risk": True}, "high_risk_override", "high_risk"),
+    ):
+        def _explode():
+            raise AssertionError("generation must not be called on this path")
+
+        out = validated_fallback(
+            trigger="judge", generate=_explode, gate=_always_pass,
+            judge=_always_pass, protocol="grief", **kwargs,
+        )
+        assert out.source == expected_source
+
+        prov = _server_records_fallback_stages(out, "judge")
+        assert [s.name for s in prov.stages] == [
+            "fallback_validation", "terminal_safe_response"
+        ], (expected_source, [s.name for s in prov.stages])
+        assert prov.stages[0].values["outcome_source"] == expected_source
+        assert prov.stages[1].values["state"] == expected_state
+
+
+def test_target_e_no_provenance_value_key_can_shadow_a_stage_parameter():
+    """The general contract, so this class of collision cannot come back.
+
+    Any key provenance_values() returns is expanded into stage(**values). A key
+    matching one of stage()'s own named parameters raises TypeError at runtime.
+    """
+    import inspect
+
+    from safety.provenance import ProvenanceRecord
+
+    reserved = {
+        p.name for p in inspect.signature(ProvenanceRecord.stage).parameters.values()
+        if p.kind is not inspect.Parameter.VAR_KEYWORD and p.name != "self"
+    }
+    assert "source" in reserved, "guard assumes stage() still names a `source` parameter"
+
+    out = validated_fallback(
+        trigger="judge", generate=lambda: None, gate=_always_pass,
+        judge=_always_pass, protocol="grief",
+    )
+    collisions = reserved & set(provenance_values(out, "judge"))
+    assert not collisions, f"provenance_values() keys shadow stage() parameters: {collisions}"
