@@ -7661,6 +7661,20 @@ Return ONLY the response text. No explanation. No labels."""
             # validation.
             if not gate_finalised:
                 max_judge_retries = 2
+                # FAILURE MUST NOT BECOME PERMISSION (ADR-0003; Task 1, 25 Sept
+                # 2026). The judge is an applicable validator, so the reply may
+                # only be released on an affirmative PASS about that reply.
+                # `judge_authorised` records that affirmative result; nothing
+                # else sets it. `judge_recovery_applied` records that the
+                # bounded recovery below already replaced the reply, so the
+                # post-loop guard does not run it twice. Four failure classes
+                # previously released an unvalidated candidate: an exception, a
+                # timeout (an Exception subclass, so the same path), a verdict
+                # matching neither PASS nor FAIL, and an empty/None verdict —
+                # the last two because they match neither branch and the loop
+                # simply iterates. See tests/test_judge_failure_open.py.
+                judge_authorised = False
+                judge_recovery_applied = False
                 for judge_attempt in range(max_judge_retries):
                     # VALIDATION TARGET INTEGRITY (Zentrafuge invariant, 25 Sept
                     # 2026). Built per attempt, from the CURRENT `reply`. It was
@@ -7681,6 +7695,7 @@ Return ONLY the response text. No explanation. No labels."""
                         verdict = (judge_result.choices[0].message.content or "").strip()
                     
                         if verdict.startswith("PASS"):
+                            judge_authorised = True
                             logging.info(f"[Judge] PASS on attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
                             try:
                                 prov.stage("llm_judge", source="server.ROUND7_JUDGE",
@@ -7751,6 +7766,7 @@ Return ONLY the response text. No explanation. No labels."""
                                         f"validated fallback - Session: {request.sessionId[:12]}"
                                     )
                                     reply = _run_validated_fallback("judge")
+                                    judge_recovery_applied = True
                                     break
                             else:
                                 # === Round 8: Context-aware fallback with safety guards ===
@@ -7759,10 +7775,36 @@ Return ONLY the response text. No explanation. No labels."""
                                 # candidate, validated by gate + judge, else a
                                 # deterministic terminal response.
                                 reply = _run_validated_fallback("judge")
+                                judge_recovery_applied = True
                                 logging.warning(f"[Judge] Fallback triggered for {primary_protocol} - Session: {request.sessionId[:12]}")
                     except Exception as judge_error:
-                        logging.error(f"[Judge] Error: {judge_error} - passing through")
-                        break  # Don't block on judge failure
+                        # Was `break  # Don't block on judge failure`, which
+                        # released the candidate. The post-loop guard now
+                        # applies the same bounded recovery a second FAIL gets.
+                        logging.error(f"[Judge] Error: {judge_error} - no affirmative result")
+                        try:
+                            prov.stage("llm_judge", source="server.ROUND7_JUDGE",
+                                       verdict="ERROR", reason=type(judge_error).__name__,
+                                       attempt=judge_attempt + 1, protocol=primary_protocol)
+                        except Exception as _pe:
+                            logging.error(f"[Provenance] stage failed: {_pe}")
+                        break
+
+                # No affirmative PASS about the reply in hand, and the bounded
+                # recovery has not already run: an exception, a timeout, or a
+                # non-contract verdict. The judge cannot authorise this reply,
+                # so it takes the same route a second FAIL takes — one validated
+                # candidate, else the approved deterministic terminal. If the
+                # judge is genuinely down, that validator fails inside
+                # validated_fallback too, which treats a raising validator as a
+                # failure and resolves to the terminal. Recovery stays finite.
+                if not judge_authorised and not judge_recovery_applied:
+                    logging.warning(
+                        f"[Judge] No affirmative verdict after {max_judge_retries} "
+                        f"attempt(s) — routing to validated fallback "
+                        f"- Session: {request.sessionId[:12]}"
+                    )
+                    reply = _run_validated_fallback("judge")
         
         # ===== TRACK AI USAGE FOR COST MONITORING =====
         try:
