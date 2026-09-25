@@ -45,6 +45,7 @@ jobs:
             tests/test_fallback_validation.py \
             tests/test_validation_target_integrity.py \
             tests/test_terminal_path_reconstruction.py \
+            tests/test_data_retention_router_access_control.py \
             -v
         env:
           SKIP_LIVE_TESTS: "true"
