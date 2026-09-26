@@ -6886,18 +6886,36 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 alert.geo_lon = geo_data.get("geo_lon")
             
             failsafe_alert_id = alert.id
-            await db.safeguarding_alerts.insert_one(alert.dict())
-            print(f"[SAFEGUARDING] FAILSAFE ALERT CREATED - ID: {failsafe_alert_id}, Reason: {failsafe_reason}")
-            logging.warning(f"SAFEGUARDING FAILSAFE ALERT [RED] - Alert: {failsafe_alert_id} - Session: {request.sessionId} - Reason: {failsafe_reason}")
-            
+            # N3/N5 containment: the crisis response is already authorised by the
+            # failsafe decision above. A persistence failure is logged and contained
+            # here; it must not reach the outer handler, which would replace the
+            # crisis response with the generic EXIT C reply.
+            try:
+                await db.safeguarding_alerts.insert_one(alert.dict())
+                print(f"[SAFEGUARDING] FAILSAFE ALERT CREATED - ID: {failsafe_alert_id}, Reason: {failsafe_reason}")
+                logging.warning(f"SAFEGUARDING FAILSAFE ALERT [RED] - Alert: {failsafe_alert_id} - Session: {request.sessionId} - Reason: {failsafe_reason}")
+            except Exception as alert_err:
+                logging.error(
+                    f"SAFEGUARDING FAILSAFE ALERT NOT PERSISTED - Alert: {failsafe_alert_id} - "
+                    f"Session: {request.sessionId} - Reason: {failsafe_reason} - "
+                    f"{type(alert_err).__name__}: {alert_err} - crisis response still delivered"
+                )
+
             # Audit log
-            await audit_safeguarding_alert(
-                db,
-                session_id=request.sessionId,
-                risk_level="RED",
-                score=unified_safety.get("risk_score", 999),
-                triggered_indicators=[failsafe_reason]
-            )
+            try:
+                await audit_safeguarding_alert(
+                    db,
+                    session_id=request.sessionId,
+                    risk_level="RED",
+                    score=unified_safety.get("risk_score", 999),
+                    triggered_indicators=[failsafe_reason]
+                )
+            except Exception as audit_err:
+                logging.error(
+                    f"SAFEGUARDING FAILSAFE AUDIT NOT PERSISTED - Alert: {failsafe_alert_id} - "
+                    f"Session: {request.sessionId} - {type(audit_err).__name__}: {audit_err} - "
+                    f"crisis response still delivered"
+                )
             
             # Send email notification for failsafe (always - these are critical)
             try:
