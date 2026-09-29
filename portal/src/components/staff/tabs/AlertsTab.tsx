@@ -133,15 +133,17 @@ export default function AlertsTab({
 
   const handleTriggerPanic = async () => {
     if (!token) return;
-    if (!confirm('Are you sure you want to trigger a panic alert? This will notify all supervisors and counsellors immediately.')) return;
-    try {
-      await staffApi.triggerPanic(token);
-      loadAlerts();
-      alert('Panic alert sent! Help is on the way.');
-    } catch (err) {
-      console.error('Failed to trigger panic:', err);
+    if (!confirm('Are you sure you want to trigger a panic alert?')) return;
+    // true only when the backend accepted AND persisted the alert. That does
+    // not establish that anyone was notified, so the wording claims neither
+    // notification nor help underway.
+    const sent = await staffApi.triggerPanic(token, user);
+    if (!sent) {
       alert('Failed to send panic alert. Please try again or call for help directly.');
+      return;
     }
+    loadAlerts();
+    alert('Panic alert sent.');
   };
 
   // Helper functions

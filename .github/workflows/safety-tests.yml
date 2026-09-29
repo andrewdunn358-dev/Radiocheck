@@ -8,6 +8,8 @@ on:
       - 'backend_test.py'
       - 'portal/src/lib/staffPanic.ts'
       - 'portal/src/app/staff/page.tsx'
+      - 'portal/src/lib/api.ts'
+      - 'portal/src/components/staff/tabs/AlertsTab.tsx'
       - 'portal/tests/**'
   pull_request:
     branches: [main]
@@ -16,6 +18,8 @@ on:
       - 'backend_test.py'
       - 'portal/src/lib/staffPanic.ts'
       - 'portal/src/app/staff/page.tsx'
+      - 'portal/src/lib/api.ts'
+      - 'portal/src/components/staff/tabs/AlertsTab.tsx'
       - 'portal/tests/**'
 
 jobs:
@@ -38,7 +42,7 @@ jobs:
           node-version: '22'
 
       - name: Portal panic-button tests
-        run: node --test portal/tests/staffPanic.test.mjs
+        run: node --test portal/tests/staffPanic.test.mjs portal/tests/alertsTabPanic.test.mjs
 
       - name: Install dependencies
         run: |
