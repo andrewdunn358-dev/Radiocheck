@@ -25,11 +25,14 @@ from routers.auth import require_role
 # Two sub-routers, merged into `router` at the bottom of this file so server.py
 # is unchanged:
 #
-#   _public_router  the two intake routes the app/portal submit to. Left open
-#                   deliberately: POST /concern is called by the mental-health
-#                   screening screen (frontend/app/mental-health-screening.tsx)
-#                   and POST /panic-alert by the staff portal panic button.
-#                   Neither returns stored records.
+#   _public_router  the two intake routes. Left open deliberately: POST /concern
+#                   is called by the mental-health screening screen
+#                   (frontend/app/mental-health-screening.tsx). POST /panic-alert
+#                   has had no caller since 29 Sept 2026: the staff portal panic
+#                   button used to post here (always 422 — its payload never
+#                   matched this schema) and now uses the inline
+#                   POST /api/panic-alert in server.py, which also notifies
+#                   staff. Neither route returns stored records.
 #
 #   _staff_router   every route that reads or changes stored records. Requires
 #                   admin or supervisor — the same boundary server.py already

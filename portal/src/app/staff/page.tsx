@@ -30,6 +30,7 @@ import ChatRequestBanner from '@/components/staff/modals/ChatRequestBanner';
 import CallRequestBanner from '@/components/staff/modals/CallRequestBanner';
 import SessionTimeoutModal from '@/components/staff/modals/SessionTimeoutModal';
 import PanicModal from '@/components/staff/modals/PanicModal';
+import { submitStaffPanicAlert } from '@/lib/staffPanic';
 import MessagesModal from '@/components/staff/modals/MessagesModal';
 
 type TabType = 'dashboard' | 'alerts' | 'livechat' | 'cases' | 'callbacks' | 'rota' | 'team' | 'notes' | 'events' | 'supervision';
@@ -175,15 +176,14 @@ export default function StaffPortalPage() {
     if (!token || triggeringPanic) return;
     setTriggeringPanic(true);
     try {
-      await fetch(`${API_URL}/api/safeguarding/panic-alert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          staff_id: user?.id, staff_name: user?.name || user?.email,
-          reason: panicReason || 'Staff member triggered panic button',
-          location: 'staff_portal', risk_level: 'critical'
-        })
-      });
+      // Success is reported only when the backend accepted AND persisted the
+      // alert (see lib/staffPanic.ts). On failure the modal stays open so the
+      // reason is not lost.
+      const sent = await submitStaffPanicAlert(API_URL, token, user, panicReason);
+      if (!sent) {
+        alert('Failed to send panic alert. Please try again.');
+        return;
+      }
       setShowPanicModal(false);
       setPanicReason('');
       alert('Panic alert sent! A counsellor will be notified.');
