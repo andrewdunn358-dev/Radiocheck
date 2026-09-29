@@ -6,11 +6,17 @@ on:
     paths:
       - 'backend/**'
       - 'backend_test.py'
+      - 'portal/src/lib/staffPanic.ts'
+      - 'portal/src/app/staff/page.tsx'
+      - 'portal/tests/**'
   pull_request:
     branches: [main]
     paths:
       - 'backend/**'
       - 'backend_test.py'
+      - 'portal/src/lib/staffPanic.ts'
+      - 'portal/src/app/staff/page.tsx'
+      - 'portal/tests/**'
 
 jobs:
   safety-tests:
@@ -22,6 +28,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      # Node >= 22.6 strips TypeScript types natively. Needed by the portal panic
+      # tests and by backend/tests/test_staff_panic_alert_contract.py, which runs
+      # portal/src/lib/staffPanic.ts to build the exact request the portal sends.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Portal panic-button tests
+        run: node --test portal/tests/staffPanic.test.mjs
 
       - name: Install dependencies
         run: |
@@ -49,6 +66,7 @@ jobs:
             tests/test_shift_reminders_route_access_control.py \
             tests/test_exit_a_persistence_containment.py \
             tests/test_safeguarding_router_access_control.py \
+            tests/test_staff_panic_alert_contract.py \
             -v
         env:
           SKIP_LIVE_TESTS: "true"

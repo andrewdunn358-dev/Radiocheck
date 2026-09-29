@@ -187,9 +187,10 @@ def test_the_panic_alert_intake_is_still_open(env):
     """The intake route stays reachable without a login, with the body its
     schema (models/schemas.py PanicAlertCreate) accepts.
 
-    NOTE, pre-existing and NOT changed here: the portal staff panic button
-    (portal/src/app/staff/page.tsx:178) posts staff_id/staff_name/reason, which
-    this schema rejects with 422 on main as well. Reported separately.
+    NOTE: this route currently has no caller. The staff portal panic button
+    posted here with a payload this schema always rejected (422); since
+    29 Sept 2026 it uses the inline POST /api/panic-alert instead — see
+    tests/test_staff_panic_alert_contract.py.
     """
     resp = env.client.post(f"{P}/panic-alert", json={"user_id": "u3", "location": "app"})
     assert resp.status_code == 200, resp.text
