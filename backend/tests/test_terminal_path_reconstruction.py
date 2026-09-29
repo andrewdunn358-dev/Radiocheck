@@ -8,9 +8,10 @@ Each target's *desired* behaviour is pinned with `xfail(strict=True)`: it fails
 today, and the build fails if it starts passing without the xfail being removed.
 That is the same convention FB-02 and FB-09 use in test_fallback_validation.py.
 
-Targets B and C both end at a user-facing wording boundary that is Ant's to
-decide, so the corrections are NOT applied here. `TERMINAL_WORDING_APPROVED` is
-still False for the whole table.
+Targets B and C both ended at a user-facing wording boundary that is Ant's to
+decide. Target B is now corrected (Task 2, Ant, 29 Sept 2026: implementation and
+the attachment terminal wording approved); Target C is not. The
+`TERMINAL_WORDING_APPROVED` flag still covers the rest of the table.
 """
 import os
 import re
@@ -104,19 +105,10 @@ def test_target_b_the_generic_terminal_passes_the_attachment_gate():
     assert verdict.passed
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "Target B: select_terminal_state() has no attachment case, so a dependency "
-    "disclosure falls through to 'unknown'. Correction pending Ant's wording "
-    "approval — see the Target B report."
-))
 def test_target_b_attachment_has_its_own_terminal_state():
     assert select_terminal_state(protocol="attachment") == "attachment"
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "Target B: the attachment terminal does not exist yet, so nothing redirects "
-    "the dependency. Wording pending Ant's approval."
-))
 def test_target_b_attachment_terminal_redirects_toward_real_support():
     """The behavioural requirement attachment.md exists to enforce.
 
@@ -133,6 +125,86 @@ def test_target_b_attachment_terminal_redirects_toward_real_support():
         user_message=DEPENDENCY_MESSAGES[0],
     )
     assert verdict.passed, verdict.reason
+
+
+# --- Task 2 correction (Ant, 29 Sept 2026) -----------------------------------
+
+APPROVED_ATTACHMENT_TERMINAL = (
+    "I'm not a substitute for real people, mate. I want you to have people around you too."
+)
+
+
+def test_target_b_attachment_terminal_is_the_approved_wording():
+    assert TERMINAL_RESPONSES["attachment"] == APPROVED_ATTACHMENT_TERMINAL
+
+
+@pytest.mark.parametrize("message", DEPENDENCY_MESSAGES)
+def test_target_b_attachment_terminal_passes_the_gate_for_every_probe_message(message):
+    verdict = run_protocol_gates(
+        primary_protocol="attachment", reply=APPROVED_ATTACHMENT_TERMINAL,
+        user_message=message,
+    )
+    assert verdict.passed, verdict.reason
+
+
+def _no_model_call(*_args, **_kwargs):
+    # BaseException: validated_fallback's `except Exception` cannot swallow it.
+    pytest.fail("unexpected model/validator call on the terminal path")
+
+
+def _generator_raises():
+    raise RuntimeError("generation failed")
+
+
+@pytest.mark.parametrize("generate", [lambda: None, _generator_raises],
+                         ids=["returns_nothing", "raises"])
+def test_target_b_exhausted_recovery_ends_on_the_attachment_terminal(generate):
+    """No candidate: the terminal is selected and no validator (model) is called."""
+    outcome = validated_fallback(
+        trigger="judge", generate=generate,
+        gate=_no_model_call, judge=_no_model_call, protocol="attachment",
+    )
+    assert outcome.source == "terminal"
+    assert outcome.terminal_state == "attachment"
+    assert outcome.text == APPROVED_ATTACHMENT_TERMINAL
+    assert outcome.text != TERMINAL_RESPONSES["unknown"]
+    assert outcome.validators_run == []
+
+
+@pytest.mark.parametrize("failing", ["gate", "judge"])
+def test_target_b_rejected_candidate_ends_on_the_attachment_terminal(failing):
+    """A rejected candidate is replaced by the terminal; the terminal does not
+    inherit the candidate's validation and no further validator runs on it."""
+    judged = []
+
+    def gate(reply):
+        judged.append(("gate", reply))
+        return (False, "attachment_validation_before_redirect") if failing == "gate" else (True, None)
+
+    def judge(reply):
+        judged.append(("judge", reply))
+        return False, "therapeutic_tone"
+
+    outcome = validated_fallback(
+        trigger="judge", generate=lambda: "rejected candidate",
+        gate=gate, judge=judge if failing == "judge" else _no_model_call,
+        protocol="attachment",
+    )
+    assert outcome.source == "terminal"
+    assert outcome.terminal_state == "attachment"
+    assert outcome.failed_validator == failing
+    assert outcome.text == APPROVED_ATTACHMENT_TERMINAL
+    # Every validation performed concerned the candidate, never the terminal.
+    assert all(reply == "rejected candidate" for _name, reply in judged)
+
+
+def test_target_b_a_passing_candidate_is_still_delivered_not_the_terminal():
+    outcome = validated_fallback(
+        trigger="judge", generate=lambda: "validated candidate",
+        gate=_always_pass, judge=_always_pass, protocol="attachment",
+    )
+    assert outcome.source == "candidate"
+    assert outcome.text == "validated candidate"
 
 
 # ===========================================================================

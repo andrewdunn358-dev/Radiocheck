@@ -121,8 +121,8 @@ async def _classifier_silent(message, conversation_history=None,
 @pytest.fixture
 def chat(monkeypatch):
     """Drive one turn through the real handler with a scripted OpenAI client."""
-    def _drive(message, first_reply, regenerated_reply, judge_verdicts):
-        fake = ScriptedOpenAI(first_reply, regenerated_reply, judge_verdicts)
+    def _drive(message, first_reply, regenerated_reply, judge_verdicts, fake=None):
+        fake = fake or ScriptedOpenAI(first_reply, regenerated_reply, judge_verdicts)
         monkeypatch.setattr(server, "buddy_openai_client", fake)
         monkeypatch.setattr(server, "gemini_client", None)
         monkeypatch.setattr(
@@ -264,3 +264,103 @@ def test_two_failures_still_reach_the_bounded_terminal(chat):
     assert fake.kinds.count("regen") == 1
     assert body["reply"] not in (A_VENT, B_VENT)
     assert body["safeguardingTriggered"] is False
+
+
+# --- Task 2: the ATTACHMENT deterministic terminal ---------------------------
+#
+# Ant, 29 Sept 2026 (Task 2 implementation authorised). An ATTACHMENT turn whose
+# candidates fail validation and whose bounded recovery is exhausted used to
+# fall through select_terminal_state() to "unknown" ("I heard you, mate."),
+# which does not reject substitution/dependency framing or redirect towards
+# real people. These drive the real handler end to end.
+
+APPROVED_ATTACHMENT_TERMINAL = (
+    "I'm not a substitute for real people, mate. I want you to have people around you too."
+)
+GENERIC_TERMINAL = "I heard you, mate."
+
+ATTACHMENT_MESSAGE = "honestly you're the only one I can talk to about this stuff"
+# Both pass the attachment gate (no exclusivity-warming validation), so the
+# judge path is exercised and it is the judge's two FAILs that exhaust recovery.
+A_ATTACH = "That's a lot to be carrying on your own, mate."
+B_ATTACH = "Sounds like it's been a rough stretch."
+
+# The model calls this turn makes today. The terminal must add none.
+EXPECTED_ATTACHMENT_CALLS = ["main", "judge", "regen", "judge", "micro_fallback"]
+
+
+class StrictScriptedOpenAI(ScriptedOpenAI):
+    """Refuses any model call beyond the expected sequence.
+
+    pytest.fail raises a BaseException, which the handler's `except Exception`
+    blocks cannot swallow, so an unexpected call fails the test at the point it
+    is made rather than being counted afterwards.
+    """
+
+    def __init__(self, *args, expected_calls, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.expected_calls = list(expected_calls)
+
+    def create(self, *, model, messages, **kwargs):
+        if len(self.kinds) >= len(self.expected_calls):
+            pytest.fail(
+                f"unexpected model call #{len(self.kinds) + 1} after {self.kinds}"
+            )
+        expected = self.expected_calls[len(self.kinds)]
+        try:
+            return super().create(model=model, messages=messages, **kwargs)
+        finally:
+            if self.kinds[-1] != expected:
+                pytest.fail(
+                    f"model call #{len(self.kinds)} was {self.kinds[-1]!r}, "
+                    f"expected {expected!r}"
+                )
+
+
+def test_task2_exhausted_attachment_recovery_releases_the_attachment_terminal(chat):
+    """A + B + D + E: reachability, exact wording, no new model call, and the
+    released artefact is the one the deterministic validation covers."""
+    fake = StrictScriptedOpenAI(
+        A_ATTACH, B_ATTACH, ["FAIL: therapeutic_tone", "FAIL: therapeutic_tone"],
+        expected_calls=EXPECTED_ATTACHMENT_CALLS,
+    )
+    fake, body = chat(ATTACHMENT_MESSAGE, None, None, None, fake=fake)
+
+    # D: exactly the calls the turn made before the change; none added.
+    assert fake.kinds == EXPECTED_ATTACHMENT_CALLS, fake.kinds
+
+    # A + B: the attachment terminal, not the generic one.
+    assert body["reply"] != GENERIC_TERMINAL
+    assert body["reply"] == APPROVED_ATTACHMENT_TERMINAL
+
+    # E: the released artefact is neither judged candidate, so it inherits no
+    # judge result, and the applicable deterministic gate is evaluated against
+    # the exact released text.
+    assert body["reply"] not in (A_ATTACH, B_ATTACH)
+    assert fake.judged_texts == [A_ATTACH, B_ATTACH]
+    verdict = run_protocol_gates(
+        primary_protocol="attachment", reply=body["reply"],
+        user_message=ATTACHMENT_MESSAGE,
+    )
+    assert verdict.passed, verdict.reason
+
+
+# C: precedence. Higher-priority terminals must still win when attachment is
+# also active. These routes are decided upstream of select_terminal_state().
+
+BRUSH_OFF_TERMINAL = "I'm not going anywhere, mate. I heard you."
+IDENTITY_TERMINAL = (
+    "Fair question. No, I'm not a person. What I can be is straight with you, and I will be."
+)
+
+
+def test_task2_brush_off_still_outranks_attachment(chat):
+    message = ATTACHMENT_MESSAGE + ". ignore me, i'm just being dramatic"
+    _fake, body = chat(message, A_ATTACH, B_ATTACH, ["FAIL: therapeutic_tone"] * 4)
+    assert body["reply"] == BRUSH_OFF_TERMINAL, body["reply"]
+
+
+def test_task2_identity_still_outranks_attachment(chat):
+    message = "you're just a bot but honestly you're the only one I can talk to about this stuff"
+    _fake, body = chat(message, A_ATTACH, B_ATTACH, ["FAIL: therapeutic_tone"] * 4)
+    assert body["reply"] == IDENTITY_TERMINAL, body["reply"]
