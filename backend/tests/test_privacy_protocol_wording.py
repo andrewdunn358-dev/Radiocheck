@@ -68,13 +68,86 @@ def test_required_disclosures_present():
         assert 'rough location' in text, f"{path}: no geolocation disclosure"
 
 
+def _data_answer(path):
+    """The scripted data-handling answer: from its opening quote to 'otherwise."'."""
+    text = _read(path)
+    start = text.index('RIGHT: "' if path == SOUL_MD else 'Answer:\n')
+    end = text.index('otherwise."', start)
+    return re.sub(r'\s+', ' ', text[start:end]).lower()
+
+
 def test_escalation_half_is_not_softened_away():
     """A user told the truth up front is less likely to feel betrayed at the
-    moment we escalate. The escalation clause must stay in the wording."""
+    moment we escalate. The escalation clause must stay in the wording.
+
+    Task 3 (29 Sept 2026): this used to pin the phrase 'real danger'. That
+    understated the runtime: every escalation writes a safeguarding record with
+    the whole session, including AMBER / audit_only ones below a crisis
+    (server.py:1731, :7864-7934). The property pinned now is the truthful one:
+    on escalation, what was said is SAVED and the TEAM can see it.
+    """
     for path in (SOUL_MD, SOUL_LOADER):
-        text = _read(path).lower()
-        assert 'real danger' in text
-        assert 'someone from the team' in text
+        answer = _data_answer(path)
+        escalation = answer[answer.index('the one thing that changes'):]
+        assert 'someone from the team' in escalation, path
+        assert re.search(r'\b(saved|stored|kept)\b', escalation), (
+            f"{path}: escalation clause no longer discloses that the conversation is saved")
+
+
+# --- Task 3: no absolute confidentiality assurance anywhere the model can see ---
+
+# Assurances contradicted by runtime behaviour: every message goes to an outside
+# AI service (OpenAI; Gemini on OpenAI failure), and on escalation the session
+# is stored in safeguarding_alerts, readable by staff, and emailed via Resend.
+FALSE_ASSURANCE = re.compile(
+    r"between us|no one reads|nobody reads|nobody'?s reading|not passing|"
+    r"passing (them|it) on|isn'?t kept|not kept by|not storing|completely private|"
+    r"stays inside|isn'?t passed on|stays with me|off the record",
+    re.I,
+)
+# A line may only contain one of them while ruling it out.
+PROHIBITION = re.compile(r"never|wrong|untrue|not the answer|don'?t|do not", re.I)
+
+
+def _reachable_prompts():
+    """Every system prompt the chat handler can build from repository sources:
+    each character's prompt through build_persona_prompt (server.py:7166), with
+    every protocol loaded, in both human-support modes.
+
+    NOT covered (recorded dependencies): a persona prompt overridden by a CMS copy
+    in db.ai_characters (server.py get_character_config reads the DB first, and
+    /api/ai-characters/seed-from-hardcoded snapshots repo prompts); and the
+    privacy terminal, which is unreachable (strict xfail in
+    test_terminal_path_reconstruction.py).
+    """
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from personas import AI_CHARACTERS
+    from personas.soul_loader import build_persona_prompt, PROTOCOLS_DIR
+
+    protocols = sorted(f for f in os.listdir(PROTOCOLS_DIR) if f.endswith('.md') and f != 'hard_stop.md')
+    for char_id, cfg in sorted(AI_CHARACTERS.items()):
+        for support in (True, False):
+            yield char_id, support, build_persona_prompt(cfg['prompt'], protocols, human_support_available=support)
+
+
+def test_no_reachable_prompt_makes_an_absolute_confidentiality_assurance():
+    offenders = set()
+    for char_id, support, prompt in _reachable_prompts():
+        for line in prompt.splitlines():
+            if FALSE_ASSURANCE.search(line) and not PROHIBITION.search(line):
+                offenders.add((char_id, line.strip()))
+    assert not offenders, "false confidentiality assurance reachable by the model:\n" + "\n".join(
+        f"  [{c}] {l}" for c, l in sorted(offenders))
+
+
+def test_the_reachable_prompts_were_actually_built():
+    """Guard the guard: the scan above must have seen the real stack."""
+    built = list(_reachable_prompts())
+    assert len(built) >= 2 * 10, len(built)
+    tommy = next(p for c, s, p in built if c == 'tommy' and s)
+    assert 'DATA HANDLING IS A DIFFERENT QUESTION' in tommy   # SOUL_INJECTION
+    assert 'PRIVACY QUESTIONS' in tommy                        # identity.md
 
 
 def test_wording_makes_no_claim_about_processor_retention():
