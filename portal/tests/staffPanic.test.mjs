@@ -103,7 +103,23 @@ test('the staff page uses this module and shows success only after it returns tr
   assert.ok(!page.includes('/api/safeguarding/panic-alert'), 'page still posts to the router stub');
   assert.match(handler, /const sent = await submitStaffPanicAlert\(/);
   const guard = handler.indexOf('if (!sent)');
-  const success = handler.indexOf("alert('Panic alert sent!");
+  const success = handler.indexOf("alert('Panic alert sent.')");
   assert.ok(guard > -1 && success > guard, 'success alert is not behind the !sent guard');
   assert.match(handler.slice(guard, success), /return;/, 'failure branch does not return before success');
+});
+
+test('the success message claims only what the response proves', () => {
+  // submitStaffPanicAlert() establishes accepted + persisted, nothing more.
+  // /api/panic-alert ignores send_panic_alert_to_counsellors()'s result, so a
+  // 200 + id does NOT prove anyone was notified. The success wording must not
+  // say otherwise.
+  const page = readFileSync(
+    fileURLToPath(new URL('../src/app/staff/page.tsx', import.meta.url)), 'utf8');
+  const handler = page.slice(page.indexOf('const triggerPanicAlert'), page.indexOf('// Loading state'));
+  const successMessages = [...handler.matchAll(/alert\('([^']*)'\)/g)]
+    .map((m) => m[1])
+    .filter((text) => !text.startsWith('Failed'));
+  assert.deepEqual(successMessages, ['Panic alert sent.']);
+  assert.doesNotMatch(handler, /notif|will be|on (its|the) way|counsellor/i,
+    'the handler makes a delivery/notification claim the response does not prove');
 });

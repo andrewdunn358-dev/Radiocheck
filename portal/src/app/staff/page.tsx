@@ -186,7 +186,7 @@ export default function StaffPortalPage() {
       }
       setShowPanicModal(false);
       setPanicReason('');
-      alert('Panic alert sent! A counsellor will be notified.');
+      alert('Panic alert sent.');
     } catch (err) {
       console.error('Failed to trigger panic:', err);
       alert('Failed to send panic alert. Please try again.');
