@@ -127,6 +127,19 @@ TERMINAL_RESPONSES: Dict[str, str] = {
     # on Tommy's internal state. Replaced with the most minimal line that
     # still acknowledges without inference, question, or pressure.
     "unknown": "I heard you, mate.",
+
+    # Task 2 — wording approved by Ant, 29 Sept 2026, for this deterministic
+    # terminal specifically (the global flag above is unchanged). Reached when
+    # ATTACHMENT is the primary protocol and bounded recovery is exhausted.
+    # attachment.md: reject substitution/dependency framing and redirect
+    # towards real people; do not warm exclusivity. Validation authority for
+    # this entry is the deterministic attachment gate plus the regression
+    # tests, not the LLM judge (Ant's ruling; the judge contract issue is
+    # parked separately).
+    "attachment": (
+        "I'm not a substitute for real people, mate. "
+        "I want you to have people around you too."
+    ),
 }
 
 TERMINAL_STATE_ORDER = [
@@ -135,6 +148,7 @@ TERMINAL_STATE_ORDER = [
     "brush_off",
     "identity",
     "privacy",
+    "attachment",
     "grief_active",
     "unknown",
 ]
@@ -158,6 +172,8 @@ def select_terminal_state(
         return "identity"
     if p == "privacy":
         return "privacy"
+    if p == "attachment":
+        return "attachment"
     if p == "grief":
         return "grief_active"
     return "unknown"

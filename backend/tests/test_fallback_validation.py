@@ -232,6 +232,17 @@ def test_terminal_wording_is_still_flagged_pending():
     ({"protocol": "identity"}, "identity"),
     ({"protocol": "privacy"}, "privacy"),
     ({"protocol": None}, "unknown"),
+    # Task 2 (Ant, 29 Sept 2026): attachment has its own terminal, below the
+    # flag-driven states, which still win.
+    ({"protocol": "attachment"}, "attachment"),
+    ({"protocol": "ATTACHMENT"}, "attachment"),
+    ({"is_high_risk": True, "protocol": "attachment"}, "high_risk"),
+    ({"welfare_signal_disclosed": True, "protocol": "attachment"}, "welfare_disclosed"),
+    ({"is_high_risk": True, "welfare_signal_disclosed": True, "protocol": "attachment"}, "high_risk"),
+    # Protocols without a terminal of their own still fall through to unknown.
+    ({"protocol": "spine"}, "unknown"),
+    ({"protocol": "venting"}, "unknown"),
+    ({"protocol": "general"}, "unknown"),
 ])
 def test_terminal_state_selection(kwargs, expected):
     assert select_terminal_state(**kwargs) == expected
