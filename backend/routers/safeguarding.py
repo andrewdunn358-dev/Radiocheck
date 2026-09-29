@@ -10,8 +10,42 @@ from datetime import datetime
 
 from services.database import get_database
 from models.schemas import PanicAlertCreate, PanicAlert, SafeguardingAlert
+from routers.auth import require_role
 
+# CONTAINMENT, 29 September 2026
+# ------------------------------
+# Until this change no route in this file checked who was calling. The router
+# declared no dependency, server.py includes it with none, and the only
+# middleware on the app is CORS. So GET /api/safeguarding/safeguarding-alerts
+# returned every AI safeguarding alert — triggering message, full conversation
+# history, IP address, geolocation — to an unauthenticated caller, and the
+# screening-submission and panic-alert routes could likewise be read and
+# changed by anyone. The equivalent routes in server.py all require a login.
+#
+# Two sub-routers, merged into `router` at the bottom of this file so server.py
+# is unchanged:
+#
+#   _public_router  the two intake routes the app/portal submit to. Left open
+#                   deliberately: POST /concern is called by the mental-health
+#                   screening screen (frontend/app/mental-health-screening.tsx)
+#                   and POST /panic-alert by the staff portal panic button.
+#                   Neither returns stored records.
+#
+#   _staff_router   every route that reads or changes stored records. Requires
+#                   admin or supervisor — the same boundary server.py already
+#                   applies to screening submissions (get_screening_submissions).
+#                   The one client call into this group, the portal's
+#                   PATCH /safeguarding/screening-submissions/{id}/status
+#                   (portal/src/lib/admin-api.ts), is an admin action and sends
+#                   its bearer token.
+#
+# The dependency sits on the sub-router, not on each route, so a route added
+# to _staff_router later inherits the boundary instead of opting into it.
+# `require_role` is Radio Check's existing gate (routers/auth.py); no new
+# authentication mechanism is introduced, and no handler body is changed.
 router = APIRouter(prefix="/safeguarding", tags=["safeguarding"])
+_public_router = APIRouter()
+_staff_router = APIRouter(dependencies=[Depends(require_role("admin", "supervisor"))])
 
 
 # ==========================================
@@ -26,7 +60,7 @@ class ScreeningSubmission(BaseModel):
     details: str
     source: str = "app_screening"
 
-@router.post("/concern")
+@_public_router.post("/concern")
 async def submit_screening_concern(submission: ScreeningSubmission):
     """Submit a screening result for counsellor review"""
     db = get_database()
@@ -49,7 +83,7 @@ async def submit_screening_concern(submission: ScreeningSubmission):
     return {"success": True, "id": concern_data["id"], "message": "Submission received"}
 
 
-@router.get("/screening-submissions")
+@_staff_router.get("/screening-submissions")
 async def get_screening_submissions(status: Optional[str] = None, severity: Optional[str] = None):
     """Get all screening submissions for staff review"""
     db = get_database()
@@ -64,7 +98,7 @@ async def get_screening_submissions(status: Optional[str] = None, severity: Opti
     return submissions
 
 
-@router.get("/screening-submissions/{submission_id}")
+@_staff_router.get("/screening-submissions/{submission_id}")
 async def get_screening_submission(submission_id: str):
     """Get a single screening submission"""
     db = get_database()
@@ -76,7 +110,7 @@ async def get_screening_submission(submission_id: str):
     return submission
 
 
-@router.patch("/screening-submissions/{submission_id}/status")
+@_staff_router.patch("/screening-submissions/{submission_id}/status")
 async def update_screening_status(submission_id: str, status: str, notes: str = "", assigned_to: str = None, assigned_to_name: str = None):
     """Update screening submission status"""
     db = get_database()
@@ -108,7 +142,7 @@ async def update_screening_status(submission_id: str, status: str, notes: str = 
     return {"success": True}
 
 
-@router.get("/screening-submissions/stats/summary")
+@_staff_router.get("/screening-submissions/stats/summary")
 async def get_screening_stats():
     """Get screening submission statistics"""
     db = get_database()
@@ -144,7 +178,7 @@ async def get_screening_stats():
 # Panic Alerts
 # ==========================================
 
-@router.post("/panic-alert")
+@_public_router.post("/panic-alert")
 async def create_panic_alert(alert: PanicAlertCreate):
     """Create a panic alert (SOS button pressed)"""
     db = get_database()
@@ -164,7 +198,7 @@ async def create_panic_alert(alert: PanicAlertCreate):
     return alert_data
 
 
-@router.get("/panic-alerts")
+@_staff_router.get("/panic-alerts")
 async def get_panic_alerts(status: Optional[str] = None):
     """Get all panic alerts, optionally filtered by status"""
     db = get_database()
@@ -177,7 +211,7 @@ async def get_panic_alerts(status: Optional[str] = None):
     return alerts
 
 
-@router.patch("/panic-alerts/{alert_id}/acknowledge")
+@_staff_router.patch("/panic-alerts/{alert_id}/acknowledge")
 async def acknowledge_panic_alert(alert_id: str, staff_id: str, staff_name: str = ""):
     """Acknowledge a panic alert"""
     db = get_database()
@@ -198,7 +232,7 @@ async def acknowledge_panic_alert(alert_id: str, staff_id: str, staff_name: str 
     return {"success": True}
 
 
-@router.patch("/panic-alerts/{alert_id}/resolve")
+@_staff_router.patch("/panic-alerts/{alert_id}/resolve")
 async def resolve_panic_alert(alert_id: str, staff_id: str, notes: str = ""):
     """Resolve a panic alert"""
     db = get_database()
@@ -223,7 +257,7 @@ async def resolve_panic_alert(alert_id: str, staff_id: str, notes: str = ""):
 # Safeguarding Alerts (AI-triggered)
 # ==========================================
 
-@router.get("/safeguarding-alerts")
+@_staff_router.get("/safeguarding-alerts")
 async def get_safeguarding_alerts(status: Optional[str] = None, risk_level: Optional[str] = None):
     """Get safeguarding alerts from AI chat sessions"""
     db = get_database()
@@ -238,7 +272,7 @@ async def get_safeguarding_alerts(status: Optional[str] = None, risk_level: Opti
     return alerts
 
 
-@router.get("/safeguarding-alerts/{alert_id}")
+@_staff_router.get("/safeguarding-alerts/{alert_id}")
 async def get_safeguarding_alert(alert_id: str):
     """Get a single safeguarding alert with full details"""
     db = get_database()
@@ -250,7 +284,7 @@ async def get_safeguarding_alert(alert_id: str):
     return alert
 
 
-@router.patch("/safeguarding-alerts/{alert_id}/acknowledge")
+@_staff_router.patch("/safeguarding-alerts/{alert_id}/acknowledge")
 async def acknowledge_safeguarding_alert(alert_id: str, staff_id: str, staff_name: str = ""):
     """Acknowledge a safeguarding alert"""
     db = get_database()
@@ -271,7 +305,7 @@ async def acknowledge_safeguarding_alert(alert_id: str, staff_id: str, staff_nam
     return {"success": True}
 
 
-@router.patch("/safeguarding-alerts/{alert_id}/resolve")
+@_staff_router.patch("/safeguarding-alerts/{alert_id}/resolve")
 async def resolve_safeguarding_alert(alert_id: str, staff_id: str, notes: str = "", outcome: str = ""):
     """Resolve a safeguarding alert"""
     db = get_database()
@@ -293,7 +327,7 @@ async def resolve_safeguarding_alert(alert_id: str, staff_id: str, notes: str = 
     return {"success": True}
 
 
-@router.patch("/safeguarding-alerts/{alert_id}/notes")
+@_staff_router.patch("/safeguarding-alerts/{alert_id}/notes")
 async def update_safeguarding_notes(alert_id: str, notes: str):
     """Update notes on a safeguarding alert"""
     db = get_database()
@@ -309,7 +343,7 @@ async def update_safeguarding_notes(alert_id: str, notes: str):
     return {"success": True}
 
 
-@router.get("/safeguarding-alerts/stats/summary")
+@_staff_router.get("/safeguarding-alerts/stats/summary")
 async def get_safeguarding_stats():
     """Get summary statistics for safeguarding alerts"""
     db = get_database()
@@ -337,3 +371,8 @@ async def get_safeguarding_stats():
             "YELLOW": yellow
         }
     }
+
+
+# Merge the two groups into the router server.py includes (server.py:9731).
+router.include_router(_public_router)
+router.include_router(_staff_router)
