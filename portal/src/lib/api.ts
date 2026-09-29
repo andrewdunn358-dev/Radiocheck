@@ -1,3 +1,5 @@
+import { submitStaffPanicAlert, type StaffPanicUser } from './staffPanic';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
 
 interface FetchOptions extends RequestInit {
@@ -448,8 +450,12 @@ export const staffApi = {
     fetchAPI<ActionResponse>(`/panic-alerts/${id}/acknowledge`, { token, method: 'PATCH' }),
   resolvePanicAlert: (token: string, id: string) =>
     fetchAPI<ActionResponse>(`/panic-alerts/${id}/resolve`, { token, method: 'PATCH' }),
-  triggerPanic: (token: string) =>
-    fetchAPI<ActionResponse>('/panic-alert', { token, method: 'POST' }),
+  // Same request and success rule as the staff panic modal (lib/staffPanic.ts):
+  // resolves true only when the backend accepted AND persisted the alert. It
+  // never throws. It used to POST with no body, which /api/panic-alert rejects
+  // with 422.
+  triggerPanic: (token: string, user?: StaffPanicUser | null): Promise<boolean> =>
+    submitStaffPanicAlert(API_URL, token, user, ''),
 
   // Live Chat
   getLiveChatRooms: (token: string) =>

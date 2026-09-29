@@ -127,6 +127,30 @@ def test_the_portal_payload_is_accepted_persisted_and_notified(env):
     assert env.notified == [alert_id], "counsellors were not notified"
 
 
+def test_the_alerts_tab_request_is_accepted_persisted_and_notified(env):
+    """AlertsTab -> staffApi.triggerPanic(token, user) -> submitStaffPanicAlert(
+    API_URL, token, user, ''): the staff user and no reason. Before 29 Sept 2026
+    it POSTed no body and got 422."""
+    peer = {"id": "peer-1", "email": "peer@radiocheck.me", "name": "A Peer", "role": "peer"}
+    resp = _post(env, _portal_request(peer, ""))
+
+    assert resp.status_code == 200, resp.text
+    alert_id = resp.json()["id"]
+    stored = _stored(env.db)
+    assert len(stored) == 1 and stored[0]["id"] == alert_id
+    assert stored[0]["user_name"] == "A Peer"
+    assert stored[0]["location"] == "staff_portal"
+    assert stored[0]["message"] == "Staff member triggered panic button"
+    assert env.notified == [alert_id]
+
+
+def test_the_old_alerts_tab_request_was_rejected(env):
+    """Characterises the defect: fetchAPI('/panic-alert', {method: 'POST'}), no body."""
+    resp = env.client.post("/api/panic-alert")
+    assert resp.status_code == 422
+    assert _stored(env.db) == []
+
+
 def test_the_default_message_payload_is_also_accepted(env):
     req = _portal_request({"email": "peer@radiocheck.me"}, "")
     resp = _post(env, req)
