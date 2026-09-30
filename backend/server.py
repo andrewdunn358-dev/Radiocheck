@@ -91,7 +91,7 @@ from routers.lms import router as lms_router
 # Import modular personas package for AI character prompts
 # Soul Document provides behavioral consistency across all personas
 from personas import AI_CHARACTERS as MODULAR_AI_CHARACTERS, get_full_prompt, resolve_character_id
-from personas.soul_loader import get_soul_injection, build_persona_prompt, get_protocol_files
+from personas.soul_loader import get_soul_injection, build_persona_prompt, get_protocol_files, spine_independently_signalled
 
 # Import AI usage tracker for cost monitoring
 from ai_usage_tracker import (
@@ -7269,6 +7269,19 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             if is_brush_off and not is_high_risk and not is_grief_active:
                 primary_protocol = 'brush_off'
                 logging.info(f"[Judge] Brush-off detected — routing to BRUSH_OFF fallback - Session: {request.sessionId[:12]}")
+
+            # === Task 3 C4 (Ant, 30 Sept): judge applicability follows the resolved protocol ===
+            # Brush-off phrases also load spine.md, so without this the judge was
+            # shown SPINE on a brush-off turn. On a resolved brush-off turn the
+            # judge is shown BRUSH-OFF; SPINE stays only if a SPINE signal other
+            # than a brush-off phrase matches the original, unaltered message.
+            if primary_protocol == 'brush_off':
+                spine_independent = spine_independently_signalled(request.message, BRUSH_OFF_SIGNALS)
+                active_protocol_names = [n for n in active_protocol_names
+                                         if n != 'SPINE' or spine_independent] + ['BRUSH-OFF']
+                active_protocols_text = ', '.join(active_protocol_names)
+                logging.info(f"[Judge] Brush-off judge header: {active_protocols_text} "
+                             f"(spine_independent={spine_independent}) - Session: {request.sessionId[:12]}")
             
             # === Round 8: Classify situation for context-aware fallback ===
             def classify_situation(protocol, turn, msg):
