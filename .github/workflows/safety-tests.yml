@@ -72,6 +72,7 @@ jobs:
             tests/test_safeguarding_router_access_control.py \
             tests/test_staff_panic_alert_contract.py \
             tests/test_privacy_protocol_wording.py \
+            tests/test_validator_authority_alignment.py \
             -v
         env:
           SKIP_LIVE_TESTS: "true"
