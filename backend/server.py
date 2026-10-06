@@ -6433,16 +6433,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         from safety.provenance import start_system_verdict
         prov = start_system_verdict(request.sessionId, character, request.message, request.is_under_18)
         
-        # Rate limit check
-        if session["message_count"] > BUDDY_MAX_MESSAGES:
-            return BuddyChatResponse(
-                reply=f"Let's pause here for now. If you want to talk more, a real person is available and I can help connect you. You can use the 'Talk to a real person' button below.",
-                sessionId=request.sessionId,
-                character=character,
-                characterName=char_config["name"],
-                characterAvatar=char_config["avatar"]
-            )
-        
+        # Rate limit check. A product conversation limit must not prevent the
+        # turn from receiving safety evaluation (Ant, 6 Oct 2026). The cap is
+        # recorded here and applied after the safety disposition, before
+        # ordinary generation: see "MESSAGE CAP" below.
+        capped = session["message_count"] > BUDDY_MAX_MESSAGES
+
         # === TEXT NORMALISATION PRE-PROCESSOR (Section 2) ===
         # Normalise degraded text BEFORE safeguarding layers.
         # Tommy always responds to the ORIGINAL raw input.
@@ -7155,6 +7151,21 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         if safety_wrapper_data and risk_level == "RED":
             safety_wrapper = safety_wrapper_data.get("append_message", "")
         
+        # === MESSAGE CAP (A2, Ant 6 Oct 2026) ===
+        # Safety gets first refusal; the product cap still wins over ordinary
+        # conversation. EXIT A has already returned above for a failsafe. A
+        # turn that safety has escalated continues through the existing EXIT B
+        # path unchanged. Any other capped turn gets the existing cap response
+        # here, before ordinary generation.
+        if capped and not should_escalate and risk_level != "RED":
+            return BuddyChatResponse(
+                reply=f"Let's pause here for now. If you want to talk more, a real person is available and I can help connect you. You can use the 'Talk to a real person' button below.",
+                sessionId=request.sessionId,
+                character=character,
+                characterName=char_config["name"],
+                characterAvatar=char_config["avatar"]
+            )
+
         # === Knowledge Base Integration ===
         # Fetch relevant verified information to enhance the response
         knowledge_context = await get_knowledge_context(request.message)
