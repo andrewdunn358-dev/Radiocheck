@@ -6374,17 +6374,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         logging.warning(f"RATE LIMITED: IP {client_ip} - {reason}")
         raise HTTPException(status_code=429, detail=reason)
     
-    # Check session message limit
+    # Check session message limit. A product conversation limit must not
+    # prevent an otherwise accepted turn from receiving safety evaluation
+    # (Ant, 6 Oct 2026). The limit is recorded here and applied at the
+    # product-limit boundary after the safety disposition: see "MESSAGE CAP".
     is_allowed, reason = check_session_limit(request.sessionId)
-    if not is_allowed:
-        char = AI_CHARACTERS.get(request.character, AI_CHARACTERS["tommy"])
-        return BuddyChatResponse(
-            reply=f"We've been chatting for a while. If you'd like to continue talking, a real person is available. Use the 'Talk to a real person' button to connect with someone.",
-            sessionId=request.sessionId,
-            character=request.character,
-            characterName=char["name"],
-            characterAvatar=char["avatar"]
-        )
+    session_limited = not is_allowed
     
     # === Suspicious pattern detection ===
     # Block obviously automated requests
@@ -7156,8 +7151,19 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # conversation. EXIT A has already returned above for a failsafe. A
         # turn that safety has escalated continues through the existing EXIT B
         # path unchanged. Any other capped turn gets the existing cap response
-        # here, before ordinary generation.
-        if capped and not should_escalate and risk_level != "RED":
+        # here, before ordinary generation. The same applies to the session
+        # limit (SESSION_RATE_LIMIT), whose response takes precedence.
+        if (session_limited or capped) and not should_escalate and risk_level != "RED":
+            if session_limited:
+                # SESSION_RATE_LIMIT response, unchanged; it wins when both limits apply.
+                char = AI_CHARACTERS.get(request.character, AI_CHARACTERS["tommy"])
+                return BuddyChatResponse(
+                    reply=f"We've been chatting for a while. If you'd like to continue talking, a real person is available. Use the 'Talk to a real person' button to connect with someone.",
+                    sessionId=request.sessionId,
+                    character=request.character,
+                    characterName=char["name"],
+                    characterAvatar=char["avatar"]
+                )
             return BuddyChatResponse(
                 reply=f"Let's pause here for now. If you want to talk more, a real person is available and I can help connect you. You can use the 'Talk to a real person' button below.",
                 sessionId=request.sessionId,
