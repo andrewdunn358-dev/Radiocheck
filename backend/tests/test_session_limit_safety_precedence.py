@@ -92,6 +92,11 @@ def harness(monkeypatch):
                                           "character": "tommy", "last_active": now,
                                           "created_at": now}
             created.append(sid)
+        # Isolate from the IP rate limiter: every TestClient request comes from
+        # the same address, and a fast suite run trips its 30-in-5s burst block
+        # (429) before check_session_limit runs. Test isolation only.
+        server.ip_request_counts.clear()
+        server.blocked_ips.clear()
         calls_before = model.calls
         resp = client.post("/api/ai-buddies/chat",
                            json={"message": message, "sessionId": sid, "character": "tommy"})
