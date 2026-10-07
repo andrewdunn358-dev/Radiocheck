@@ -6417,6 +6417,16 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
     if char_config.get("source") == "fallback" and character not in AI_CHARACTERS:
         character = "tommy"
     
+    # Go-to-market off-mode flags — single authority, derived ONCE per request
+    # and threaded into the unified safety wrapper, the failsafe crisis message,
+    # and the persona prompt. (per Anthony)
+    # Read BEFORE the handler-wide try (Ant, 6 Oct 2026): a failure here happens
+    # before any safety evaluation, so it must not reach EXIT C and be reported
+    # as GREEN. It surfaces as the framework's 500 instead.
+    _site_settings = await db.settings.find_one({"_id": "site_settings"}) or {}
+    signpost_mode = _site_settings.get("safeguarding_response_mode") == "signpost"
+    human_support_available = bool(_site_settings.get("counsellor_enabled", True)) and bool(_site_settings.get("peer_to_peer_enabled", True))
+
     try:
         session = get_or_create_buddy_session(request.sessionId, character)
         session["message_count"] += 1
@@ -6615,13 +6625,6 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # 4. Semantic similarity analysis (detects intent even without exact keywords)
         # 5. Crisis pattern detection (escalation sequences)
         # Uses NORMALISED text for safety analysis
-        # Go-to-market off-mode flags — single authority, derived ONCE per request
-        # and threaded into the unified safety wrapper, the failsafe crisis message,
-        # and the persona prompt. (per Anthony)
-        _site_settings = await db.settings.find_one({"_id": "site_settings"}) or {}
-        signpost_mode = _site_settings.get("safeguarding_response_mode") == "signpost"
-        human_support_available = bool(_site_settings.get("counsellor_enabled", True)) and bool(_site_settings.get("peer_to_peer_enabled", True))
-
         unified_safety = analyze_message_unified(
             message=safeguarding_text,
             original_message=original_message,  # R12-03 hotfix
