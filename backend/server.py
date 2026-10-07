@@ -6880,12 +6880,17 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 alert.geo_lon = geo_data.get("geo_lon")
             
             failsafe_alert_id = alert.id
+            # Provenance only (Ant, 7 Oct 2026, D-a): records the ACTUAL result of
+            # the insert below. Set only after insert_one returns; never read by
+            # the alert path itself.
+            failsafe_alert_persisted = False
             # N3/N5 containment: the crisis response is already authorised by the
             # failsafe decision above. A persistence failure is logged and contained
             # here; it must not reach the outer handler, which would replace the
             # crisis response with the generic EXIT C reply.
             try:
                 await db.safeguarding_alerts.insert_one(alert.dict())
+                failsafe_alert_persisted = True
                 print(f"[SAFEGUARDING] FAILSAFE ALERT CREATED - ID: {failsafe_alert_id}, Reason: {failsafe_reason}")
                 logging.warning(f"SAFEGUARDING FAILSAFE ALERT [RED] - Alert: {failsafe_alert_id} - Session: {request.sessionId} - Reason: {failsafe_reason}")
             except Exception as alert_err:
@@ -6954,6 +6959,23 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     "I'm still here if you want to keep chatting."
                 )
             
+            # Provenance (Ant, 7 Oct 2026, Task 5 T5-B): EXIT A is an established
+            # authoritative disposition, so its record must be emitted, not
+            # discarded (ADR-0003 §27). Observation only; same pattern as EXIT B.
+            try:
+                prov.finish(
+                    safeguarding_triggered=True,
+                    risk_level="RED",
+                    risk_score=unified_safety.get("risk_score", 999),
+                    risk_score_source="unified_safety",
+                    should_escalate=bool(should_escalate),
+                    failsafe_fired=True,
+                    alert_created=failsafe_alert_persisted,
+                    signpost_mode=bool(signpost_mode),
+                )
+            except Exception as _pe:
+                logging.error(f"[Provenance] finish failed: {_pe}")
+
             # Return immediate safety response with the alert ID
             return BuddyChatResponse(
                 reply=crisis_response,
@@ -7157,9 +7179,26 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # here, before ordinary generation. The same applies to the session
         # limit (SESSION_RATE_LIMIT), whose response takes precedence.
         if (session_limited or capped) and not should_escalate and risk_level != "RED":
+            # Provenance (Ant, 7 Oct 2026, D-b): the safety disposition was
+            # established above, before the limit applies, so the record must be
+            # emitted with that disposition, not discarded. Same outcome keys and
+            # values as EXIT B. The limit response itself is unchanged.
             if session_limited:
                 # SESSION_RATE_LIMIT response, unchanged; it wins when both limits apply.
                 char = AI_CHARACTERS.get(request.character, AI_CHARACTERS["tommy"])
+                try:
+                    prov.finish(
+                        safeguarding_triggered=(risk_level == "RED"),
+                        risk_level=risk_level,
+                        risk_score=risk_data["score"],
+                        risk_score_source="legacy_scorer",
+                        should_escalate=bool(should_escalate),
+                        failsafe_fired=bool(failsafe_should_fire),
+                        alert_created=bool(alert_id),
+                        signpost_mode=bool(signpost_mode),
+                    )
+                except Exception as _pe:
+                    logging.error(f"[Provenance] finish failed: {_pe}")
                 return BuddyChatResponse(
                     reply=f"We've been chatting for a while. If you'd like to continue talking, a real person is available. Use the 'Talk to a real person' button to connect with someone.",
                     sessionId=request.sessionId,
@@ -7167,6 +7206,19 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     characterName=char["name"],
                     characterAvatar=char["avatar"]
                 )
+            try:
+                prov.finish(
+                    safeguarding_triggered=(risk_level == "RED"),
+                    risk_level=risk_level,
+                    risk_score=risk_data["score"],
+                    risk_score_source="legacy_scorer",
+                    should_escalate=bool(should_escalate),
+                    failsafe_fired=bool(failsafe_should_fire),
+                    alert_created=bool(alert_id),
+                    signpost_mode=bool(signpost_mode),
+                )
+            except Exception as _pe:
+                logging.error(f"[Provenance] finish failed: {_pe}")
             return BuddyChatResponse(
                 reply=f"Let's pause here for now. If you want to talk more, a real person is available and I can help connect you. You can use the 'Talk to a real person' button below.",
                 sessionId=request.sessionId,
