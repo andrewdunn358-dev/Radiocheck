@@ -73,6 +73,7 @@ jobs:
             tests/test_session_limit_safety_precedence.py \
             tests/test_exit_c_settings_read_failure.py \
             tests/test_provenance_exit_a_and_limits.py \
+            tests/test_x5_reassurance_explicit_tier.py \
             tests/test_safeguarding_router_access_control.py \
             tests/test_staff_panic_alert_contract.py \
             tests/test_privacy_protocol_wording.py \
