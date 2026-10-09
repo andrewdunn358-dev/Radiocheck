@@ -122,6 +122,62 @@ NEGATION_PREFIXES = [
 # Expanded window to catch more context
 NEGATION_WINDOW = 16  # Increased from 8 to catch in-sentence negations
 
+# X5 (Ant, 9 Oct 2026). Reassurance is not a negation of an explicit danger
+# statement: "I want to kill myself, don't worry about it" / "I want to die.
+# I'm okay though" assert nothing about the statement itself. These are the
+# reassurance entries ALREADY present in is_negated's lists below (no new
+# vocabulary). They keep their existing power to suppress every lower tier,
+# and lose it only for explicit-tier matches (keyword monitor CRITICAL/HIGH,
+# legacy RED indicators of weight >= 100), signalled by
+# is_negated(..., explicit=True).
+REASSURANCE_CUES = frozenset({
+    "i'm safe", "im safe", "i am safe",
+    "i'll be fine", "ill be fine", "i will be fine",
+    "i'm okay", "im okay", "i am okay",
+    "i'm fine", "im fine", "i am fine",
+    "i'm alright", "im alright", "i am alright",
+    "but i'm okay", "but i'm fine", "but i'm alright",
+    "but im okay", "but im fine", "but im alright",
+    "don't worry", "dont worry", "no need to worry", "nothing to worry",
+    "not that bad", "not as bad", "not so bad",
+})
+
+# X5-B (Ant, 9 Oct 2026). An explicit reversal after a negation cue voids that
+# cue for explicit-tier matches ("I said I wasn't suicidal but actually yes I
+# am"). The reversal must END its sentence (fix (a), Ant 9 Oct): a phrase that
+# runs on into a new clause ("I'm not suicidal. Actually maybe I should take
+# tomorrow off work") is about something else, not a reversal of the denial.
+# Vocabulary is IDENTICAL to the inline `reversal_phrases` in
+# server.py buddy_chat (pinned region negation_and_identity_guards); a
+# regression test asserts the two lists stay equal until negation
+# consolidation. Do not edit one without the other.
+REVERSAL_PHRASES = (
+    "actually yes", "yes i am", "actually i am", "wait yes",
+    "changed my mind", "actually maybe", "actually i will",
+    "actually i do", "but maybe i should", "but i might",
+)
+
+
+_REVERSAL_SENTENCE_END = r"\s*(?:[.!?]|$)"
+
+
+def _cue_disallowed(cue: str, cue_pos: int, full_text_lower: str, explicit: bool) -> bool:
+    """X5: True when a matched negation cue must NOT suppress this match.
+
+    Only ever True for explicit-tier matches; with explicit=False every cue
+    behaves exactly as before.
+    """
+    if not explicit:
+        return False
+    if cue in REASSURANCE_CUES:
+        return True
+    if cue_pos is not None and cue_pos >= 0:
+        # X5-B fix (a): the reversal phrase must be followed by end of message
+        # or sentence-ending punctuation (. ! ?), not by further words.
+        tail = full_text_lower[cue_pos:].rstrip()
+        return any(re.search(re.escape(r) + _REVERSAL_SENTENCE_END, tail) for r in REVERSAL_PHRASES)
+    return False
+
 
 def _contains_phrase(haystack: str, phrase: str) -> bool:
     """
@@ -139,10 +195,16 @@ def _contains_phrase(haystack: str, phrase: str) -> bool:
     return re.search(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)", haystack) is not None
 
 
-def is_negated(text: str, match_start: int) -> bool:
+def is_negated(text: str, match_start: int, *, explicit: bool = False) -> bool:
     """
     Check if a match is negated - checks BOTH before AND after the indicator.
     Also performs a full-sentence scan for explicit negation constructions.
+
+    explicit (X5, 9 Oct 2026): True when the caller is testing an
+    explicit-tier match (keyword monitor CRITICAL/HIGH, legacy RED indicator
+    of weight >= 100).
+    For those, REASSURANCE_CUES do not suppress, and a negation cue followed
+    by a REVERSAL_PHRASES entry does not suppress. Default False: unchanged.
     
     CRITICAL FIX (Scenario 008): User may say:
       "Not in a 'I want to hurt myself' way — just TIRED"
@@ -211,6 +273,9 @@ def is_negated(text: str, match_start: int) -> bool:
             if has_meta_negation and denial in safety_affirmations:
                 logger.info(f"Meta-negation detected: '{denial}' invalidated by pretending/faking context")
                 continue
+            denial_pos = full_text_lower.find(denial) if denial in full_text_lower else normalised.find(denial)
+            if _cue_disallowed(denial, denial_pos, full_text_lower, explicit):
+                continue
             return True
     
     # SECOND: Regex patterns for structural negation constructions
@@ -225,7 +290,10 @@ def is_negated(text: str, match_start: int) -> bool:
     ]
     
     for pattern in negation_patterns:
-        if re.search(pattern, full_text_lower) or re.search(pattern, normalised):
+        found = re.search(pattern, full_text_lower) or re.search(pattern, normalised)
+        if found:
+            if _cue_disallowed(pattern, found.start(), full_text_lower, explicit):
+                continue
             return True
     
     # Meta-negation: phrases like "pretending im fine" negate the safety affirmation
@@ -262,6 +330,8 @@ def is_negated(text: str, match_start: int) -> bool:
             # Skip safety affirmations if meta-negation is present
             if has_meta_negation and negation in safety_affirmations:
                 continue
+            if _cue_disallowed(negation, full_text_lower.rfind(negation, 0, match_start), full_text_lower, explicit):
+                continue
             return True
     
     # FOURTH: Check window AFTER the match (CRITICAL for post-indicator negations)
@@ -285,6 +355,8 @@ def is_negated(text: str, match_start: int) -> bool:
     for negation in post_negations:
         # Same whole-word rule as the before-window: these also suppress.
         if _contains_phrase(window_after, negation):
+            if _cue_disallowed(negation, full_text_lower.find(negation, match_start), full_text_lower, explicit):
+                continue
             return True
     
     return False
@@ -427,7 +499,8 @@ class EnhancedSafetyMonitor:
         self,
         text: str,
         patterns: List[re.Pattern],
-        check_negation: bool = True
+        check_negation: bool = True,
+        explicit: bool = False,
     ) -> Optional[str]:
         """
         Attempt to match any pattern against normalised text.
@@ -436,7 +509,7 @@ class EnhancedSafetyMonitor:
         for pattern in patterns:
             match = pattern.search(text)
             if match:
-                if check_negation and is_negated(text, match.start()):
+                if check_negation and is_negated(text, match.start(), explicit=explicit):
                     logger.info(
                         f"Negated match skipped: '{match.group()}' "
                         f"user={self.user_id}"
@@ -484,7 +557,8 @@ class EnhancedSafetyMonitor:
             # =================================================================
             
             # CRITICAL
-            matched = self._match(text, self._compiled_critical)
+            # X5: CRITICAL and HIGH are the explicit tier (reassurance cannot cancel).
+            matched = self._match(text, self._compiled_critical, explicit=True)
             if not matched:
                 # Also check informal patterns (no negation check)
                 matched = self._match(
@@ -503,7 +577,7 @@ class EnhancedSafetyMonitor:
             
             # HIGH
             if risk_level != RiskLevel.CRITICAL:
-                matched = self._match(text, self._compiled_high)
+                matched = self._match(text, self._compiled_high, explicit=True)
                 if matched:
                     risk_level = RiskLevel.HIGH
                     safety_concerns.append("high_suicide_risk")

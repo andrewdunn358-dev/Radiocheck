@@ -1571,8 +1571,15 @@ def calculate_safeguarding_score(message: str, session_id: str, character_id: st
     for indicator, weight in RED_INDICATORS.items():
         if indicator in message_lower:
             # Check for negation before flagging
+            # X5 (Ant, 9 Oct 2026, narrowed scope): RED indicators of weight
+            # >= 100 (direct suicidal ideation / "won't be here" band) are the
+            # explicit tier, so reassurance ("don't worry", "I'm okay") cannot
+            # cancel them and an explicit reversal voids an earlier negation
+            # cue. Weight-80 indicators ("had enough", "time to go", "i'm
+            # done") keep today's behaviour; their calibration is recorded
+            # separately.
             match_pos = message_lower.find(indicator)
-            if is_negated(message_lower, match_pos):
+            if is_negated(message_lower, match_pos, explicit=(weight >= 100)):
                 negated_indicators.append({"indicator": indicator, "reason": "negated"})
                 continue  # Skip this indicator - it was negated
 
