@@ -62,7 +62,7 @@ def classify_row(row: Dict[str, Any]) -> List[Dict[str, str]]:
     # --- CONTEXT LOSS -------------------------------------------------------
     if row.get("normalise_triggered") and row.get("grief_gate_sees_original"):
         add("CONTEXT LOSS", "grief_gate_reads_unnormalised_text",
-            "get_protocol_files() is called on request.message; the scorers below it "
+            "get_protocol_files() is called on the un-normalised safety_input; the scorers below it "
             "are called on the normalised text")
 
     if (row.get("normaliser_model_live") and row.get("normalise_triggered")
