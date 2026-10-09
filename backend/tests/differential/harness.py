@@ -230,6 +230,11 @@ class Runner:
             "n_words": len(text.split()),
         }
 
+        # R2 (9 Oct 2026): production derives one canonical-typography
+        # safety input at handler entry; every safety consumer below reads it.
+        from safety.text_normalizer import canonicalise_typography
+        text = canonicalise_typography(text)
+
         # --- C: normalisation -------------------------------------------
         norm = self.normalise(text)
         safeguarding_text = norm.pop("normalised_text", text)

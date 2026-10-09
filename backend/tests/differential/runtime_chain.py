@@ -121,8 +121,14 @@ _REGIONS = [
 
 # Pinned at main 76d41e01. Regenerate deliberately with `python3 -m
 # tests.differential.runtime_chain --repin` and say so in the PR.
+# Repinned (R2, Ant 9 Oct 2026): crisis_override_and_grief_state only, from
+# 5c3f2586d2a93155. The region now reads the derived `safety_input`
+# (canonical-typography text) instead of `request.message` at the crisis
+# override phrases, grief name extraction and the brush-off counter. Logic is
+# otherwise unchanged; the transcription below receives that same text as
+# `message`. The other two regions are unchanged and keep their pins.
 PINNED_HASHES = {
-    "crisis_override_and_grief_state": "5c3f2586d2a93155",
+    "crisis_override_and_grief_state": "618687b7fa51042d",
     "negation_and_identity_guards": "a8bd9937b02df27f",
     "correctives": "9c9d871f7a4b70ea",
 }
@@ -204,8 +210,12 @@ def apply_pre_scoring_state(
 ) -> StateTransition:
     """Transcription of server.py:6463–6558.
 
+    `message` is the handler's derived `safety_input` (R2, 9 Oct 2026: the
+    original text with typographic apostrophes canonicalised), which is also
+    what `get_protocol_files` upstream now receives.
+
     NOTE the as-found asymmetry, preserved deliberately: `get_protocol_files`
-    upstream is called on `request.message` (the ORIGINAL text), while the
+    upstream is called on the un-normalised text (`safety_input`), while the
     scorers below it are called on `safeguarding_text` (the NORMALISED text).
     The grief gate therefore never sees normalisation. Recorded, not fixed.
     """

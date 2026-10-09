@@ -6454,9 +6454,16 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # === TEXT NORMALISATION PRE-PROCESSOR (Section 2) ===
         # Normalise degraded text BEFORE safeguarding layers.
         # Tommy always responds to the ORIGINAL raw input.
-        from safety.text_normalizer import normalise_text
-        original_message = request.message
-        normalised_message, was_normalised = await normalise_text(request.message)
+        from safety.text_normalizer import normalise_text, canonicalise_typography
+        # R2 (Ant, 9 Oct 2026): one derived safety input. Typographic
+        # apostrophes (U+2018/U+2019, inserted by phone keyboards) are mapped
+        # to "'" so every safety and protocol-selection consumer sees the same
+        # representation (ADR-0003 §2, §5). request.message stays the
+        # immutable original for history, the persona reply, judge context,
+        # alert evidence (triggering_message), provenance and knowledge lookup.
+        safety_input = canonicalise_typography(request.message)
+        original_message = safety_input  # R12-03 original-text Check 1 input
+        normalised_message, was_normalised = await normalise_text(safety_input)
         
         if was_normalised:
             logging.info(f"[TextNormalizer] Active for session {request.sessionId[:12]}")
@@ -6469,7 +6476,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             logging.error(f"[Provenance] rekey failed: {_pe}")
         
         # Detect active protocols BEFORE safeguarding check (needed for identity threshold dampening)
-        protocol_files = get_protocol_files(request.message)
+        protocol_files = get_protocol_files(safety_input)
         if protocol_files:
             logging.info(f"[Protocols] Activated for session {request.sessionId[:12]}: {protocol_files}")
         
@@ -6482,7 +6489,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             'kill myself', 'harm myself', 'hurt myself',
             'not going to be here', 'goodbye', "won't need this anymore"
         ]
-        msg_lower = request.message.lower()
+        msg_lower = safety_input.lower()
         # === Session 4 Scope 1: resolve grief lifecycle ONCE, before protocol
         # selection (Ant, 15 Sept). A grief episode that ended on the previous
         # turn clears its subject HERE, at the start of the next turn — never
@@ -6524,7 +6531,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 session['grief_turn_count'] = session.get('grief_turn_count', 0) + 1
                 # === FIX 2 (partial): Grief Pronoun & Name Extraction (Round 8) ===
                 if session.get('grief_name') is None:
-                    msg_text = request.message
+                    msg_text = safety_input
                     # Round 12 fix: use the single shared extractor in
                     # soul_loader (the #94 verb-adjacency logic) instead of a
                     # second, weaker copy. The old inline version matched any
@@ -6574,7 +6581,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 session['spine_turn_count'] = session.get('spine_turn_count', 0) + 1
             BRUSH_OFF_CHECK = ['ignore me', 'just being dramatic', "don't mind me", "dont mind me",
                                'just being daft', 'being dramatic', 'forget i said']
-            if any(s in request.message.lower() for s in BRUSH_OFF_CHECK):
+            if any(s in safety_input.lower() for s in BRUSH_OFF_CHECK):
                 session['brush_off_turn_count'] = session.get('brush_off_turn_count', 0) + 1
 
             # Normal identity tracking decay logic
@@ -7340,7 +7347,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             BRUSH_OFF_SIGNALS = ['ignore me', 'just being dramatic', "don't mind me", "dont mind me",
                                  'just being daft', 'being dramatic', 'forget i said',
                                  'probably nothing', 'probably just being dramatic']
-            msg_lower_judge = request.message.lower()
+            msg_lower_judge = safety_input.lower()
             is_brush_off = any(s in msg_lower_judge for s in BRUSH_OFF_SIGNALS)
             is_grief_active = 'grief.md' in protocol_files
             is_high_risk = risk_data.get('risk_level') == 'RED'
@@ -7383,7 +7390,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 'brush_off': session.get('brush_off_turn_count', 1),
             }
             current_protocol_turn = protocol_turn_counts.get(primary_protocol, 1)
-            current_situation = classify_situation(primary_protocol, current_protocol_turn, request.message)
+            current_situation = classify_situation(primary_protocol, current_protocol_turn, safety_input)
             
             # Build protocol state object (Fix 1)
             protocol_state = {

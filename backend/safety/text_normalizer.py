@@ -252,6 +252,27 @@ Rules:
 - Return the normalised text and nothing else"""
 
 
+# R2 (Ant, 9 Oct 2026): typographic apostrophes. Phone keyboards (iOS Smart
+# Punctuation and others) insert U+2019 / U+2018, while every safety phrase
+# literal and negation cue is written with the straight apostrophe. Without
+# this, "i can’t go on" and "i can't go on" received different safety
+# decisions (ADR-0003 §5). Only these two code points are mapped: no
+# lowercasing, no other punctuation, no vocabulary change.
+_TYPOGRAPHIC_APOSTROPHES = str.maketrans({"’": "'", "‘": "'"})
+
+
+def canonicalise_typography(text: str) -> str:
+    """Return `text` with U+2018/U+2019 mapped to the straight apostrophe.
+
+    Deterministic, idempotent, and byte-identical for text without those
+    characters. Used ONLY to derive the safety-evaluation input in
+    buddy_chat; the user's original message is never rewritten.
+    """
+    if not text:
+        return text
+    return text.translate(_TYPOGRAPHIC_APOSTROPHES)
+
+
 def _normalise_negation_prefixes(text: str) -> str:
     """
     Fast, local (non-LLM) normalisation of degraded negation prefixes.
