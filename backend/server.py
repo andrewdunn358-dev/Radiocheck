@@ -7948,6 +7948,9 @@ Return ONLY the response text. No explanation. No labels."""
         session["history"].append({"role": "assistant", "content": reply})
         
         # If safeguarding triggered (RED or AMBER), create alert and send notification
+        # N3 (Ant, 9 Oct 2026): records whether the EXIT B alert was actually
+        # persisted, for provenance (same rule as EXIT A, D-a / #136).
+        exit_b_alert_persisted = False
         if should_escalate:
             # === ROUND 10 PHASE B²: ALERT-GATE RECONCILER HOTFIX ===
             # Gate the additive (legacy) escalation alert behind the reconciler's
@@ -8017,18 +8020,37 @@ Return ONLY the response text. No explanation. No labels."""
                 alert.geo_lon = geo_data.get("geo_lon")
             
             alert_id = alert.id
-            await db.safeguarding_alerts.insert_one(alert.dict())
-            print(f"[SAFEGUARDING] ALERT CREATED IN DATABASE - ID: {alert_id}, Risk: {risk_level}, Score: {risk_data['score']}")
-            logging.warning(f"SAFEGUARDING ALERT [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown') if geo_data else 'Unknown'}, {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'}")
+            # N3 (Ant, 9 Oct 2026): the disposition above is already
+            # established. A persistence failure here must not replace it with
+            # EXIT C's GREEN/0 fallback. Each write has its own boundary (the
+            # #127 EXIT A pattern); the failure is logged and the turn
+            # continues to the unchanged email attempt and response.
+            try:
+                await db.safeguarding_alerts.insert_one(alert.dict())
+                exit_b_alert_persisted = True
+                print(f"[SAFEGUARDING] ALERT CREATED IN DATABASE - ID: {alert_id}, Risk: {risk_level}, Score: {risk_data['score']}")
+                logging.warning(f"SAFEGUARDING ALERT [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown') if geo_data else 'Unknown'}, {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'}")
+            except Exception as alert_err:
+                logging.error(
+                    f"[SAFEGUARDING] EXIT B alert insert FAILED - Alert: {alert_id} - "
+                    f"Session: {request.sessionId[:12]} - Status: {alert_status} - Risk: {risk_level} - "
+                    f"{type(alert_err).__name__}: {alert_err} - established disposition still delivered"
+                )
             
             # Audit log: safeguarding alert created
-            await audit_safeguarding_alert(
-                db,
-                session_id=request.sessionId,
-                risk_level=risk_level,
-                score=risk_data["score"],
-                triggered_indicators=[t["indicator"] for t in risk_data["triggered_indicators"][:10]]
-            )
+            try:
+                await audit_safeguarding_alert(
+                    db,
+                    session_id=request.sessionId,
+                    risk_level=risk_level,
+                    score=risk_data["score"],
+                    triggered_indicators=[t["indicator"] for t in risk_data["triggered_indicators"][:10]]
+                )
+            except Exception as audit_err:
+                logging.error(
+                    f"[SAFEGUARDING] EXIT B audit FAILED - Alert: {alert_id} - "
+                    f"Session: {request.sessionId[:12]} - {type(audit_err).__name__}: {audit_err}"
+                )
             
             # NOTE: We no longer emit the alert immediately here.
             # The alert will be emitted when the user chooses to call or chat,
@@ -8052,7 +8074,7 @@ Return ONLY the response text. No explanation. No labels."""
                 risk_score_source="legacy_scorer",
                 should_escalate=bool(should_escalate),
                 failsafe_fired=bool(failsafe_should_fire),
-                alert_created=bool(alert_id),
+                alert_created=exit_b_alert_persisted,  # N3: actual persistence, not id existence
                 signpost_mode=bool(signpost_mode),
             )
         except Exception as _pe:
