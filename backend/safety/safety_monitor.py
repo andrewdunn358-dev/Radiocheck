@@ -128,7 +128,8 @@ NEGATION_WINDOW = 16  # Increased from 8 to catch in-sentence negations
 # reassurance entries ALREADY present in is_negated's lists below (no new
 # vocabulary). They keep their existing power to suppress every lower tier,
 # and lose it only for explicit-tier matches (keyword monitor CRITICAL/HIGH,
-# legacy RED indicators), signalled by is_negated(..., explicit=True).
+# legacy RED indicators of weight >= 100), signalled by
+# is_negated(..., explicit=True).
 REASSURANCE_CUES = frozenset({
     "i'm safe", "im safe", "i am safe",
     "i'll be fine", "ill be fine", "i will be fine",
@@ -191,7 +192,8 @@ def is_negated(text: str, match_start: int, *, explicit: bool = False) -> bool:
     Also performs a full-sentence scan for explicit negation constructions.
 
     explicit (X5, 9 Oct 2026): True when the caller is testing an
-    explicit-tier match (keyword monitor CRITICAL/HIGH, legacy RED indicator).
+    explicit-tier match (keyword monitor CRITICAL/HIGH, legacy RED indicator
+    of weight >= 100).
     For those, REASSURANCE_CUES do not suppress, and a negation cue followed
     by a REVERSAL_PHRASES entry does not suppress. Default False: unchanged.
     
