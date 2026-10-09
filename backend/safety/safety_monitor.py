@@ -144,7 +144,10 @@ REASSURANCE_CUES = frozenset({
 
 # X5-B (Ant, 9 Oct 2026). An explicit reversal after a negation cue voids that
 # cue for explicit-tier matches ("I said I wasn't suicidal but actually yes I
-# am"). Vocabulary is IDENTICAL to the inline `reversal_phrases` in
+# am"). The reversal must END its sentence (fix (a), Ant 9 Oct): a phrase that
+# runs on into a new clause ("I'm not suicidal. Actually maybe I should take
+# tomorrow off work") is about something else, not a reversal of the denial.
+# Vocabulary is IDENTICAL to the inline `reversal_phrases` in
 # server.py buddy_chat (pinned region negation_and_identity_guards); a
 # regression test asserts the two lists stay equal until negation
 # consolidation. Do not edit one without the other.
@@ -153,6 +156,9 @@ REVERSAL_PHRASES = (
     "changed my mind", "actually maybe", "actually i will",
     "actually i do", "but maybe i should", "but i might",
 )
+
+
+_REVERSAL_SENTENCE_END = r"\s*(?:[.!?]|$)"
 
 
 def _cue_disallowed(cue: str, cue_pos: int, full_text_lower: str, explicit: bool) -> bool:
@@ -166,7 +172,10 @@ def _cue_disallowed(cue: str, cue_pos: int, full_text_lower: str, explicit: bool
     if cue in REASSURANCE_CUES:
         return True
     if cue_pos is not None and cue_pos >= 0:
-        return any(full_text_lower.find(r, cue_pos) != -1 for r in REVERSAL_PHRASES)
+        # X5-B fix (a): the reversal phrase must be followed by end of message
+        # or sentence-ending punctuation (. ! ?), not by further words.
+        tail = full_text_lower[cue_pos:].rstrip()
+        return any(re.search(re.escape(r) + _REVERSAL_SENTENCE_END, tail) for r in REVERSAL_PHRASES)
     return False
 
 

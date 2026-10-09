@@ -218,9 +218,53 @@ def test_x5c_deferred_trajectory_residual_is_recorded(chat):
     ("I said I'm not going to do it but actually I will", EXIT_A),
     ("I told you I wasn't going to kill myself, but I've changed my mind", EXIT_A),
     ("I said I wasn't suicidal but actually yes I am", AMBER_AUDIT),
+    ("I'm not going to kill myself. Changed my mind.", EXIT_A),
+    ("I'm not suicidal, wait yes I am", AMBER_AUDIT),
 ])
 def test_explicit_reversal_is_not_suppressed(chat, message, expected):
     assert chat(message) == expected
+
+
+# X5-B fix (a), Ant 9 Oct 2026: a reversal phrase counts only when it ENDS its
+# sentence. Ant's example and the eight further false positives found with it.
+# On the first X5 branch each of these escalated (5 to EXIT A); on main they
+# are GREEN. They must stay GREEN with no safeguarding alert and no email.
+REVERSAL_FALSE_POSITIVES = [
+    "I'm not suicidal. Actually maybe I should take tomorrow off work.",
+    "I don't want to die, but I might need some help",
+    "I'm not going to kill myself. Actually I do need to talk to someone though",
+    "I would never kill myself, but maybe I should see a doctor",
+    "I'm not going to kill myself, I've changed my mind about the job",
+    "I don't want to die. Actually I am feeling a bit better today",
+    "I'm not suicidal, actually I will go for a walk",
+    "not suicidal mate, yes I am tired though",
+    "I'm not suicidal. Actually yes, I'd love a cuppa",
+]
+
+
+@pytest.mark.parametrize("message", REVERSAL_FALSE_POSITIVES)
+def test_run_on_reversal_phrase_does_not_escalate_a_denial(chat, message):
+    r = chat(message, full=True)
+    assert (r["triggered"], r["risk"], r["alerts"], r["emails"]) == (False, "GREEN", [], 0)
+    assert r["crisis_text"] is False
+
+
+# Recorded, NOT closed (Ant 9 Oct): genuine reversals that run on past the
+# phrase. Recovering them safely needs the reversal tied to the denied
+# proposition (clause-scoped negation). Today they behave exactly as main.
+@pytest.mark.xfail(strict=True, reason="run-on reversal; needs clause-scoped negation (recorded)")
+@pytest.mark.parametrize("message", [
+    "I don't want to die. Wait yes I do",
+    "I don't want to die. Actually yes I do.",
+    "I'm not going to kill myself... actually maybe I should",
+])
+def test_recorded_gap_run_on_reversal_crisis(chat, message):
+    assert chat(message) == EXIT_A
+
+
+@pytest.mark.xfail(strict=True, reason="run-on reversal; needs clause-scoped negation (recorded)")
+def test_recorded_gap_run_on_reversal_with_means(chat):
+    assert chat("I'm not suicidal. Actually yes I am, I've got the pills") == AMBER_AUDIT
 
 
 def test_reversal_vocabulary_equals_inline_list():
@@ -396,6 +440,26 @@ def test_reversal_voids_negation_only_at_the_explicit_tier():
     text = "I said I wasn't suicidal but actually yes I am"
     assert _neg(text, "suicidal", explicit=False) is True
     assert _neg(text, "suicidal", explicit=True) is False
+
+
+@pytest.mark.parametrize("text", [
+    "I said I wasn't suicidal but actually yes I am",
+    "I said I wasn't suicidal but actually yes I am.",
+    "I said I wasn't suicidal but actually yes I am!  ",
+    "I'm not suicidal. Changed my mind? ",
+])
+def test_reversal_counts_when_it_ends_its_sentence(text):
+    assert _neg(text, "suicidal", explicit=True) is False
+
+
+@pytest.mark.parametrize("text", [
+    "I'm not suicidal. Actually maybe I should take tomorrow off work.",
+    "I'm not suicidal, actually I will go for a walk",
+    "I'm not suicidal. Actually yes, I'd love a cuppa",
+    "I'm not suicidal. Actually yes I am, I've got the pills",
+])
+def test_reversal_followed_by_further_words_does_not_void_the_cue(text):
+    assert _neg(text, "suicidal", explicit=True) is True
 
 
 def test_existing_im_safe_unit_case_unchanged():
