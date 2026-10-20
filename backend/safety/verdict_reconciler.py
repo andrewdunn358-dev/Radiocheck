@@ -433,16 +433,28 @@ AUDIT_FAILED_EVENT = "round10.reconcile.audit_failed"
 _AUDIT_FAILURE_LOGGER = logging.getLogger("safety.reconciler.audit_failure")
 
 
-def _emit_audit_log(final, keyword, classifier, message_lower, **kwargs) -> None:
+def _emit_audit_log(
+    final: "FinalVerdict",
+    keyword: "KeywordVerdict",
+    classifier: Optional["ClassifierVerdict"],
+    message_lower: str,
+    *,
+    session_id: str = "",
+    character: str = "",
+    severity: int = logging.INFO,
+    ctx_detector: Optional[str] = None,
+) -> None:
     try:
-        _emit_audit_log_unguarded(final, keyword, classifier, message_lower, **kwargs)
+        _emit_audit_log_unguarded(final, keyword, classifier, message_lower,
+                                  session_id=session_id, character=character,
+                                  severity=severity, ctx_detector=ctx_detector)
     except Exception as e:  # noqa: BLE001 - contained by design, see above
         try:
             _AUDIT_FAILURE_LOGGER.error(json.dumps({
                 "evt": AUDIT_FAILED_EVENT,
                 "error": type(e).__name__,
                 "rule": getattr(final, "precedence_rule_fired", None),
-                "session_id": (kwargs.get("session_id") or "")[:12],
+                "session_id": (session_id or "")[:12],
             }))
         except Exception:  # noqa: BLE001
             pass

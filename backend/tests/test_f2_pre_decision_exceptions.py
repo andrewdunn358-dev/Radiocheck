@@ -284,10 +284,16 @@ def test_crisis_A_is_still_delivered(h, point):
 
 @pytest.mark.parametrize("point", LEGACY_POINTS)
 def test_exit_a_without_legacy_records_unknown_not_negative(h, point):
-    o = outcome(h.turn(**ROUTES["A"], fail=(point,)))
+    r = h.turn(**ROUTES["A"], fail=(point,))
+    o = outcome(r)
     assert o["failsafe_fired"] is True
     assert o["should_escalate"] is None, "unknown legacy result must not be recorded as False"
     assert o["legacy_unavailable"] is True and "check_safeguarding" in o["failed_components"]
+    # Every provenance stage, not only the outcome (independent review, defect 1).
+    st = stages(r)["authoritative_runtime_vars"]["values"]
+    assert st["should_escalate"] is None and st["risk_level"] is None
+    assert st["risk_level_source"] == "unavailable"
+    assert stages(r)["legacy_result"]["values"]["available"] is False
 
 
 def test_reconciler_failure_with_classifier_high_on_crisis_A(h):
@@ -480,6 +486,41 @@ def test_retry_after_incomplete_gives_two_distinct_auditable_alerts(h):
     assert subjects[1] == "⚠️ URGENT: Safeguarding Alert [RED] - Radio Check"
 
 
+def _legacy_says(level, score):
+    """Wrap the real check_safeguarding and override its level/score."""
+    real = server.check_safeguarding
+
+    def install(mp):
+        def fake(*a, **k):
+            esc, data = real(*a, **k)
+            data = dict(data, risk_level=level, score=score)
+            return True, data
+        mp.setattr(server, "check_safeguarding", fake)
+    return install
+
+
+def test_no_provisional_alert_when_a_guard_removed_the_failsafe(h, caplog):
+    """Review edge 1: legacy RED, classifier evidence, reconciler failure, and the
+    negation guard removes the failsafe (E3). A keyword signal removed by a
+    guard does not qualify, so no provisional alert or email."""
+    with caplog.at_level(logging.WARNING):
+        r = h.turn(E3, classifier="high", force_ai=True,
+                   fail=("reconcile", _legacy_says("RED", 120)))
+    s = summary(r)
+    assert s["kind"] == "INCOMPLETE" and s["alerts"] == [] and s["emails"] == 0
+    assert any("safety.provisional_alert_not_raised" in rec.getMessage() for rec in caplog.records)
+
+
+def test_legacy_red_with_zero_score_is_not_stored_as_an_assessed_zero(h, caplog):
+    """Review edge 2: a legacy RED with scorer score 0 is not shown as 'Risk score: 0'.
+    The schema needs an int, so the provisional alert is withheld and logged (C3)."""
+    with caplog.at_level(logging.ERROR):
+        r = h.turn(G, fail=("unified", _legacy_says("RED", 0)))
+    s = summary(r)
+    assert s["kind"] == "INCOMPLETE" and s["alerts"] == [] and s["emails"] == 0
+    assert any("safety.provisional_alert_withheld" in rec.getMessage() for rec in caplog.records)
+
+
 def test_provisional_alert_in_signpost_mode_is_audit_only(h):
     r = h.turn(**_provisional_route(), signpost=True)
     assert summary(r)["alerts"] == [("RED", "audit_only", "provisional")]
@@ -497,15 +538,20 @@ def test_score_line_rules():
 
 
 def test_definitive_email_is_byte_identical_to_main():
-    """The normal (non-provisional) email is built exactly as before F2."""
-    alert = server.SafeguardingAlert(session_id="sess-1234567890", character="tommy",
-                                     triggering_message="m", ai_response="x",
-                                     risk_level="RED", risk_score=95, triggered_indicators=["x"])
-    subject, html = server._build_safeguarding_email(alert, None)
-    assert subject == "⚠️ URGENT: Safeguarding Alert [RED] - Radio Check"
-    assert '<h2 style="margin: 0;">⚠️ SAFEGUARDING ALERT - RED</h2>' in html
-    assert "Risk Score: 95" in html
-    assert "        <html>\n        <body" in html, "original indentation preserved"
+    """The normal (non-provisional) email is exactly main 315eff9's output.
+
+    Fixture captured by running send_safeguarding_email_notification on main
+    315eff9 with this exact alert and risk_data."""
+    import datetime as _dt
+    fx = os.path.join(os.path.dirname(__file__), "fixtures")
+    alert = server.SafeguardingAlert(
+        id="alert-fixed-0001", session_id="sess-1234567890", character="tommy",
+        triggering_message="I want to kill myself", ai_response="x", risk_level="RED",
+        risk_score=95, triggered_indicators=["x"], created_at=_dt.datetime(2026, 10, 20, 12, 0, 0))
+    subject, html = server._build_safeguarding_email(
+        alert, {"triggered_indicators": [{"indicator": "explicit_intent"}]})
+    assert subject == open(os.path.join(fx, "f2_definitive_email_main_315eff9.subject"), encoding="utf-8").read()
+    assert html == open(os.path.join(fx, "f2_definitive_email_main_315eff9.html"), encoding="utf-8").read()
 
 
 # ---------------------------------------------------------------------------

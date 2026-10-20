@@ -1928,9 +1928,9 @@ def _build_safeguarding_email(alert: SafeguardingAlert, risk_data: Dict = None):
                 <h2 style="margin: 0;">⚠️ SAFEGUARDING ALERT - {risk_level}</h2>
                 <p style="margin: 8px 0 0 0; font-size: 14px;">Risk Score: {risk_score}</p>
             </div>
-        
+            
             <p style="color: #1a2332; font-size: 16px;"><strong>A safeguarding concern has been detected in an AI Battle Buddies conversation.</strong></p>
-        
+            
             <div style="background-color: #fef2f2; border-left: 4px solid {risk_color}; padding: 16px; margin: 20px 0;">
                 <p style="margin: 0 0 8px 0;"><strong>Alert ID:</strong> {alert.id}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Session:</strong> {alert.session_id[:8]}...</p>
@@ -1938,18 +1938,18 @@ def _build_safeguarding_email(alert: SafeguardingAlert, risk_data: Dict = None):
                 <p style="margin: 0 0 8px 0;"><strong>Time:</strong> {alert.created_at.strftime('%d %b %Y at %H:%M')}</p>
                 {indicators_html}
             </div>
-        
+            
             <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0 0 8px 0; font-weight: bold; color: {risk_color};">Triggering Message:</p>
                 <p style="margin: 0; font-style: italic; color: #374151;">"{alert.triggering_message}"</p>
             </div>
-        
+            
             <p style="color: #666;">The user has been shown support options including crisis helplines and the option to speak with a real person.</p>
-        
+            
             <p style="text-align: center; margin: 30px 0;">
                 <a href="{STAFF_PORTAL_URL}" style="background-color: {risk_color}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">View in Staff Portal</a>
             </p>
-        
+            
             <p style="color: #666; font-size: 12px;">This is an automated safeguarding notification from Radio Check Veterans Support.</p>
         </body>
         </html>
@@ -6576,7 +6576,8 @@ async def _f2_incomplete_turn(**kw) -> "BuddyChatResponse":
 
 async def _f2_incomplete_response(*, request, character, char_config, prov, safety_failures,
                                   legacy_available, risk_data, session, signpost_mode,
-                                  client_ip, user_agent) -> "BuddyChatResponse":
+                                  client_ip, user_agent,
+                                  guard_removed_failsafe=False) -> "BuddyChatResponse":
     failed = list(safety_failures) or ["incomplete_decision"]
     # Operational failure evidence (PD-6: every INCOMPLETE outcome).
     try:
@@ -6594,11 +6595,22 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
     # classifier-only HIGH does not qualify.)
     provisional_alert_id = None
     provisional_persisted = False
+    if legacy_available and (risk_data or {}).get("risk_level") == "RED" and guard_removed_failsafe:
+        try:
+            logging.warning(json.dumps({"evt": "safety.provisional_alert_not_raised",
+                                        "reason": "guard_removed_failsafe",
+                                        "session": request.sessionId[:12]}))
+        except Exception:
+            pass
     legacy_level = (risk_data or {}).get("risk_level") if legacy_available else None
     legacy_score = (risk_data or {}).get("score") if legacy_available else None
-    if legacy_level == "RED":
+    if legacy_level == "RED" and not guard_removed_failsafe:
         try:
-            score_known = isinstance(legacy_score, int) and not isinstance(legacy_score, bool)
+            # A legacy RED that comes only from the enhanced-monitor upgrade can
+            # carry a scorer score of 0. That is not an assessed score, so it is
+            # treated as unavailable (C3), never shown as "Risk score: 0".
+            score_known = (isinstance(legacy_score, int) and not isinstance(legacy_score, bool)
+                           and legacy_score > 0)
             indicators = ["evaluation_incomplete", "provisional_alert"]
             indicators += ["risk_score_source:legacy_scorer" if score_known else "risk_score_not_available"]
             indicators += [f"failed_component:{c}" for c in failed]
@@ -7120,12 +7132,15 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # bereavement-context override where applicable.
         failsafe_should_fire = final_verdict.failsafe_triggered
         try:
+            # F2 PD-7: an unavailable legacy result is recorded as unknown
+            # (None), never as a negative assessment.
             prov.stage("authoritative_runtime_vars", source="server.buddy_chat",
                        risk_level=risk_level,
-                       risk_level_source="legacy_scorer",
-                       should_escalate=bool(should_escalate),
+                       risk_level_source=("legacy_scorer" if legacy_available else "unavailable"),
+                       should_escalate=(bool(should_escalate) if legacy_available else None),
                        failsafe_should_fire=bool(failsafe_should_fire),
-                       failsafe_source="reconciler")
+                       failsafe_source=("reconciler" if reconciler_fallback_case is None
+                                        else f"reconciler_fallback_{reconciler_fallback_case}"))
         except Exception as _pe:
             logging.error(f"[Provenance] stage failed: {_pe}")
         
@@ -7245,7 +7260,10 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 request=request, character=character, char_config=char_config, prov=prov,
                 safety_failures=safety_failures, legacy_available=legacy_available,
                 risk_data=risk_data, session=session, signpost_mode=signpost_mode,
-                client_ip=client_ip, user_agent=user_agent)
+                client_ip=client_ip, user_agent=user_agent,
+                # PD-6: a guard removed the failsafe on this turn, so the
+                # surviving evidence does not qualify for a provisional alert.
+                guard_removed_failsafe=bool(final_verdict.failsafe_triggered))
 
         if failsafe_should_fire:
             failsafe_reason = final_verdict.failsafe_reason or "unknown"
