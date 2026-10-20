@@ -423,8 +423,33 @@ def reconcile_verdicts(
 
 _AUDIT_LOGGER = logging.getLogger("safety.reconciler")
 
+# F2 PD-8 (Ant, 20 Oct 2026): the audit line is written AFTER the FinalVerdict
+# has been constructed. A failure to write it must not destroy that verdict (it
+# used to propagate out of reconcile_verdicts and reach EXIT C as GREEN/0). The
+# failure is logged under the stable event id below on a separate logger, so it
+# is observable and not silently concealed. No rule, verdict, field or
+# signature changes.
+AUDIT_FAILED_EVENT = "round10.reconcile.audit_failed"
+_AUDIT_FAILURE_LOGGER = logging.getLogger("safety.reconciler.audit_failure")
 
-def _emit_audit_log(
+
+def _emit_audit_log(final, keyword, classifier, message_lower, **kwargs) -> None:
+    try:
+        _emit_audit_log_unguarded(final, keyword, classifier, message_lower, **kwargs)
+    except Exception as e:  # noqa: BLE001 - contained by design, see above
+        try:
+            _AUDIT_FAILURE_LOGGER.error(json.dumps({
+                "evt": AUDIT_FAILED_EVENT,
+                "error": type(e).__name__,
+                "rule": getattr(final, "precedence_rule_fired", None),
+                "session_id": (kwargs.get("session_id") or "")[:12],
+            }))
+        except Exception:  # noqa: BLE001
+            pass
+
+
+
+def _emit_audit_log_unguarded(
     final: FinalVerdict,
     keyword: KeywordVerdict,
     classifier: Optional[ClassifierVerdict],
