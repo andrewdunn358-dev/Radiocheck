@@ -83,6 +83,10 @@ export default function KPIsSubTab({ governanceKPIs, kpiPeriod, setKpiPeriod, on
                   </div>
                 ))}
               </div>
+              {/* F2: provisional (INCOMPLETE evaluation) alerts are counted separately */}
+              <p data-testid="kpi-provisional" className="text-xs text-amber-400 mt-3">
+                PROVISIONAL — EVALUATION INCOMPLETE (not included above): {governanceKPIs.kpis.risk_level_distribution.provisional_incomplete || 0}
+              </p>
             </div>
           )}
         </>

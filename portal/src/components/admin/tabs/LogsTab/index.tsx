@@ -18,7 +18,7 @@ import {
   Filler,
 } from 'chart.js';
 import { api } from '@/lib/admin-api';
-import { exportRow } from '@/lib/provisionalAlert';
+import { exportRow, csvHeaders } from '@/lib/provisionalAlert';
 import type { CallLog, ChatRoom, SafeguardingAlert } from '@/types/admin';
 import CallsSubTab from './CallsSubTab';
 import ChatsSubTab from './ChatsSubTab';
@@ -205,7 +205,7 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
 
     // Helper: serialise rows into CSV and trigger a download.
     const downloadCsv = (rows: any[], fname: string) => {
-      const headers = Object.keys(rows[0]);
+      const headers = csvHeaders(rows);
       const csvContent = [
         headers.join(','),
         ...rows.map(row =>

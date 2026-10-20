@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
-  isProvisional, hasAssessedScore, provisionalScoreLine, scoreCell, provisionalSummary, exportRow,
+  isProvisional, hasAssessedScore, provisionalScoreLine, scoreCell, provisionalSummary, exportRow, csvHeaders,
   PROVISIONAL_LABEL, SCORE_NOT_AVAILABLE,
 } from '../src/lib/provisionalAlert.ts';
 
@@ -104,4 +104,20 @@ test('CSV export: provisional rows marked, unavailable score not exported as 0, 
   assert.equal(scored.evaluation_status, PROVISIONAL_LABEL);
   const src = read('../src/components/admin/tabs/LogsTab/index.tsx');
   assert.match(src, /data = safeguardingAlerts\.map\(exportRow\);/);
+});
+
+test('CSV headers: provisional row after a definitive first row is still labelled; definitive-only unchanged', () => {
+  const defOnly = [DEFINITIVE, { ...DEFINITIVE }];
+  assert.deepEqual(csvHeaders(defOnly), Object.keys(DEFINITIVE), 'definitive-only export unchanged');
+  const mixed = [DEFINITIVE, PROV_NO_SCORE].map(exportRow);
+  assert.ok(csvHeaders(mixed).includes('evaluation_status'));
+  const src = read('../src/components/admin/tabs/LogsTab/index.tsx');
+  assert.match(src, /const headers = csvHeaders\(rows\);/);
+});
+
+test('Governance KPIs and Reports tabs show the provisional count', () => {
+  const kpi = read('../src/components/admin/tabs/GovernanceTab/KPIsSubTab.tsx');
+  assert.match(kpi, /data-testid="kpi-provisional"[\s\S]*risk_level_distribution\.provisional_incomplete/);
+  const rep = read('../src/components/admin/tabs/GovernanceTab/ReportsSubTab.tsx');
+  assert.match(rep, /data-testid="report-provisional"[\s\S]*by_risk_level\?\.PROVISIONAL/);
 });

@@ -68,3 +68,16 @@ export function exportRow<T extends Record<string, any>>(alert: T): T | (T & { e
     risk_score: hasAssessedScore(alert) ? alert.risk_score : 'not available',
   };
 }
+
+/**
+ * CSV headers for the safeguarding export. Same as before (keys of the first
+ * row) unless some row is provisional, in which case evaluation_status is
+ * appended so a provisional row is labelled wherever it sits in the file.
+ */
+export function csvHeaders(rows: Record<string, any>[]): string[] {
+  const headers = Object.keys(rows[0] || {});
+  if (!headers.includes('evaluation_status') && rows.some((r) => r && 'evaluation_status' in r)) {
+    headers.push('evaluation_status');
+  }
+  return headers;
+}
