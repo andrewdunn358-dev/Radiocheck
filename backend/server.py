@@ -9832,6 +9832,13 @@ app.include_router(shifts.router, prefix="/api")
 app.include_router(buddy_finder.router, prefix="/api")
 app.include_router(podcasts.router, prefix="/api")
 
+# Rear Link (RL-1): veteran-controlled trusted contacts and Send a flare.
+# Separate from the chat handler and safety/: nothing here reads or changes a
+# safety verdict. Off unless REAR_LINK_ENABLED=true; sends nothing unless
+# REAR_LINK_DELIVERY=live. See services/rear_link_service.py.
+from routers import rear_link as rear_link_router
+app.include_router(rear_link_router.router, prefix="/api")
+
 # Staff and organization management
 app.include_router(staff.router, prefix="/api")
 app.include_router(organizations.router, prefix="/api")
