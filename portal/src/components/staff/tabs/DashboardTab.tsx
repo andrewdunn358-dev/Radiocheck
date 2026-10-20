@@ -3,6 +3,7 @@
 import {
   LayoutDashboard, AlertTriangle, MessageSquare, Briefcase, Phone, ChevronRight
 } from 'lucide-react';
+import { isProvisional } from '@/lib/provisionalAlert';
 
 interface SafeguardingAlert {
   id?: string;
@@ -12,6 +13,7 @@ interface SafeguardingAlert {
   created_at: string;
   triggering_message?: string;
   trigger_message?: string;
+  triggered_indicators?: string[];
 }
 
 interface DashboardTabProps {
@@ -129,9 +131,13 @@ export default function DashboardTab({
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`px-2 py-0.5 rounded text-xs text-white ${getRiskBadgeColor(alert.risk_level)}`}>
-                      {alert.risk_level.toUpperCase()}
-                    </span>
+                    {isProvisional(alert) ? (
+                      <span data-testid="provisional-badge" className="px-2 py-0.5 rounded text-xs font-bold bg-amber-400 text-black">PROVISIONAL — EVALUATION INCOMPLETE</span>
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded text-xs text-white ${getRiskBadgeColor(alert.risk_level)}`}>
+                        {alert.risk_level.toUpperCase()}
+                      </span>
+                    )}
                     <span className="text-gray-400 text-sm">{formatTimeAgo(alert.created_at)}</span>
                   </div>
                   <p className="text-sm truncate max-w-md">{alert.triggering_message || alert.trigger_message}</p>

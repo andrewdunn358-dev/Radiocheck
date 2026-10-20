@@ -6,6 +6,7 @@ import {
   Globe, MessageSquare, Phone, PhoneCall, PhoneOff, Mic, MicOff
 } from 'lucide-react';
 import { staffApi, SafeguardingAlert, PanicAlert } from '@/lib/api';
+import { isProvisional, provisionalSummary, PROVISIONAL_LABEL } from '@/lib/provisionalAlert';
 
 interface AlertsTabProps {
   token: string;
@@ -278,9 +279,15 @@ export default function AlertsTab({
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className={`px-2 py-1 rounded text-xs text-white ${getRiskBadgeColor(alert.risk_level || 'medium')}`}>
-                      {(alert.risk_level || 'UNKNOWN').toUpperCase()} RISK
-                    </span>
+                    {isProvisional(alert) ? (
+                      <span data-testid="provisional-badge" className="px-2 py-1 rounded text-xs font-bold bg-amber-400 text-black">
+                        {PROVISIONAL_LABEL}
+                      </span>
+                    ) : (
+                      <span className={`px-2 py-1 rounded text-xs text-white ${getRiskBadgeColor(alert.risk_level || 'medium')}`}>
+                        {(alert.risk_level || 'UNKNOWN').toUpperCase()} RISK
+                      </span>
+                    )}
                     <span className={`px-2 py-1 rounded text-xs ${
                       alert.status === 'active' ? 'bg-red-500/20 text-red-400' :
                       alert.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -308,6 +315,12 @@ export default function AlertsTab({
                 </div>
                 <span className="text-sm text-gray-400">{formatTimeAgo(alert.created_at)}</span>
               </div>
+
+              {isProvisional(alert) && (
+                <div data-testid="provisional-summary" className="border border-amber-400 bg-amber-400/10 rounded-lg p-3 mb-4 text-sm">
+                  {provisionalSummary(alert)}
+                </div>
+              )}
 
               <div className="bg-primary-dark/50 rounded-lg p-4 mb-4">
                 <p className="text-sm font-medium text-gray-400 mb-1">Trigger Message:</p>

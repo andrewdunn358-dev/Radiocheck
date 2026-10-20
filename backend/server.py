@@ -1852,14 +1852,16 @@ def _provisional_score_line(alert: SafeguardingAlert) -> str:
 
 
 def _build_provisional_safeguarding_email(alert: SafeguardingAlert, risk_data: Dict = None):
-    risk_level = getattr(alert, "risk_level", "UNKNOWN")
+    # Item 6: user-supplied text is HTML-escaped in this (new) template.
+    import html as _html
+    risk_level = _html.escape(str(getattr(alert, "risk_level", "UNKNOWN")))
     indicators = getattr(alert, "triggered_indicators", None) or []
     failed = [i.split(":", 1)[1] for i in indicators if i.startswith("failed_component:")]
     detected = ""
     if risk_data and risk_data.get("triggered_indicators"):
         names = [t["indicator"] for t in risk_data["triggered_indicators"][:5] if isinstance(t, dict) and "indicator" in t]
         if names:
-            detected = f'<p style="margin: 0 0 8px 0;"><strong>Surviving evidence:</strong> {", ".join(names)}</p>'
+            detected = f'<p style="margin: 0 0 8px 0;"><strong>Surviving evidence:</strong> {_html.escape(", ".join(names))}</p>'
     html_content = f"""
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -1874,7 +1876,7 @@ def _build_provisional_safeguarding_email(alert: SafeguardingAlert, risk_data: D
             <div style="background-color: #f3f4f6; border-left: 4px solid #6b7280; padding: 16px; margin: 20px 0;">
                 <p style="margin: 0 0 8px 0;"><strong>Alert ID:</strong> {alert.id}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Session:</strong> {alert.session_id[:8]}...</p>
-                <p style="margin: 0 0 8px 0;"><strong>Character:</strong> {alert.character.capitalize()}</p>
+                <p style="margin: 0 0 8px 0;"><strong>Character:</strong> {_html.escape(str(alert.character or '').capitalize())}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Time:</strong> {alert.created_at.strftime('%d %b %Y at %H:%M')}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Failed component(s):</strong> {", ".join(failed) or "not recorded"}</p>
                 {detected}
@@ -1882,7 +1884,7 @@ def _build_provisional_safeguarding_email(alert: SafeguardingAlert, risk_data: D
 
             <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0 0 8px 0; font-weight: bold;">Triggering Message:</p>
-                <p style="margin: 0; font-style: italic; color: #374151;">"{alert.triggering_message}"</p>
+                <p style="margin: 0; font-style: italic; color: #374151;">"{_html.escape(str(alert.triggering_message or ''))}"</p>
             </div>
 
             <p style="color: #666;">The user was shown a message saying something went wrong and asking them to send it again, with Samaritans (116 123) and 999. They were not shown the crisis support screen. If they send the message again, a separate, completed alert may follow for the same session.</p>
@@ -6629,31 +6631,43 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
                 user_agent=user_agent,
                 conversation_history=list((session or {}).get("history", [])),
             )
-            if not score_known:
-                # No valid assessed score exists. The schema needs an int, so
-                # this alert would carry a placeholder: do not persist it as
-                # fact (C3 STOP condition). Record the evidence instead.
-                logging.error(json.dumps({"evt": "safety.provisional_alert_withheld",
-                                          "reason": "no_valid_score",
+            # Ant, 20 Oct (F2 review, item 1): a qualifying provisional RED is
+            # never discarded because its score is unavailable. The integer
+            # field keeps its compatibility value 0 only together with the
+            # "risk_score_not_available" indicator; every staff-facing consumer
+            # (email, portal, stats) shows it as unavailable, never as 0. The
+            # audit record stores None, not 0.
+            provisional_alert_id = alert.id
+            try:
+                await db.safeguarding_alerts.insert_one(alert.dict())
+                provisional_persisted = True
+                logging.warning(f"SAFEGUARDING PROVISIONAL ALERT [EVALUATION INCOMPLETE] - Alert: {alert.id} - Session: {request.sessionId}")
+            except Exception as e:
+                # Item 3: independently observable; no email will claim a
+                # portal record that does not exist.
+                logging.error(json.dumps({"evt": "safety.provisional_alert_not_persisted",
+                                          "alert_id": alert.id, "error": type(e).__name__,
                                           "session": request.sessionId[:12]}))
-            else:
-                provisional_alert_id = alert.id
-                try:
-                    await db.safeguarding_alerts.insert_one(alert.dict())
-                    provisional_persisted = True
-                    logging.warning(f"SAFEGUARDING PROVISIONAL ALERT [EVALUATION INCOMPLETE] - Alert: {alert.id} - Session: {request.sessionId}")
-                except Exception as e:
-                    logging.error(f"SAFEGUARDING PROVISIONAL ALERT NOT PERSISTED - Alert: {alert.id} - {type(e).__name__}: {e}")
-                try:
-                    await audit_safeguarding_alert(
-                        db, session_id=request.sessionId, risk_level="RED",
-                        score=legacy_score, triggered_indicators=indicators)
-                except Exception as e:
-                    logging.error(f"SAFEGUARDING PROVISIONAL AUDIT NOT PERSISTED - Alert: {alert.id} - {type(e).__name__}: {e}")
+            try:
+                await audit_safeguarding_alert(
+                    db, session_id=request.sessionId, risk_level="RED",
+                    score=(legacy_score if score_known else None),
+                    triggered_indicators=indicators)
+            except Exception as e:
+                logging.error(f"SAFEGUARDING PROVISIONAL AUDIT NOT PERSISTED - Alert: {alert.id} - {type(e).__name__}: {e}")
+            if provisional_persisted:
                 try:
                     await send_safeguarding_email_notification(alert, risk_data)
                 except Exception as e:
                     logging.error(f"Failed to send provisional safeguarding email: {e}")
+            else:
+                # Item 3: the email links to the staff portal record, so it is
+                # only sent once that record exists. What staff should receive
+                # instead is returned to Ant for a ruling (no new pathway).
+                logging.error(json.dumps({"evt": "safety.provisional_email_not_sent",
+                                          "reason": "alert_not_persisted",
+                                          "alert_id": alert.id,
+                                          "session": request.sessionId[:12]}))
         except Exception as e:
             logging.error(f"[F2] provisional alert failed: {type(e).__name__}: {e}")
 

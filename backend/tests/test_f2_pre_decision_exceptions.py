@@ -369,8 +369,15 @@ def _break_fallback(mp):
 
 @pytest.mark.parametrize("route", ["A", "B1", "G"])
 def test_failure_inside_fallback_construction_is_incomplete(h, route):
+    """Residual (Ant item 6): reconciler AND fallback construction both fail.
+    A loses EXIT A (holding response instead of the crisis response), but the
+    surviving legacy RED still produces an active provisional alert + email."""
     s = summary(h.turn(**ROUTES[route], fail=("reconcile", _break_fallback)))
     assert s["kind"] == "INCOMPLETE", s
+    if route in ("A", "B1"):
+        assert s["alerts"] == [("RED", "active", "provisional")] and s["emails"] == 1
+    else:
+        assert s["alerts"] == [] and s["emails"] == 0
 
 
 def _break_responder(mp):
@@ -511,14 +518,63 @@ def test_no_provisional_alert_when_a_guard_removed_the_failsafe(h, caplog):
     assert any("safety.provisional_alert_not_raised" in rec.getMessage() for rec in caplog.records)
 
 
-def test_legacy_red_with_zero_score_is_not_stored_as_an_assessed_zero(h, caplog):
-    """Review edge 2: a legacy RED with scorer score 0 is not shown as 'Risk score: 0'.
-    The schema needs an int, so the provisional alert is withheld and logged (C3)."""
-    with caplog.at_level(logging.ERROR):
-        r = h.turn(G, fail=("unified", _legacy_says("RED", 0)))
+def test_legacy_red_with_unavailable_score_is_persisted_as_unavailable(h):
+    """Ant item 1 (20 Oct 23:09): a qualifying provisional RED is never withheld
+    because its score is unavailable. The int field holds 0 only together with
+    evaluation_incomplete + risk_score_not_available, and the email says so."""
+    r = h.turn(G, fail=("unified", _legacy_says("RED", 0)))
     s = summary(r)
-    assert s["kind"] == "INCOMPLETE" and s["alerts"] == [] and s["emails"] == 0
-    assert any("safety.provisional_alert_withheld" in rec.getMessage() for rec in caplog.records)
+    assert s["kind"] == "INCOMPLETE"
+    assert s["alerts"] == [("RED", "active", "provisional")] and s["emails"] == 1
+    a = r["alerts"][0]
+    assert a["risk_score"] == 0
+    assert "evaluation_incomplete" in a["triggered_indicators"]
+    assert "risk_score_not_available" in a["triggered_indicators"]
+    assert "risk_score_source:legacy_scorer" not in a["triggered_indicators"]
+    _, subject, html = r["emails"][0]
+    assert "PROVISIONAL SAFEGUARDING ALERT — EVALUATION INCOMPLETE" in subject
+    assert server.F2_SCORE_NOT_AVAILABLE in html
+    assert "Risk score: 0" not in html and "Risk Score:" not in html
+    assert r["alert_id"] == a["id"]
+
+
+@pytest.mark.parametrize("score", [None, "high", -5, 0])
+def test_unknown_score_shapes_all_read_unavailable(h, score):
+    r = h.turn(G, fail=("unified", _legacy_says("RED", score)))
+    assert summary(r)["alerts"] == [("RED", "active", "provisional")]
+    a = r["alerts"][0]
+    assert a["risk_score"] == 0 and "risk_score_not_available" in a["triggered_indicators"]
+    assert server.F2_SCORE_NOT_AVAILABLE in r["emails"][0][2]
+
+
+def _fail_alert_insert(mp):
+    """Deterministic fault: the safeguarding_alerts insert raises. Other
+    collections are untouched."""
+    cls = type(server.db.safeguarding_alerts)
+    real = cls.insert_one
+
+    async def insert_one(self, *a, **k):
+        if getattr(self, "name", "") == "safeguarding_alerts":
+            raise RuntimeError("injected: safeguarding_alerts insert failed")
+        return await real(self, *a, **k)
+    mp.setattr(cls, "insert_one", insert_one)
+
+
+@pytest.mark.parametrize("score", [120, 0])
+def test_provisional_email_not_sent_when_persistence_fails(h, caplog, score):
+    """Ant item 3: an email must not claim a portal record exists unless the
+    record was saved. Fault-injected insert failure -> no email, no alert id,
+    the user still gets the holding response, and the failure is logged."""
+    with caplog.at_level(logging.ERROR):
+        r = h.turn(G, fail=("unified", _legacy_says("RED", score), _fail_alert_insert))
+    s = summary(r)
+    assert s["kind"] == "INCOMPLETE" and r["reply"] == HOLDING
+    assert s["alerts"] == [] and s["emails"] == 0
+    assert r["alert_id"] is None
+    msgs = [rec.getMessage() for rec in caplog.records]
+    assert any("safety.provisional_alert_not_persisted" in m for m in msgs)
+    assert any("safety.provisional_email_not_sent" in m for m in msgs)
+    assert outcome(r)["provisional_alert_created"] is False
 
 
 def test_provisional_alert_in_signpost_mode_is_audit_only(h):
@@ -618,3 +674,38 @@ def test_frontend_consumers_do_not_read_risk_fields():
     for f in files:
         src = open(os.path.join(root, f), encoding="utf-8").read()
         assert "data.riskScore" not in src and "data.riskLevel" not in src, f
+
+
+# ---------------------------------------------------------------------------
+# Item 5 (Ant 20 Oct 23:09): retry after INCOMPLETE vs controls. Observational
+# pins only; no safety history is cleared or reset.
+# ---------------------------------------------------------------------------
+
+def test_retry_after_incomplete_equals_a_healthy_repeat_not_a_clean_session(h):
+    """The INCOMPLETE turn leaves one session_risk_history entry (written by the
+    legacy scorer before the failure). A retry therefore behaves exactly like a
+    second healthy send of the same message, not like a fresh session:
+    +20 "repeated indicator" on the legacy score, and the "first AMBER" email
+    rule (session_history_count <= 1) no longer sends an AMBER email."""
+    clean = h.new_session()
+    control = summary(h.send(clean, B2, classifier="high"))
+    repeat = summary(h.send(clean, B2, classifier="high"))
+    sid = h.new_session()
+    first = h.send(sid, B2, classifier="high", fail=("unified",))
+    assert len(server.session_risk_history.get(sid, [])) == 1
+    retry = summary(h.send(sid, B2, classifier="high"))
+    assert summary(first)["kind"] == "INCOMPLETE"
+    assert (control["risk"], control["score"], control["emails"]) == ("AMBER", 80, 1)
+    assert (retry["risk"], retry["score"], retry["emails"]) == ("AMBER", 100, 0)
+    assert (retry["risk"], retry["score"], retry["emails"]) == (repeat["risk"], repeat["score"], repeat["emails"])
+
+
+def test_retry_after_legacy_failure_leaves_no_email_for_the_session(h):
+    """Recorded for Ant: enhanced-monitor failure makes legacy unavailable, so
+    no provisional alert; history was still written, so the retry's active
+    AMBER (Rule 2b) gets no email either. Portal record exists; no email."""
+    sid = h.new_session()
+    first = summary(h.send(sid, B2, classifier="high", fail=("enhanced_monitor",)))
+    retry = summary(h.send(sid, B2, classifier="high"))
+    assert first["kind"] == "INCOMPLETE" and first["alerts"] == [] and first["emails"] == 0
+    assert ("AMBER", "active", "definitive") in retry["alerts"] and retry["emails"] == 0
