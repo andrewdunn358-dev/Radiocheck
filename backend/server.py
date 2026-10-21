@@ -6562,9 +6562,63 @@ def _f2_minimal_holding_response(request) -> "BuddyChatResponse":
     )
 
 
+F2_UNNOTIFIED_MARK = "f2_incomplete_unnotified"
+
+
+def _f2_history_ids(session_id) -> set:
+    """Identity of the session's risk-history entries before this turn's
+    legacy scoring, so the entries this turn adds can be found afterwards."""
+    try:
+        return {id(e) for e in session_risk_history.get(session_id, [])}
+    except Exception:
+        return set()
+
+
+def _f2_set_unnotified(session_id, before_ids, value: bool) -> int:
+    """Ant, 21 Oct 2026 (F2 sign-off item): an INCOMPLETE turn may still have
+    written a session_risk_history entry (the legacy scorer runs before the
+    failing component). That entry is kept (history is never cleared or
+    reset), but it is marked while no staff notification was delivered for the
+    turn, so it cannot use up the session's first-alert email (EXIT B rule
+    session_history_count <= 1). Returns the number of entries touched."""
+    if before_ids is None:
+        return 0
+    n = 0
+    for e in session_risk_history.get(session_id, []):
+        if id(e) not in before_ids and isinstance(e, dict):
+            if value:
+                e[F2_UNNOTIFIED_MARK] = True
+            else:
+                e.pop(F2_UNNOTIFIED_MARK, None)
+            n += 1
+    return n
+
+
+def _f2_notification_history_count(session_id, session_history_count):
+    """History count for EXIT B's first-alert email rule, not counting entries
+    written by INCOMPLETE turns that delivered no staff notification. Scoring
+    (including the +20 repeated-indicator modifier) is unchanged."""
+    try:
+        unnotified = sum(1 for e in session_risk_history.get(session_id, [])
+                         if isinstance(e, dict) and e.get(F2_UNNOTIFIED_MARK))
+        return session_history_count - unnotified
+    except Exception:
+        return session_history_count
+
+
 async def _f2_incomplete_turn(**kw) -> "BuddyChatResponse":
     """INCOMPLETE outcome. The deterministic holding response is returned even
     if anything inside the responder fails (PD-2: no dependency on a lookup)."""
+    # Until a staff notification is confirmed delivered, the history entry this
+    # turn wrote is marked as unnotified (see _f2_set_unnotified).
+    try:
+        marked = _f2_set_unnotified(kw["request"].sessionId, kw.get("history_before_ids"), True)
+        if marked:
+            logging.warning(json.dumps({"evt": "safety.incomplete_history_marked_unnotified",
+                                        "entries": marked,
+                                        "session": kw["request"].sessionId[:12]}))
+    except Exception:
+        pass
     try:
         return await _f2_incomplete_response(**kw)
     except Exception as e:
@@ -6579,7 +6633,8 @@ async def _f2_incomplete_turn(**kw) -> "BuddyChatResponse":
 async def _f2_incomplete_response(*, request, character, char_config, prov, safety_failures,
                                   legacy_available, risk_data, session, signpost_mode,
                                   client_ip, user_agent,
-                                  guard_removed_failsafe=False) -> "BuddyChatResponse":
+                                  guard_removed_failsafe=False,
+                                  history_before_ids=None) -> "BuddyChatResponse":
     failed = list(safety_failures) or ["incomplete_decision"]
     # Operational failure evidence (PD-6: every INCOMPLETE outcome).
     try:
@@ -6657,7 +6712,10 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
                 logging.error(f"SAFEGUARDING PROVISIONAL AUDIT NOT PERSISTED - Alert: {alert.id} - {type(e).__name__}: {e}")
             if provisional_persisted:
                 try:
-                    await send_safeguarding_email_notification(alert, risk_data)
+                    if await send_safeguarding_email_notification(alert, risk_data):
+                        # Staff were notified on this turn: its history entry
+                        # counts towards the first-alert rule as before.
+                        _f2_set_unnotified(request.sessionId, history_before_ids, False)
                 except Exception as e:
                     logging.error(f"Failed to send provisional safeguarding email: {e}")
             else:
@@ -6950,6 +7008,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # authoritative decision still exists (otherwise the turn is INCOMPLETE).
         safety_failures: List[str] = []
         legacy_available = True
+        _f2_history_before = _f2_history_ids(request.sessionId)
         try:
             should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character, protocol_files=protocol_files)
         except Exception as _f2_err:
@@ -7125,7 +7184,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 request=request, character=character, char_config=char_config, prov=prov,
                 safety_failures=safety_failures, legacy_available=legacy_available,
                 risk_data=risk_data, session=session, signpost_mode=signpost_mode,
-                client_ip=client_ip, user_agent=user_agent)
+                client_ip=client_ip, user_agent=user_agent,
+                history_before_ids=_f2_history_before)
 
         # Log the unified safety analysis for debugging
         logging.info(
@@ -7275,6 +7335,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 safety_failures=safety_failures, legacy_available=legacy_available,
                 risk_data=risk_data, session=session, signpost_mode=signpost_mode,
                 client_ip=client_ip, user_agent=user_agent,
+                history_before_ids=_f2_history_before,
                 # PD-6: a guard removed the failsafe on this turn, so the
                 # surviving evidence does not qualify for a provisional alert.
                 guard_removed_failsafe=bool(final_verdict.failsafe_triggered))
@@ -8494,7 +8555,10 @@ Return ONLY the response text. No explanation. No labels."""
             # - request_human_call (when user chooses call) -> sends incoming_call_request
             
             # Send email notification to admin (only for RED alerts or first AMBER)
-            if risk_level == "RED" or risk_data["session_history_count"] <= 1:
+            # F2 (Ant, 21 Oct 2026): history entries from INCOMPLETE turns that
+            # delivered no staff notification do not use up the first-alert email.
+            if risk_level == "RED" or _f2_notification_history_count(
+                    request.sessionId, risk_data["session_history_count"]) <= 1:
                 try:
                     await send_safeguarding_email_notification(alert, risk_data)
                 except Exception as email_err:

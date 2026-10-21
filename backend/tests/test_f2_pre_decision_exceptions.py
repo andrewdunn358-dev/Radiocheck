@@ -700,12 +700,99 @@ def test_retry_after_incomplete_equals_a_healthy_repeat_not_a_clean_session(h):
     assert (retry["risk"], retry["score"], retry["emails"]) == (repeat["risk"], repeat["score"], repeat["emails"])
 
 
-def test_retry_after_legacy_failure_leaves_no_email_for_the_session(h):
-    """Recorded for Ant: enhanced-monitor failure makes legacy unavailable, so
-    no provisional alert; history was still written, so the retry's active
-    AMBER (Rule 2b) gets no email either. Portal record exists; no email."""
+def _fail_email_delivery(mp):
+    async def _undelivered(alert, risk_data=None):
+        return False
+    mp.setattr(server, "send_safeguarding_email_notification", _undelivered)
+
+
+def _b2_retry(h, fail):
     sid = h.new_session()
-    first = summary(h.send(sid, B2, classifier="high", fail=("enhanced_monitor",)))
+    first = summary(h.send(sid, B2, classifier="high", fail=fail))
     retry = summary(h.send(sid, B2, classifier="high"))
-    assert first["kind"] == "INCOMPLETE" and first["alerts"] == [] and first["emails"] == 0
-    assert ("AMBER", "active", "definitive") in retry["alerts"] and retry["emails"] == 0
+    return sid, first, retry
+
+
+# Ant, 21 Oct 2026 (sign-off item): an INCOMPLETE turn must not silently use up
+# the session's first-alert staff notification.
+@pytest.mark.parametrize("fail", [
+    ("enhanced_monitor",),                          # legacy unavailable: no provisional alert
+    ("unified", _fail_email_delivery),              # provisional alert, email not delivered
+    ("unified", _break_email),                      # provisional alert, email raises
+    ("unified", _fail_alert_insert),                # provisional alert not persisted: no email
+    ("unified", _break_responder),                  # responder itself fails
+], ids=["enhanced_monitor", "email_undelivered", "email_raises", "insert_fails", "responder_fails"])
+def test_unnotified_incomplete_turn_does_not_consume_first_alert_email(h, fail):
+    sid, first, retry = _b2_retry(h, fail)
+    assert first["kind"] == "INCOMPLETE" and first["emails"] == 0
+    assert ("AMBER", "active", "definitive") in retry["alerts"]
+    assert retry["emails"] == 1, "first eligible staff notification is still sent"
+    # History is kept, not cleared or reset; scoring is unchanged (+20 repeat).
+    hist = server.session_risk_history[sid]
+    assert len(hist) == 2 and hist[0].get(server.F2_UNNOTIFIED_MARK) is True
+    assert retry["score"] == 100
+
+
+def test_notified_incomplete_turn_still_counts_as_the_first_notification(h):
+    """Provisional alert persisted and its email delivered: staff were notified,
+    so the retry's AMBER follows the existing rule (no second email)."""
+    sid, first, retry = _b2_retry(h, ("unified",))
+    assert first["alerts"] == [("RED", "active", "provisional")] and first["emails"] == 1
+    assert retry["emails"] == 0
+    assert not any(e.get(server.F2_UNNOTIFIED_MARK) for e in server.session_risk_history[sid])
+
+
+def test_retry_after_unnotified_incomplete_matches_clean_control(h):
+    clean = summary(h.send(h.new_session(), B2, classifier="high"))
+    _, _, retry = _b2_retry(h, ("enhanced_monitor",))
+    assert (retry["kind"], retry["risk"], retry["alerts"], retry["emails"]) == \
+           (clean["kind"], clean["risk"], clean["alerts"], clean["emails"])
+
+
+def test_healthy_repeat_email_rule_unchanged(h):
+    sid = h.new_session()
+    a = summary(h.send(sid, B2, classifier="high"))
+    b = summary(h.send(sid, B2, classifier="high"))
+    assert (a["emails"], b["emails"]) == (1, 0)
+    assert not any(e.get(server.F2_UNNOTIFIED_MARK) for e in server.session_risk_history[sid])
+
+
+def test_only_one_first_alert_email_after_several_unnotified_failures(h):
+    sid = h.new_session()
+    for _ in range(2):
+        h.send(sid, B2, classifier="high", fail=("enhanced_monitor",))
+    first_ok = summary(h.send(sid, B2, classifier="high"))
+    second_ok = summary(h.send(sid, B2, classifier="high"))
+    assert (first_ok["emails"], second_ok["emails"]) == (1, 0)
+
+
+def test_unnotified_mark_survives_history_cap(h):
+    sid = h.new_session()
+    for _ in range(21):
+        h.send(sid, G)
+    h.send(sid, B2, classifier="high", fail=("enhanced_monitor",))
+    hist = server.session_risk_history[sid]
+    assert len(hist) == 20 and hist[-1].get(server.F2_UNNOTIFIED_MARK) is True
+
+
+def test_scope_green_then_incomplete_then_amber_is_unchanged(h):
+    """Documents the existing first-alert rule's scope (out of F2 scope): every
+    scored turn adds history, so AMBER after an earlier GREEN turn is not the
+    session's first scored message and gets no email, with or without a failure."""
+    plain = h.new_session()
+    h.send(plain, G)
+    no_fail = summary(h.send(plain, B2, classifier="high"))
+    sid = h.new_session()
+    h.send(sid, G)
+    h.send(sid, B2, classifier="high", fail=("enhanced_monitor",))
+    after_fail = summary(h.send(sid, B2, classifier="high"))
+    assert no_fail["emails"] == 0 and after_fail["emails"] == 0
+
+
+def test_second_incomplete_site_marks_history(h):
+    """Completion check 2 (guard removed the failsafe, reconciler fallback ii)
+    also marks the entry it wrote."""
+    sid = h.new_session()
+    r = h.send(sid, E3, classifier="high", force_ai=True, fail=("reconcile",))
+    assert summary(r)["kind"] == "INCOMPLETE" and summary(r)["emails"] == 0
+    assert server.session_risk_history[sid][-1].get(server.F2_UNNOTIFIED_MARK) is True
