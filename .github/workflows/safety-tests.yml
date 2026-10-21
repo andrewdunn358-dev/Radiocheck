@@ -10,7 +10,14 @@ on:
       - 'portal/src/app/staff/page.tsx'
       - 'portal/src/lib/api.ts'
       - 'portal/src/components/staff/tabs/AlertsTab.tsx'
+      - 'portal/src/components/staff/tabs/DashboardTab.tsx'
+      - 'portal/src/components/admin/tabs/LogsTab/SafeguardingSubTab.tsx'
+      - 'portal/src/components/admin/tabs/LogsTab/index.tsx'
+      - 'portal/src/components/admin/tabs/GovernanceTab/KPIsSubTab.tsx'
+      - 'portal/src/components/admin/tabs/GovernanceTab/ReportsSubTab.tsx'
+      - 'portal/src/lib/provisionalAlert.ts'
       - 'portal/tests/**'
+      - '.github/workflows/safety-tests.yml'
   pull_request:
     branches: [main]
     paths:
@@ -20,7 +27,14 @@ on:
       - 'portal/src/app/staff/page.tsx'
       - 'portal/src/lib/api.ts'
       - 'portal/src/components/staff/tabs/AlertsTab.tsx'
+      - 'portal/src/components/staff/tabs/DashboardTab.tsx'
+      - 'portal/src/components/admin/tabs/LogsTab/SafeguardingSubTab.tsx'
+      - 'portal/src/components/admin/tabs/LogsTab/index.tsx'
+      - 'portal/src/components/admin/tabs/GovernanceTab/KPIsSubTab.tsx'
+      - 'portal/src/components/admin/tabs/GovernanceTab/ReportsSubTab.tsx'
+      - 'portal/src/lib/provisionalAlert.ts'
       - 'portal/tests/**'
+      - '.github/workflows/safety-tests.yml'
 
 jobs:
   safety-tests:
@@ -42,7 +56,7 @@ jobs:
           node-version: '22'
 
       - name: Portal panic-button tests
-        run: node --test portal/tests/staffPanic.test.mjs portal/tests/alertsTabPanic.test.mjs
+        run: node --test portal/tests/staffPanic.test.mjs portal/tests/alertsTabPanic.test.mjs portal/tests/provisionalAlert.test.mjs
 
       - name: Install dependencies
         run: |
@@ -79,6 +93,8 @@ jobs:
             tests/test_safeguarding_router_access_control.py \
             tests/test_staff_panic_alert_contract.py \
             tests/test_privacy_protocol_wording.py \
+            tests/test_f2_pre_decision_exceptions.py \
+            tests/test_f2_provisional_reporting.py \
             -v
         env:
           SKIP_LIVE_TESTS: "true"

@@ -534,6 +534,12 @@ async def get_safeguarding_kpis(
         }).to_list(10000)
         
         # Calculate metrics
+        # F2 (Ant, 20 Oct, item 2): provisional alerts (INCOMPLETE safety
+        # evaluation) are reported separately, not as completed RED assessments.
+        def _is_provisional(a):
+            return "evaluation_incomplete" in (a.get("triggered_indicators") or [])
+        total_provisional = len([a for a in alerts if _is_provisional(a)])
+        alerts = [a for a in alerts if not _is_provisional(a)]
         total_high_risk = len([a for a in alerts if a.get("risk_level") in ["HIGH", "AMBER", "RED"]])
         total_imminent = len([a for a in alerts if a.get("risk_level") == "RED" or a.get("requires_immediate_action")])
         total_medium = len([a for a in alerts if a.get("risk_level") in ["MEDIUM", "YELLOW"]])
@@ -570,7 +576,8 @@ async def get_safeguarding_kpis(
             "imminent": total_imminent,
             "high": total_high_risk - total_imminent,
             "medium": total_medium,
-            "low": total_low
+            "low": total_low,
+            "provisional_incomplete": total_provisional
         }
         
         kpis = SafeguardingKPIs(
@@ -626,6 +633,17 @@ async def get_summary_report(period: str = "weekly"):
             {"$group": {"_id": "$risk_level", "count": {"$sum": 1}}}
         ]).to_list(100)
         alerts_by_risk = {item["_id"]: item["count"] for item in alert_counts}
+        # F2 (item 2): report provisional (INCOMPLETE evaluation) alerts in
+        # their own bucket rather than inside their surviving risk level.
+        prov_counts = await db.safeguarding_alerts.aggregate([
+            {"$match": {"created_at": {"$gte": period_start},
+                        "triggered_indicators": "evaluation_incomplete"}},
+            {"$group": {"_id": "$risk_level", "count": {"$sum": 1}}}
+        ]).to_list(100)
+        for item in prov_counts:
+            if item["_id"] in alerts_by_risk:
+                alerts_by_risk[item["_id"]] -= item["count"]
+            alerts_by_risk["PROVISIONAL"] = alerts_by_risk.get("PROVISIONAL", 0) + item["count"]
         
         # Get callback stats
         callbacks = await db.callback_requests.count_documents({"created_at": {"$gte": period_start}})

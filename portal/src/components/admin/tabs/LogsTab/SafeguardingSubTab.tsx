@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/admin-api';
 import type { SafeguardingAlert } from '@/types/admin';
+import { isProvisional, scoreCell } from '@/lib/provisionalAlert';
 
 interface SafeguardingSubTabProps {
   safeguardingAlerts: SafeguardingAlert[];
@@ -99,8 +100,11 @@ export default function SafeguardingSubTab({
                     }`}>
                       {(alert.risk_level || 'unknown').toUpperCase()}
                     </span>
+                    {isProvisional(alert) && (
+                      <span data-testid="provisional-badge" className="ml-1 px-2 py-1 rounded text-xs font-bold bg-amber-400 text-black">PROVISIONAL — EVALUATION INCOMPLETE</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-sm">{alert.risk_score || alert.score || '-'}</td>
+                  <td className="px-4 py-3 font-mono text-sm">{scoreCell(alert)}</td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-400">{alert.session_id?.substring(0, 12) || '-'}...</td>
                   <td className="px-4 py-3 text-sm">
                     {alert.geo_city || alert.location_city || '-'}
@@ -160,6 +164,9 @@ export default function SafeguardingSubTab({
                   selectedSafeguardingAlert.risk_level === 'high' ? 'text-orange-500' : 'text-yellow-500'
                 }`} />
                 Safeguarding Alert Details
+                {isProvisional(selectedSafeguardingAlert) && (
+                  <span data-testid="provisional-detail-badge" className="px-2 py-0.5 rounded text-xs font-bold bg-amber-400 text-black">PROVISIONAL — EVALUATION INCOMPLETE</span>
+                )}
               </h3>
               <button onClick={() => setShowAlertDetailModal(false)} className="p-1 hover:bg-gray-700 rounded">
                 <X className="w-5 h-5" />
@@ -176,7 +183,7 @@ export default function SafeguardingSubTab({
               </div>
               <div className="bg-gray-700/50 rounded p-3">
                 <p className="text-xs text-gray-400">Risk Score</p>
-                <p className="text-lg font-bold">{selectedSafeguardingAlert.risk_score || selectedSafeguardingAlert.score || '-'}</p>
+                <p className="text-lg font-bold">{scoreCell(selectedSafeguardingAlert)}</p>
               </div>
             </div>
 

@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import hashlib
+import json
 from pathlib import Path
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional, Dict, Any
@@ -1837,33 +1838,92 @@ async def send_reset_email(email: str, reset_token: str):
         logging.error(f"Failed to send email via Resend: {str(e)}")
         return False
 
-async def send_safeguarding_email_notification(alert: SafeguardingAlert, risk_data: Dict = None):
-    """Send urgent safeguarding alert email to admins/counsellors"""
-    if not RESEND_API_KEY:
-        logging.warning("Resend API key not configured, skipping safeguarding email")
-        return False
+F2_PROVISIONAL_EMAIL_SUBJECT = "PROVISIONAL SAFEGUARDING ALERT — EVALUATION INCOMPLETE"
+F2_SCORE_NOT_AVAILABLE = "Risk score: not available — evaluation incomplete"
+
+
+def _provisional_score_line(alert: SafeguardingAlert) -> str:
+    """The staff-facing score line for a provisional alert (Ant, C3)."""
+    indicators = getattr(alert, "triggered_indicators", None) or []
+    source = next((i.split(":", 1)[1] for i in indicators if i.startswith("risk_score_source:")), None)
+    if source and isinstance(getattr(alert, "risk_score", None), int):
+        return f"Risk score: {alert.risk_score} (from the {source.replace('_', ' ')} only — evaluation incomplete)"
+    return F2_SCORE_NOT_AVAILABLE
+
+
+def _build_provisional_safeguarding_email(alert: SafeguardingAlert, risk_data: Dict = None):
+    # Item 6: user-supplied text is HTML-escaped in this (new) template.
+    import html as _html
+    risk_level = _html.escape(str(getattr(alert, "risk_level", "UNKNOWN")))
+    indicators = getattr(alert, "triggered_indicators", None) or []
+    failed = [i.split(":", 1)[1] for i in indicators if i.startswith("failed_component:")]
+    detected = ""
+    if risk_data and risk_data.get("triggered_indicators"):
+        names = [t["indicator"] for t in risk_data["triggered_indicators"][:5] if isinstance(t, dict) and "indicator" in t]
+        if names:
+            detected = f'<p style="margin: 0 0 8px 0;"><strong>Surviving evidence:</strong> {_html.escape(", ".join(names))}</p>'
+    html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #6b7280; color: white; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="margin: 0;">{F2_PROVISIONAL_EMAIL_SUBJECT}</h2>
+                <p style="margin: 8px 0 0 0; font-size: 14px;">Surviving evidence level: {risk_level} (not a completed assessment)</p>
+                <p style="margin: 4px 0 0 0; font-size: 14px;">{_provisional_score_line(alert)}</p>
+            </div>
+
+            <p style="color: #1a2332; font-size: 16px;"><strong>Radio Check could not complete its safety evaluation of this message.</strong> Part of the evaluation failed. The evidence that survived indicated risk, so this provisional alert has been raised. It is not a completed safeguarding assessment.</p>
+
+            <div style="background-color: #f3f4f6; border-left: 4px solid #6b7280; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0 0 8px 0;"><strong>Alert ID:</strong> {alert.id}</p>
+                <p style="margin: 0 0 8px 0;"><strong>Session:</strong> {alert.session_id[:8]}...</p>
+                <p style="margin: 0 0 8px 0;"><strong>Character:</strong> {_html.escape(str(alert.character or '').capitalize())}</p>
+                <p style="margin: 0 0 8px 0;"><strong>Time:</strong> {alert.created_at.strftime('%d %b %Y at %H:%M')}</p>
+                <p style="margin: 0 0 8px 0;"><strong>Failed component(s):</strong> {", ".join(failed) or "not recorded"}</p>
+                {detected}
+            </div>
+
+            <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0 0 8px 0; font-weight: bold;">Triggering Message:</p>
+                <p style="margin: 0; font-style: italic; color: #374151;">"{_html.escape(str(alert.triggering_message or ''))}"</p>
+            </div>
+
+            <p style="color: #666;">The user was shown a message saying something went wrong and asking them to send it again, with Samaritans (116 123) and 999. They were not shown the crisis support screen. If they send the message again, a separate, completed alert may follow for the same session.</p>
+
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{STAFF_PORTAL_URL}" style="background-color: #374151; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">View in Staff Portal</a>
+            </p>
+
+            <p style="color: #666; font-size: 12px;">This is an automated safeguarding notification from Radio Check Veterans Support.</p>
+        </body>
+        </html>
+        """
+    return f"⚠️ {F2_PROVISIONAL_EMAIL_SUBJECT} - Radio Check", html_content
+
+
+def _build_safeguarding_email(alert: SafeguardingAlert, risk_data: Dict = None):
+    """Return (subject, html) for the staff safeguarding email.
+
+    F2 (Ant, 20 Oct 2026, PD-6 / C2 / C3): an alert written on an INCOMPLETE
+    turn carries the existing "evaluation_incomplete" indicator. It must not
+    arrive looking like a completed RED assessment, so it gets a differentiated
+    subject and heading, the risk score is shown with its source (or "not
+    available"), and the closing line says what the user was actually shown.
+    Every other alert is built exactly as before.
+    """
+    if "evaluation_incomplete" in (getattr(alert, "triggered_indicators", None) or []):
+        return _build_provisional_safeguarding_email(alert, risk_data)
+    # Determine alert colour based on risk level
+    risk_level = alert.risk_level if hasattr(alert, 'risk_level') else "AMBER"
+    risk_score = alert.risk_score if hasattr(alert, 'risk_score') else 0
+    risk_color = "#dc2626" if risk_level == "RED" else "#f59e0b"  # Red or Amber
     
-    try:
-        # Get admin notification email from settings
-        settings = await db.settings.find_one({"_id": "site_settings"}, {"_id": 0})
-        admin_email = settings.get("admin_notification_email", "") if settings else ""
-        
-        if not admin_email:
-            logging.warning("No admin notification email configured for safeguarding alerts")
-            return False
-        
-        # Determine alert colour based on risk level
-        risk_level = alert.risk_level if hasattr(alert, 'risk_level') else "AMBER"
-        risk_score = alert.risk_score if hasattr(alert, 'risk_score') else 0
-        risk_color = "#dc2626" if risk_level == "RED" else "#f59e0b"  # Red or Amber
-        
-        # Format triggered indicators
-        indicators_html = ""
-        if risk_data and risk_data.get("triggered_indicators"):
-            indicators = [t["indicator"] for t in risk_data["triggered_indicators"][:5]]
-            indicators_html = f'<p style="margin: 0 0 8px 0;"><strong>Detected:</strong> {", ".join(indicators)}</p>'
-        
-        html_content = f"""
+    # Format triggered indicators
+    indicators_html = ""
+    if risk_data and risk_data.get("triggered_indicators"):
+        indicators = [t["indicator"] for t in risk_data["triggered_indicators"][:5]]
+        indicators_html = f'<p style="margin: 0 0 8px 0;"><strong>Detected:</strong> {", ".join(indicators)}</p>'
+    
+    html_content = f"""
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background-color: {risk_color}; color: white; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
@@ -1896,11 +1956,31 @@ async def send_safeguarding_email_notification(alert: SafeguardingAlert, risk_da
         </body>
         </html>
         """
+    
+    return f"⚠️ URGENT: Safeguarding Alert [{risk_level}] - Radio Check", html_content
+    
+
+
+async def send_safeguarding_email_notification(alert: SafeguardingAlert, risk_data: Dict = None):
+    """Send urgent safeguarding alert email to admins/counsellors"""
+    if not RESEND_API_KEY:
+        logging.warning("Resend API key not configured, skipping safeguarding email")
+        return False
+    
+    try:
+        # Get admin notification email from settings
+        settings = await db.settings.find_one({"_id": "site_settings"}, {"_id": 0})
+        admin_email = settings.get("admin_notification_email", "") if settings else ""
         
+        if not admin_email:
+            logging.warning("No admin notification email configured for safeguarding alerts")
+            return False
+        
+        subject, html_content = _build_safeguarding_email(alert, risk_data)
         params = {
             "from": SENDER_EMAIL,
             "to": [admin_email],
-            "subject": f"⚠️ URGENT: Safeguarding Alert [{risk_level}] - Radio Check",
+            "subject": subject,
             "html": html_content
         }
         
@@ -6366,6 +6446,319 @@ async def get_knowledge_context(user_message: str, limit: int = 3) -> str:
         return ""
 
 
+# ============================================================================
+# F2: PRE-DECISION EXCEPTION CONTAINMENT (Ant, 20 Oct 2026, Stage 3)
+# ============================================================================
+# Bounded repair of the named pre-decision exception paths only:
+# check_safeguarding, analyze_message_unified, extract_verdicts_from_unified
+# and reconcile_verdicts. A failure in one of them used to reach EXIT C and be
+# reported as GREEN/0 ("Lost you for a second there"), losing any crisis
+# disclosure. Now:
+#   * a failure is recorded, never replaced by GREEN values;
+#   * PD-4: a reconciler failure is completed only by the reconciler's own
+#     Rule 0 semantics, and only in two cases (classifier evidence genuinely
+#     unavailable; or a keyword failsafe that then survives the guards);
+#   * PD-1/PD-2/PD-3: otherwise the turn is INCOMPLETE: HTTP 200, the
+#     approved holding response, riskLevel "UNKNOWN", no generation or judge;
+#   * PD-6: a provisional, clearly labelled alert only when the surviving
+#     evidence is a legacy RED result.
+# EXIT C itself, detection, the reconciler's rules, the guards and every
+# pinned region are unchanged. Other work inside the handler-wide try (e.g.
+# normalise_text, protocol selection, generation) still reaches EXIT C; F2
+# does not claim otherwise.
+
+# PD-2 (approved wording, UK-targeted deployment; not suitable for
+# international deployment - recorded residual risk, C1).
+F2_HOLDING_RESPONSE = (
+    "Sorry, something went wrong and I couldn't process your message properly. "
+    "Please try sending it again. If you need someone to talk to now, you can call "
+    "Samaritans free on 116 123. If you or someone else is in immediate danger, call 999."
+)
+
+F2_PROVISIONAL_AI_RESPONSE = (
+    "[PROVISIONAL - SAFETY EVALUATION INCOMPLETE. Holding response sent. "
+    "Not a completed safeguarding assessment.]"
+)
+
+
+def _f2_record_failure(failures: List[str], component: str, err: BaseException, session_id: str) -> None:
+    """Operational failure evidence under a stable event id. Never raises."""
+    try:
+        failures.append(component)
+        logging.error(json.dumps({
+            "evt": "safety.precheck_component_failed",
+            "component": component,
+            "error": type(err).__name__,
+            "session": (session_id or "")[:12],
+        }))
+    except Exception:
+        pass
+
+
+def _f2_reconciler_fallback(kw_verdict, cls_verdict, cls_error, session_id: str):
+    """PD-4. Returns (FinalVerdict, case) or (None, None/"fallback_failed").
+
+    case "i":  classifier evidence genuinely unavailable (not invoked, errored or
+               malformed). The reconciler itself would have applied Rule 0, so
+               this is exactly that verdict.
+    case "ii": classifier evidence present and the keyword failsafe fired. The
+               most protective outcome; only Rule 1 could have lowered it, and
+               Rule 1 is NOT evaluated here (PD-5, conservative). Completion
+               check 2 makes the turn INCOMPLETE if a guard then removes it.
+    Otherwise there is no authoritative decision (e.g. Rule 2b staff review
+    cannot be reproduced), so None: never a downgraded audit_only.
+    """
+    try:
+        from safety.verdict_reconciler import (
+            FinalVerdict, _keyword_risk_score, _classifier_verdict_is_well_formed,
+        )
+        unavailable = (cls_error is not None or cls_verdict is None
+                       or _classifier_verdict_is_well_formed(cls_verdict) is not None)
+        if unavailable:
+            case = "i"
+        elif kw_verdict.failsafe_triggered:
+            case = "ii"
+        else:
+            return None, None
+        verdict = FinalVerdict(
+            risk_level=kw_verdict.risk_level,
+            failsafe_triggered=kw_verdict.failsafe_triggered,
+            failsafe_reason=kw_verdict.failsafe_reason,
+            risk_score=_keyword_risk_score(kw_verdict),
+            precedence_rule_fired="RECONCILER_FAILED_KEYWORD_ONLY",
+            reconciliation_reason=(
+                f"reconciler_exception;fallback_case={case}"
+                + (";rule1_not_evaluated" if case == "ii" else "")
+            ),
+        )
+        logging.warning(json.dumps({
+            "evt": "safety.reconciler_fallback", "case": case,
+            "failsafe": bool(verdict.failsafe_triggered),
+            "session": (session_id or "")[:12],
+        }))
+        return verdict, case
+    except Exception as e:
+        try:
+            logging.error(json.dumps({"evt": "safety.reconciler_fallback_failed",
+                                      "error": type(e).__name__,
+                                      "session": (session_id or "")[:12]}))
+        except Exception:
+            pass
+        return None, "fallback_failed"
+
+
+def _f2_minimal_holding_response(request) -> "BuddyChatResponse":
+    """Last resort if the INCOMPLETE responder itself fails: literals only."""
+    return BuddyChatResponse(
+        reply=F2_HOLDING_RESPONSE,
+        sessionId=request.sessionId,
+        character=request.character,
+        characterName="Radio Check",
+        characterAvatar="",
+        safeguardingTriggered=False,
+        safeguardingAlertId=None,
+        riskLevel="UNKNOWN",
+        riskScore=0,
+    )
+
+
+F2_UNNOTIFIED_MARK = "f2_incomplete_unnotified"
+
+
+def _f2_history_ids(session_id) -> set:
+    """Identity of the session's risk-history entries before this turn's
+    legacy scoring, so the entries this turn adds can be found afterwards."""
+    try:
+        return {id(e) for e in session_risk_history.get(session_id, [])}
+    except Exception:
+        return set()
+
+
+def _f2_set_unnotified(session_id, before_ids, value: bool) -> int:
+    """Ant, 21 Oct 2026 (F2 sign-off item): an INCOMPLETE turn may still have
+    written a session_risk_history entry (the legacy scorer runs before the
+    failing component). That entry is kept (history is never cleared or
+    reset), but it is marked while no staff notification was delivered for the
+    turn, so it cannot use up the session's first-alert email (EXIT B rule
+    session_history_count <= 1). Returns the number of entries touched."""
+    if before_ids is None:
+        return 0
+    n = 0
+    for e in session_risk_history.get(session_id, []):
+        if id(e) not in before_ids and isinstance(e, dict):
+            if value:
+                e[F2_UNNOTIFIED_MARK] = True
+            else:
+                e.pop(F2_UNNOTIFIED_MARK, None)
+            n += 1
+    return n
+
+
+def _f2_notification_history_count(session_id, session_history_count):
+    """History count for EXIT B's first-alert email rule, not counting entries
+    written by INCOMPLETE turns that delivered no staff notification. Scoring
+    (including the +20 repeated-indicator modifier) is unchanged."""
+    try:
+        unnotified = sum(1 for e in session_risk_history.get(session_id, [])
+                         if isinstance(e, dict) and e.get(F2_UNNOTIFIED_MARK))
+        return session_history_count - unnotified
+    except Exception:
+        return session_history_count
+
+
+async def _f2_incomplete_turn(**kw) -> "BuddyChatResponse":
+    """INCOMPLETE outcome. The deterministic holding response is returned even
+    if anything inside the responder fails (PD-2: no dependency on a lookup)."""
+    # Until a staff notification is confirmed delivered, the history entry this
+    # turn wrote is marked as unnotified (see _f2_set_unnotified).
+    try:
+        marked = _f2_set_unnotified(kw["request"].sessionId, kw.get("history_before_ids"), True)
+        if marked:
+            logging.warning(json.dumps({"evt": "safety.incomplete_history_marked_unnotified",
+                                        "entries": marked,
+                                        "session": kw["request"].sessionId[:12]}))
+    except Exception:
+        pass
+    try:
+        return await _f2_incomplete_response(**kw)
+    except Exception as e:
+        try:
+            logging.error(json.dumps({"evt": "safety.incomplete_responder_failed",
+                                      "error": type(e).__name__}))
+        except Exception:
+            pass
+        return _f2_minimal_holding_response(kw["request"])
+
+
+async def _f2_incomplete_response(*, request, character, char_config, prov, safety_failures,
+                                  legacy_available, risk_data, session, signpost_mode,
+                                  client_ip, user_agent,
+                                  guard_removed_failsafe=False,
+                                  history_before_ids=None) -> "BuddyChatResponse":
+    failed = list(safety_failures) or ["incomplete_decision"]
+    # Operational failure evidence (PD-6: every INCOMPLETE outcome).
+    try:
+        logging.error(json.dumps({
+            "evt": "safety.evaluation_incomplete",
+            "failed_components": failed,
+            "legacy_available": bool(legacy_available),
+            "session": request.sessionId[:12],
+        }))
+    except Exception:
+        pass
+
+    # PD-6: provisional staff signal only on a surviving legacy RED result.
+    # (A keyword signal removed by a guard never reaches here as RED evidence;
+    # classifier-only HIGH does not qualify.)
+    provisional_alert_id = None
+    provisional_persisted = False
+    if legacy_available and (risk_data or {}).get("risk_level") == "RED" and guard_removed_failsafe:
+        try:
+            logging.warning(json.dumps({"evt": "safety.provisional_alert_not_raised",
+                                        "reason": "guard_removed_failsafe",
+                                        "session": request.sessionId[:12]}))
+        except Exception:
+            pass
+    legacy_level = (risk_data or {}).get("risk_level") if legacy_available else None
+    legacy_score = (risk_data or {}).get("score") if legacy_available else None
+    if legacy_level == "RED" and not guard_removed_failsafe:
+        try:
+            # A legacy RED that comes only from the enhanced-monitor upgrade can
+            # carry a scorer score of 0. That is not an assessed score, so it is
+            # treated as unavailable (C3), never shown as "Risk score: 0".
+            score_known = (isinstance(legacy_score, int) and not isinstance(legacy_score, bool)
+                           and legacy_score > 0)
+            indicators = ["evaluation_incomplete", "provisional_alert"]
+            indicators += ["risk_score_source:legacy_scorer" if score_known else "risk_score_not_available"]
+            indicators += [f"failed_component:{c}" for c in failed]
+            alert = SafeguardingAlert(
+                session_id=request.sessionId,
+                character=character,
+                triggering_message=request.message,
+                ai_response=F2_PROVISIONAL_AI_RESPONSE,
+                risk_level="RED",
+                # C3: a genuine surviving score with its source; never a
+                # fabricated 0 presented as an assessment.
+                risk_score=legacy_score if score_known else 0,
+                triggered_indicators=indicators,
+                status=("audit_only" if signpost_mode else "active"),
+                client_ip=client_ip,
+                user_agent=user_agent,
+                conversation_history=list((session or {}).get("history", [])),
+            )
+            # Ant, 20 Oct (F2 review, item 1): a qualifying provisional RED is
+            # never discarded because its score is unavailable. The integer
+            # field keeps its compatibility value 0 only together with the
+            # "risk_score_not_available" indicator; every staff-facing consumer
+            # (email, portal, stats) shows it as unavailable, never as 0. The
+            # audit record stores None, not 0.
+            provisional_alert_id = alert.id
+            try:
+                await db.safeguarding_alerts.insert_one(alert.dict())
+                provisional_persisted = True
+                logging.warning(f"SAFEGUARDING PROVISIONAL ALERT [EVALUATION INCOMPLETE] - Alert: {alert.id} - Session: {request.sessionId}")
+            except Exception as e:
+                # Item 3: independently observable; no email will claim a
+                # portal record that does not exist.
+                logging.error(json.dumps({"evt": "safety.provisional_alert_not_persisted",
+                                          "alert_id": alert.id, "error": type(e).__name__,
+                                          "session": request.sessionId[:12]}))
+            try:
+                await audit_safeguarding_alert(
+                    db, session_id=request.sessionId, risk_level="RED",
+                    score=(legacy_score if score_known else None),
+                    triggered_indicators=indicators)
+            except Exception as e:
+                logging.error(f"SAFEGUARDING PROVISIONAL AUDIT NOT PERSISTED - Alert: {alert.id} - {type(e).__name__}: {e}")
+            if provisional_persisted:
+                try:
+                    if await send_safeguarding_email_notification(alert, risk_data):
+                        # Staff were notified on this turn: its history entry
+                        # counts towards the first-alert rule as before.
+                        _f2_set_unnotified(request.sessionId, history_before_ids, False)
+                except Exception as e:
+                    logging.error(f"Failed to send provisional safeguarding email: {e}")
+            else:
+                # Item 3: the email links to the staff portal record, so it is
+                # only sent once that record exists. What staff should receive
+                # instead is returned to Ant for a ruling (no new pathway).
+                logging.error(json.dumps({"evt": "safety.provisional_email_not_sent",
+                                          "reason": "alert_not_persisted",
+                                          "alert_id": alert.id,
+                                          "session": request.sessionId[:12]}))
+        except Exception as e:
+            logging.error(f"[F2] provisional alert failed: {type(e).__name__}: {e}")
+
+    try:
+        prov.finish(
+            error="SafetyEvaluationIncomplete",
+            risk_level="INCOMPLETE",
+            failed_components=failed,
+            legacy_unavailable=(not legacy_available),
+            safeguarding_triggered=False,
+            should_escalate=None,
+            risk_score=None,
+            provisional_alert_created=provisional_persisted,
+            signpost_mode=bool(signpost_mode),
+        )
+    except Exception as _pe:
+        logging.error(f"[Provenance] finish failed: {_pe}")
+
+    # No history append: the user did not receive a turn to record (PD-1).
+    return BuddyChatResponse(
+        reply=F2_HOLDING_RESPONSE,
+        sessionId=request.sessionId,
+        character=character,
+        characterName=char_config["name"],
+        characterAvatar=char_config["avatar"],
+        safeguardingTriggered=False,
+        # FR-T5-1: only an alert that was actually persisted.
+        safeguardingAlertId=(provisional_alert_id if provisional_persisted else None),
+        riskLevel="UNKNOWN",
+        riskScore=0,
+    )
+
+
 @api_router.post("/ai-buddies/chat", response_model=BuddyChatResponse)
 async def buddy_chat(request: BuddyChatRequest, req: Request):
     """Chat with AI Battle Buddy - with rate limiting protection"""
@@ -6607,9 +7000,23 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         
         # Check for safeguarding concerns using weighted scoring system
         # Pass character ID for context-aware exemptions (e.g., Rachel's criminal justice topics)
-        should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character, protocol_files=protocol_files)
+        #
+        # F2 (Ant, 20 Oct 2026, Stage 3): each pre-decision safety call has its
+        # own boundary. A failure here used to reach EXIT C and be reported as
+        # GREEN/0. Now the failure is recorded in safety_failures, nothing GREEN
+        # is substituted, and the completion checks below decide whether an
+        # authoritative decision still exists (otherwise the turn is INCOMPLETE).
+        safety_failures: List[str] = []
+        legacy_available = True
+        _f2_history_before = _f2_history_ids(request.sessionId)
+        try:
+            should_escalate, risk_data = check_safeguarding(safeguarding_text, request.sessionId, character_id=character, protocol_files=protocol_files)
+        except Exception as _f2_err:
+            legacy_available = False
+            should_escalate, risk_data = None, None
+            _f2_record_failure(safety_failures, "check_safeguarding", _f2_err, request.sessionId)
         alert_id = None
-        risk_level = risk_data["risk_level"]
+        risk_level = risk_data["risk_level"] if legacy_available else None
         try:
             prov.stage("input_context", source="server.buddy_chat",
                        protocol_files=list(protocol_files or []),
@@ -6619,17 +7026,22 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                        grief_closing=grief_lifecycle["closing"],
                        identity_active_turns=session.get('identity_active_turns', 0),
                        crisis_override=bool(crisis_override))
-            prov.stage("legacy_result", source="server.calculate_safeguarding_score",
-                       risk_level=risk_data.get("risk_level"),
-                       score=risk_data.get("score"),
-                       should_escalate=bool(should_escalate),
-                       assigned_to_risk_level=True)
+            if legacy_available:
+                prov.stage("legacy_result", source="server.calculate_safeguarding_score",
+                           risk_level=risk_data.get("risk_level"),
+                           score=risk_data.get("score"),
+                           should_escalate=bool(should_escalate),
+                           assigned_to_risk_level=True)
+            else:
+                prov.stage("legacy_result", source="server.calculate_safeguarding_score",
+                           available=False, error="check_safeguarding")
         except Exception as _pe:
             logging.error(f"[Provenance] stage failed: {_pe}")
-        
+
         print(f"[SAFEGUARDING CHECK] Session: {request.sessionId[:20]}, Character: {character}, Message: {request.message[:50]}...")
-        print(f"[SAFEGUARDING CHECK] Score: {risk_data['score']}, Level: {risk_level}, Should Escalate: {should_escalate}")
-        logging.info(f"Safeguarding check - Session: {request.sessionId[:12]}, Score: {risk_data['score']}, Level: {risk_level}")
+        if legacy_available:
+            print(f"[SAFEGUARDING CHECK] Score: {risk_data['score']}, Level: {risk_level}, Should Escalate: {should_escalate}")
+            logging.info(f"Safeguarding check - Session: {request.sessionId[:12]}, Score: {risk_data['score']}, Level: {risk_level}")
         
         # === UNIFIED SAFETY SYSTEM (Conversation Trajectory + Semantic + Pattern Detection) ===
         # This combines:
@@ -6639,25 +7051,36 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # 4. Semantic similarity analysis (detects intent even without exact keywords)
         # 5. Crisis pattern detection (escalation sequences)
         # Uses NORMALISED text for safety analysis
-        unified_safety = analyze_message_unified(
-            message=safeguarding_text,
-            original_message=original_message,  # R12-03 hotfix
-            session_id=request.sessionId,
-            user_id=request.sessionId,  # Anonymous users use session as ID
-            character=character,
-            is_under_18=request.is_under_18,
-            human_support_available=human_support_available
-        )
+        # F2: own boundary (see check_safeguarding above).
+        unified_available = True
         try:
-            prov.stage("raw_unified_result", source="safety.analyze_message_unified",
-                       risk_level=unified_safety.get("risk_level"),
-                       risk_score=unified_safety.get("risk_score"),
-                       failsafe_triggered=unified_safety.get("failsafe_triggered"),
-                       failsafe_reason=unified_safety.get("failsafe_reason"),
-                       ai_invoked=(unified_safety.get("ai_classification") or {}).get("invoked"),
-                       ai_risk_level=(unified_safety.get("ai_classification") or {}).get("risk_level"),
-                       thresholds_applied=unified_safety.get("thresholds_applied"),
-                       age_protections_applied=unified_safety.get("age_protections_applied"))
+            unified_safety = analyze_message_unified(
+                message=safeguarding_text,
+                original_message=original_message,  # R12-03 hotfix
+                session_id=request.sessionId,
+                user_id=request.sessionId,  # Anonymous users use session as ID
+                character=character,
+                is_under_18=request.is_under_18,
+                human_support_available=human_support_available
+            )
+        except Exception as _f2_err:
+            unified_available = False
+            unified_safety = None
+            _f2_record_failure(safety_failures, "analyze_message_unified", _f2_err, request.sessionId)
+        try:
+            if not unified_available:
+                prov.stage("raw_unified_result", source="safety.analyze_message_unified",
+                           available=False, error="analyze_message_unified")
+            else:
+                prov.stage("raw_unified_result", source="safety.analyze_message_unified",
+                           risk_level=unified_safety.get("risk_level"),
+                           risk_score=unified_safety.get("risk_score"),
+                           failsafe_triggered=unified_safety.get("failsafe_triggered"),
+                           failsafe_reason=unified_safety.get("failsafe_reason"),
+                           ai_invoked=(unified_safety.get("ai_classification") or {}).get("invoked"),
+                           ai_risk_level=(unified_safety.get("ai_classification") or {}).get("risk_level"),
+                           thresholds_applied=unified_safety.get("thresholds_applied"),
+                           age_protections_applied=unified_safety.get("age_protections_applied"))
         except Exception as _pe:
             logging.error(f"[Provenance] stage failed: {_pe}")
 
@@ -6667,7 +7090,8 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # that the flag was received and that it changed behaviour, so a past
         # session can be answered for. Deliberately stores no DOB and no age -
         # only the boolean, the thresholds it produced, and a timestamp.
-        if request.is_under_18:
+        # F2: no unified result means nothing to record here.
+        if request.is_under_18 and unified_available:
             try:
                 await log_audit_event(
                     db,
@@ -6699,15 +7123,32 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             extract_verdicts_from_unified,
             reconcile_verdicts,
         )
-        kw_verdict, cls_verdict, cls_error = extract_verdicts_from_unified(unified_safety)
-        final_verdict = reconcile_verdicts(
-            keyword=kw_verdict,
-            classifier=cls_verdict,
-            message_lower=safeguarding_text.lower(),
-            classifier_error=cls_error,
-            session_id=request.sessionId,
-            character=character,
-        )
+        # F2: own boundaries for extraction and reconciliation. No unified
+        # result means no keyword verdict to reconcile.
+        kw_verdict, cls_verdict, cls_error = None, None, None
+        final_verdict = None
+        reconciler_fallback_case = None
+        if unified_available:
+            try:
+                kw_verdict, cls_verdict, cls_error = extract_verdicts_from_unified(unified_safety)
+            except Exception as _f2_err:
+                kw_verdict = None
+                _f2_record_failure(safety_failures, "extract_verdicts_from_unified", _f2_err, request.sessionId)
+        if kw_verdict is not None:
+            try:
+                final_verdict = reconcile_verdicts(
+                    keyword=kw_verdict,
+                    classifier=cls_verdict,
+                    message_lower=safeguarding_text.lower(),
+                    classifier_error=cls_error,
+                    session_id=request.sessionId,
+                    character=character,
+                )
+            except Exception as _f2_err:
+                _f2_record_failure(safety_failures, "reconcile_verdicts", _f2_err, request.sessionId)
+                # PD-4: complete only in the two authorised cases; otherwise None.
+                final_verdict, reconciler_fallback_case = _f2_reconciler_fallback(
+                    kw_verdict, cls_verdict, cls_error, request.sessionId)
         try:
             prov.stage("reconciled_result", source="safety.reconcile_verdicts",
                        risk_level=getattr(final_verdict, "risk_level", None),
@@ -6719,8 +7160,32 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                        cls_verdict=getattr(cls_verdict, "risk_level", None),
                        cls_error=bool(cls_error),
                        risk_level_assigned_from_this=False)
+            if safety_failures:
+                prov.stage("evaluation_status", source="server.f2_completion_check",
+                           failed_components=list(safety_failures),
+                           legacy_available=legacy_available,
+                           unified_available=unified_available,
+                           reconciler_fallback_case=reconciler_fallback_case)
         except Exception as _pe:
             logging.error(f"[Provenance] stage failed: {_pe}")
+
+        # === F2 COMPLETION CHECK 1 (Ant, 20 Oct 2026: PD-1, PD-4, PD-7) ===
+        # Proceed only if an authoritative decision exists:
+        #   * no component failed; or
+        #   * the reconciler failed and an authorised fallback (PD-4 case i/ii)
+        #     produced the verdict; or
+        #   * the legacy half failed but the reconciled failsafe fires (PD-7:
+        #     EXIT A does not need the legacy result). Check 2 below re-tests
+        #     this after the negation and identity guards.
+        # Otherwise the turn is INCOMPLETE: no generation, no judge, a fixed
+        # holding response, never GREEN.
+        if final_verdict is None or (not legacy_available and not final_verdict.failsafe_triggered):
+            return await _f2_incomplete_turn(
+                request=request, character=character, char_config=char_config, prov=prov,
+                safety_failures=safety_failures, legacy_available=legacy_available,
+                risk_data=risk_data, session=session, signpost_mode=signpost_mode,
+                client_ip=client_ip, user_agent=user_agent,
+                history_before_ids=_f2_history_before)
 
         # Log the unified safety analysis for debugging
         logging.info(
@@ -6741,12 +7206,15 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # bereavement-context override where applicable.
         failsafe_should_fire = final_verdict.failsafe_triggered
         try:
+            # F2 PD-7: an unavailable legacy result is recorded as unknown
+            # (None), never as a negative assessment.
             prov.stage("authoritative_runtime_vars", source="server.buddy_chat",
                        risk_level=risk_level,
-                       risk_level_source="legacy_scorer",
-                       should_escalate=bool(should_escalate),
+                       risk_level_source=("legacy_scorer" if legacy_available else "unavailable"),
+                       should_escalate=(bool(should_escalate) if legacy_available else None),
                        failsafe_should_fire=bool(failsafe_should_fire),
-                       failsafe_source="reconciler")
+                       failsafe_source=("reconciler" if reconciler_fallback_case is None
+                                        else f"reconciler_fallback_{reconciler_fallback_case}"))
         except Exception as _pe:
             logging.error(f"[Provenance] stage failed: {_pe}")
         
@@ -6853,6 +7321,24 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         # already uses. signpost_mode + human_support_available are derived ONCE
         # above (before the unified-safety call) — single authority for the whole
         # request (unified wrapper + both alert-write sites + persona prompt). ---
+
+        # === F2 COMPLETION CHECK 2 (Ant, 20 Oct 2026: PD-4, PD-7) ===
+        # After the negation and identity guards. If a guard removed the
+        # failsafe and no complete authoritative decision survives, the turn is
+        # INCOMPLETE rather than ordinary generation:
+        #   * legacy result unavailable (it would be needed for EXIT B / GREEN);
+        #   * reconciler failed with classifier evidence present (fallback ii):
+        #     without the failsafe, Rules 2b/3 cannot be reproduced.
+        if not failsafe_should_fire and (not legacy_available or reconciler_fallback_case == "ii"):
+            return await _f2_incomplete_turn(
+                request=request, character=character, char_config=char_config, prov=prov,
+                safety_failures=safety_failures, legacy_available=legacy_available,
+                risk_data=risk_data, session=session, signpost_mode=signpost_mode,
+                client_ip=client_ip, user_agent=user_agent,
+                history_before_ids=_f2_history_before,
+                # PD-6: a guard removed the failsafe on this turn, so the
+                # surviving evidence does not qualify for a provisional alert.
+                guard_removed_failsafe=bool(final_verdict.failsafe_triggered))
 
         if failsafe_should_fire:
             failsafe_reason = final_verdict.failsafe_reason or "unknown"
@@ -6977,15 +7463,24 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             # authoritative disposition, so its record must be emitted, not
             # discarded (ADR-0003 §27). Observation only; same pattern as EXIT B.
             try:
+                # F2 PD-7: when the legacy half failed its result is unknown,
+                # not negative: record None and say so. The extra keys appear
+                # only on a turn where a component failed.
+                _f2_extra = {}
+                if safety_failures:
+                    _f2_extra = dict(legacy_unavailable=(not legacy_available),
+                                     failed_components=list(safety_failures),
+                                     reconciler_fallback_case=reconciler_fallback_case)
                 prov.finish(
                     safeguarding_triggered=True,
                     risk_level="RED",
                     risk_score=unified_safety.get("risk_score", 999),
                     risk_score_source="unified_safety",
-                    should_escalate=bool(should_escalate),
+                    should_escalate=(bool(should_escalate) if legacy_available else None),
                     failsafe_fired=True,
                     alert_created=failsafe_alert_persisted,
                     signpost_mode=bool(signpost_mode),
+                    **_f2_extra,
                 )
             except Exception as _pe:
                 logging.error(f"[Provenance] finish failed: {_pe}")
@@ -8060,7 +8555,10 @@ Return ONLY the response text. No explanation. No labels."""
             # - request_human_call (when user chooses call) -> sends incoming_call_request
             
             # Send email notification to admin (only for RED alerts or first AMBER)
-            if risk_level == "RED" or risk_data["session_history_count"] <= 1:
+            # F2 (Ant, 21 Oct 2026): history entries from INCOMPLETE turns that
+            # delivered no staff notification do not use up the first-alert email.
+            if risk_level == "RED" or _f2_notification_history_count(
+                    request.sessionId, risk_data["session_history_count"]) <= 1:
                 try:
                     await send_safeguarding_email_notification(alert, risk_data)
                 except Exception as email_err:

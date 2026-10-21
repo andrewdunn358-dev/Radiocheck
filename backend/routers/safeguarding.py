@@ -356,10 +356,14 @@ async def get_safeguarding_stats():
     acknowledged = await db.safeguarding_alerts.count_documents({"status": "acknowledged"})
     resolved = await db.safeguarding_alerts.count_documents({"status": "resolved"})
     
-    # Count by risk level
-    red = await db.safeguarding_alerts.count_documents({"risk_level": "RED"})
-    amber = await db.safeguarding_alerts.count_documents({"risk_level": "AMBER"})
-    yellow = await db.safeguarding_alerts.count_documents({"risk_level": "YELLOW"})
+    # Count by risk level. F2 (Ant, 20 Oct, item 2): an alert raised on an
+    # INCOMPLETE safety evaluation carries "evaluation_incomplete". It is
+    # counted as PROVISIONAL, never as a completed RED/AMBER/YELLOW assessment.
+    not_provisional = {"triggered_indicators": {"$ne": "evaluation_incomplete"}}
+    red = await db.safeguarding_alerts.count_documents({"risk_level": "RED", **not_provisional})
+    amber = await db.safeguarding_alerts.count_documents({"risk_level": "AMBER", **not_provisional})
+    yellow = await db.safeguarding_alerts.count_documents({"risk_level": "YELLOW", **not_provisional})
+    provisional = await db.safeguarding_alerts.count_documents({"triggered_indicators": "evaluation_incomplete"})
     
     return {
         "total": total,
@@ -371,7 +375,8 @@ async def get_safeguarding_stats():
         "by_risk_level": {
             "RED": red,
             "AMBER": amber,
-            "YELLOW": yellow
+            "YELLOW": yellow,
+            "PROVISIONAL": provisional
         }
     }
 

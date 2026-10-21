@@ -18,6 +18,7 @@ import {
   Filler,
 } from 'chart.js';
 import { api } from '@/lib/admin-api';
+import { exportRow, csvHeaders } from '@/lib/provisionalAlert';
 import type { CallLog, ChatRoom, SafeguardingAlert } from '@/types/admin';
 import CallsSubTab from './CallsSubTab';
 import ChatsSubTab from './ChatsSubTab';
@@ -179,7 +180,9 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
       data = chatRooms;
       filename = `chats-logs-${dateStr}.csv`;
     } else if (activeLogSubTab === 'safeguarding') {
-      data = safeguardingAlerts;
+      // F2: provisional (INCOMPLETE evaluation) rows are marked and an
+      // unavailable score is exported as "not available", never 0.
+      data = safeguardingAlerts.map(exportRow);
       filename = `safeguarding-logs-${dateStr}.csv`;
     } else if (activeLogSubTab === 'screening') {
       data = screeningLogs;
@@ -202,7 +205,7 @@ export default function LogsTab({ token, onSuccess, onError }: LogsTabProps) {
 
     // Helper: serialise rows into CSV and trigger a download.
     const downloadCsv = (rows: any[], fname: string) => {
-      const headers = Object.keys(rows[0]);
+      const headers = csvHeaders(rows);
       const csvContent = [
         headers.join(','),
         ...rows.map(row =>

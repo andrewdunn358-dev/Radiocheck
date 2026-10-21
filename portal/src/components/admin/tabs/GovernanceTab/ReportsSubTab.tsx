@@ -131,6 +131,12 @@ export default function ReportsSubTab({
               </div>
             </div>
           )}
+          {/* F2: provisional (INCOMPLETE evaluation) alerts, reported separately from Imminent/High */}
+          {governanceSummary.safeguarding && (
+            <p data-testid="report-provisional" className="text-xs text-amber-400 mb-4">
+              PROVISIONAL — EVALUATION INCOMPLETE (included in Total, not in Imminent/High): {governanceSummary.safeguarding.by_risk_level?.PROVISIONAL || 0}
+            </p>
+          )}
 
           {/* Engagement Stats */}
           {governanceSummary.engagement && (
