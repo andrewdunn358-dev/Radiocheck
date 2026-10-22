@@ -227,15 +227,69 @@ def test_judge_free_text_reason_is_withheld_from_logs_and_provenance(cap):
     assert _leaks(cap.lines, ["Zqxdave", "ZQXCANARYJ"]) == []
 
 
+# reason_code(): explicit allowlist (Ant, 23 Oct 2026)
+
+@pytest.mark.parametrize("code", sorted(lp.REASON_CODES))
+def test_every_allowlisted_code_passes_through(code):
+    assert lp.reason_code(code) == code
+    assert fallback_validation._reason_code(code) == code
+
+
 @pytest.mark.parametrize("reason,expected", [
-    ("welfare_pivot", "welfare_pivot"), ("brush_off_acceptance", "brush_off_acceptance"),
-    ("spine_leak - said worried twice", "spine_leak"), ("generation_returned_nothing", "generation_returned_nothing"),
-    ("judge_validator_error", "judge_validator_error"), ("The reply mentions Dave", "unstructured"),
-    (None, None), ("", None),
+    ("spine_leak - said worried twice", "spine_leak"),
+    ("welfare_pivot: asked about Dave again", "welfare_pivot"),
+    ("Welfare_Pivot", "welfare_pivot"),
+    ("  brush_off_acceptance  ", "brush_off_acceptance"),
+    (None, None), ("", None), ("   ", None),
 ])
-def test_reason_codes_preserve_machine_evidence(reason, expected):
+def test_known_codes_survive_formatting(reason, expected):
     assert lp.reason_code(reason) == expected
     assert fallback_validation._reason_code(reason) == expected
+
+
+# Falsification: free text, including single lowercase words and
+# snake_case-looking text, must never pass through.
+UNKNOWN = ["dave", "zqxcanary", "overdose", "sertraline", "worried", "kill", "welfare",
+           "spine", "spine_leakage", "welfare_pivotish", "my_mate_dave", "dave_died_2019",
+           "unknown_code", "fail", "pass_but_dave", "07700900123", "203.0.113.77",
+           "dave@example.org", "ip:abc", "The reply mentions Dave", "a" * 64,
+           "pass-dave", "judge_fail_dave", "grief_memory_question", "unstructured_dave"]
+
+
+@pytest.mark.parametrize("reason", UNKNOWN)
+def test_unknown_values_including_single_words_become_unstructured(reason):
+    assert lp.reason_code(reason) == "unstructured"
+    assert fallback_validation._reason_code(reason) == "unstructured"
+
+
+def test_allowlist_covers_every_code_the_system_produces_and_nothing_else():
+    import safety.protocol_gates as pg
+    import safety.judge_prompt as jp
+    gate_codes = {v for k, v in vars(pg).items() if k.startswith("REASON_") and isinstance(v, str)}
+    judge_codes = set(re.search(r"Reasons: (.*)'?$", jp.JUDGE_PROMPT_TEMPLATE.strip()).group(1)
+                      .strip("'").replace(" ", "").split(","))
+    fb_src = open(os.path.join(os.path.dirname(__file__), "..", "safety", "fallback_validation.py")).read()
+    fb_codes = set(re.findall(r'failed_reason = "([a-z_]+)"', fb_src))
+    fb_codes |= {f"{n}_validator_error" for n in ("gate", "judge")}
+    srv_src = open(os.path.join(os.path.dirname(__file__), "..", "server.py")).read()
+    assert 'or "judge_fail"' in srv_src
+    produced = gate_codes | judge_codes | fb_codes | {"judge_fail"}
+    assert produced == set(lp.REASON_CODES), (produced ^ set(lp.REASON_CODES))
+    assert set(fallback_validation._REASON_CODES) == set(lp.REASON_CODES), "copies identical"
+
+
+def test_both_reason_code_copies_behave_identically():
+    corpus = list(lp.REASON_CODES) + UNKNOWN + ["spine_leak - x", "WELFARE_PIVOT", None, ""]
+    assert [lp.reason_code(x) for x in corpus] == [fallback_validation._reason_code(x) for x in corpus]
+
+
+def test_single_word_judge_free_text_is_withheld_end_to_end(cap):
+    out = fallback_validation.validated_fallback(
+        trigger="micro", generate=lambda: "candidate reply text",
+        judge=lambda c: (False, "zqxsingleword"), session_label="sess-abc")
+    assert out.failed_reason == "zqxsingleword", "outcome object unchanged"
+    assert fallback_validation.provenance_values(out, trigger="micro")["failed_reason"] == "unstructured"
+    assert _leaks(cap.lines, ["zqxsingleword"]) == []
 
 
 def test_pinned_lines_no_longer_write_content():
@@ -645,3 +699,80 @@ def test_no_raw_exception_text_in_chat_and_safeguarding_logs():
               "safety/fallback_validation.py"):
         text = open(os.path.join(here, "..", f)).read()
         assert not [l for l in text.split("\n") if _RAW_EXC.search(l)], f
+
+
+# ---------------------------------------------------------------------------
+# The nine pinned "[Provenance] override failed: {_pe}" logs (Ant, 23 Oct):
+# executed VERBATIM from server.py under worst-case failures. Pinned code is
+# not changed; this demonstrates what those lines can emit.
+# ---------------------------------------------------------------------------
+
+def _pinned_provenance_blocks():
+    import textwrap
+    src = open(os.path.join(os.path.dirname(__file__), "..", "server.py")).read()
+    lines = src.split("\n")
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "differential"))
+    import runtime_chain as rc
+    spans = []
+    for _name, start, end in rc._REGIONS:
+        i = src.find(start)
+        j = src.find(end, i + len(start))
+        spans.append((src.count("\n", 0, i) + 1, src.count("\n", 0, j) + 1))
+    blocks = []
+    for n, line in enumerate(lines, 1):
+        if "[Provenance]" in line and "{_pe}" in line and any(a <= n <= b for a, b in spans):
+            t = n
+            while not re.match(r"^\s*try:\s*$", lines[t - 1]):
+                t -= 1
+            blocks.append((n, textwrap.dedent("\n".join(lines[t - 1:n]))))
+    return blocks
+
+
+def test_pinned_provenance_exception_logs_cannot_carry_user_data():
+    import itertools
+    blocks = _pinned_provenance_blocks()
+    assert len(blocks) == 9
+
+    class Echo:  # worst case: the exception message echoes every argument
+        def override(self, name, source, variable, before, after, reason=""):
+            raise RuntimeError(f"{name!r} {source!r} {variable!r} {before!r} {after!r} {reason!r}")
+
+    rec = provenance.start_system_verdict("tommy-1729600000000-zqxrandom", "tommy",
+                                          "ZQXCANARYV I want to die", False)
+    rec.overrides = None  # the real record with its list broken
+    modes = [lambda: Echo(), lambda: None, lambda: rec]
+    # Every value each input can take, from its source:
+    #   failsafe_reason <- unified_safety constants (or None / "unknown")
+    #   risk levels <- GREEN/YELLOW/AMBER/RED; unified_risk <- unified enum
+    #   detected_patterns <- CRISIS_PATTERNS keys
+    failsafe = ["explicit_suicide_plan", "imminent_intent", "high_semantic_similarity_to_suicide",
+                "rapid_escalation_with_method", "intent_confirmation", "unknown", None]
+    risks = ["GREEN", "YELLOW", "AMBER", "RED"]
+    unified = ["NONE", "LOW", "MEDIUM", "HIGH", "IMMINENT"]
+    patterns = [[], list(conversation_monitor.CRISIS_PATTERNS)]
+    emitted = []
+
+    class L:
+        @staticmethod
+        def error(m):
+            emitted.append(m)
+    for _n, code in blocks:
+        for mk, fr, risk, prev, uni, pats in itertools.product(modes, failsafe, risks, risks, unified, patterns):
+            ns = {"prov": mk(), "logging": L, "failsafe_reason": fr, "risk_level": risk,
+                  "_previous_risk_level": prev, "_hf_before": prev, "_r2b_before": prev,
+                  "_re_before": prev, "_cp_before": prev, "unified_risk": uni,
+                  "unified_safety": {"detected_patterns": pats}}
+            exec(code, ns)
+    assert emitted and all(m.startswith("[Provenance] override failed: ") for m in emitted)
+    assert _leaks(emitted, ["ZQXCANARYV", "want to die", "zqxrandom", "1729600000000"]) == []
+    allowed_words = (set(failsafe[:-1]) | set(risks) | set(unified) | set(conversation_monitor.CRISIS_PATTERNS)
+                     | {"None", "True", "False"})
+    for m in set(emitted):
+        body = m[len("[Provenance] override failed: "):]
+        for q in re.findall(r"'([^']*)'", body):
+            # quoted values are fixed labels, sources or enum values only
+            assert (q in allowed_words or q.startswith(("server.", "negation_suppression", "identity_suppression",
+                                                        "b35_", "rule_2b", "rapid_escalation", "concerning_patterns",
+                                                        "failsafe_should_fire", "risk_level", "legacy RED",
+                                                        "reconciler staff_review", "unified_risk=", "NoneType"))
+                    or q == "" or set(q.split(",")) <= allowed_words or q in {"append", "override", "get"}), q

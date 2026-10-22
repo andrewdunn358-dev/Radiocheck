@@ -140,25 +140,36 @@ def guard_third_party_logging() -> dict:
     return applied
 
 
-# Machine-readable reason codes (judge "FAIL: <reason>" contract, gate codes,
-# fallback codes) pass through; free text (which may quote the user) does not.
-JUDGE_REASONS = ("welfare_pivot", "spine_leak", "brush_off_acceptance", "banned_phrase", "therapeutic_tone")
-_CODE_RE = re.compile(r"^[a-z0-9_:\-\.]{1,64}$")
+# Explicit allowlist (Ant, 23 Oct 2026). Only these recognised machine-readable
+# codes pass through; every other value, including single-word free text,
+# becomes "unstructured". A known judge contract code followed by free text
+# (e.g. "spine_leak - said worried twice") maps to the code alone.
+#   judge contract (safety/judge_prompt.py "FAIL: <reason>") + server default
+JUDGE_REASONS = ("welfare_pivot", "spine_leak", "brush_off_acceptance", "banned_phrase",
+                 "therapeutic_tone")
+#   protocol gate reasons (safety/protocol_gates.py REASON_* constants)
+GATE_REASONS = ("pass", "brush_off_generic_no_hold", "identity_privacy_register_unsolicited",
+                "attachment_validation_before_redirect", "attachment_validation_no_redirect",
+                "grief_memory_question_after_welfare_signal")
+#   fallback / validator machine codes (safety/fallback_validation.py, server.py)
+FALLBACK_REASONS = ("judge_fail", "generation_returned_nothing", "post_filter_error",
+                    "gate_validator_error", "judge_validator_error")
+REASON_CODES = frozenset(JUDGE_REASONS + GATE_REASONS + FALLBACK_REASONS)
+_JUDGE_PREFIX_RE = re.compile(r"^(" + "|".join(JUDGE_REASONS) + r")(?=$|[^a-z0-9_])")
 
 
-def reason_code(reason) -> str:
-    """Structured reason for logs and provenance. Returns the value unchanged
-    if it is already a machine code, the known judge reason it starts with,
-    or "unstructured" (free text withheld). None -> None."""
+def reason_code(reason):
+    """Allowlisted reason code for logs and provenance, else "unstructured".
+    None or empty -> None."""
     if reason is None:
         return None
     text = str(reason).strip()
     if not text:
         return None
     low = text.lower()
-    if _CODE_RE.match(low):
+    if low in REASON_CODES:
         return low
-    for code in JUDGE_REASONS:
-        if low.startswith(code):
-            return code
+    m = _JUDGE_PREFIX_RE.match(low)
+    if m:
+        return m.group(1)
     return "unstructured"

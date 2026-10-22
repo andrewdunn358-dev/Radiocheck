@@ -323,26 +323,41 @@ def validated_fallback(
     return outcome
 
 
-# #146 (Ant, 22 Oct 2026): reason codes for logs and provenance. Machine
-# codes (gate reasons, fallback codes, the judge's "FAIL: <reason>" tokens)
-# pass through; free text, which may quote the user, is replaced by
-# "unstructured". Kept local so safety/ has no new import.
-_JUDGE_REASON_CODES = ("welfare_pivot", "spine_leak", "brush_off_acceptance",
-                       "banned_phrase", "therapeutic_tone")
+# #146: reason codes for logs and provenance, explicit allowlist (Ant,
+# 23 Oct 2026). Kept local so safety/ has no new import; a test asserts it
+# is identical to log_privacy.REASON_CODES and its behaviour.
+# Explicit allowlist (Ant, 23 Oct 2026). Only these recognised machine-readable
+# codes pass through; every other value, including single-word free text,
+# becomes "unstructured". A known judge contract code followed by free text
+# (e.g. "spine_leak - said worried twice") maps to the code alone.
+#   judge contract (safety/judge_prompt.py "FAIL: <reason>") + server default
+_JUDGE_REASONS = ("welfare_pivot", "spine_leak", "brush_off_acceptance", "banned_phrase",
+                 "therapeutic_tone")
+#   protocol gate reasons (safety/protocol_gates.py REASON_* constants)
+_GATE_REASONS = ("pass", "brush_off_generic_no_hold", "identity_privacy_register_unsolicited",
+                "attachment_validation_before_redirect", "attachment_validation_no_redirect",
+                "grief_memory_question_after_welfare_signal")
+#   fallback / validator machine codes (safety/fallback_validation.py, server.py)
+_FALLBACK_REASONS = ("judge_fail", "generation_returned_nothing", "post_filter_error",
+                    "gate_validator_error", "judge_validator_error")
+_REASON_CODES = frozenset(_JUDGE_REASONS + _GATE_REASONS + _FALLBACK_REASONS)
+_JUDGE_PREFIX_RE = re.compile(r"^(" + "|".join(_JUDGE_REASONS) + r")(?=$|[^a-z0-9_])")
 
 
 def _reason_code(reason):
+    """Allowlisted reason code for logs and provenance, else "unstructured".
+    None or empty -> None."""
     if reason is None:
         return None
     text = str(reason).strip()
     if not text:
         return None
     low = text.lower()
-    if re.match(r"^[a-z0-9_:\-\.]{1,64}$", low):
+    if low in _REASON_CODES:
         return low
-    for code in _JUDGE_REASON_CODES:
-        if low.startswith(code):
-            return code
+    m = _JUDGE_PREFIX_RE.match(low)
+    if m:
+        return m.group(1)
     return "unstructured"
 
 
