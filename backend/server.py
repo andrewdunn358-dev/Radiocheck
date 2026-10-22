@@ -19,6 +19,7 @@ import jwt
 import secrets
 import resend
 import asyncio
+import threading
 from openai import OpenAI
 import httpx  # For IP geolocation lookup
 from collections import defaultdict
@@ -6619,6 +6620,19 @@ SAFEGUARDING_NOTICE_TIMEOUT_ENV = "SAFEGUARDING_NOTICE_TIMEOUT_SECONDS"
 RECORD_NOT_SAVED_DEFAULT_TIMEOUT = 3.0
 RECORD_NOT_SAVED_TIMEOUT_BOUNDS = (0.5, 10.0)
 RESEND_EMAILS_URL = "https://api.resend.com/emails"
+# Dedicated, small worker pool: a hung provider can never occupy the default
+# asyncio thread pool that the other (SDK-based) email sends rely on.
+RECORD_NOT_SAVED_POOL_SIZE = 4
+_F2_NOTICE_EXECUTOR = None
+
+
+def _f2_notice_executor():
+    global _F2_NOTICE_EXECUTOR
+    if _F2_NOTICE_EXECUTOR is None:
+        from concurrent.futures import ThreadPoolExecutor
+        _F2_NOTICE_EXECUTOR = ThreadPoolExecutor(
+            max_workers=RECORD_NOT_SAVED_POOL_SIZE, thread_name_prefix="record-not-saved")
+    return _F2_NOTICE_EXECUTOR
 
 
 def _f2_fallback_recipients() -> list:
@@ -6654,7 +6668,7 @@ def _f2_resend_post(payload: dict, timeout: float) -> int:
 
 
 def _f2_record_not_saved_content(*, alert_id, session_id, failed_components, error_type, occurred_at):
-    environment = os.environ.get("RADIOCHECK_ENV") or os.environ.get("RENDER_SERVICE_NAME") or "unknown"
+    environment = os.environ.get("RADIOCHECK_ENV") or "unspecified"
     subject = f"SAFEGUARDING RECORD NOT SAVED — provisional alert [{str(alert_id)[:8]}]"
     lines = [
         "A provisional safeguarding alert could NOT be saved.",
@@ -6689,11 +6703,21 @@ async def _f2_send_record_not_saved_notice(*, alert_id, session_id, failed_compo
                 alert_id=alert_id, session_id=session_id, failed_components=list(failed_components or []),
                 error_type=error_type, occurred_at=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
             payload = {"from": SENDER_EMAIL, "to": recipients, "subject": subject, "text": text}
+            started = threading.Event()
+
+            def _run():
+                started.set()
+                return _f2_resend_post(payload, timeout)
+
+            loop = asyncio.get_running_loop()
             try:
                 status = await asyncio.wait_for(
-                    asyncio.to_thread(_f2_resend_post, payload, timeout), timeout=timeout + 0.5)
+                    loop.run_in_executor(_f2_notice_executor(), _run), timeout=timeout + 0.5)
             except asyncio.TimeoutError:
-                reason, detail = "timeout", f"{timeout}s"
+                reason = "timeout"
+                # A request that never started means every notice worker was
+                # still held by earlier hung sends.
+                detail = f"{timeout}s" if started.is_set() else "queued_not_started"
             else:
                 if 200 <= int(status) < 300:
                     logging.error(json.dumps({"evt": "safety.record_not_saved_notice_sent",

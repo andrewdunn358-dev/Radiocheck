@@ -51,7 +51,9 @@ class Transport:
         with self.lock:
             self.calls.append((payload, timeout))
         if self.delay:
-            time.sleep(min(self.delay, timeout + 2))
+            # Long enough to outlast the caller's wait (timeout + 0.5), short
+            # enough not to slow CI.
+            time.sleep(min(self.delay, timeout + 0.8))
         if self.exc:
             raise self.exc
         return self.status
@@ -166,7 +168,7 @@ def test_t3_content_is_minimal(h, configured):
     assert "Time (UTC):" in body and "Incident id:" in body
     # Forbidden
     assert A.lower() not in body.lower() and A.lower() not in subject.lower(), "no triggering message"
-    assert full_sid not in body or len(full_sid) <= 12, "no full session id"
+    assert len(full_sid) > 12 and full_sid not in body, "no full session id"
     assert "injected" not in body, "no exception message text"
     assert "http" not in body.lower() and "radiocheck.me" not in body.lower(), "no link"
     for forbidden in ("client_ip", "user_agent", "conversation", "tommy", "testclient"):
@@ -338,10 +340,10 @@ def test_sustained_failures_remain_contained(h, configured, monkeypatch, caplog,
             r = _persistence_failure_turn(h, sid=sid)
             assert r["reply"] == HOLDING and r["alert_id"] is None
         elapsed = time.monotonic() - t0
-    assert len(transport.calls) == n, "one notice attempt per failed turn, no rate limiting"
     sent = _events(caplog, "safety.record_not_saved_notice_sent")
     not_sent = _events(caplog, "safety.record_not_saved_notice_not_sent")
-    assert len(sent) + len(not_sent) == n
+    assert len(sent) + len(not_sent) == n, "one notice attempt per failed turn, no rate limiting"
+    assert len(transport.calls) == n if transport_kind != "hanging" else len(transport.calls) <= n
     if transport_kind == "ok":
         assert len(sent) == n
     else:
@@ -352,3 +354,65 @@ def test_sustained_failures_remain_contained(h, configured, monkeypatch, caplog,
     assert after["kind"] == "GENERATED" and after["emails"] == 1
     crisis = summary(h.turn(A))
     assert crisis["kind"] == "CRISIS" and crisis["emails"] == 1
+
+
+# --- Review follow-ups ---------------------------------------------------------
+
+def test_environment_line_uses_only_radiocheck_env(monkeypatch):
+    monkeypatch.setenv("RENDER_SERVICE_NAME", "veterans-support-api")
+    monkeypatch.delenv("RADIOCHECK_ENV", raising=False)
+    _, body = server._f2_record_not_saved_content(
+        alert_id="x", session_id="s" * 20, failed_components=["c"], error_type="E", occurred_at="t")
+    assert "veterans-support-api" not in body and "Environment:         unspecified" in body
+    monkeypatch.setenv("RADIOCHECK_ENV", "staging")
+    _, body = server._f2_record_not_saved_content(
+        alert_id="x", session_id="s" * 20, failed_components=["c"], error_type="E", occurred_at="t")
+    assert "Environment:         staging" in body
+
+
+def _notice(**kw):
+    return server._f2_send_record_not_saved_notice(
+        alert_id=kw.get("alert_id", "a" * 36), session_id="s" * 30,
+        failed_components=["analyze_message_unified"], error_type="RuntimeError")
+
+
+def test_t6_added_latency_is_bounded_by_timeout(configured, monkeypatch):
+    """Measured on the notice itself inside one event loop: the veteran's
+    response waits at most timeout + 0.5 s, whatever the provider does."""
+    monkeypatch.setenv("SAFEGUARDING_NOTICE_TIMEOUT_SECONDS", "0.5")
+    monkeypatch.setattr(server, "_f2_resend_post", Transport(delay=30), raising=False)
+
+    async def run():
+        t0 = time.monotonic()
+        out = await _notice()
+        return out, time.monotonic() - t0
+    out, elapsed = asyncio.run(run())
+    assert out == "timeout" and elapsed < 0.5 + 0.5 + 0.3, elapsed
+
+
+def test_hung_provider_cannot_exhaust_the_shared_thread_pool(configured, monkeypatch, caplog):
+    """More concurrent notices than notice workers, provider hung: the notices
+    beyond the pool are reported as queued_not_started, and an unrelated
+    asyncio.to_thread job (as used by the existing email sends) still runs
+    immediately because the notice uses its own executor."""
+    monkeypatch.setenv("SAFEGUARDING_NOTICE_TIMEOUT_SECONDS", "0.5")
+    monkeypatch.setattr(server, "_f2_resend_post", Transport(delay=30), raising=False)
+    monkeypatch.setattr(server, "_F2_NOTICE_EXECUTOR", None)
+    pool = server.RECORD_NOT_SAVED_POOL_SIZE
+    extra = 2
+
+    async def run():
+        notices = [asyncio.create_task(_notice(alert_id=f"id-{i}")) for i in range(pool + extra)]
+        await asyncio.sleep(0.1)
+        t0 = time.monotonic()
+        assert await asyncio.to_thread(lambda: 42) == 42
+        unrelated = time.monotonic() - t0
+        results = await asyncio.gather(*notices)
+        return results, unrelated
+    with caplog.at_level(logging.ERROR):
+        results, unrelated = asyncio.run(run())
+    assert unrelated < 0.3, f"shared pool blocked for {unrelated:.2f}s"
+    assert results == ["timeout"] * (pool + extra)
+    details = sorted(e["detail"] for e in _events(caplog, "safety.record_not_saved_notice_not_sent"))
+    assert details.count("queued_not_started") == extra and details.count("0.5s") == pool
+    time.sleep(1.4)  # let the hung workers finish before the next test
