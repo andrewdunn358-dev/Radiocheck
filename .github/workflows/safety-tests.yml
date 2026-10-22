@@ -96,6 +96,7 @@ jobs:
             tests/test_f2_pre_decision_exceptions.py \
             tests/test_f2_provisional_reporting.py \
             tests/test_142_record_not_saved_notice.py \
+            tests/test_146_log_privacy.py \
             -v
         env:
           SKIP_LIVE_TESTS: "true"

@@ -44,6 +44,7 @@ regression suite exercises it without an API key.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -272,7 +273,7 @@ def validated_fallback(
     try:
         candidate = generate()
     except Exception as exc:
-        logger.error("[FallbackValidation] generation raised: %s %s", exc, session_label)
+        logger.error("[FallbackValidation] generation raised: %s %s", type(exc).__name__, session_label)
         candidate = None
 
     if not candidate:
@@ -286,7 +287,7 @@ def validated_fallback(
         try:
             candidate = post_filters(candidate)
         except Exception as exc:
-            logger.error("[FallbackValidation] post-filter raised: %s %s", exc, session_label)
+            logger.error("[FallbackValidation] post-filter raised: %s %s", type(exc).__name__, session_label)
             outcome.text = terminal_response(state_key)
             outcome.failed_validator = "post_filters"
             outcome.failed_reason = "post_filter_error"
@@ -303,13 +304,13 @@ def validated_fallback(
             passed, reason = validator(candidate)
         except Exception as exc:
             logger.error(
-                "[FallbackValidation] %s validator raised: %s %s", name, exc, session_label
+                "[FallbackValidation] %s validator raised: %s %s", name, type(exc).__name__, session_label
             )
             passed, reason = False, f"{name}_validator_error"
         if not passed:
             logger.warning(
                 "[FallbackValidation] candidate rejected by %s (%s) — terminal '%s' %s",
-                name, reason, state_key, session_label,
+                name, _reason_code(reason), state_key, session_label,
             )
             outcome.text = terminal_response(state_key)
             outcome.failed_validator = name
@@ -320,6 +321,29 @@ def validated_fallback(
     outcome.source = "candidate"
     outcome.terminal_state = None
     return outcome
+
+
+# #146 (Ant, 22 Oct 2026): reason codes for logs and provenance. Machine
+# codes (gate reasons, fallback codes, the judge's "FAIL: <reason>" tokens)
+# pass through; free text, which may quote the user, is replaced by
+# "unstructured". Kept local so safety/ has no new import.
+_JUDGE_REASON_CODES = ("welfare_pivot", "spine_leak", "brush_off_acceptance",
+                       "banned_phrase", "therapeutic_tone")
+
+
+def _reason_code(reason):
+    if reason is None:
+        return None
+    text = str(reason).strip()
+    if not text:
+        return None
+    low = text.lower()
+    if re.match(r"^[a-z0-9_:\-\.]{1,64}$", low):
+        return low
+    for code in _JUDGE_REASON_CODES:
+        if low.startswith(code):
+            return code
+    return "unstructured"
 
 
 def provenance_values(outcome: FallbackOutcome, trigger: str) -> Dict[str, Any]:
@@ -340,6 +364,8 @@ def provenance_values(outcome: FallbackOutcome, trigger: str) -> Dict[str, Any]:
         "candidate_generated": outcome.candidate_generated,
         "validators_run": ",".join(outcome.validators_run) or "none",
         "failed_validator": outcome.failed_validator,
-        "failed_reason": (outcome.failed_reason or "")[:80] or None,
+        # #146: a judge reason is model free text that can quote the user;
+        # provenance keeps the machine code (or "unstructured"), not the text.
+        "failed_reason": _reason_code(outcome.failed_reason),
         "terminal_state": outcome.terminal_state,
     }

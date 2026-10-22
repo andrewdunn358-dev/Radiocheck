@@ -738,7 +738,7 @@ def emit_gate_audit_log(
     payload = {
         "evt": "round10.protocol_gate",
         "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "session_id": session_id or "",
+        "session_id": (session_id or "")[:12],  # #146: 12-character session reference
         "character": character or "",
         "gate": verdict.gate,
         "passed": verdict.passed,

@@ -243,7 +243,7 @@ def analyze_message_unified(
             )
             
         except Exception as e:
-            logger.error(f"[UnifiedSafety] AI classification failed: {e}")
+            logger.error(f"[UnifiedSafety] AI classification failed: {type(e).__name__}")
             ai_result = {"error": str(e), "ai_used": False}
     
     # =========================================================================
@@ -300,7 +300,7 @@ def analyze_message_unified(
                 assess_message_safety(original_message).get("risk_level") == "critical"
             )
         except Exception as exc:
-            logger.error(f"[UnifiedSafety] original-text Check 1 failed: {exc}")
+            logger.error(f"[UnifiedSafety] original-text Check 1 failed: {type(exc).__name__}")
     # Evidence, not a decision: the keyword monitor (which applies its own
     # scoped negation) rated THIS message critical on at least one
     # representation. Exposed so post-reconciler suppressors can tell an
@@ -640,7 +640,7 @@ def initialize_safety_system():
         logger.info(f"[UnifiedSafetySystem] Component weights: {COMPONENT_WEIGHTS}")
         return True
     except Exception as e:
-        logger.error(f"[UnifiedSafetySystem] Initialization failed: {e}")
+        logger.error(f"[UnifiedSafetySystem] Initialization failed: {type(e).__name__}")
         return False
 
 

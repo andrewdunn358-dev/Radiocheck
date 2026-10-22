@@ -138,7 +138,7 @@ def _get_openai_client():
             from openai import OpenAI
             _openai_client = OpenAI()  # Uses OPENAI_API_KEY from env
         except Exception as e:
-            logger.error(f"[SemanticSafetyModel] Failed to create OpenAI client: {e}")
+            logger.error(f"[SemanticSafetyModel] Failed to create OpenAI client: {type(e).__name__}")
             return None
     return _openai_client
 
@@ -153,7 +153,7 @@ def _get_async_openai_client():
             from openai import AsyncOpenAI
             _async_openai_client = AsyncOpenAI()  # Uses OPENAI_API_KEY from env
         except Exception as e:
-            logger.error(f"[SemanticSafetyModel] Failed to create AsyncOpenAI client: {e}")
+            logger.error(f"[SemanticSafetyModel] Failed to create AsyncOpenAI client: {type(e).__name__}")
             return None
     return _async_openai_client
 
@@ -201,7 +201,7 @@ def compute_embedding(text: str) -> Optional[List[float]]:
         _embedding_cache[text] = embedding
         return embedding
     except Exception as e:
-        logger.error(f"[SemanticSafetyModel] Embedding failed: {e}")
+        logger.error(f"[SemanticSafetyModel] Embedding failed: {type(e).__name__}")
         return None
 
 
@@ -225,7 +225,7 @@ async def compute_embedding_async(text: str) -> Optional[List[float]]:
         _embedding_cache[text] = embedding
         return embedding
     except Exception as e:
-        logger.error(f"[SemanticSafetyModel] Async embedding failed: {e}")
+        logger.error(f"[SemanticSafetyModel] Async embedding failed: {type(e).__name__}")
         return None
 
 
@@ -262,7 +262,7 @@ def compute_embeddings_batch(texts: List[str]) -> List[Optional[List[float]]]:
             _embedding_cache[uncached_texts[j]] = embedding
         return results
     except Exception as e:
-        logger.error(f"[SemanticSafetyModel] Batch embedding failed: {e}")
+        logger.error(f"[SemanticSafetyModel] Batch embedding failed: {type(e).__name__}")
         return results
 
 
@@ -328,7 +328,7 @@ def initialize_semantic_model() -> bool:
         logger.info("[SemanticSafetyModel] Initialized with OpenAI embeddings")
         return True
     except Exception as e:
-        logger.error(f"[SemanticSafetyModel] Failed to initialize: {e}")
+        logger.error(f"[SemanticSafetyModel] Failed to initialize: {type(e).__name__}")
         return False
 
 
@@ -599,6 +599,6 @@ try:
     else:
         logger.warning("[SemanticSafetyModel] OPENAI_API_KEY not set - initialization deferred")
 except Exception as e:
-    logger.warning(f"[SemanticSafetyModel] Initialization skipped: {e}")
+    logger.warning(f"[SemanticSafetyModel] Initialization skipped: {type(e).__name__}")
 
 print("[SemanticSafetyModel] Module loaded - semantic similarity analysis ready")

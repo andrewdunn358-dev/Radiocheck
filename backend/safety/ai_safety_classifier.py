@@ -61,7 +61,7 @@ def _get_async_client():
             from openai import AsyncOpenAI
             _async_client = AsyncOpenAI()  # reads OPENAI_API_KEY from env at first use
         except Exception as e:
-            logger.error(f"[AISafetyClassifier] Failed to create AsyncOpenAI client: {e}")
+            logger.error(f"[AISafetyClassifier] Failed to create AsyncOpenAI client: {type(e).__name__}")
             return None
     return _async_client
 
@@ -317,8 +317,9 @@ async def classify_message_with_ai(
             
             result = json.loads(clean_response)
         except json.JSONDecodeError as e:
-            logger.error(f"[AISafetyClassifier] Failed to parse AI response: {e}")
-            logger.error(f"[AISafetyClassifier] Raw response: {response_text[:500]}")
+            logger.error(f"[AISafetyClassifier] Failed to parse AI response: {type(e).__name__}")
+            # #146: the raw output can restate the message; log its size only.
+            logger.error(f"[AISafetyClassifier] Raw response withheld: len={len(response_text or '')}")
             default_response["error"] = "Failed to parse AI response"
             return default_response
         
@@ -355,7 +356,7 @@ async def classify_message_with_ai(
         return classified_result
         
     except Exception as e:
-        logger.error(f"[AISafetyClassifier] Error during classification: {e}")
+        logger.error(f"[AISafetyClassifier] Error during classification: {type(e).__name__}")
         default_response["error"] = str(e)
         return default_response
 
