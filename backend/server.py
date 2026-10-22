@@ -6606,6 +6606,133 @@ def _f2_notification_history_count(session_id, session_history_count):
         return session_history_count
 
 
+# ---------------------------------------------------------------------------
+# #142 C1 (Ant, 22 Oct 2026): database-independent "record not saved" notice.
+# Sent ONLY when a qualifying provisional alert could not be persisted. Minimal
+# metadata, no conversation content, no portal link, no Mongo read or write:
+# recipients come from the environment and the email goes straight to the
+# Resend HTTP API with a per-call timeout (the Resend SDK's client timeout is a
+# process-wide 30 s, which would delay the veteran's holding response).
+# ---------------------------------------------------------------------------
+SAFEGUARDING_FALLBACK_EMAILS_ENV = "SAFEGUARDING_FALLBACK_EMAILS"
+SAFEGUARDING_NOTICE_TIMEOUT_ENV = "SAFEGUARDING_NOTICE_TIMEOUT_SECONDS"
+RECORD_NOT_SAVED_DEFAULT_TIMEOUT = 3.0
+RECORD_NOT_SAVED_TIMEOUT_BOUNDS = (0.5, 10.0)
+RESEND_EMAILS_URL = "https://api.resend.com/emails"
+
+
+def _f2_fallback_recipients() -> list:
+    raw = os.environ.get(SAFEGUARDING_FALLBACK_EMAILS_ENV, "") or ""
+    out = []
+    for part in raw.split(","):
+        addr = part.strip()
+        if addr and "@" in addr and addr not in out:
+            out.append(addr)
+    return out[:5]
+
+
+def _f2_notice_timeout() -> float:
+    lo, hi = RECORD_NOT_SAVED_TIMEOUT_BOUNDS
+    try:
+        value = float(os.environ.get(SAFEGUARDING_NOTICE_TIMEOUT_ENV, RECORD_NOT_SAVED_DEFAULT_TIMEOUT))
+    except (TypeError, ValueError):
+        value = RECORD_NOT_SAVED_DEFAULT_TIMEOUT
+    return min(max(value, lo), hi)
+
+
+def _f2_resend_post(payload: dict, timeout: float) -> int:
+    """Blocking POST to the Resend API with its own connect/read timeout.
+    Returns the HTTP status code. Runs in a worker thread."""
+    import requests as _requests
+    resp = _requests.post(
+        RESEND_EMAILS_URL,
+        json=payload,
+        headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+        timeout=(timeout, timeout),
+    )
+    return resp.status_code
+
+
+def _f2_record_not_saved_content(*, alert_id, session_id, failed_components, error_type, occurred_at):
+    environment = os.environ.get("RADIOCHECK_ENV") or os.environ.get("RENDER_SERVICE_NAME") or "unknown"
+    subject = f"SAFEGUARDING RECORD NOT SAVED — provisional alert [{str(alert_id)[:8]}]"
+    lines = [
+        "A provisional safeguarding alert could NOT be saved.",
+        "",
+        "NO PORTAL RECORD EXISTS FOR THIS ALERT. Do not look for it in the staff portal.",
+        "",
+        f"Time (UTC):          {occurred_at}",
+        f"Incident id:         {alert_id}",
+        f"Session reference:   {(session_id or '')[:12]}",
+        "Status:              PROVISIONAL — EVALUATION INCOMPLETE (surviving legacy RED)",
+        f"Failure reason:      {error_type}",
+        f"Failed components:   {', '.join(failed_components) or 'unknown'}",
+        f"Environment:         {environment}",
+        "",
+        "The person was shown the fixed holding message with Samaritans (116 123) and 999.",
+        "Follow the safeguarding incident runbook (#142).",
+    ]
+    return subject, "\n".join(lines)
+
+
+async def _f2_send_record_not_saved_notice(*, alert_id, session_id, failed_components, error_type) -> str:
+    """Never raises. Returns "sent" or a not-sent reason."""
+    reason, detail = None, None
+    try:
+        recipients = _f2_fallback_recipients()
+        if not recipients or not RESEND_API_KEY:
+            reason = "not_configured"
+            detail = "no_recipients" if not recipients else "no_resend_api_key"
+        else:
+            timeout = _f2_notice_timeout()
+            subject, text = _f2_record_not_saved_content(
+                alert_id=alert_id, session_id=session_id, failed_components=list(failed_components or []),
+                error_type=error_type, occurred_at=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+            payload = {"from": SENDER_EMAIL, "to": recipients, "subject": subject, "text": text}
+            try:
+                status = await asyncio.wait_for(
+                    asyncio.to_thread(_f2_resend_post, payload, timeout), timeout=timeout + 0.5)
+            except asyncio.TimeoutError:
+                reason, detail = "timeout", f"{timeout}s"
+            else:
+                if 200 <= int(status) < 300:
+                    logging.error(json.dumps({"evt": "safety.record_not_saved_notice_sent",
+                                              "alert_id": alert_id, "recipients": len(recipients),
+                                              "session": (session_id or "")[:12]}))
+                    return "sent"
+                reason, detail = "send_failed", f"http_{status}"
+    except Exception as e:
+        reason, detail = "send_failed", type(e).__name__
+    try:
+        logging.error(json.dumps({"evt": "safety.record_not_saved_notice_not_sent",
+                                  "alert_id": alert_id, "reason": reason, "detail": detail,
+                                  "session": (session_id or "")[:12]}))
+    except Exception:
+        pass
+    return reason or "send_failed"
+
+
+def _f2_check_record_not_saved_config() -> bool:
+    missing = []
+    if not _f2_fallback_recipients():
+        missing.append(SAFEGUARDING_FALLBACK_EMAILS_ENV)
+    if not RESEND_API_KEY:
+        missing.append("RESEND_API_KEY")
+    if missing:
+        logging.warning(json.dumps({"evt": "safety.config_missing",
+                                    "feature": "record_not_saved_notice", "missing": missing}))
+        return False
+    return True
+
+
+@app.on_event("startup")
+async def _f2_record_not_saved_config_startup_check():
+    try:
+        _f2_check_record_not_saved_config()
+    except Exception:
+        pass
+
+
 async def _f2_incomplete_turn(**kw) -> "BuddyChatResponse":
     """INCOMPLETE outcome. The deterministic holding response is returned even
     if anything inside the responder fails (PD-2: no dependency on a lookup)."""
@@ -6652,6 +6779,7 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
     # classifier-only HIGH does not qualify.)
     provisional_alert_id = None
     provisional_persisted = False
+    persist_error_type = "unknown"
     if legacy_available and (risk_data or {}).get("risk_level") == "RED" and guard_removed_failsafe:
         try:
             logging.warning(json.dumps({"evt": "safety.provisional_alert_not_raised",
@@ -6700,6 +6828,7 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
             except Exception as e:
                 # Item 3: independently observable; no email will claim a
                 # portal record that does not exist.
+                persist_error_type = type(e).__name__
                 logging.error(json.dumps({"evt": "safety.provisional_alert_not_persisted",
                                           "alert_id": alert.id, "error": type(e).__name__,
                                           "session": request.sessionId[:12]}))
@@ -6726,6 +6855,16 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
                                           "reason": "alert_not_persisted",
                                           "alert_id": alert.id,
                                           "session": request.sessionId[:12]}))
+                # #142 C1: database-independent notice that the record was not
+                # saved (minimal metadata, no content, no portal link). It does
+                # not count as delivering the alert, so the F2 "unnotified"
+                # history mark is deliberately left in place.
+                try:
+                    await _f2_send_record_not_saved_notice(
+                        alert_id=alert.id, session_id=request.sessionId,
+                        failed_components=failed, error_type=persist_error_type)
+                except Exception:
+                    pass
         except Exception as e:
             logging.error(f"[F2] provisional alert failed: {type(e).__name__}: {e}")
 
