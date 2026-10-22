@@ -6689,8 +6689,27 @@ def _f2_record_not_saved_content(*, alert_id, session_id, failed_components, err
     return subject, "\n".join(lines)
 
 
+def _f2_log_late_notice_outcome(fut, alert_id, session_id) -> None:
+    """Runs in the worker thread when an in-flight notice finishes after the
+    caller stopped waiting. Never raises."""
+    try:
+        try:
+            status = fut.result()
+            outcome = "sent" if 200 <= int(status) < 300 else "send_failed"
+            detail = f"http_{status}"
+        except Exception as e:
+            outcome, detail = "send_failed", type(e).__name__
+        logging.error(json.dumps({"evt": "safety.record_not_saved_notice_late_outcome",
+                                  "alert_id": alert_id, "outcome": outcome, "detail": detail,
+                                  "session": (session_id or "")[:12]}))
+    except Exception:
+        pass
+
+
 async def _f2_send_record_not_saved_notice(*, alert_id, session_id, failed_components, error_type) -> str:
-    """Never raises. Returns "sent" or a not-sent reason."""
+    """Never raises. Returns "sent", "outcome_unknown" (timed out while the
+    request was in flight; the late result is logged separately) or a
+    definitive not-sent reason."""
     reason, detail = None, None
     try:
         recipients = _f2_fallback_recipients()
@@ -6709,15 +6728,27 @@ async def _f2_send_record_not_saved_notice(*, alert_id, session_id, failed_compo
                 started.set()
                 return _f2_resend_post(payload, timeout)
 
-            loop = asyncio.get_running_loop()
+            cf = _f2_notice_executor().submit(_run)
             try:
                 status = await asyncio.wait_for(
-                    loop.run_in_executor(_f2_notice_executor(), _run), timeout=timeout + 0.5)
+                    asyncio.shield(asyncio.wrap_future(cf)), timeout=timeout + 0.5)
             except asyncio.TimeoutError:
-                reason = "timeout"
-                # A request that never started means every notice worker was
-                # still held by earlier hung sends.
-                detail = f"{timeout}s" if started.is_set() else "queued_not_started"
+                if not started.is_set() and cf.cancel():
+                    # Never started (every notice worker still held by earlier
+                    # hung sends) and now cancelled: definitively not sent.
+                    reason, detail = "timeout", "queued_not_started"
+                else:
+                    # Ant, 22 Oct (PR #147 review): the request is in flight
+                    # and Resend may still accept it, so this is NOT a
+                    # definitive non-delivery. Record "outcome unknown" now and
+                    # the provider's late result when the worker finishes.
+                    logging.error(json.dumps({"evt": "safety.record_not_saved_notice_outcome_unknown",
+                                              "alert_id": alert_id, "reason": "timeout_in_flight",
+                                              "detail": f"{timeout}s",
+                                              "session": (session_id or "")[:12]}))
+                    cf.add_done_callback(
+                        lambda f: _f2_log_late_notice_outcome(f, alert_id, session_id))
+                    return "outcome_unknown"
             else:
                 if 200 <= int(status) < 300:
                     logging.error(json.dumps({"evt": "safety.record_not_saved_notice_sent",

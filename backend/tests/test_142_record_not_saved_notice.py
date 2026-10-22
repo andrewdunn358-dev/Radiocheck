@@ -241,8 +241,10 @@ def test_t6_hanging_provider_does_not_hold_the_holding_response(h, configured, m
         elapsed = time.monotonic() - t0
     assert r["reply"] == HOLDING
     assert elapsed < 4.0, f"turn took {elapsed:.2f}s with a 0.5s notice timeout"
-    ev = _events(caplog, "safety.record_not_saved_notice_not_sent")
-    assert len(ev) == 1 and ev[0]["reason"] == "timeout"
+    # In flight when abandoned: outcome unknown, never a definitive not-sent.
+    ev = _events(caplog, "safety.record_not_saved_notice_outcome_unknown")
+    assert len(ev) == 1 and ev[0]["reason"] == "timeout_in_flight"
+    assert _events(caplog, "safety.record_not_saved_notice_not_sent") == []
 
 
 def test_t6_real_transport_passes_the_timeout_to_requests(monkeypatch):
@@ -342,12 +344,16 @@ def test_sustained_failures_remain_contained(h, configured, monkeypatch, caplog,
         elapsed = time.monotonic() - t0
     sent = _events(caplog, "safety.record_not_saved_notice_sent")
     not_sent = _events(caplog, "safety.record_not_saved_notice_not_sent")
-    assert len(sent) + len(not_sent) == n, "one notice attempt per failed turn, no rate limiting"
+    unknown = _events(caplog, "safety.record_not_saved_notice_outcome_unknown")
+    assert len(sent) + len(not_sent) + len(unknown) == n, "one notice attempt per failed turn, no rate limiting"
     assert len(transport.calls) == n if transport_kind != "hanging" else len(transport.calls) <= n
     if transport_kind == "ok":
         assert len(sent) == n
-    else:
+    elif transport_kind == "failing":
         assert len(not_sent) == n
+    else:
+        assert len(unknown) + len(not_sent) == n and len(sent) == 0
+        assert all(e["detail"] == "queued_not_started" for e in not_sent)
     assert elapsed < n * 4.0
     # The service still works normally afterwards.
     after = summary(h.turn(B2, classifier="high"))
@@ -387,7 +393,7 @@ def test_t6_added_latency_is_bounded_by_timeout(configured, monkeypatch):
         out = await _notice()
         return out, time.monotonic() - t0
     out, elapsed = asyncio.run(run())
-    assert out == "timeout" and elapsed < 0.5 + 0.5 + 0.3, elapsed
+    assert out == "outcome_unknown" and elapsed < 0.5 + 0.5 + 0.3, elapsed
 
 
 def test_hung_provider_cannot_exhaust_the_shared_thread_pool(configured, monkeypatch, caplog):
@@ -412,7 +418,53 @@ def test_hung_provider_cannot_exhaust_the_shared_thread_pool(configured, monkeyp
     with caplog.at_level(logging.ERROR):
         results, unrelated = asyncio.run(run())
     assert unrelated < 0.3, f"shared pool blocked for {unrelated:.2f}s"
-    assert results == ["timeout"] * (pool + extra)
-    details = sorted(e["detail"] for e in _events(caplog, "safety.record_not_saved_notice_not_sent"))
-    assert details.count("queued_not_started") == extra and details.count("0.5s") == pool
+    assert sorted(results) == ["outcome_unknown"] * pool + ["timeout"] * extra
+    not_sent = _events(caplog, "safety.record_not_saved_notice_not_sent")
+    assert [e["detail"] for e in not_sent] == ["queued_not_started"] * extra
+    assert len(_events(caplog, "safety.record_not_saved_notice_outcome_unknown")) == pool
     time.sleep(1.4)  # let the hung workers finish before the next test
+    transport = server._f2_resend_post
+    assert len(transport.calls) == pool, "requests that never started were cancelled, never sent later"
+
+
+# --- Ant, PR #147 review: started-but-unknown is not "not sent" ----------------
+
+@pytest.mark.parametrize("late,expected_outcome,expected_detail", [
+    (Transport(delay=1.25, status=200), "sent", "http_200"),
+    (Transport(delay=1.25, status=202), "sent", "http_202"),
+    (Transport(delay=1.25, status=500), "send_failed", "http_500"),
+    (Transport(delay=1.25, exc=RuntimeError("provider down")), "send_failed", "RuntimeError"),
+], ids=["late_200", "late_202", "late_500", "late_raise"])
+def test_late_provider_response_is_not_recorded_as_non_delivery(
+        configured, monkeypatch, caplog, late, expected_outcome, expected_detail):
+    """The provider answers AFTER the caller stopped waiting (0.5 s timeout,
+    1.0 s wait, answer at 1.25 s). At the timeout the event says the outcome is
+    unknown (never not_sent). When the worker finishes, the real result is
+    logged as a late outcome against the same alert id."""
+    monkeypatch.setenv("SAFEGUARDING_NOTICE_TIMEOUT_SECONDS", "0.5")
+    monkeypatch.setattr(server, "_f2_resend_post", late, raising=False)
+    monkeypatch.setattr(server, "_F2_NOTICE_EXECUTOR", None)
+    with caplog.at_level(logging.ERROR):
+        out = asyncio.run(_notice(alert_id="late-alert"))
+        assert out == "outcome_unknown"
+        assert _events(caplog, "safety.record_not_saved_notice_late_outcome") == [], "not yet finished"
+        deadline = time.monotonic() + 3
+        while not _events(caplog, "safety.record_not_saved_notice_late_outcome") and time.monotonic() < deadline:
+            time.sleep(0.05)
+    unknown = _events(caplog, "safety.record_not_saved_notice_outcome_unknown")
+    late_ev = _events(caplog, "safety.record_not_saved_notice_late_outcome")
+    assert len(unknown) == 1 and unknown[0]["alert_id"] == "late-alert"
+    assert unknown[0]["reason"] == "timeout_in_flight" and unknown[0]["detail"] == "0.5s"
+    assert len(late_ev) == 1 and late_ev[0]["alert_id"] == "late-alert"
+    assert (late_ev[0]["outcome"], late_ev[0]["detail"]) == (expected_outcome, expected_detail)
+    assert _events(caplog, "safety.record_not_saved_notice_not_sent") == [], \
+        "a request that started is never recorded as definitively not sent"
+    assert len(late.calls) == 1
+
+
+def test_in_time_response_is_unchanged(configured, caplog):
+    with caplog.at_level(logging.ERROR):
+        assert asyncio.run(_notice()) == "sent"
+    assert len(_events(caplog, "safety.record_not_saved_notice_sent")) == 1
+    assert _events(caplog, "safety.record_not_saved_notice_outcome_unknown") == []
+    assert _events(caplog, "safety.record_not_saved_notice_late_outcome") == []
