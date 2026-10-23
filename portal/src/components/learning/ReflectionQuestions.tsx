@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Lightbulb, CheckCircle, XCircle, Award, RotateCcw, ChevronRight } from 'lucide-react';
-import { lmsApi } from '@/lib/api';
+import { lmsApi, getLearnerToken } from '@/lib/api';
 
 interface ReflectionQuestion {
   id: string;
@@ -80,7 +80,7 @@ export default function ReflectionQuestions({
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com'}/api/lms/tutor/submit-reflection`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getLearnerToken() || ''}` },
           body: JSON.stringify({
             learner_email: learnerEmail,
             module_id: moduleId,

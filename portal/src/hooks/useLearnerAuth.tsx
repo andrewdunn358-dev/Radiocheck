@@ -9,7 +9,7 @@ interface AuthContextType {
   progress: ProgressData | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ needsPassword?: boolean }>;
-  setPassword: (email: string, password: string, confirmPassword: string) => Promise<void>;
+  setPassword: (email: string, password: string, confirmPassword: string, setupToken?: string) => Promise<void>;
   logout: () => void;
   refreshProgress: () => Promise<void>;
 }
@@ -64,8 +64,8 @@ export function LearnerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setPassword = async (email: string, password: string, confirmPassword: string) => {
-    const response = await lmsApi.setPassword(email, password, confirmPassword);
+  const setPassword = async (email: string, password: string, confirmPassword: string, setupToken?: string) => {
+    const response = await lmsApi.setPassword(email, password, confirmPassword, setupToken);
     setToken(response.token);
     localStorage.setItem('lms_token', response.token);
     localStorage.setItem('lms_learner_email', email);

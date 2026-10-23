@@ -15,11 +15,30 @@ export default function LearningPage() {
   const [showRegister, setShowRegister] = useState(false);
   const [showSetPassword, setShowSetPassword] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [setupToken, setSetupToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadCourse();
+  }, []);
+
+  // Set-password link from the approval email: ?setup=<one-time token>&email=<address>
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('setup');
+      const email = params.get('email');
+      if (token && email) {
+        setSetupToken(token);
+        setPendingEmail(email);
+        setShowSetPassword(true);
+        // Don't leave the one-time token sitting in the address bar / history
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    } catch {
+      // ignore malformed URLs
+    }
   }, []);
 
   const loadCourse = async () => {
@@ -70,7 +89,7 @@ export default function LearningPage() {
     }
 
     try {
-      await setPassword(pendingEmail, password, confirmPassword);
+      await setPassword(pendingEmail, password, confirmPassword, setupToken || undefined);
       setShowSetPassword(false);
     } catch (err: any) {
       setError(err.message || 'Failed to set password');
