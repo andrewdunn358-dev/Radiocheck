@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6564,6 +6564,61 @@ def _f2_minimal_holding_response(request) -> "BuddyChatResponse":
     )
 
 
+# ============================================================================
+# #144: PRE-ASSESSMENT READ OUTAGE (Ant, 23 Oct 2026, Stage 1, Options B + D)
+# ============================================================================
+# The character-config and site-settings reads run before any safety
+# evaluation. In a database outage each Motor call blocks for
+# serverSelectionTimeoutMS (10 s) and used to end in the framework's
+# text/plain 500 with no crisis-support text. Now both reads share a total
+# deadline and any failure returns the approved F2 holding response.
+PRE_ASSESSMENT_READ_DEADLINE_S = 2.0
+
+# Machine-readable outage reasons: "<read>_<timeout|error>".
+PRE_ASSESSMENT_OUTAGE_REASONS = (
+    "character_config_timeout", "character_config_error",
+    "site_settings_timeout", "site_settings_error",
+)
+
+
+def _pre_assessment_outage_response(request, character, read, err):
+    """F2 holding response for a failed or timed-out pre-assessment read.
+    In-memory only: no database access, no session creation, no evaluation,
+    no generation, no notification. Never raises."""
+    timed_out = isinstance(err, asyncio.TimeoutError)
+    reason = f"{read}_{'timeout' if timed_out else 'error'}"
+    if reason not in PRE_ASSESSMENT_OUTAGE_REASONS:
+        reason = "character_config_error"
+    try:
+        logging.error(json.dumps({
+            "evt": "safety.pre_assessment_unavailable",
+            "reason": reason,
+            "error": type(err).__name__,
+            "deadline_s": PRE_ASSESSMENT_READ_DEADLINE_S,
+            "session": (request.sessionId or "")[:12],
+        }))
+    except Exception:
+        pass
+    try:
+        _char = AI_CHARACTERS.get(character) or AI_CHARACTERS["tommy"]
+        name, avatar = _char["name"], _char["avatar"]
+    except Exception:
+        character, name, avatar = request.character, "Radio Check", ""
+    body = {
+        "reply": F2_HOLDING_RESPONSE,
+        "sessionId": request.sessionId,
+        "character": character,
+        "characterName": name,
+        "characterAvatar": avatar,
+        "safeguardingTriggered": False,
+        "safeguardingAlertId": None,
+        "riskLevel": "UNKNOWN",
+        "riskScore": 0,
+        "outageReason": reason,
+    }
+    return JSONResponse(status_code=200, content=body)
+
+
 F2_UNNOTIFIED_MARK = "f2_incomplete_unnotified"
 
 
@@ -7006,19 +7061,39 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
     
     # Validate character - get config from database or fallback to hardcoded
     character = resolve_character_id(request.character.lower())
-    char_config = await get_character_config(character)
-    
+
+    # Pre-assessment reads: character config, then the go-to-market off-mode
+    # flags (single authority, derived ONCE per request and threaded into the
+    # unified safety wrapper, the failsafe crisis message, and the persona
+    # prompt; per Anthony). Both are read BEFORE the handler-wide try (Ant,
+    # 6 Oct 2026, D1/C1b): a failure here happens before any safety evaluation,
+    # so it must never reach EXIT C and be reported as GREEN.
+    #
+    # #144 (Ant, 23 Oct 2026): narrowly scoped supersession of D1/C1b's
+    # prohibition on locally handling these two failures. Both reads share a
+    # 2-second TOTAL deadline. If either read fails or the deadline expires,
+    # the turn returns the F2 holding response (riskLevel UNKNOWN, distinct
+    # outageReason) and stops: no safeguarding assessment, generation, judge,
+    # GREEN verdict, EXIT C, provisional RED, database write or per-turn staff
+    # notification. No fallback site settings. Successful reads are unchanged.
+    _pre_read = {"current": "character_config"}
+
+    async def _pre_assessment_reads():
+        _cfg = await get_character_config(character)
+        _pre_read["current"] = "site_settings"
+        _settings = await db.settings.find_one({"_id": "site_settings"}) or {}
+        return _cfg, _settings
+
+    try:
+        char_config, _site_settings = await asyncio.wait_for(
+            _pre_assessment_reads(), timeout=PRE_ASSESSMENT_READ_DEADLINE_S)
+    except Exception as _pre_err:  # includes the deadline (asyncio.TimeoutError)
+        return _pre_assessment_outage_response(request, character, _pre_read["current"], _pre_err)
+
     # If character not found, default to tommy
     if char_config.get("source") == "fallback" and character not in AI_CHARACTERS:
         character = "tommy"
-    
-    # Go-to-market off-mode flags — single authority, derived ONCE per request
-    # and threaded into the unified safety wrapper, the failsafe crisis message,
-    # and the persona prompt. (per Anthony)
-    # Read BEFORE the handler-wide try (Ant, 6 Oct 2026): a failure here happens
-    # before any safety evaluation, so it must not reach EXIT C and be reported
-    # as GREEN. It surfaces as the framework's 500 instead.
-    _site_settings = await db.settings.find_one({"_id": "site_settings"}) or {}
+
     signpost_mode = _site_settings.get("safeguarding_response_mode") == "signpost"
     human_support_available = bool(_site_settings.get("counsellor_enabled", True)) and bool(_site_settings.get("peer_to_peer_enabled", True))
 

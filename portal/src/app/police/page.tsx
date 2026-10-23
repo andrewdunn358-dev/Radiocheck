@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { API_URL } from '@/lib/admin-api';
+import { readChatReply, chatFailureReply } from '@/lib/chatReply';
 
 const LOGO_URL = 'https://static.prod-images.emergentagent.com/jobs/99d619d0-b5ae-4aad-8c13-9ad1f0c90dfa/images/19f5131d6075cedaa7d8e2f56005fba0f0ef9bb4d9530fe80d4798a82456c218.png';
 const HERO_IMG = 'https://customer-assets.emergentagent.com/job_99d619d0-b5ae-4aad-8c13-9ad1f0c90dfa/artifacts/681p6tax_WhatsApp%20Image%202026-04-22%20at%2011.35.55.jpeg';
@@ -540,13 +541,15 @@ export default function PolicePage() {
           conversation_context,
         }),
       });
-      const data = await res.json();
-      const aiMsg: Msg = { role: 'assistant', text: data.reply || 'Sorry, something went wrong.', ts: new Date().toISOString() };
+      // #144: HTTP errors, non-JSON bodies and missing/invalid replies show the
+      // approved crisis-support wording; a normal reply is shown unchanged.
+      const { data, reply } = await readChatReply(res);
+      const aiMsg: Msg = { role: 'assistant', text: reply, ts: new Date().toISOString() };
       const updated = [...newMsgs, aiMsg];
       setMessages(updated);
 
       // Safeguarding modal — mirrors main app behaviour
-      if (data.safeguardingTriggered) {
+      if (data?.safeguardingTriggered) {
         setShowSafeguardModal(true);
       }
 
@@ -555,7 +558,7 @@ export default function PolicePage() {
       freshStored[persona.id] = updated;
       saveConversations(freshStored);
     } catch {
-      const errMsg: Msg = { role: 'assistant', text: 'Connection error. Please try again.', ts: new Date().toISOString() };
+      const errMsg: Msg = { role: 'assistant', text: chatFailureReply(), ts: new Date().toISOString() };
       setMessages(m => [...m, errMsg]);
     }
     setSending(false);

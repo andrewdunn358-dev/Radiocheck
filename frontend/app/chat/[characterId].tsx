@@ -72,6 +72,7 @@ import { useLocationPermission } from '../../src/context/LocationPermissionConte
 import SafeguardingCallModal from '../../src/components/SafeguardingCallModal';
 import { resolveMediaUrl } from '../../src/utils/media';
 import { goBack } from '../../src/utils/navigation';
+import { readChatReply, chatFailureReply } from '../../src/utils/chatReply';
 
 interface Message {
   id: string;
@@ -543,17 +544,19 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
         }),
       });
 
-      const data = await response.json();
+      // #144: HTTP errors, non-JSON bodies and missing/invalid replies show the
+      // approved crisis-support wording; a normal reply is shown unchanged.
+      const { data, reply } = await readChatReply(response);
 
       // Check for safeguarding alert
-      if (data.safeguardingTriggered) {
+      if (data?.safeguardingTriggered) {
         setCurrentAlertId(data.safeguardingAlertId);
         setShowSafeguardingModal(true);
       }
 
       const buddyMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.reply || "I'm here for you. Sometimes it helps to just talk.",
+        text: reply,
         sender: 'buddy',
         timestamp: new Date(),
       };
@@ -563,7 +566,7 @@ Talk to them like an old mate you're catching up with. Be natural - maybe ask "h
       console.error('Error sending message:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I'm having trouble connecting right now. Please try again in a moment.",
+        text: chatFailureReply(),
         sender: 'buddy',
         timestamp: new Date(),
       };

@@ -187,7 +187,13 @@ def test_r3_ordinary_exit_b_still_emits_exactly_one_record(harness):
 @pytest.mark.parametrize("message", [CRISIS_MESSAGE, BENIGN_MESSAGE])
 def test_r4_settings_failure_emits_no_decision_record(harness, message):
     resp, recs, alerts, calls = harness.send(message, fail_settings=True)
-    assert resp.status_code == 500
+    # #144 (Ant, 23 Oct 2026): deliberately replaces the D1/C1b 500. A failed
+    # settings read now returns the F2 holding response, riskLevel UNKNOWN;
+    # still no decision, so still no decision record.
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["reply"] == server.F2_HOLDING_RESPONSE and body["riskLevel"] == "UNKNOWN"
+    assert body["outageReason"] == "site_settings_error"
     assert recs == [], "no decision was established, so no decision record"
     assert alerts == [] and calls == 0
 

@@ -16,6 +16,15 @@ handler-wide try. A read failure now surfaces as the framework's 500, which
 carries no safety fields; the chat client's existing catch shows its own
 "having trouble connecting" message. No new catch, state or schema.
 
+#144 (Ant, 23 Oct 2026, Stage 1): narrowly scoped supersession of D1/C1b's
+prohibition on locally handling this failure. The 500 showed no crisis-support
+text. The settings read (and the character-config read) now share a 2-second
+total deadline, and a failure returns the approved F2 holding response
+(HTTP 200, riskLevel UNKNOWN, outageReason "site_settings_error"). D1/C1b's
+purpose is kept: still never EXIT C, never GREEN, no evaluation, no fallback
+site settings. R2-R4 are deliberately replaced to assert that representation
+instead of the 500. R1, the R4 control and the signpost test are unchanged.
+
 These tests drive the real /api/ai-buddies/chat handler with the #133/#134
 harness pieces (scripted model that counts calls, in-memory Mongo, silent
 classifier, stubbed geo and email) and the established EXIT A input. The
@@ -145,13 +154,20 @@ def harness(monkeypatch):
 
 
 def _assert_failure_representation(resp):
-    """Framework 500: no BuddyChatResponse, no safety fields, not EXIT C."""
-    assert resp.status_code == 500
-    assert resp.headers["content-type"].startswith("text/plain")
-    assert resp.text == "Internal Server Error"
-    assert EXIT_C_PREFIX not in resp.text
-    for field in SAFETY_FIELDS:
-        assert field not in resp.text
+    """#144: the F2 holding response, riskLevel UNKNOWN, a distinct outage
+    reason; not EXIT C, not GREEN, no safety decision. (Replaces the framework
+    500 asserted under D1/C1b; deliberate, Ant 23 Oct 2026.)"""
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/json")
+    body = resp.json()
+    assert body["reply"] == server.F2_HOLDING_RESPONSE
+    assert "116 123" in body["reply"] and "999" in body["reply"]
+    assert not body["reply"].startswith(EXIT_C_PREFIX)
+    assert body["riskLevel"] == "UNKNOWN" and body["riskLevel"] != "GREEN"
+    assert body["safeguardingTriggered"] is False
+    assert body["safeguardingAlertId"] is None
+    assert body["riskScore"] == 0
+    assert body["outageReason"] == "site_settings_error"
 
 
 # R1 -- normal crisis unchanged ------------------------------------------------
@@ -187,7 +203,11 @@ def test_r3_benign_with_settings_read_failure_is_identical_to_crisis(harness):
     _assert_failure_representation(benign)
     assert benign.status_code == crisis.status_code
     assert benign.headers["content-type"] == crisis.headers["content-type"]
-    assert benign.content == crisis.content
+    # Identical apart from the echoed sessionId: the representation carries no
+    # information about the message (crisis and benign are indistinguishable).
+    b, c = benign.json(), crisis.json()
+    assert b.pop("sessionId") == sid_b and c.pop("sessionId") == sid_c
+    assert b == c
     assert harness.alerts(sid_b) == [] and harness.alerts(sid_c) == []
     assert calls == 0
 
@@ -197,7 +217,7 @@ def test_r3_benign_with_settings_read_failure_is_identical_to_crisis(harness):
 @pytest.mark.parametrize("message", [CRISIS_MESSAGE, BENIGN_MESSAGE])
 def test_r4_settings_read_failure_stops_before_any_evaluation(harness, message):
     resp, _, _ = harness.send(message, fail_settings=True)
-    assert resp.status_code == 500
+    _assert_failure_representation(resp)
     assert harness.calls == {"normaliser": 0, "legacy_scorer": 0, "unified": 0}
 
 
