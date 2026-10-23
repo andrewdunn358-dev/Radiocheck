@@ -1,0 +1,91 @@
+name: Deploy to Vercel
+
+# Deploys both Vercel projects from GitHub Actions instead of Vercel's own
+# Git integration. Vercel's free (Hobby) plan blocks Git-triggered deploys of
+# a PRIVATE repo when the commit author isn't on the Vercel account (e.g. Ant's
+# merges). Deploying with the account owner's token from CI avoids that, so the
+# repo can be private.
+#
+#   push to main          -> production deploy (radiocheck.me + app.radiocheck.me)
+#   pull request to main  -> preview deploy (link in the job summary)
+#   manual run            -> production deploy of the chosen branch
+#
+# Needs one repository secret: VERCEL_TOKEN (a token from the Vercel account
+# that owns both projects). Project and team IDs below are not secret.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VERCEL_ORG_ID: team_xvLWHCzr3PFE4QGUZftnSC0y
+
+jobs:
+  deploy:
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    # Fork PRs never get secrets; skip them rather than fail
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Portal (radiocheck.me, admin, staff, training, police)
+            project_id: prj_cMAXRPxfGKnrFhSnMB5Kes24chsy   # Vercel project "radiocheck", root: portal/
+          - label: App (app.radiocheck.me)
+            project_id: prj_8qghrHgzLjpy6MERd4lxxmBwD6vH   # Vercel project "veteran.v.01", root: frontend/
+    env:
+      VERCEL_PROJECT_ID: ${{ matrix.project_id }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check the Vercel token is set
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Repository secret VERCEL_TOKEN is not set (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pick environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "target=preview" >> "$GITHUB_OUTPUT"
+            echo "prod_flag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "target=production" >> "$GITHUB_OUTPUT"
+            echo "prod_flag=--prod" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Pulls the project's settings (root directory, build command) and its
+      # environment variables for this environment, exactly as Vercel would use.
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=${{ steps.env.outputs.target }} --token="$VERCEL_TOKEN"
+
+      - name: Build
+        run: vercel build ${{ steps.env.outputs.prod_flag }} --token="$VERCEL_TOKEN"
+
+      - name: Deploy
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt ${{ steps.env.outputs.prod_flag }} --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "**${{ matrix.label }}** (${{ steps.env.outputs.target }}): ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
