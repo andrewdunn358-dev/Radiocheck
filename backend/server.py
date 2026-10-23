@@ -20,6 +20,7 @@ import secrets
 import resend
 import asyncio
 import threading
+import log_privacy as lp  # #146: privacy-preserving log metadata
 from openai import OpenAI
 import httpx  # For IP geolocation lookup
 from collections import defaultdict
@@ -150,7 +151,7 @@ def is_ip_blocked(ip: str) -> bool:
 def block_ip(ip: str, duration_seconds: int = 300):
     """Block an IP for specified duration (default 5 minutes)"""
     blocked_ips[ip] = time.time() + duration_seconds
-    logging.warning(f"RATE LIMIT: Blocked IP {ip} for {duration_seconds}s")
+    logging.warning(f"RATE LIMIT: Blocked IP {lp.ip_ref(ip)} for {duration_seconds}s")
 
 def check_rate_limit(ip: str) -> tuple[bool, str]:
     """
@@ -1777,7 +1778,7 @@ async def lookup_ip_geolocation(ip_address: str) -> Dict[str, Any]:
                         "geo_lon": data.get("lon")
                     }
     except Exception as e:
-        logging.warning(f"IP geolocation lookup failed for {ip_address}: {e}")
+        logging.warning(f"IP geolocation lookup failed for {lp.ip_ref(ip_address)}: {lp.exc(e)}")
     
     return {}
 
@@ -1836,7 +1837,7 @@ async def send_reset_email(email: str, reset_token: str):
         logging.info(f"Password reset email sent to {email}, ID: {result.get('id')}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send email via Resend: {str(e)}")
+        logging.error(f"Failed to send email via Resend: {lp.exc(e)}")
         return False
 
 F2_PROVISIONAL_EMAIL_SUBJECT = "PROVISIONAL SAFEGUARDING ALERT — EVALUATION INCOMPLETE"
@@ -1989,7 +1990,7 @@ async def send_safeguarding_email_notification(alert: SafeguardingAlert, risk_da
         logging.info(f"Safeguarding alert email sent, ID: {result.get('id')}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send safeguarding email: {str(e)}")
+        logging.error(f"Failed to send safeguarding email: {lp.exc(e)}")
         return False
 
 # ============ AUTH FUNCTIONS ============
@@ -4020,10 +4021,10 @@ async def send_callback_confirmation_email(email: str, name: str, request_type: 
         }
         
         result = await asyncio.to_thread(resend.Emails.send, params)
-        logging.info(f"Callback confirmation email sent to {email}, ID: {result.get('id')}")
+        logging.info(f"Callback confirmation email sent, ID: {result.get('id')}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send callback confirmation email: {str(e)}")
+        logging.error(f"Failed to send callback confirmation email: {lp.exc(e)}")
         return False
 
 async def send_callback_notification_to_staff(callback: dict, staff_type: str):
@@ -4076,7 +4077,7 @@ async def send_callback_notification_to_staff(callback: dict, staff_type: str):
         logging.info(f"Callback notification sent to {len(staff_emails)} {staff_type}(s), ID: {result.get('id')}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send staff notification: {str(e)}")
+        logging.error(f"Failed to send staff notification: {lp.exc(e)}")
         return False
 
 @api_router.post("/callbacks")
@@ -4102,7 +4103,7 @@ async def create_callback_request(callback_input: CallbackRequestCreate):
         logging.info(f"Callback request created: {callback.id} - {callback_input.request_type}")
         return {"message": "Callback request submitted successfully", "id": callback.id}
     except Exception as e:
-        logging.error(f"Error creating callback request: {str(e)}")
+        logging.error(f"Error creating callback request: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to submit callback request")
 
 @api_router.get("/callbacks")
@@ -4131,7 +4132,7 @@ async def get_callback_requests(
         # Decrypt sensitive fields when retrieving
         return [decrypt_document('callbacks', c) for c in callbacks]
     except Exception as e:
-        logging.error(f"Error fetching callback requests: {str(e)}")
+        logging.error(f"Error fetching callback requests: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch callback requests")
 
 @api_router.patch("/callbacks/{callback_id}/take")
@@ -4183,7 +4184,7 @@ async def take_callback_control(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error taking callback control: {str(e)}")
+        logging.error(f"Error taking callback control: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to take control")
 
 @api_router.patch("/callbacks/{callback_id}/release")
@@ -4228,7 +4229,7 @@ async def release_callback(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error releasing callback: {str(e)}")
+        logging.error(f"Error releasing callback: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to release callback")
 
 @api_router.patch("/callbacks/{callback_id}/complete")
@@ -4277,7 +4278,7 @@ async def complete_callback(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error completing callback: {str(e)}")
+        logging.error(f"Error completing callback: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to complete callback")
 
 
@@ -4638,7 +4639,7 @@ async def send_panic_alert_to_counsellors(alert: dict):
         logging.info(f"Panic alert sent to {len(staff_emails)} counsellors/admins, ID: {result.get('id')}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send panic alert email: {str(e)}")
+        logging.error(f"Failed to send panic alert email: {lp.exc(e)}")
         return False
 
 @api_router.post("/panic-alert")
@@ -4664,7 +4665,7 @@ async def create_panic_alert(alert_input: PanicAlertCreate):
             _prov.finish(alert_created=True, staff_notified=True,
                          alert_id=getattr(alert, "id", None))
         except Exception as _pe:
-            logging.error(f"[Provenance] panic finish failed: {_pe}")
+            logging.error(f"[Provenance] panic finish failed: {lp.exc(_pe)}")
         
         logging.warning(f"PANIC ALERT CREATED: {alert.id}")
         
@@ -4678,7 +4679,7 @@ async def create_panic_alert(alert_input: PanicAlertCreate):
             }
         }
     except Exception as e:
-        logging.error(f"Error creating panic alert: {str(e)}")
+        logging.error(f"Error creating panic alert: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Alert system error. Please call 999 or 116 123.")
 
 @api_router.get("/panic-alerts")
@@ -4698,7 +4699,7 @@ async def get_panic_alerts(
         alerts = await db.panic_alerts.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
         return alerts
     except Exception as e:
-        logging.error(f"Error fetching panic alerts: {str(e)}")
+        logging.error(f"Error fetching panic alerts: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch panic alerts")
 
 @api_router.patch("/panic-alerts/{alert_id}/acknowledge")
@@ -4728,7 +4729,7 @@ async def acknowledge_panic_alert(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error acknowledging alert: {str(e)}")
+        logging.error(f"Error acknowledging alert: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to acknowledge alert")
 
 @api_router.patch("/panic-alerts/{alert_id}/resolve")
@@ -4752,7 +4753,7 @@ async def resolve_panic_alert(
         
         return {"message": f"Alert resolved by {current_user.name}"}
     except Exception as e:
-        logging.error(f"Error resolving alert: {str(e)}")
+        logging.error(f"Error resolving alert: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to resolve alert")
 
 # ============ SAFEGUARDING ALERTS ENDPOINTS ============
@@ -4793,8 +4794,8 @@ async def get_safeguarding_alerts(
         
         return alerts
     except Exception as e:
-        print(f"[SAFEGUARDING] ERROR: {str(e)}")
-        logging.error(f"Error fetching safeguarding alerts: {str(e)}")
+        print(f"[SAFEGUARDING] ERROR: {lp.exc(e)}")
+        logging.error(f"Error fetching safeguarding alerts: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch safeguarding alerts")
 
 @api_router.get("/safeguarding-alerts/{alert_id}")
@@ -4814,7 +4815,7 @@ async def get_safeguarding_alert(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error fetching safeguarding alert {alert_id}: {str(e)}")
+        logging.error(f"Error fetching safeguarding alert {alert_id}: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch safeguarding alert")
 
 
@@ -4846,7 +4847,7 @@ async def acknowledge_safeguarding_alert(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error acknowledging safeguarding alert: {str(e)}")
+        logging.error(f"Error acknowledging safeguarding alert: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to acknowledge safeguarding alert")
 
 @api_router.patch("/safeguarding-alerts/{alert_id}/resolve")
@@ -4875,7 +4876,7 @@ async def resolve_safeguarding_alert(
         
         return {"message": f"Safeguarding alert resolved by {current_user.name}"}
     except Exception as e:
-        logging.error(f"Error resolving safeguarding alert: {str(e)}")
+        logging.error(f"Error resolving safeguarding alert: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to resolve safeguarding alert")
 
 class GPSLocationUpdate(BaseModel):
@@ -4917,13 +4918,13 @@ async def update_safeguarding_alert_location(
             {"$set": update_data}
         )
         
-        logging.info(f"Safeguarding alert {alert_id} updated with GPS location: {location.gps_lat}, {location.gps_lon} (accuracy: {location.gps_accuracy}m)")
+        logging.info(f"Safeguarding alert {alert_id} updated with GPS location (accuracy: {location.gps_accuracy}m)")
         
         return {"message": "Location updated successfully", "accuracy_meters": location.gps_accuracy}
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error updating safeguarding alert location: {str(e)}")
+        logging.error(f"Error updating safeguarding alert location: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to update location")
 
 # ============ SAFEGUARDING MONITORING ENDPOINTS ============
@@ -4985,7 +4986,7 @@ async def get_safeguarding_monitor(
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
-        logging.error(f"Error getting safeguarding monitor: {str(e)}")
+        logging.error(f"Error getting safeguarding monitor: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to get monitoring data")
 
 @api_router.get("/safeguarding/triggers")
@@ -5116,7 +5117,7 @@ async def test_create_safeguarding_alert(
             "alert_data": verify
         }
     except Exception as e:
-        logging.error(f"Test alert creation failed: {e}")
+        logging.error(f"Test alert creation failed: {lp.exc(e)}")
         return {
             "success": False,
             "error": str(e)
@@ -6443,7 +6444,7 @@ async def get_knowledge_context(user_message: str, limit: int = 3) -> str:
         return ""
         
     except Exception as e:
-        logging.error(f"Error fetching knowledge context: {e}")
+        logging.error(f"Error fetching knowledge context: {lp.exc(e)}")
         return ""
 
 
@@ -6879,7 +6880,7 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
             try:
                 await db.safeguarding_alerts.insert_one(alert.dict())
                 provisional_persisted = True
-                logging.warning(f"SAFEGUARDING PROVISIONAL ALERT [EVALUATION INCOMPLETE] - Alert: {alert.id} - Session: {request.sessionId}")
+                logging.warning(f"SAFEGUARDING PROVISIONAL ALERT [EVALUATION INCOMPLETE] - Alert: {alert.id} - Session: {lp.sid(request.sessionId)}")
             except Exception as e:
                 # Item 3: independently observable; no email will claim a
                 # portal record that does not exist.
@@ -6893,7 +6894,7 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
                     score=(legacy_score if score_known else None),
                     triggered_indicators=indicators)
             except Exception as e:
-                logging.error(f"SAFEGUARDING PROVISIONAL AUDIT NOT PERSISTED - Alert: {alert.id} - {type(e).__name__}: {e}")
+                logging.error(f"SAFEGUARDING PROVISIONAL AUDIT NOT PERSISTED - Alert: {alert.id} - {type(e).__name__}")
             if provisional_persisted:
                 try:
                     if await send_safeguarding_email_notification(alert, risk_data):
@@ -6901,7 +6902,7 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
                         # counts towards the first-alert rule as before.
                         _f2_set_unnotified(request.sessionId, history_before_ids, False)
                 except Exception as e:
-                    logging.error(f"Failed to send provisional safeguarding email: {e}")
+                    logging.error(f"Failed to send provisional safeguarding email: {lp.exc(e)}")
             else:
                 # Item 3: the email links to the staff portal record, so it is
                 # only sent once that record exists. What staff should receive
@@ -6921,7 +6922,7 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
                 except Exception:
                     pass
         except Exception as e:
-            logging.error(f"[F2] provisional alert failed: {type(e).__name__}: {e}")
+            logging.error(f"[F2] provisional alert failed: {type(e).__name__}")
 
     try:
         prov.finish(
@@ -6936,7 +6937,7 @@ async def _f2_incomplete_response(*, request, character, char_config, prov, safe
             signpost_mode=bool(signpost_mode),
         )
     except Exception as _pe:
-        logging.error(f"[Provenance] finish failed: {_pe}")
+        logging.error(f"[Provenance] finish failed: {lp.exc(_pe)}")
 
     # No history append: the user did not receive a turn to record (PD-1).
     return BuddyChatResponse(
@@ -6965,7 +6966,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
     # Check IP-based rate limit
     is_allowed, reason = check_rate_limit(client_ip)
     if not is_allowed:
-        logging.warning(f"RATE LIMITED: IP {client_ip} - {reason}")
+        logging.warning(f"RATE LIMITED: IP {lp.ip_ref(client_ip)} - {reason}")
         raise HTTPException(status_code=429, detail=reason)
     
     # Check session message limit. A product conversation limit must not
@@ -6978,12 +6979,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
     # === Suspicious pattern detection ===
     # Block obviously automated requests
     if len(request.message) > 2000:
-        logging.warning(f"BLOCKED: Oversized message from {client_ip}")
+        logging.warning(f"BLOCKED: Oversized message from {lp.ip_ref(client_ip)}")
         raise HTTPException(status_code=400, detail="Message too long")
     
     if client_ip not in ("127.0.0.1", "localhost", "::1"):
         if not user_agent or user_agent == "unknown" or "bot" in user_agent.lower() or "crawler" in user_agent.lower():
-            logging.warning(f"BLOCKED: Suspicious user-agent from {client_ip}: {user_agent}")
+            logging.warning(f"BLOCKED: Suspicious user-agent from {lp.ip_ref(client_ip)}: ua_family={lp.ua_family(user_agent)} ua_len={len(user_agent or '')}")
             raise HTTPException(status_code=403, detail="Access denied")
     
     # Kill switch check
@@ -7060,7 +7061,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
         try:
             prov.rekey(safeguarding_text)  # match the reconciler's hash input
         except Exception as _pe:
-            logging.error(f"[Provenance] rekey failed: {_pe}")
+            logging.error(f"[Provenance] rekey failed: {lp.exc(_pe)}")
         
         # Detect active protocols BEFORE safeguarding check (needed for identity threshold dampening)
         protocol_files = get_protocol_files(safety_input)
@@ -7138,7 +7139,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     else:
                         session['grief_pronoun'] = session.get('grief_pronoun', 'they')
                     if session.get('grief_name'):
-                        logging.info(f"[Grief] Name: {session['grief_name']}, Pronoun: {session['grief_pronoun']} - Session: {request.sessionId[:12]}")
+                        logging.info(f"[Grief] Name: present={bool(session['grief_name'])}, Pronoun: {session['grief_pronoun']} - Session: {request.sessionId[:12]}")
             elif session.get('grief_active_turns', 0) > 0:
                 if 'grief.md' not in protocol_files:
                     protocol_files = protocol_files + ['grief.md']
@@ -7230,9 +7231,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 prov.stage("legacy_result", source="server.calculate_safeguarding_score",
                            available=False, error="check_safeguarding")
         except Exception as _pe:
-            logging.error(f"[Provenance] stage failed: {_pe}")
+            logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
 
-        print(f"[SAFEGUARDING CHECK] Session: {request.sessionId[:20]}, Character: {character}, Message: {request.message[:50]}...")
+        print(f"[SAFEGUARDING CHECK] Session: {lp.sid(request.sessionId)}, Character: {character}, Message length: {len(request.message or '')}")
         if legacy_available:
             print(f"[SAFEGUARDING CHECK] Score: {risk_data['score']}, Level: {risk_level}, Should Escalate: {should_escalate}")
             logging.info(f"Safeguarding check - Session: {request.sessionId[:12]}, Score: {risk_data['score']}, Level: {risk_level}")
@@ -7276,7 +7277,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                            thresholds_applied=unified_safety.get("thresholds_applied"),
                            age_protections_applied=unified_safety.get("age_protections_applied"))
         except Exception as _pe:
-            logging.error(f"[Provenance] stage failed: {_pe}")
+            logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
 
         # === SECTION 0: UNDER-18 AUDIT RECORD ===
         # Per Ant's spec: this is NOT verification (the flag is client-asserted
@@ -7301,7 +7302,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     risk_level=unified_safety.get("risk_level"),
                 )
             except Exception as e:
-                logging.error(f"[Under18Audit] failed to log: {e}")
+                logging.error(f"[Under18Audit] failed to log: {lp.exc(e)}")
 
         # === ROUND 10 PHASE B: VERDICT RECONCILER ===
         # The unified pipeline produces both a keyword/failsafe verdict and an
@@ -7361,7 +7362,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                            unified_available=unified_available,
                            reconciler_fallback_case=reconciler_fallback_case)
         except Exception as _pe:
-            logging.error(f"[Provenance] stage failed: {_pe}")
+            logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
 
         # === F2 COMPLETION CHECK 1 (Ant, 20 Oct 2026: PD-1, PD-4, PD-7) ===
         # Proceed only if an authoritative decision exists:
@@ -7410,7 +7411,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                        failsafe_source=("reconciler" if reconciler_fallback_case is None
                                         else f"reconciler_fallback_{reconciler_fallback_case}"))
         except Exception as _pe:
-            logging.error(f"[Provenance] stage failed: {_pe}")
+            logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
         
         # === NEGATION DETECTION (applies to BOTH failsafe AND risk-level upgrade) ===
         # If the user explicitly negates suicidal intent, ALL safety escalation
@@ -7471,7 +7472,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             failsafe_reason = unified_safety.get("failsafe_reason", "unknown")
             logging.info(
                 f"FAILSAFE SUPPRESSED BY NEGATION - Session: {request.sessionId[:12]} - "
-                f"Reason: {failsafe_reason} - Negation detected in: '{safeguarding_text[:60]}'"
+                f"Reason: {failsafe_reason} - Negation detected (message length: {len(safeguarding_text)})"
             )
             try:
                 prov.override("negation_suppression", source="server.inline_negation_phrases",
@@ -7544,7 +7545,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             
             # ===== CREATE SAFEGUARDING ALERT FOR FAILSAFE =====
             # This is critical - we MUST create the alert before returning
-            print(f"[SAFEGUARDING FAILSAFE] Creating RED alert - Session: {request.sessionId[:20]}, Reason: {failsafe_reason}")
+            print(f"[SAFEGUARDING FAILSAFE] Creating RED alert - Session: {lp.sid(request.sessionId)}, Reason: {failsafe_reason}")
             
             conversation_history = session.get("history", [])
             alert = SafeguardingAlert(
@@ -7586,12 +7587,12 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 await db.safeguarding_alerts.insert_one(alert.dict())
                 failsafe_alert_persisted = True
                 print(f"[SAFEGUARDING] FAILSAFE ALERT CREATED - ID: {failsafe_alert_id}, Reason: {failsafe_reason}")
-                logging.warning(f"SAFEGUARDING FAILSAFE ALERT [RED] - Alert: {failsafe_alert_id} - Session: {request.sessionId} - Reason: {failsafe_reason}")
+                logging.warning(f"SAFEGUARDING FAILSAFE ALERT [RED] - Alert: {failsafe_alert_id} - Session: {lp.sid(request.sessionId)} - Reason: {failsafe_reason}")
             except Exception as alert_err:
                 logging.error(
                     f"SAFEGUARDING FAILSAFE ALERT NOT PERSISTED - Alert: {failsafe_alert_id} - "
-                    f"Session: {request.sessionId} - Reason: {failsafe_reason} - "
-                    f"{type(alert_err).__name__}: {alert_err} - crisis response still delivered"
+                    f"Session: {lp.sid(request.sessionId)} - Reason: {failsafe_reason} - "
+                    f"{type(alert_err).__name__} - crisis response still delivered"
                 )
 
             # Audit log
@@ -7606,7 +7607,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             except Exception as audit_err:
                 logging.error(
                     f"SAFEGUARDING FAILSAFE AUDIT NOT PERSISTED - Alert: {failsafe_alert_id} - "
-                    f"Session: {request.sessionId} - {type(audit_err).__name__}: {audit_err} - "
+                    f"Session: {lp.sid(request.sessionId)} - {type(audit_err).__name__} - "
                     f"crisis response still delivered"
                 )
             
@@ -7614,7 +7615,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
             try:
                 await send_safeguarding_email_notification(alert, {"score": 999, "failsafe": True})
             except Exception as email_err:
-                logging.error(f"Failed to send failsafe email: {email_err}")
+                logging.error(f"Failed to send failsafe email: {lp.exc(email_err)}")
             
             # Get safety wrapper for crisis response message
             # ALWAYS use the Radio Check formatted crisis response (human options primary)
@@ -7677,7 +7678,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     **_f2_extra,
                 )
             except Exception as _pe:
-                logging.error(f"[Provenance] finish failed: {_pe}")
+                logging.error(f"[Provenance] finish failed: {lp.exc(_pe)}")
 
             # Return immediate safety response with the alert ID
             return BuddyChatResponse(
@@ -7901,7 +7902,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                         signpost_mode=bool(signpost_mode),
                     )
                 except Exception as _pe:
-                    logging.error(f"[Provenance] finish failed: {_pe}")
+                    logging.error(f"[Provenance] finish failed: {lp.exc(_pe)}")
                 return BuddyChatResponse(
                     reply=f"We've been chatting for a while. If you'd like to continue talking, a real person is available. Use the 'Talk to a real person' button to connect with someone.",
                     sessionId=request.sessionId,
@@ -7921,7 +7922,7 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     signpost_mode=bool(signpost_mode),
                 )
             except Exception as _pe:
-                logging.error(f"[Provenance] finish failed: {_pe}")
+                logging.error(f"[Provenance] finish failed: {lp.exc(_pe)}")
             return BuddyChatResponse(
                 reply=f"Let's pause here for now. If you want to talk more, a real person is available and I can help connect you. You can use the 'Talk to a real person' button below.",
                 sessionId=request.sessionId,
@@ -7983,9 +7984,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                 timeout=45
             )
             reply = completion.choices[0].message.content or ""
-            logging.info(f"AI response from OpenAI for session {request.sessionId}")
+            logging.info(f"AI response from OpenAI for session {lp.sid(request.sessionId)}")
         except Exception as openai_error:
-            logging.warning(f"OpenAI failed, attempting Gemini fallback: {str(openai_error)}")
+            logging.warning(f"OpenAI failed, attempting Gemini fallback: {lp.exc(openai_error)}")
             
             # Try Gemini as fallback (using user's own API key)
             if gemini_client:
@@ -8003,9 +8004,9 @@ async def buddy_chat(request: BuddyChatRequest, req: Request):
                     )
                     reply = gemini_response.text
                     ai_provider_used = "gemini"
-                    logging.info(f"AI response from Gemini (fallback) for session {request.sessionId}")
+                    logging.info(f"AI response from Gemini (fallback) for session {lp.sid(request.sessionId)}")
                 except Exception as gemini_error:
-                    logging.error(f"Gemini fallback also failed: {str(gemini_error)}")
+                    logging.error(f"Gemini fallback also failed: {lp.exc(gemini_error)}")
                     raise Exception(f"Both OpenAI and Gemini failed. OpenAI: {openai_error}, Gemini: {gemini_error}")
             else:
                 logging.error("Gemini fallback not available - no API key configured")
@@ -8218,12 +8219,12 @@ Return ONLY the response text. No explanation. No labels."""
                     if _is_model_refusal(raw):
                         logging.error(
                             f"[Fallback] Micro-gen returned a model REFUSAL, not "
-                            f"in-character content — discarding. Raw: {raw!r}"
+                            f"in-character content — discarding. raw_len={len(raw or '')}"
                         )
                         return None
                     return raw
                 except Exception as e:
-                    logging.error(f"[Fallback] Micro-generation failed: {e}")
+                    logging.error(f"[Fallback] Micro-generation failed: {lp.exc(e)}")
                     return None
             
             # === Fix 5: Banter/humour detection for post-fallback safety ===
@@ -8262,7 +8263,7 @@ Return ONLY the response text. No explanation. No labels."""
                            situation=current_situation,
                            protocol_turn=current_protocol_turn)
             except Exception as _pe:
-                logging.error(f"[Provenance] stage failed: {_pe}")
+                logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
             emit_gate_audit_log(
                 gate_verdict,
                 reply=reply,
@@ -8328,7 +8329,7 @@ Return ONLY the response text. No explanation. No labels."""
                                situation=protocol_state.get("situation"),
                                turn=protocol_state.get("turn"))
                 except Exception as _pe:
-                    logging.error(f"[Provenance] stage failed: {_pe}")
+                    logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
                 return micro
 
             def _run_validated_fallback(trigger: str) -> str:
@@ -8349,11 +8350,11 @@ Return ONLY the response text. No explanation. No labels."""
                     if out.source in ("terminal", "terminal_direct", "high_risk_override"):
                         prov.stage("terminal_safe_response", source="safety.fallback_validation",
                                    state=out.terminal_state, trigger=trigger,
-                                   because=out.failed_reason or out.source)
+                                   because=lp.reason_code(out.failed_reason) or out.source)
                 except Exception as _pe:
-                    logging.error(f"[Provenance] stage failed: {_pe}")
+                    logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
                 logging.warning(f"[Fallback] {trigger} path -> {out.source}"
-                                f"{' (' + str(out.failed_validator) + ':' + str(out.failed_reason) + ')' if out.failed_validator else ''}"
+                                f"{' (' + str(out.failed_validator) + ':' + str(lp.reason_code(out.failed_reason)) + ')' if out.failed_validator else ''}"
                                 f" - Session: {request.sessionId[:12]}")
                 return out.text
 
@@ -8405,7 +8406,7 @@ Return ONLY the response text. No explanation. No labels."""
                         # fall through to the LLM judge with the original
                         # failing reply. Route straight to micro-fallback.
                         logging.error(
-                            f"[ProtocolGate] Regeneration error: {gate_regen_error} "
+                            f"[ProtocolGate] Regeneration error: {lp.exc(gate_regen_error)} "
                             f"— routing to micro-fallback "
                             f"- Session: {request.sessionId[:12]}"
                         )
@@ -8431,7 +8432,7 @@ Return ONLY the response text. No explanation. No labels."""
                                passed=getattr(gate_verdict, "passed", None),
                                reason=getattr(gate_verdict, "reason", None))
                 except Exception as _pe:
-                    logging.error(f"[Provenance] stage failed: {_pe}")
+                    logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
                 emit_gate_audit_log(
                     gate_verdict,
                     reply=reply,
@@ -8495,17 +8496,17 @@ Return ONLY the response text. No explanation. No labels."""
                                            verdict="PASS", attempt=judge_attempt + 1,
                                            protocol=primary_protocol)
                             except Exception as _pe:
-                                logging.error(f"[Provenance] stage failed: {_pe}")
+                                logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
                             break
                         elif verdict.startswith("FAIL"):
                             fail_reason = verdict.replace("FAIL:", "").strip()
-                            logging.warning(f"[Judge] FAIL ({fail_reason}) attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
+                            logging.warning(f"[Judge] FAIL ({lp.reason_code(fail_reason)}) attempt {judge_attempt + 1} - Session: {request.sessionId[:12]}")
                             try:
                                 prov.stage("llm_judge", source="server.ROUND7_JUDGE",
-                                           verdict="FAIL", reason=fail_reason[:80],
+                                           verdict="FAIL", reason=lp.reason_code(fail_reason),
                                            attempt=judge_attempt + 1, protocol=primary_protocol)
                             except Exception as _pe:
-                                logging.error(f"[Provenance] stage failed: {_pe}")
+                                logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
                         
                             if judge_attempt < max_judge_retries - 1:
                                 # Conditioned regeneration (Constraint 1)
@@ -8542,7 +8543,7 @@ Return ONLY the response text. No explanation. No labels."""
                                                reason=getattr(regen_gate_verdict, "reason", None),
                                                judge_attempt=judge_attempt + 1)
                                 except Exception as _pe:
-                                    logging.error(f"[Provenance] stage failed: {_pe}")
+                                    logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
                                 # `attempt` counts gate decisions this turn, so a
                                 # judge-loop regeneration is the second one.
                                 emit_gate_audit_log(
@@ -8574,13 +8575,13 @@ Return ONLY the response text. No explanation. No labels."""
                         # Was `break  # Don't block on judge failure`, which
                         # released the candidate. The post-loop guard now
                         # applies the same bounded recovery a second FAIL gets.
-                        logging.error(f"[Judge] Error: {judge_error} - no affirmative result")
+                        logging.error(f"[Judge] Error: {lp.exc(judge_error)} - no affirmative result")
                         try:
                             prov.stage("llm_judge", source="server.ROUND7_JUDGE",
                                        verdict="ERROR", reason=type(judge_error).__name__,
                                        attempt=judge_attempt + 1, protocol=primary_protocol)
                         except Exception as _pe:
-                            logging.error(f"[Provenance] stage failed: {_pe}")
+                            logging.error(f"[Provenance] stage failed: {lp.exc(_pe)}")
                         break
 
                 # No affirmative PASS about the reply in hand, and the bounded
@@ -8630,7 +8631,7 @@ Return ONLY the response text. No explanation. No labels."""
             logging.debug(f"AI Usage logged: {ai_provider_used}/{model_name} - {input_tokens}+{output_tokens} tokens = £{cost_gbp:.6f}")
         except Exception as usage_error:
             # Don't fail the request if usage tracking fails
-            logging.warning(f"Failed to track AI usage: {usage_error}")
+            logging.warning(f"Failed to track AI usage: {lp.exc(usage_error)}")
         
         # Store in history
         session["history"].append({"role": "user", "content": request.message})
@@ -8675,7 +8676,7 @@ Return ONLY the response text. No explanation. No labels."""
                     db_risk_level = "GREEN"
 
             print(
-                f"[SAFEGUARDING ESCALATE] Creating alert - Session: {request.sessionId[:20]}, "
+                f"[SAFEGUARDING ESCALATE] Creating alert - Session: {lp.sid(request.sessionId)}, "
                 f"Risk: {db_risk_level} (origin: {risk_level}), Score: {risk_data['score']}, "
                 f"Status: {alert_status}, ReconcilerRule: {final_verdict.precedence_rule_fired}"
             )
@@ -8718,12 +8719,12 @@ Return ONLY the response text. No explanation. No labels."""
                 await db.safeguarding_alerts.insert_one(alert.dict())
                 exit_b_alert_persisted = True
                 print(f"[SAFEGUARDING] ALERT CREATED IN DATABASE - ID: {alert_id}, Risk: {risk_level}, Score: {risk_data['score']}")
-                logging.warning(f"SAFEGUARDING ALERT [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {request.sessionId} - IP: {client_ip} - Location: {geo_data.get('geo_city', 'Unknown') if geo_data else 'Unknown'}, {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'}")
+                logging.warning(f"SAFEGUARDING ALERT [{risk_level}] Score: {risk_data['score']} - Alert: {alert_id} - Session: {lp.sid(request.sessionId)} - IP: {lp.ip_ref(client_ip)} - Country: {geo_data.get('geo_country', 'Unknown') if geo_data else 'Unknown'}")
             except Exception as alert_err:
                 logging.error(
                     f"[SAFEGUARDING] EXIT B alert insert FAILED - Alert: {alert_id} - "
                     f"Session: {request.sessionId[:12]} - Status: {alert_status} - Risk: {risk_level} - "
-                    f"{type(alert_err).__name__}: {alert_err} - established disposition still delivered"
+                    f"{type(alert_err).__name__} - established disposition still delivered"
                 )
             
             # Audit log: safeguarding alert created
@@ -8738,7 +8739,7 @@ Return ONLY the response text. No explanation. No labels."""
             except Exception as audit_err:
                 logging.error(
                     f"[SAFEGUARDING] EXIT B audit FAILED - Alert: {alert_id} - "
-                    f"Session: {request.sessionId[:12]} - {type(audit_err).__name__}: {audit_err}"
+                    f"Session: {request.sessionId[:12]} - {type(audit_err).__name__}"
                 )
             
             # NOTE: We no longer emit the alert immediately here.
@@ -8756,7 +8757,7 @@ Return ONLY the response text. No explanation. No labels."""
                 try:
                     await send_safeguarding_email_notification(alert, risk_data)
                 except Exception as email_err:
-                    logging.error(f"Failed to send safeguarding email: {email_err}")
+                    logging.error(f"Failed to send safeguarding email: {lp.exc(email_err)}")
         
         try:
             prov.finish(
@@ -8770,7 +8771,7 @@ Return ONLY the response text. No explanation. No labels."""
                 signpost_mode=bool(signpost_mode),
             )
         except Exception as _pe:
-            logging.error(f"[Provenance] finish failed: {_pe}")
+            logging.error(f"[Provenance] finish failed: {lp.exc(_pe)}")
 
         return BuddyChatResponse(
             reply=reply,
@@ -8785,7 +8786,7 @@ Return ONLY the response text. No explanation. No labels."""
         )
         
     except Exception as e:
-        logging.error(f"AI Buddy chat error: {str(e)}")
+        logging.error(f"AI Buddy chat error: {lp.exc(e)}")
         try:
             if 'prov' in locals():
                 prov.finish(error=type(e).__name__, safeguarding_triggered=False,
@@ -9068,7 +9069,7 @@ async def send_peer_registration_notification(email: str, registration_time: dat
         logging.info(f"Peer registration notification sent to {notification_email}, ID: {result.get('id')}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send peer registration notification: {str(e)}")
+        logging.error(f"Failed to send peer registration notification: {lp.exc(e)}")
         return False
 
 @api_router.post("/peer-support/register", response_model=PeerSupportRegistration)
@@ -9086,12 +9087,12 @@ async def register_peer_support(input: PeerSupportRegistrationCreate):
         # Send notification to admin
         await send_peer_registration_notification(input.email, registration_obj.timestamp)
         
-        logging.info(f"Peer support registration: {input.email}")
+        logging.info(f"Peer support registration: {registration_obj.id}")
         return registration_obj
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error registering peer support: {str(e)}")
+        logging.error(f"Error registering peer support: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to register. Please try again.")
 
 @api_router.get("/peer-support/registrations", response_model=List[PeerSupportRegistration])
@@ -9101,7 +9102,7 @@ async def get_peer_support_registrations(current_user: User = Depends(require_ro
         registrations = await db.peer_support_registrations.find().sort("timestamp", -1).to_list(1000)
         return [PeerSupportRegistration(**reg) for reg in registrations]
     except Exception as e:
-        logging.error(f"Error retrieving registrations: {str(e)}")
+        logging.error(f"Error retrieving registrations: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve registrations.")
 
 # ============ FAMILY & FRIENDS CONCERN ENDPOINTS ============
@@ -9112,17 +9113,17 @@ async def raise_concern(input: ConcernCreate):
     try:
         concern = Concern(**{k: v for k, v in input.dict().items() if v is not None})
         await db.concerns.insert_one(concern.dict())
-        logging.info(f"Concern raised by {input.your_name} ({input.relationship}) - Urgency: {input.urgency}")
+        logging.info(f"Concern raised: {concern.id} - Urgency: {input.urgency}")
         
         # Send notification email to admins
         try:
             await send_concern_notification(concern)
         except Exception as email_err:
-            logging.error(f"Failed to send concern notification email: {email_err}")
+            logging.error(f"Failed to send concern notification email: {lp.exc(email_err)}")
         
         return concern
     except Exception as e:
-        logging.error(f"Error raising concern: {str(e)}")
+        logging.error(f"Error raising concern: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to submit concern. Please try again.")
 
 @api_router.get("/concerns")
@@ -9142,7 +9143,7 @@ async def get_concerns(
         concerns = await db.concerns.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
         return concerns
     except Exception as e:
-        logging.error(f"Error retrieving concerns: {str(e)}")
+        logging.error(f"Error retrieving concerns: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve concerns.")
 
 @api_router.patch("/concerns/{concern_id}/status")
@@ -9172,7 +9173,7 @@ async def update_concern_status(
         )
         return {"message": f"Concern status updated to {status}"}
     except Exception as e:
-        logging.error(f"Error updating concern: {str(e)}")
+        logging.error(f"Error updating concern: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to update concern.")
 
 async def send_concern_notification(concern: Concern):
@@ -9236,7 +9237,7 @@ async def send_concern_notification(concern: Concern):
         logging.info(f"Concern notification sent, ID: {result.get('id')}")
         return True
     except Exception as e:
-        logging.error(f"Failed to send concern notification: {str(e)}")
+        logging.error(f"Failed to send concern notification: {lp.exc(e)}")
         return False
 
 # ============ CALL INTENT LOGGING ENDPOINTS ============
@@ -9250,7 +9251,7 @@ async def log_call_intent(call_input: CallIntentCreate):
         logging.info(f"Call intent logged: {call_input.contact_type} - {call_input.contact_name}")
         return call_obj
     except Exception as e:
-        logging.error(f"Error logging call intent: {str(e)}")
+        logging.error(f"Error logging call intent: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to log call")
 
 @api_router.get("/call-logs")
@@ -9297,7 +9298,7 @@ async def get_call_logs(
             "recent_logs": logs[:50]  # Last 50 logs
         }
     except Exception as e:
-        logging.error(f"Error retrieving call logs: {str(e)}")
+        logging.error(f"Error retrieving call logs: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve call logs")
 
 # ============ SETUP/SEED ENDPOINTS ============
@@ -9678,7 +9679,7 @@ async def end_live_chat_room(room_id: str):
     except Exception as e:
         # Never fail the HTTP request just because broadcast failed; the
         # DB / in-memory state is what's authoritative.
-        logging.warning(f"live_chat_ended broadcast failed for {room_id}: {e}")
+        logging.warning(f"live_chat_ended broadcast failed for {room_id}: {lp.exc(e)}")
 
     logging.info(f"Live chat room ended: {room_id}")
     return {"status": "ended"}
@@ -9733,7 +9734,7 @@ def _decrypt_live_chat_room_for_view(room: dict) -> dict:
         try:
             room_copy["user_name"] = decrypt_field(str(room_copy["user_name"]))
         except Exception as e:
-            logging.warning(f"Failed to decrypt user_name for room {room_copy.get('id')}: {e}")
+            logging.warning(f"Failed to decrypt user_name for room {room_copy.get('id')}: {lp.exc(e)}")
 
     # Decrypt each message.text
     if room_copy.get("messages"):
@@ -9744,7 +9745,7 @@ def _decrypt_live_chat_room_for_view(room: dict) -> dict:
                 try:
                     msg_copy["text"] = decrypt_field(msg_copy["text"])
                 except Exception as e:
-                    logging.warning(f"Failed to decrypt message in room {room_copy.get('id')}: {e}")
+                    logging.warning(f"Failed to decrypt message in room {room_copy.get('id')}: {lp.exc(e)}")
                     msg_copy["text"] = "[Unable to decrypt message]"
             decrypted_messages.append(msg_copy)
         room_copy["messages"] = decrypted_messages
@@ -9781,6 +9782,20 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+# #146 (Ant, 22 Oct 2026): third-party loggers that can write request
+# payloads, personal data in URLs or Socket.IO packet data are capped at
+# WARNING, so payload logging cannot be switched on by accident.
+lp.guard_third_party_logging()
+
+
+@app.on_event("startup")
+async def _log_privacy_startup_guard():
+    try:
+        lp.guard_third_party_logging()   # again, after libraries set their own levels
+        lp.ip_ref("startup-config-check")  # emits privacy.config_missing once if the key is absent
+    except Exception:
+        pass
+
 
 @app.on_event("startup")
 async def init_buddy_openai_client():

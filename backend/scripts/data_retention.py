@@ -254,7 +254,7 @@ async def run_retention_cleanup(dry_run: bool = False):
                 stats['deleted'][coll_name] = count
             except Exception as e:
                 error_msg = f"Error deleting from {coll_name}: {str(e)}"
-                logger.error(error_msg)
+                logger.error(f"Error deleting from {coll_name}: {type(e).__name__}")  # #146: no error text in logs
                 stats['errors'].append(error_msg)
         
         # Process anonymizations
@@ -264,7 +264,7 @@ async def run_retention_cleanup(dry_run: bool = False):
                 stats['anonymized'][coll_name] = count
             except Exception as e:
                 error_msg = f"Error anonymizing {coll_name}: {str(e)}"
-                logger.error(error_msg)
+                logger.error(f"Error anonymizing {coll_name}: {type(e).__name__}")  # #146: no error text in logs
                 stats['errors'].append(error_msg)
         
         # Cleanup orphaned sessions
@@ -288,12 +288,17 @@ async def run_retention_cleanup(dry_run: bool = False):
     except Exception as e:
         stats['status'] = 'failed'
         stats['error'] = str(e)
-        logger.error(f"Retention cleanup failed: {e}")
+        logger.error(f"Retention cleanup failed: {type(e).__name__}")
     
     finally:
         client.close()
     
-    logger.info(f"Data retention cleanup completed: {stats}")
+    # #146: log counts and status only; error text stays in the returned stats.
+    logger.info(
+        f"Data retention cleanup completed: status={stats.get('status')} "
+        f"deleted={stats.get('deleted')} anonymized={stats.get('anonymized')} "
+        f"errors={len(stats.get('errors') or [])}"
+    )
     return stats
 
 

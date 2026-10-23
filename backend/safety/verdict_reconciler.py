@@ -461,6 +461,9 @@ def _emit_audit_log(
 
 
 
+_TRIGGERS_LIST_RE = re.compile(r"triggers=\[[^\]]*\]")
+
+
 def _emit_audit_log_unguarded(
     final: FinalVerdict,
     keyword: KeywordVerdict,
@@ -478,12 +481,16 @@ def _emit_audit_log_unguarded(
 
     Privacy: message text is NEVER logged in the clear. Only msg_sha256_16
     (first 16 hex chars of sha256) and msg_length. Classifier `reason` strings
-    and `detected_indicators` text are also dropped.
+    and `detected_indicators` text are also dropped. Since #146 the matched
+    keyword phrases are logged as a count only, and session_id is truncated
+    to 12 characters.
     """
     payload: dict = {
         "evt": "round10.reconcile",
         "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "session_id": session_id or "",
+        # #146 (Ant, 22 Oct 2026): 12-character session reference, the
+        # existing correlation convention; the full id stays in the records.
+        "session_id": (session_id or "")[:12],
         "character": character or "",
         "msg_sha256_16": hashlib.sha256(message_lower.encode("utf-8")).hexdigest()[:16],
         "msg_length": len(message_lower),
@@ -491,7 +498,9 @@ def _emit_audit_log_unguarded(
             "risk_level": keyword.risk_level,
             "failsafe": keyword.failsafe_triggered,
             "failsafe_reason": keyword.failsafe_reason,
-            "triggers": list(keyword.triggers),
+            # #146: matched phrases come from the user's message; the count
+            # is kept as decision evidence, the phrases are not logged.
+            "triggers_count": len(keyword.triggers),
         },
         "cls": (
             {
@@ -507,7 +516,10 @@ def _emit_audit_log_unguarded(
             "failsafe_reason": final.failsafe_reason,
         },
         "rule": final.precedence_rule_fired,
-        "reason": final.reconciliation_reason,
+        # #146: same reason string with any "triggers=[...]" list replaced by
+        # its count. The FinalVerdict itself is unchanged.
+        "reason": _TRIGGERS_LIST_RE.sub(
+            f"triggers_count={len(keyword.triggers)}", final.reconciliation_reason or ""),
     }
     if ctx_detector is not None:
         payload["ctx_detector"] = ctx_detector

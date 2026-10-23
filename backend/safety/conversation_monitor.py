@@ -936,7 +936,9 @@ def flag_candidate_phrase(
     
     candidate_phrase_memory.append(candidate)
     
-    logger.info(f"[ConversationSafetyMonitor] Flagged candidate phrase: '{phrase}' -> {inferred_category}")
+    # #146: the candidate is the user's whole message; it stays in
+    # candidate_phrase_memory for review and is not written to operational logs.
+    logger.info(f"[ConversationSafetyMonitor] Flagged candidate phrase: len={len(phrase or '')} -> {inferred_category}")
 
 
 def get_candidate_phrases_for_review() -> List[Dict]:

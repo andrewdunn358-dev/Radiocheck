@@ -132,7 +132,7 @@ class ProvenanceRecord:
         try:
             _sink(payload)
         except Exception as e:  # provenance must never break the request
-            logger.error(f"[Provenance] sink failed: {e}")
+            logger.error(f"[Provenance] sink failed: {type(e).__name__}")
         return payload
 
     def to_dict(self) -> Dict[str, Any]:

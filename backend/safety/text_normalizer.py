@@ -42,7 +42,7 @@ def _get_async_client():
             from openai import AsyncOpenAI
             _async_client = AsyncOpenAI()  # reads OPENAI_API_KEY from env at first use
         except Exception as e:
-            logger.warning(f"[TextNormalizer] Failed to create AsyncOpenAI client: {e}")
+            logger.warning(f"[TextNormalizer] Failed to create AsyncOpenAI client: {type(e).__name__}")
             return None
     return _async_client
 
@@ -313,7 +313,8 @@ def _normalise_negation_prefixes(text: str) -> str:
             idx = result_lower.find(degraded)
             result = result[:idx] + expanded + result[idx + len(degraded):]
             result_lower = result.lower()
-            logger.info(f"[TextNormalizer] Negation prefix expanded: '{degraded}' → '{expanded}'")
+            # #146: the token comes from the user's text; log that it happened, not what it was.
+            logger.info("[TextNormalizer] Negation prefix expanded")
     
     return result
 
@@ -374,9 +375,10 @@ async def normalise_text(original_text: str) -> Tuple[str, bool]:
             logger.info("[TextNormalizer] Normalised text identical to original — skipping")
             return stripped, False
         
-        logger.info(f"[TextNormalizer] Normalised: '{stripped[:50]}...' → '{normalised[:50]}...'")
+        # #146: lengths only, never the message or its rewrite.
+        logger.info(f"[TextNormalizer] Normalised: len_in={len(stripped)} len_out={len(normalised)}")
         return normalised, True
         
     except Exception as e:
-        logger.error(f"[TextNormalizer] Failed: {e} — falling back to original")
+        logger.error(f"[TextNormalizer] Failed: {type(e).__name__} — falling back to original")
         return stripped, False

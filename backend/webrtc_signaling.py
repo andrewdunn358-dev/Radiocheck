@@ -14,6 +14,7 @@ Flow:
 import socketio
 import logging
 import asyncio
+import log_privacy as lp  # #146: privacy-preserving log metadata
 from datetime import datetime
 from typing import Dict, Optional
 from services.database import get_database
@@ -82,17 +83,17 @@ async def update_staff_status_in_db(user_id: str, user_type: str, new_status: st
                 {"user_id": user_id},
                 {"$set": update_data}
             )
-            logger.info(f"Updated counsellor {user_id} status to {new_status}: {result.modified_count} modified")
+            logger.info(f"Updated counsellor {lp.sid(user_id)} status to {new_status}: {result.modified_count} modified")
         elif user_type == 'peer':
             result = await db.peer_supporters.update_one(
                 {"user_id": user_id},
                 {"$set": update_data}
             )
-            logger.info(f"Updated peer supporter {user_id} status to {new_status}: {result.modified_count} modified")
+            logger.info(f"Updated peer supporter {lp.sid(user_id)} status to {new_status}: {result.modified_count} modified")
         else:
-            logger.info(f"User {user_id} is type {user_type} - no database update needed")
+            logger.info(f"User {lp.sid(user_id)} is type {user_type} - no database update needed")
     except Exception as e:
-        logger.error(f"Failed to update status in database for {user_id}: {e}")
+        logger.error(f"Failed to update status in database for {lp.sid(user_id)}: {lp.exc(e)}")
 
 
 @sio.event
@@ -129,9 +130,9 @@ async def disconnect(sid):
         # Only clean up if NO sockets remain for this user
         if not user_to_sockets[user_id]:
             del user_to_sockets[user_id]
-            logger.info(f"All connections closed for user {user_id}")
+            logger.info(f"All connections closed for user {lp.sid(user_id)}")
         else:
-            logger.info(f"User {user_id} still has {len(user_to_sockets[user_id])} active connections")
+            logger.info(f"User {lp.sid(user_id)} still has {len(user_to_sockets[user_id])} active connections")
     
     # End any active calls immediately (no grace period for calls)
     for call_id, call in list(active_calls.items()):
@@ -149,13 +150,13 @@ async def disconnect(sid):
     
     # For chat room notifications, use a grace period to allow reconnection
     if current_room:
-        logger.info(f"User {user_id} (type: {user_type}) disconnected while in chat room {current_room}")
+        logger.info(f"User {lp.sid(user_id)} (type: {user_type}) disconnected while in chat room {current_room}")
         logger.info(f"Starting {DISCONNECT_GRACE_PERIOD}s grace period before notifying...")
         
         # Cancel any existing pending disconnect for this user
         if user_id in pending_disconnects:
             pending_disconnects[user_id].cancel()
-            logger.info(f"Cancelled previous pending disconnect for {user_id}")
+            logger.info(f"Cancelled previous pending disconnect for {lp.sid(user_id)}")
         
         # Create a delayed notification task
         async def delayed_disconnect_notification():
@@ -164,10 +165,10 @@ async def disconnect(sid):
                 
                 # Check if user reconnected during grace period
                 if user_id in user_to_sockets and user_to_sockets[user_id]:
-                    logger.info(f"User {user_id} reconnected during grace period - not sending disconnect notification")
+                    logger.info(f"User {lp.sid(user_id)} reconnected during grace period - not sending disconnect notification")
                     return
                 
-                logger.info(f"Grace period expired - sending disconnect notification for {user_id}")
+                logger.info(f"Grace period expired - sending disconnect notification for {lp.sid(user_id)}")
                 
                 # Emit to the room
                 await sio.emit('user_left_chat', {
@@ -199,7 +200,7 @@ async def disconnect(sid):
                     await update_staff_status_in_db(user_id, user_type, 'offline')
                 
             except asyncio.CancelledError:
-                logger.info(f"Disconnect notification cancelled for {user_id} (user reconnected)")
+                logger.info(f"Disconnect notification cancelled for {lp.sid(user_id)} (user reconnected)")
             finally:
                 # Clean up pending disconnect
                 if user_id in pending_disconnects:
@@ -234,7 +235,7 @@ async def register(sid, data):
     # Cancel any pending disconnect notification for this user (they reconnected!)
     if user_id in pending_disconnects:
         pending_disconnects[user_id].cancel()
-        logger.info(f"Cancelled pending disconnect for {user_id} - user reconnected")
+        logger.info(f"Cancelled pending disconnect for {lp.sid(user_id)} - user reconnected")
         del pending_disconnects[user_id]
     
     # Store connection info
@@ -251,7 +252,7 @@ async def register(sid, data):
         user_to_sockets[user_id] = set()
     user_to_sockets[user_id].add(sid)
     
-    logger.info(f"User registered: {name} ({user_type}) - {user_id} (now has {len(user_to_sockets[user_id])} connections)")
+    logger.info(f"User registered: ({user_type}) - {lp.sid(user_id)} (now has {len(user_to_sockets[user_id])} connections)")
     
     await sio.emit('registered', {
         'success': True,
@@ -337,7 +338,7 @@ async def force_available(sid, data):
         for call_id in list(active_calls.keys()):
             call = active_calls[call_id]
             if call['caller_sid'] == sid or call['callee_sid'] == sid:
-                logger.info(f"Cleaning up orphaned call {call_id} for user {user_id}")
+                logger.info(f"Cleaning up orphaned call {call_id} for user {lp.sid(user_id)}")
                 # Notify the other party
                 other_sid = call['callee_sid'] if call['caller_sid'] == sid else call['caller_sid']
                 if other_sid in connected_users:
@@ -350,7 +351,7 @@ async def force_available(sid, data):
         
         # Force status to available
         connected_users[sid]['status'] = 'available'
-        logger.info(f"Force reset status for {user_id}: {old_status} -> available")
+        logger.info(f"Force reset status for {lp.sid(user_id)}: {old_status} -> available")
         
         await sio.emit('status_reset', {
             'user_id': user_id,
@@ -394,11 +395,11 @@ async def call_initiate(sid, data):
     
     logger.info("=== CALL INITIATE ===")
     logger.info(f"Caller SID: {sid}")
-    logger.info(f"Caller info: {caller_info}")
-    logger.info(f"Target user_id: {target_user_id}")
+    logger.info(f"Caller info: type={(caller_info or {}).get('user_type')} user={lp.sid((caller_info or {}).get('user_id'))}")
+    logger.info(f"Target user_id: {lp.sid(target_user_id)}")
     logger.info(f"Client call_id: {client_call_id}")
     logger.info(f"All connected users: {list(connected_users.keys())}")
-    logger.info(f"User to socket mapping: {dict((k, list(v)) for k, v in user_to_sockets.items())}")
+    logger.info(f"User to socket mapping: {len(user_to_sockets)} users")
     
     # Find target's sockets (user may have multiple tabs/devices)
     target_sids = user_to_sockets.get(target_user_id, set())
@@ -406,7 +407,7 @@ async def call_initiate(sid, data):
     logger.info(f"Found target_sids: {target_sids}")
     
     if not target_sids:
-        logger.warning(f"Target user {target_user_id} not found in user_to_sockets mapping!")
+        logger.warning(f"Target user {lp.sid(target_user_id)} not found in user_to_sockets mapping!")
         await sio.emit('call_failed', {
             'reason': 'user_offline',
             'message': 'The person you are trying to call is not available'
@@ -416,7 +417,7 @@ async def call_initiate(sid, data):
     # Use the first socket for status checks (they all represent the same user)
     target_sid = next(iter(target_sids))
     target_info = connected_users.get(target_sid, {})
-    logger.info(f"Target info: {target_info}")
+    logger.info(f"Target info: type={(target_info or {}).get('user_type')} user={lp.sid((target_info or {}).get('user_id'))}")
     
     # IMPROVED: Allow calling users in 'in_chat' status (they can answer while chatting)
     # Also check if they're in a real call vs stuck status
@@ -424,7 +425,7 @@ async def call_initiate(sid, data):
     if target_status not in ['available', 'in_chat']:
         # If status is 'limited' or 'unavailable', they've explicitly set themselves busy/off
         if target_status in ['limited', 'unavailable', 'busy']:
-            logger.info(f"Target user {target_user_id} status is '{target_status}' - not available for calls")
+            logger.info(f"Target user {lp.sid(target_user_id)} status is '{target_status}' - not available for calls")
             await sio.emit('call_failed', {
                 'reason': 'user_busy',
                 'message': 'The person you are trying to call is not available'
@@ -440,10 +441,10 @@ async def call_initiate(sid, data):
         
         if not is_actually_busy:
             # Status is stuck - auto-reset to available
-            logger.warning(f"Target user {target_user_id} status was stuck as '{target_status}', resetting to 'available'")
+            logger.warning(f"Target user {lp.sid(target_user_id)} status was stuck as '{target_status}', resetting to 'available'")
             connected_users[target_sid]['status'] = 'available'
         else:
-            logger.warning(f"Target user {target_user_id} is genuinely busy, status: {target_status}")
+            logger.warning(f"Target user {lp.sid(target_user_id)} is genuinely busy, status: {target_status}")
             await sio.emit('call_failed', {
                 'reason': 'user_busy',
                 'message': 'The person you are trying to call is busy'
@@ -471,7 +472,7 @@ async def call_initiate(sid, data):
         if ts in connected_users:
             connected_users[ts]['status'] = 'ringing'
     
-    logger.info(f"Call initiated: {call_id} from {caller_info.get('name')} to {target_info.get('name')} ({len(target_sids)} devices)")
+    logger.info(f"Call initiated: {call_id} from {caller_info.get('user_type')} to {target_info.get('user_type')} ({len(target_sids)} devices)")
     
     # Notify caller
     await sio.emit('call_ringing', {
@@ -506,17 +507,17 @@ async def call_accept(sid, data):
     
     call = active_calls[call_id]
     callee_sids = call.get('callee_sids', set())
-    logger.info(f"call_accept: Call info - caller_sid={call['caller_sid']}, callee_sids={callee_sids}, callee_id={call['callee_id']}")
+    logger.info(f"call_accept: Call info - caller_sid={call['caller_sid']}, callee_sids={callee_sids}, callee_id={lp.sid(call['callee_id'])}")
     
     # Check if this socket is the callee by user_id (more reliable than sid which can change)
     caller_info = connected_users.get(sid, {})
     accepting_user_id = caller_info.get('user_id')
     
-    logger.info(f"call_accept: Accepting user_id={accepting_user_id}, expected callee_id={call['callee_id']}")
+    logger.info(f"call_accept: Accepting user_id={lp.sid(accepting_user_id)}, expected callee_id={lp.sid(call['callee_id'])}")
     
     # Verify the accepting user is the callee
     if accepting_user_id != call['callee_id']:
-        logger.warning(f"call_accept: User {accepting_user_id} is not the callee {call['callee_id']}")
+        logger.warning(f"call_accept: User {lp.sid(accepting_user_id)} is not the callee {lp.sid(call['callee_id'])}")
         await sio.emit('call_failed', {'reason': 'not_authorized'}, to=sid)
         return
     
@@ -527,7 +528,7 @@ async def call_accept(sid, data):
     if sid in connected_users:
         connected_users[sid]['status'] = 'in_call'
     
-    logger.info(f"call_accept: Call {call_id} accepted by {accepting_user_id}")
+    logger.info(f"call_accept: Call {call_id} accepted by {lp.sid(accepting_user_id)}")
     
     # Stop ringing on ALL other devices for this user (they already answered on this one)
     for other_sid in callee_sids:
@@ -879,7 +880,7 @@ async def join_chat_room(sid, data):
         connected_users[sid]['current_room'] = room_id
         connected_users[sid]['name'] = name  # Store name for disconnect notification
     
-    logger.info(f"User {name} ({user_id}) joined chat room {room_id}")
+    logger.info(f"User {lp.sid(user_id)} joined chat room {room_id}")
     
     # Notify room members
     await sio.emit('user_joined_chat', {
@@ -919,9 +920,9 @@ async def leave_chat_room(sid, data):
             # Reset status to available when leaving chat
             if connected_users[sid].get('status') == 'in_chat':
                 connected_users[sid]['status'] = 'available'
-                logger.info(f"User {user_id} status reset to available after leaving chat")
+                logger.info(f"User {lp.sid(user_id)} status reset to available after leaving chat")
         
-        logger.info(f"User {user_id} left chat room {room_id}")
+        logger.info(f"User {lp.sid(user_id)} left chat room {room_id}")
         
         # Get user name for notification
         user_name = 'User'
@@ -962,7 +963,7 @@ async def chat_message(sid, data):
         'message_id': f"msg_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{sid[:8]}"
     }
     
-    logger.info(f"Chat message in room {room_id} from {sender_name}")
+    logger.info(f"Chat message in room {room_id}")
     
     # Broadcast to room (including sender for confirmation)
     await sio.emit('new_chat_message', message_data, room=room_id)
@@ -1012,12 +1013,12 @@ async def request_human_chat(sid, data):
     alert_id = data.get('alert_id', '')  # Associated safeguarding alert ID
     
     logger.info("=== REQUEST_HUMAN_CHAT EVENT ===")
-    logger.info(f"From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
+    logger.info(f"From user: {lp.sid(user_id)}, session: {lp.sid(session_id)}, alert: {alert_id}")
     logger.info(f"Total connected users: {len(connected_users)}")
     
     # Log all connected users for debugging
     for socket_id, user in connected_users.items():
-        logger.info(f"  Connected: {user.get('name')} ({user.get('user_id')}) - type: {user.get('user_type')}, status: {user.get('status')}")
+        logger.info(f"  Connected: {lp.sid(user.get('user_id'))} - type: {user.get('user_type')}, status: {user.get('status')}")
     
     # Find available staff (also reset any stuck statuses)
     available_staff = []
@@ -1072,7 +1073,7 @@ async def request_human_chat(sid, data):
     # Create a chat request that goes to available staff
     request_id = f"req_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{sid[:8]}"
     
-    logger.info(f"Human chat request from {user_name} ({user_id}), session: {session_id}, {len(available_staff)} staff available")
+    logger.info(f"Human chat request from {lp.sid(user_id)}, session: {lp.sid(session_id)}, {len(available_staff)} staff available")
     
     # Notify all available staff about the request
     for staff in available_staff:
@@ -1112,17 +1113,17 @@ async def request_human_call(sid, data):
     alert_id = data.get('alert_id', '')  # Associated safeguarding alert ID
     
     print(f"[CALL_REQUEST] === REQUEST_HUMAN_CALL EVENT ===")
-    print(f"[CALL_REQUEST] From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
+    print(f"[CALL_REQUEST] From user: {lp.sid(user_id)}, session: {lp.sid(session_id)}, alert: {alert_id}")
     print(f"[CALL_REQUEST] Total connected users: {len(connected_users)}")
     
     logger.info("=== REQUEST_HUMAN_CALL EVENT ===")
-    logger.info(f"From user: {user_name} ({user_id}), session: {session_id}, alert: {alert_id}")
+    logger.info(f"From user: {lp.sid(user_id)}, session: {lp.sid(session_id)}, alert: {alert_id}")
     logger.info(f"Total connected users: {len(connected_users)}")
     
     # Log all connected users for debugging
     for socket_id, user in connected_users.items():
-        print(f"[CALL_REQUEST]   Connected: {user.get('name')} ({user.get('user_id')}) - type: {user.get('user_type')}, status: {user.get('status')}")
-        logger.info(f"  Connected: {user.get('name')} ({user.get('user_id')}) - type: {user.get('user_type')}, status: {user.get('status')}")
+        print(f"[CALL_REQUEST]   Connected: {lp.sid(user.get('user_id'))} - type: {user.get('user_type')}, status: {user.get('status')}")
+        logger.info(f"  Connected: {lp.sid(user.get('user_id'))} - type: {user.get('user_type')}, status: {user.get('status')}")
     
     # Find available staff (also reset any stuck statuses)
     available_staff = []
@@ -1169,7 +1170,7 @@ async def request_human_call(sid, data):
     request_id = f"callreq_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{sid[:8]}"
     
     print(f"[CALL_REQUEST] Created request_id: {request_id}")
-    logger.info(f"Human call request from {user_name} ({user_id}), session: {session_id}, {len(available_staff)} staff available")
+    logger.info(f"Human call request from {lp.sid(user_id)}, session: {lp.sid(session_id)}, {len(available_staff)} staff available")
     
     # Notify all available staff about the call request
     for staff in available_staff:
@@ -1209,7 +1210,7 @@ async def accept_call_request(sid, data):
     staff_type = data.get('staff_type', 'counsellor')
     
     logger.info("=== ACCEPT CALL REQUEST ===")
-    logger.info(f"Staff {staff_name} ({staff_id}) accepting call request {request_id} from user {requester_user_id}")
+    logger.info(f"Staff {staff_name} ({staff_id}) accepting call request {request_id} from user {lp.sid(requester_user_id)}")
     
     # *** CHECK IF ALREADY CLAIMED - MUST BE FIRST ***
     if request_id in claimed_call_requests:
@@ -1243,7 +1244,7 @@ async def accept_call_request(sid, data):
     for socket_id, user in list(connected_users.items()):  # Use list() to avoid iteration issues
         user_type = user.get('user_type', 'unknown')
         user_name_log = user.get('name', 'Unknown')
-        logger.info(f"Checking user: {user_name_log}, type: {user_type}, socket: {socket_id}, is_self: {socket_id == sid}")
+        logger.info(f"Checking user: type: {user_type}, socket: {socket_id}, is_self: {socket_id == sid}")
         
         # Check if this is a staff member (not the one who accepted)
         if user_type in ['counsellor', 'peer', 'peer_supporter', 'staff', 'supervisor', 'admin'] and socket_id != sid:
@@ -1258,7 +1259,7 @@ async def accept_call_request(sid, data):
         elif socket_id == sid:
             logger.info(f"Skipping self: {user_name_log}")
         else:
-            logger.info(f"Skipping non-staff user: {user_name_log} (type: {user_type})")
+            logger.info(f"Skipping non-staff user (type: {user_type})")
     
     logger.info(f"Notified {notified_count} other staff that request {request_id} was claimed by {staff_name}")
     
@@ -1270,7 +1271,7 @@ async def accept_call_request(sid, data):
             break
     
     if not user_socket_id:
-        logger.warning(f"User {requester_user_id} not found in connected users - they may have disconnected")
+        logger.warning(f"User {lp.sid(requester_user_id)} not found in connected users - they may have disconnected")
         await sio.emit('call_request_error', {
             'request_id': request_id,
             'error': 'User is no longer connected. They may have closed the app.'
@@ -1310,7 +1311,7 @@ async def accept_call_request(sid, data):
         'user_name': connected_users.get(user_socket_id, {}).get('name', 'Veteran')
     }, to=sid)
     
-    logger.info(f"Call request accepted. Call ID: {call_id}, Staff calling user {requester_user_id}")
+    logger.info(f"Call request accepted. Call ID: {call_id}, Staff calling user {lp.sid(requester_user_id)}")
 
 
 @sio.event
@@ -1323,7 +1324,7 @@ async def accept_chat_request(sid, data):
     requester_user_id = data.get('user_id')
     
     logger.info("=== ACCEPT CHAT REQUEST ===")
-    logger.info(f"accept_chat_request: request_id={request_id}, requester_user_id={requester_user_id}")
+    logger.info(f"accept_chat_request: request_id={request_id}, requester_user_id={lp.sid(requester_user_id)}")
     
     # Check if this request has already been claimed
     if request_id in claimed_chat_requests:
@@ -1337,7 +1338,7 @@ async def accept_chat_request(sid, data):
     # Mark as claimed immediately to prevent race conditions
     claimed_chat_requests.add(request_id)
     
-    logger.info(f"accept_chat_request: user_to_sockets keys: {list(user_to_sockets.keys())}")
+    logger.info(f"accept_chat_request: user_to_sockets users: {len(user_to_sockets)}")
     
     staff_info = connected_users.get(sid, {})
     
@@ -1352,7 +1353,7 @@ async def accept_chat_request(sid, data):
     logger.info(f"accept_chat_request: Found requester_sids={requester_sids}")
     
     if not requester_sids:
-        logger.warning(f"accept_chat_request: User {requester_user_id} not found in user_to_sockets")
+        logger.warning(f"accept_chat_request: User {lp.sid(requester_user_id)} not found in user_to_sockets")
         claimed_chat_requests.discard(request_id)  # Release the claim
         await sio.emit('chat_request_expired', {
             'request_id': request_id,
@@ -1385,7 +1386,7 @@ async def accept_chat_request(sid, data):
         await db.live_chat_rooms.insert_one(room_doc)
         logger.info(f"Created chat room in database AND in-memory: {room_id}")
     except Exception as e:
-        logger.error(f"Error creating chat room in database: {e}")
+        logger.error(f"Error creating chat room in database: {lp.exc(e)}")
     
     # Update staff status
     connected_users[sid]['status'] = 'in_chat'
@@ -1452,7 +1453,7 @@ async def staff_chat_invite(sid, data):
     staff_name = data.get('staff_name')
     alert_id = data.get('alert_id')
     
-    logger.info(f"Staff {staff_name} sending chat invite for session {session_id}")
+    logger.info(f"Staff {staff_name} sending chat invite for session {lp.sid(session_id)}")
     
     # Try to find the user by their session ID
     target_sid = None
@@ -1479,7 +1480,7 @@ async def staff_chat_invite(sid, data):
             'reason': 'User is not currently connected',
             'session_id': session_id
         }, to=sid)
-        logger.info(f"User for session {session_id} not connected")
+        logger.info(f"User for session {lp.sid(session_id)} not connected")
 
 
 def get_active_chat_rooms():

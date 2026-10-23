@@ -139,7 +139,7 @@ async def report_response(
     await db.ai_feedback.insert_one(report_data)
     
     # Log for admin attention
-    logger.warning(f"AI response reported: {ai_character} - {report_reason}")
+    logger.warning(f"AI response reported: {ai_character} - reason_len={len(report_reason or '')}")
     
     return {
         "report_id": report_data["id"],

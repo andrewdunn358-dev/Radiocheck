@@ -271,7 +271,8 @@ def is_negated(text: str, match_start: int, *, explicit: bool = False) -> bool:
         if denial in full_text_lower or denial in normalised:
             # If meta-negation is present AND this is a safety affirmation, skip it
             if has_meta_negation and denial in safety_affirmations:
-                logger.info(f"Meta-negation detected: '{denial}' invalidated by pretending/faking context")
+                # #146: the affirmation text is not logged (it comes from the user's message).
+                logger.info("Meta-negation detected: safety affirmation invalidated by pretending/faking context")
                 continue
             denial_pos = full_text_lower.find(denial) if denial in full_text_lower else normalised.find(denial)
             if _cue_disallowed(denial, denial_pos, full_text_lower, explicit):
@@ -510,8 +511,9 @@ class EnhancedSafetyMonitor:
             match = pattern.search(text)
             if match:
                 if check_negation and is_negated(text, match.start(), explicit=explicit):
+                    # #146: no matched text in operational logs.
                     logger.info(
-                        f"Negated match skipped: '{match.group()}' "
+                        f"Negated match skipped: match_len={len(match.group())} "
                         f"user={self.user_id}"
                     )
                     continue
@@ -570,9 +572,10 @@ class EnhancedSafetyMonitor:
                 safety_concerns.append("immediate_suicide_risk")
                 specific_triggers.append(f"critical: '{matched}'")
                 risk_score += 10.0
+                # #146: category and length, not the phrase from the user's text.
                 logger.critical(
                     f"CRITICAL SAFETY ALERT: user={self.user_id} "
-                    f"phrase='{matched}'"
+                    f"concern=immediate_suicide_risk phrase_len={len(matched)}"
                 )
             
             # HIGH
@@ -585,7 +588,7 @@ class EnhancedSafetyMonitor:
                     risk_score += 7.0
                     logger.error(
                         f"HIGH RISK ALERT: user={self.user_id} "
-                        f"phrase='{matched}'"
+                        f"concern=high_suicide_risk phrase_len={len(matched)}"
                     )
             
             # MEDIUM
@@ -598,7 +601,7 @@ class EnhancedSafetyMonitor:
                     risk_score += 5.0
                     logger.warning(
                         f"MEDIUM RISK: user={self.user_id} "
-                        f"phrase='{matched}'"
+                        f"concern=self_harm_risk phrase_len={len(matched)}"
                     )
             
             # LOW
@@ -735,7 +738,7 @@ class EnhancedSafetyMonitor:
         except Exception as e:
             # FAIL SAFE — if assessment errors, always assume risk
             logger.error(
-                f"Safety assessment failed for {self.user_id}: {e}"
+                f"Safety assessment failed for {self.user_id}: {type(e).__name__}"
             )
             return {
                 "risk_level": RiskLevel.HIGH.value,

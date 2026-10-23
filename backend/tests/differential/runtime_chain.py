@@ -127,9 +127,16 @@ _REGIONS = [
 # override phrases, grief name extraction and the brush-off counter. Logic is
 # otherwise unchanged; the transcription below receives that same text as
 # `message`. The other two regions are unchanged and keep their pins.
+# Repinned (#146, Ant 22 Oct 2026 — explicit authorisation for these two
+# logging statements only): crisis_override_and_grief_state from
+# 618687b7fa51042d and negation_and_identity_guards from a8bd9937b02df27f.
+# Each region changes in exactly one logging line, which no longer writes
+# conversation content (grief name -> presence flag; negation-suppressed
+# message excerpt -> message length). No safeguarding logic changed; the
+# transcription below is unaffected. correctives keeps its pin.
 PINNED_HASHES = {
-    "crisis_override_and_grief_state": "618687b7fa51042d",
-    "negation_and_identity_guards": "a8bd9937b02df27f",
+    "crisis_override_and_grief_state": "9e79637ca78f5e82",
+    "negation_and_identity_guards": "02290f75b4601e3c",
     "correctives": "9c9d871f7a4b70ea",
 }
 

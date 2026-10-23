@@ -7,6 +7,7 @@ Enables staff to call users directly from the browser using Twilio.
 
 import os
 import logging
+import log_privacy as lp  # #146
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Form, Request, Depends
@@ -242,7 +243,7 @@ async def initiate_call(
             "started_at": datetime.utcnow().isoformat()
         }
         
-        logger.info(f"Call initiated: {call.sid} from {staff_name} to {clean_number}")
+        logger.info(f"Call initiated: {call.sid} from {staff_name} to {lp.mask_phone(clean_number)}")
         
         return {
             "call_sid": call.sid,
@@ -252,7 +253,7 @@ async def initiate_call(
         }
         
     except Exception as e:
-        logger.error(f"Call initiation failed: {str(e)}")
+        logger.error(f"Call initiation failed: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to initiate call: {str(e)}")
 
 
@@ -273,9 +274,10 @@ async def handle_voice_webhook(request: Request):
         
         # Enhanced logging for debugging
         logger.info(f"=== VOICE WEBHOOK CALLED ===")
-        logger.info(f"Voice webhook: CallSid={call_sid}, From={from_number}, To={to_number}")
-        logger.info(f"All form data: {dict(form_data)}")
-        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"Voice webhook: CallSid={call_sid}, From={lp.mask_phone(from_number)}, To={lp.mask_phone(to_number)}")
+        # #146: the whole form (numbers, caller city/state/zip, staff name) and
+        # the request headers (incl. X-Twilio-Signature) are no longer logged.
+        logger.info(f"Form fields received: {len(form_data)}")
         
         response = VoiceResponse()
         
@@ -283,7 +285,7 @@ async def handle_voice_webhook(request: Request):
         normalized_to = to_number
         if to_number and to_number.startswith('07') and len(to_number) >= 10:
             normalized_to = '+44' + to_number[1:]
-            logger.info(f"Normalized UK phone number: {to_number} -> {normalized_to}")
+            logger.info(f"Normalized UK phone number: {lp.mask_phone(to_number)} -> {lp.mask_phone(normalized_to)}")
         
         # Check if this is an outbound call (To is a phone number)
         is_phone_number = normalized_to and (normalized_to.startswith('+') or (to_number.startswith('0') and len(to_number) >= 10))
@@ -333,7 +335,7 @@ async def handle_voice_webhook(request: Request):
         return Response(content=str(response), media_type="application/xml")
         
     except Exception as e:
-        logger.error(f"Voice webhook error: {str(e)}")
+        logger.error(f"Voice webhook error: {lp.exc(e)}")
         response = VoiceResponse()
         response.say("An error occurred. Please try again.", voice="alice")
         return Response(content=str(response), media_type="application/xml")
@@ -366,7 +368,7 @@ async def handle_call_status(request: Request):
         return {"status": "ok"}
         
     except Exception as e:
-        logger.error(f"Call status webhook error: {str(e)}")
+        logger.error(f"Call status webhook error: {lp.exc(e)}")
         return {"status": "error", "message": str(e)}
 
 
@@ -398,5 +400,5 @@ async def end_call(call_sid: str = Form(...)):
         return {"status": "ended", "call_sid": call_sid}
         
     except Exception as e:
-        logger.error(f"Failed to end call: {str(e)}")
+        logger.error(f"Failed to end call: {lp.exc(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to end call: {str(e)}")

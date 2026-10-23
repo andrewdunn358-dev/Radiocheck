@@ -789,7 +789,7 @@ The Radio Check Team
             "subject": "Your Radio Check Volunteer Application is Approved!",
             "text": email_body.strip()
         })
-        logging.info(f"Approval email sent to {email}")
+        logging.info("Approval email sent")
     except Exception as e:
         logging.error(f"Failed to send approval email: {e}")
 
@@ -910,7 +910,7 @@ The Radio Check Team
             "subject": "Update on Your Radio Check Volunteer Application",
             "text": email_body.strip()
         })
-        logging.info(f"Rejection email sent to {email}")
+        logging.info("Rejection email sent")
     except Exception as e:
         logging.error(f"Failed to send rejection email: {e}")
 
