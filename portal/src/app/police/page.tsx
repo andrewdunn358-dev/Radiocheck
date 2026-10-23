@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { API_URL } from '@/lib/admin-api';
+import { readChatReply, chatFailureReply, contextEligibleHistory } from '@/lib/chatReply';
 
 const LOGO_URL = 'https://static.prod-images.emergentagent.com/jobs/99d619d0-b5ae-4aad-8c13-9ad1f0c90dfa/images/19f5131d6075cedaa7d8e2f56005fba0f0ef9bb4d9530fe80d4798a82456c218.png';
 const HERO_IMG = 'https://customer-assets.emergentagent.com/job_99d619d0-b5ae-4aad-8c13-9ad1f0c90dfa/artifacts/681p6tax_WhatsApp%20Image%202026-04-22%20at%2011.35.55.jpeg';
@@ -293,8 +294,10 @@ function saveConversations(data: Record<string, Msg[]>) {
 
 // Build the [RETURNING MATE...] context block the backend AI uses (mirrors frontend/app/chat/[characterId].tsx)
 function buildConversationContext(history: Msg[], personaName: string): string {
-  if (history.length === 0) return '';
-  const recent = history.slice(-MAX_CONTEXT_MESSAGES);
+  // #144: unsuccessful/unassessed assistant replies stay visible but never enter AI context.
+  const eligible = contextEligibleHistory(history, m => m.role === 'assistant');
+  if (eligible.length === 0) return '';
+  const recent = eligible.slice(-MAX_CONTEXT_MESSAGES);
   const transcript = recent.map(m => `${m.role === 'user' ? 'User' : personaName}: ${m.text}`).join('\n');
   return `\n\n[RETURNING MATE - You've chatted with this person before. Here's what you talked about last time:\n\n${transcript}\n\nTalk to them like an old mate you're catching up with. Be natural - maybe ask "how'd that thing go?" or "you still dealing with that?" based on what they told you. No formal "welcome back" rubbish - just pick up like mates do. If they mentioned something was bothering them, check in on it. Keep it relaxed and genuine.]`;
 }
@@ -540,13 +543,15 @@ export default function PolicePage() {
           conversation_context,
         }),
       });
-      const data = await res.json();
-      const aiMsg: Msg = { role: 'assistant', text: data.reply || 'Sorry, something went wrong.', ts: new Date().toISOString() };
+      // #144: HTTP errors, non-JSON bodies and missing/invalid replies show the
+      // approved crisis-support wording; a normal reply is shown unchanged.
+      const { data, reply } = await readChatReply(res);
+      const aiMsg: Msg = { role: 'assistant', text: reply, ts: new Date().toISOString() };
       const updated = [...newMsgs, aiMsg];
       setMessages(updated);
 
       // Safeguarding modal — mirrors main app behaviour
-      if (data.safeguardingTriggered) {
+      if (data?.safeguardingTriggered) {
         setShowSafeguardModal(true);
       }
 
@@ -555,7 +560,7 @@ export default function PolicePage() {
       freshStored[persona.id] = updated;
       saveConversations(freshStored);
     } catch {
-      const errMsg: Msg = { role: 'assistant', text: 'Connection error. Please try again.', ts: new Date().toISOString() };
+      const errMsg: Msg = { role: 'assistant', text: chatFailureReply(), ts: new Date().toISOString() };
       setMessages(m => [...m, errMsg]);
     }
     setSending(false);

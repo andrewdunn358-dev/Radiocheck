@@ -17,6 +17,12 @@ on:
       - 'portal/src/components/admin/tabs/GovernanceTab/ReportsSubTab.tsx'
       - 'portal/src/lib/provisionalAlert.ts'
       - 'portal/tests/**'
+      - 'portal/src/lib/chatReply.ts'
+      - 'portal/src/app/police/page.tsx'
+      - 'frontend/src/utils/chatReply.ts'
+      - 'frontend/app/chat/**'
+      - 'frontend/app/grace-welcome.tsx'
+      - 'frontend/tests/**'
       - '.github/workflows/safety-tests.yml'
   pull_request:
     branches: [main]
@@ -34,6 +40,12 @@ on:
       - 'portal/src/components/admin/tabs/GovernanceTab/ReportsSubTab.tsx'
       - 'portal/src/lib/provisionalAlert.ts'
       - 'portal/tests/**'
+      - 'portal/src/lib/chatReply.ts'
+      - 'portal/src/app/police/page.tsx'
+      - 'frontend/src/utils/chatReply.ts'
+      - 'frontend/app/chat/**'
+      - 'frontend/app/grace-welcome.tsx'
+      - 'frontend/tests/**'
       - '.github/workflows/safety-tests.yml'
 
 jobs:
@@ -57,6 +69,11 @@ jobs:
 
       - name: Portal panic-button tests
         run: node --test portal/tests/staffPanic.test.mjs portal/tests/alertsTabPanic.test.mjs portal/tests/provisionalAlert.test.mjs
+
+      # #144: chat clients show the approved crisis-support wording on any
+      # failed /api/ai-buddies/chat response (app chat, Grace welcome, police portal).
+      - name: Chat client failure-reply tests
+        run: node --experimental-strip-types --test frontend/tests/chatReply.test.mjs portal/tests/chatReply.test.mjs
 
       - name: Install dependencies
         run: |
@@ -97,6 +114,7 @@ jobs:
             tests/test_f2_provisional_reporting.py \
             tests/test_142_record_not_saved_notice.py \
             tests/test_146_log_privacy.py \
+            tests/test_144_pre_assessment_outage.py \
             -v
         env:
           SKIP_LIVE_TESTS: "true"

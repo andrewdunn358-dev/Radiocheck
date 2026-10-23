@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { readChatReply, chatFailureReply } from '../src/utils/chatReply';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 const LOGO = require('../assets/images/logo.png');
@@ -91,8 +92,9 @@ export default function GraceWelcome() {
           sessionId,
         }),
       });
-      const data = await resp.json();
-      const reply = data.reply || "I'm here. Take your time.";
+      // #144: HTTP errors, non-JSON bodies and missing/invalid replies show the
+      // approved crisis-support wording; a normal reply is shown unchanged.
+      const { reply } = await readChatReply(resp);
 
       // Parse navigation actions from Grace's response
       const actions = parseNavigationActions(reply);
@@ -107,7 +109,7 @@ export default function GraceWelcome() {
     } catch {
       setMessages(prev => [...prev, {
         id: `grace-err-${Date.now()}`,
-        text: "Sorry, I'm having a bit of trouble right now. Try again in a moment.",
+        text: chatFailureReply(),
         sender: 'grace',
         timestamp: new Date(),
       }]);
