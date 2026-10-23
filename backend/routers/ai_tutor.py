@@ -3,7 +3,7 @@ Radio Check AI Tutor - Mr Clark
 Evaluates written responses from learners using competency-based assessment
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
 load_dotenv()
+
+from routers.lms_auth import LmsCaller, get_lms_caller, require_lms_admin, ensure_self
 
 router = APIRouter(tags=["AI Tutor"])
 
@@ -396,8 +398,9 @@ async def get_reflection_questions(module_id: str):
 
 
 @router.post("/api/lms/tutor/submit-reflection")
-async def submit_reflection(submission: ReflectionSubmission):
+async def submit_reflection(submission: ReflectionSubmission, caller: LmsCaller = Depends(get_lms_caller)):
     """Submit a reflection response for AI evaluation"""
+    ensure_self(caller, submission.learner_email)
     db = get_db()
     
     # Validate module has reflections
@@ -470,8 +473,9 @@ async def get_final_assessment():
 
 
 @router.post("/api/lms/tutor/submit-final-assessment")
-async def submit_final_assessment(submission: FinalAssessmentSubmission):
+async def submit_final_assessment(submission: FinalAssessmentSubmission, caller: LmsCaller = Depends(get_lms_caller)):
     """Submit final assessment for AI evaluation"""
+    ensure_self(caller, submission.learner_email)
     db = get_db()
     
     # Evaluate each response
@@ -550,7 +554,7 @@ async def submit_final_assessment(submission: FinalAssessmentSubmission):
 
 
 @router.get("/api/lms/admin/reflections")
-async def admin_get_reflections(needs_review: bool = False):
+async def admin_get_reflections(needs_review: bool = False, _admin=Depends(require_lms_admin)):
     """Admin: Get all reflection submissions"""
     db = get_db()
     
@@ -568,7 +572,7 @@ async def admin_get_reflections(needs_review: bool = False):
 
 
 @router.get("/api/lms/admin/final-assessments")
-async def admin_get_final_assessments(needs_review: bool = False):
+async def admin_get_final_assessments(needs_review: bool = False, _admin=Depends(require_lms_admin)):
     """Admin: Get all final assessment submissions"""
     db = get_db()
     
@@ -586,7 +590,7 @@ async def admin_get_final_assessments(needs_review: bool = False):
 
 
 @router.post("/api/lms/admin/reflection/{reflection_id}/review")
-async def admin_review_reflection(reflection_id: str, passed: bool, admin_notes: str = None):
+async def admin_review_reflection(reflection_id: str, passed: bool, admin_notes: str = None, _admin=Depends(require_lms_admin)):
     """Admin: Review and approve/reject a flagged reflection"""
     db = get_db()
     
@@ -764,8 +768,9 @@ chat_histories = {}
 
 
 @router.post("/api/lms/tutor/chat")
-async def chat_with_tutor(message: TutorChatMessage):
+async def chat_with_tutor(message: TutorChatMessage, caller: LmsCaller = Depends(get_lms_caller)):
     """Chat with Mr Clark - the AI tutor"""
+    ensure_self(caller, message.learner_email)
     
     if not openai_client.api_key:
         raise HTTPException(status_code=500, detail="AI Tutor not configured - missing OpenAI API key")
@@ -832,8 +837,9 @@ async def chat_with_tutor(message: TutorChatMessage):
 
 
 @router.delete("/api/lms/tutor/chat/clear")
-async def clear_chat_session(learner_email: str):
+async def clear_chat_session(learner_email: str, caller: LmsCaller = Depends(get_lms_caller)):
     """Clear chat history for a learner"""
+    ensure_self(caller, learner_email)
     session_id = f"tutor-chat-{learner_email}"
     if session_id in chat_histories:
         del chat_histories[session_id]
@@ -841,7 +847,7 @@ async def clear_chat_session(learner_email: str):
 
 
 @router.get("/api/lms/admin/tutor-conversations")
-async def get_tutor_conversations(learner_email: Optional[str] = None, limit: int = 100):
+async def get_tutor_conversations(learner_email: Optional[str] = None, limit: int = 100, _admin=Depends(require_lms_admin)):
     """Admin: View tutor conversations for review"""
     db = get_db()
     

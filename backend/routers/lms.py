@@ -23,6 +23,7 @@ router = APIRouter(tags=["LMS"])
 # Initialize Resend
 resend.api_key = os.getenv("RESEND_API_KEY")
 from auth_config import get_jwt_secret as _get_app_jwt_secret
+from routers.lms_auth import LmsCaller, get_lms_caller, require_lms_admin, ensure_self
 
 # Get the full curriculum with all 14 modules
 MHFA_CURRICULUM = get_full_curriculum()
@@ -79,6 +80,18 @@ class LearnerSetPassword(BaseModel):
     email: str
     password: str
     confirm_password: str
+    setup_token: Optional[str] = None  # one-time token from the approval email link
+
+
+SETUP_TOKEN_TTL_DAYS = 14
+
+
+def new_setup_token() -> Dict[str, Any]:
+    """One-time password-setup token, sent only in the approval email."""
+    return {
+        "setup_token": secrets.token_urlsafe(32),
+        "setup_token_expires": datetime.now(timezone.utc).timestamp() + SETUP_TOKEN_TTL_DAYS * 24 * 60 * 60,
+    }
 
 
 # ============================================================================
@@ -274,11 +287,29 @@ async def set_learner_password(data: LearnerSetPassword):
     if learner.get("password_hash"):
         raise HTTPException(status_code=400, detail="Password already set. Please use the login form.")
     
-    # Hash and save password
+    # Require the one-time setup token from the approval email, so knowing
+    # someone's email address is not enough to claim their account.
+    stored_token = learner.get("setup_token")
+    expires = learner.get("setup_token_expires") or 0
+    if (
+        not data.setup_token
+        or not stored_token
+        or not secrets.compare_digest(data.setup_token, stored_token)
+        or datetime.now(timezone.utc).timestamp() > expires
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Please use the set-password link in your approval email. If it has expired, contact course@radiocheck.me."
+        )
+    
+    # Hash and save password; the setup token is single-use
     password_hash = hash_password(data.password)
     await db.lms_learners.update_one(
         {"email": data.email.lower()},
-        {"$set": {"password_hash": password_hash, "password_set_at": datetime.now(timezone.utc)}}
+        {
+            "$set": {"password_hash": password_hash, "password_set_at": datetime.now(timezone.utc)},
+            "$unset": {"setup_token": "", "setup_token_expires": ""},
+        }
     )
     
     # Generate token
@@ -357,7 +388,7 @@ async def check_learner_status(email: str):
     }
 
 @router.post("/api/lms/enroll")
-async def enroll_learner(enrollment: LearnerEnrollment):
+async def enroll_learner(enrollment: LearnerEnrollment, _admin=Depends(require_lms_admin)):
     """Enroll a learner in the course"""
     db = get_db()
     
@@ -398,8 +429,9 @@ async def enroll_learner(enrollment: LearnerEnrollment):
     }
 
 @router.get("/api/lms/module/{module_id}")
-async def get_module(module_id: str, learner_email: str, admin_preview: bool = False):
+async def get_module(module_id: str, learner_email: str, admin_preview: bool = False, caller: LmsCaller = Depends(get_lms_caller)):
     """Get module content for a learner"""
+    ensure_self(caller, learner_email)
     db = get_db()
     
     # Find learner (case-insensitive)
@@ -413,7 +445,8 @@ async def get_module(module_id: str, learner_email: str, admin_preview: bool = F
         raise HTTPException(status_code=404, detail="Module not found")
     
     # Check if admin preview account - skip module lock
-    is_admin_preview = learner_email.lower() == 'admin-preview@radiocheck.me'
+    # Admins (staff token) may preview any module; learners follow the sequence
+    is_admin_preview = caller.is_admin
     
     # Check if previous modules completed (sequential learning) - unless admin preview
     module_order = module["order"]
@@ -433,8 +466,9 @@ async def get_module(module_id: str, learner_email: str, admin_preview: bool = F
     }
 
 @router.post("/api/lms/quiz/submit")
-async def submit_quiz(submission: QuizSubmission, learner_email: str):
+async def submit_quiz(submission: QuizSubmission, learner_email: str, caller: LmsCaller = Depends(get_lms_caller)):
     """Submit quiz answers and get results"""
+    ensure_self(caller, learner_email)
     db = get_db()
     
     # Find learner (case-insensitive)
@@ -511,8 +545,9 @@ async def submit_quiz(submission: QuizSubmission, learner_email: str):
     }
 
 @router.get("/api/lms/progress/{learner_email}")
-async def get_learner_progress(learner_email: str):
+async def get_learner_progress(learner_email: str, caller: LmsCaller = Depends(get_lms_caller)):
     """Get learner's course progress"""
+    ensure_self(caller, learner_email)
     db = get_db()
     
     # Case-insensitive email lookup
@@ -544,8 +579,9 @@ async def get_learner_progress(learner_email: str):
     }
 
 @router.post("/api/lms/certificate/generate")
-async def generate_certificate(learner_email: str):
+async def generate_certificate(learner_email: str, caller: LmsCaller = Depends(get_lms_caller)):
     """Generate certificate for completed course"""
+    ensure_self(caller, learner_email)
     db = get_db()
     
     # Case-insensitive email lookup
@@ -623,7 +659,7 @@ async def verify_certificate(certificate_id: str):
 # ============================================================================
 
 @router.get("/api/lms/admin/registrations")
-async def get_volunteer_registrations(status: str = None):
+async def get_volunteer_registrations(status: str = None, _admin=Depends(require_lms_admin)):
     """Get all volunteer registrations (admin)"""
     db = get_db()
     
@@ -639,7 +675,7 @@ async def get_volunteer_registrations(status: str = None):
     return {"registrations": registrations}
 
 @router.get("/api/lms/admin/learners")
-async def get_all_learners():
+async def get_all_learners(_admin=Depends(require_lms_admin)):
     """Get all learners (admin)"""
     db = get_db()
     
@@ -654,7 +690,7 @@ async def get_all_learners():
     return {"learners": learners}
 
 @router.get("/api/lms/admin/alerts")
-async def get_admin_alerts(unread_only: bool = False):
+async def get_admin_alerts(unread_only: bool = False, _admin=Depends(require_lms_admin)):
     """Get admin alerts for volunteer registrations"""
     db = get_db()
     
@@ -670,7 +706,7 @@ async def get_admin_alerts(unread_only: bool = False):
     return {"alerts": alerts}
 
 @router.get("/api/lms/admin/module/{module_id}")
-async def get_admin_module_details(module_id: str):
+async def get_admin_module_details(module_id: str, _admin=Depends(require_lms_admin)):
     """Get full module details including quiz questions for admin view"""
     module = next((m for m in MHFA_CURRICULUM["modules"] if m["id"] == module_id), None)
     if not module:
@@ -691,7 +727,7 @@ async def get_admin_module_details(module_id: str):
     }
 
 @router.post("/api/lms/admin/alert/{alert_id}/read")
-async def mark_alert_read(alert_id: str):
+async def mark_alert_read(alert_id: str, _admin=Depends(require_lms_admin)):
     """Mark an alert as read"""
     db = get_db()
     
@@ -704,7 +740,7 @@ async def mark_alert_read(alert_id: str):
 
 
 @router.post("/api/lms/admin/registration/{registration_id}/approve")
-async def approve_registration(registration_id: str, background_tasks: BackgroundTasks):
+async def approve_registration(registration_id: str, background_tasks: BackgroundTasks, _admin=Depends(require_lms_admin)):
     """Approve a volunteer registration and auto-enroll them in the course"""
     db = get_db()
     
@@ -745,8 +781,16 @@ async def approve_registration(registration_id: str, background_tasks: Backgroun
         }
         await db.lms_learners.insert_one(learner_data)
     
+    # Issue a one-time password-setup token (only if no password yet)
+    setup_token = None
+    learner_now = await db.lms_learners.find_one({"email": reg["email"]})
+    if learner_now and not learner_now.get("password_hash"):
+        token_fields = new_setup_token()
+        await db.lms_learners.update_one({"email": reg["email"]}, {"$set": token_fields})
+        setup_token = token_fields["setup_token"]
+    
     # Send approval email (background task)
-    background_tasks.add_task(send_approval_email, reg["email"], reg["full_name"])
+    background_tasks.add_task(send_approval_email, reg["email"], reg["full_name"], setup_token)
     
     return {
         "success": True,
@@ -754,13 +798,25 @@ async def approve_registration(registration_id: str, background_tasks: Backgroun
         "email": reg["email"]
     }
 
-async def send_approval_email(email: str, name: str):
+LMS_PORTAL_URL = os.getenv("LMS_PORTAL_URL", "https://training.radiocheck.me")
+
+
+async def send_approval_email(email: str, name: str, setup_token: Optional[str] = None):
     """Send approval notification email via Resend"""
     try:
         if not resend.api_key:
             logging.warning("No Resend API key configured - skipping email")
             return
             
+        if setup_token:
+            from urllib.parse import quote
+            step_one = (
+                "Set your password using this link (valid for 14 days, single use): "
+                f"{LMS_PORTAL_URL}/?setup={quote(setup_token)}&email={quote(email)}"
+            )
+        else:
+            step_one = f"Visit the Learning Portal at {LMS_PORTAL_URL}"
+
         email_body = f"""
 Dear {name},
 
@@ -769,7 +825,7 @@ Great news! Your application to become a Radio Check peer support volunteer has 
 You are now enrolled in the Radio Check Peer to Peer Training course. 
 
 To get started:
-1. Visit the Learning Portal at https://radiocheck.me/training
+1. {step_one}
 2. Log in with your email: {email}
 3. Complete the training modules at your own pace
 
@@ -794,7 +850,7 @@ The Radio Check Team
         logging.error(f"Failed to send approval email: {e}")
 
 @router.post("/api/lms/admin/learner/add")
-async def admin_add_learner(learner: ManualLearnerAdd, background_tasks: BackgroundTasks):
+async def admin_add_learner(learner: ManualLearnerAdd, background_tasks: BackgroundTasks, _admin=Depends(require_lms_admin)):
     """Admin manually add a learner without requiring registration"""
     db = get_db()
     
@@ -851,7 +907,7 @@ async def admin_add_learner(learner: ManualLearnerAdd, background_tasks: Backgro
 
 
 @router.post("/api/lms/admin/registration/{registration_id}/reject")
-async def reject_registration(registration_id: str, reason: str = None, background_tasks: BackgroundTasks = None):
+async def reject_registration(registration_id: str, reason: str = None, background_tasks: BackgroundTasks = None, _admin=Depends(require_lms_admin)):
     """Reject a volunteer registration"""
     db = get_db()
     
@@ -915,7 +971,7 @@ The Radio Check Team
         logging.error(f"Failed to send rejection email: {e}")
 
 @router.post("/api/lms/admin/alerts/mark-all-read")
-async def mark_all_alerts_read():
+async def mark_all_alerts_read(_admin=Depends(require_lms_admin)):
     """Mark all alerts as read"""
     db = get_db()
     
@@ -927,7 +983,7 @@ async def mark_all_alerts_read():
     return {"success": True}
 
 @router.get("/api/lms/admin/certificates")
-async def get_all_certificates():
+async def get_all_certificates(_admin=Depends(require_lms_admin)):
     """Get all issued certificates"""
     db = get_db()
     
@@ -941,7 +997,7 @@ async def get_all_certificates():
     return {"certificates": certificates}
 
 @router.post("/api/lms/admin/certificate/{certificate_id}/revoke")
-async def revoke_certificate(certificate_id: str):
+async def revoke_certificate(certificate_id: str, _admin=Depends(require_lms_admin)):
     """Revoke a certificate"""
     db = get_db()
     
@@ -973,7 +1029,7 @@ class PasswordReset(BaseModel):
 
 
 @router.get("/api/lms/admin/learner/{learner_email}")
-async def admin_get_learner(learner_email: str):
+async def admin_get_learner(learner_email: str, _admin=Depends(require_lms_admin)):
     """Get detailed learner info for admin"""
     db = get_db()
     
@@ -989,7 +1045,7 @@ async def admin_get_learner(learner_email: str):
 
 
 @router.put("/api/lms/admin/learner/{learner_email}")
-async def admin_update_learner(learner_email: str, data: LearnerUpdate):
+async def admin_update_learner(learner_email: str, data: LearnerUpdate, _admin=Depends(require_lms_admin)):
     """Update learner details"""
     db = get_db()
     
@@ -1014,7 +1070,7 @@ async def admin_update_learner(learner_email: str, data: LearnerUpdate):
 
 
 @router.post("/api/lms/admin/learner/{learner_email}/reset-password")
-async def admin_reset_password(learner_email: str, data: PasswordReset):
+async def admin_reset_password(learner_email: str, data: PasswordReset, _admin=Depends(require_lms_admin)):
     """Reset a learner's password"""
     db = get_db()
     
@@ -1043,7 +1099,7 @@ async def admin_reset_password(learner_email: str, data: PasswordReset):
 
 
 @router.delete("/api/lms/admin/learner/{learner_email}")
-async def admin_delete_learner(learner_email: str):
+async def admin_delete_learner(learner_email: str, _admin=Depends(require_lms_admin)):
     """Delete a learner and all their data"""
     db = get_db()
     

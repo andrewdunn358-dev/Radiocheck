@@ -34,12 +34,24 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   return response.json();
 }
 
+// Stored LMS tokens (read at call time so every call carries the current token)
+function storedToken(key: string): string | undefined {
+  try {
+    if (typeof window === 'undefined') return undefined;
+    return localStorage.getItem(key) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+export const getLearnerToken = () => storedToken('lms_token');
+export const getLmsAdminToken = () => storedToken('lms_admin_token');
+
 // LMS Learner API
 export const lmsApi = {
   // Course
   getCourse: () => fetchAPI<CourseData>('/lms/course'),
   getModule: (moduleId: string, learnerEmail: string) => 
-    fetchAPI<ModuleResponse>(`/lms/module/${moduleId}?learner_email=${encodeURIComponent(learnerEmail)}`),
+    fetchAPI<ModuleResponse>(`/lms/module/${moduleId}?learner_email=${encodeURIComponent(learnerEmail)}`, { token: getLearnerToken() }),
   
   // Auth
   login: (email: string, password: string) =>
@@ -47,10 +59,10 @@ export const lmsApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  setPassword: (email: string, password: string, confirmPassword: string) =>
+  setPassword: (email: string, password: string, confirmPassword: string, setupToken?: string) =>
     fetchAPI<LoginResponse>('/lms/learner/set-password', {
       method: 'POST',
-      body: JSON.stringify({ email, password, confirm_password: confirmPassword }),
+      body: JSON.stringify({ email, password, confirm_password: confirmPassword, setup_token: setupToken }),
     }),
   register: (data: RegistrationData) =>
     fetchAPI<RegistrationResponse>('/lms/volunteer/register', {
@@ -60,12 +72,13 @@ export const lmsApi = {
   
   // Progress
   getProgress: (email: string) =>
-    fetchAPI<ProgressData>(`/lms/progress/${encodeURIComponent(email)}`),
+    fetchAPI<ProgressData>(`/lms/progress/${encodeURIComponent(email)}`, { token: getLearnerToken() }),
   
   // Quiz
   submitQuiz: (learnerEmail: string, moduleId: string, answers: Record<string, string>) =>
     fetchAPI<QuizResults>(`/lms/quiz/submit?learner_email=${encodeURIComponent(learnerEmail)}`, {
       method: 'POST',
+      token: getLearnerToken(),
       body: JSON.stringify({ module_id: moduleId, answers }),
     }),
   
@@ -73,12 +86,14 @@ export const lmsApi = {
   generateCertificate: (learnerEmail: string) =>
     fetchAPI<CertificateResponse>(`/lms/certificate/generate?learner_email=${encodeURIComponent(learnerEmail)}`, {
       method: 'POST',
+      token: getLearnerToken(),
     }),
   
   // Tutor Chat
   chatWithTutor: (learnerEmail: string, message: string, currentModule?: string) =>
     fetchAPI<TutorChatResponse>('/lms/tutor/chat', {
       method: 'POST',
+      token: getLearnerToken(),
       body: JSON.stringify({ learner_email: learnerEmail, message, current_module: currentModule }),
     }),
 };
@@ -94,43 +109,48 @@ export const lmsAdminApi = {
   
   // Registrations
   getRegistrations: () =>
-    fetchAPI<RegistrationsResponse>('/lms/admin/registrations'),
+    fetchAPI<RegistrationsResponse>('/lms/admin/registrations', { token: getLmsAdminToken() }),
   approveRegistration: (id: string) =>
-    fetchAPI<ActionResponse>(`/lms/admin/registration/${id}/approve`, { method: 'POST' }),
+    fetchAPI<ActionResponse>(`/lms/admin/registration/${id}/approve`, { method: 'POST', token: getLmsAdminToken() }),
   rejectRegistration: (id: string, reason?: string) =>
     fetchAPI<ActionResponse>(`/lms/admin/registration/${id}/reject`, {
       method: 'POST',
+      token: getLmsAdminToken(),
       body: reason ? JSON.stringify({ reason }) : undefined,
     }),
   
   // Learners
   getLearners: () =>
-    fetchAPI<LearnersResponse>('/lms/admin/learners'),
+    fetchAPI<LearnersResponse>('/lms/admin/learners', { token: getLmsAdminToken() }),
   getLearner: (email: string) =>
-    fetchAPI<LearnerDetailResponse>(`/lms/admin/learner/${encodeURIComponent(email)}`),
+    fetchAPI<LearnerDetailResponse>(`/lms/admin/learner/${encodeURIComponent(email)}`, { token: getLmsAdminToken() }),
   addLearner: (data: AddLearnerData) =>
     fetchAPI<ActionResponse>('/lms/admin/learner/add', {
       method: 'POST',
+      token: getLmsAdminToken(),
       body: JSON.stringify(data),
     }),
   updateLearner: (email: string, data: UpdateLearnerData) =>
     fetchAPI<ActionResponse>(`/lms/admin/learner/${encodeURIComponent(email)}`, {
       method: 'PUT',
+      token: getLmsAdminToken(),
       body: JSON.stringify(data),
     }),
   resetPassword: (email: string, newPassword: string) =>
     fetchAPI<ActionResponse>(`/lms/admin/learner/${encodeURIComponent(email)}/reset-password`, {
       method: 'POST',
+      token: getLmsAdminToken(),
       body: JSON.stringify({ new_password: newPassword }),
     }),
   deleteLearner: (email: string) =>
     fetchAPI<ActionResponse>(`/lms/admin/learner/${encodeURIComponent(email)}`, {
       method: 'DELETE',
+      token: getLmsAdminToken(),
     }),
   
   // Modules
   getModuleAdmin: (moduleId: string) =>
-    fetchAPI<ModuleAdminResponse>(`/lms/admin/module/${moduleId}`),
+    fetchAPI<ModuleAdminResponse>(`/lms/admin/module/${moduleId}`, { token: getLmsAdminToken() }),
 };
 
 // Types

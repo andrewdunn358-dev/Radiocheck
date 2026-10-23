@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { lmsAdminApi, lmsApi, CourseData, Registration, LearnerListItem } from '@/lib/api';
+import { lmsAdminApi, lmsApi, getLmsAdminToken, CourseData, Registration, LearnerListItem } from '@/lib/api';
 import Link from 'next/link';
 import { 
   GraduationCap, LogOut, LayoutDashboard, UserPlus, Users, Book, 
@@ -93,7 +93,7 @@ export default function LMSAdminPage() {
       if (activeTab === 'dashboard' || activeTab === 'alerts') {
         try {
           const alertsRes = await fetch(`${API_URL}/api/lms/admin/alerts`, {
-            headers: { 'X-Admin-Email': user?.email || '' }
+            headers: { Authorization: `Bearer ${getLmsAdminToken() || ''}` }
           });
           if (alertsRes.ok) {
             const alertsData = await alertsRes.json();
@@ -191,7 +191,9 @@ export default function LMSAdminPage() {
   const handleViewLearnerProgress = async (learner: LearnerListItem) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
     try {
-      const res = await fetch(`${API_URL}/api/lms/progress?email=${encodeURIComponent(learner.email)}`);
+      const res = await fetch(`${API_URL}/api/lms/progress/${encodeURIComponent(learner.email)}`, {
+        headers: { Authorization: `Bearer ${getLmsAdminToken() || ''}` }
+      });
       if (res.ok) {
         const progressData = await res.json();
         setSelectedLearnerProgress({ learner, progress: progressData });
@@ -213,7 +215,7 @@ export default function LMSAdminPage() {
     try {
       const res = await fetch(`${API_URL}/api/lms/admin/learner/${encodeURIComponent(editingLearner.email)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Email': user?.email || '' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getLmsAdminToken() || ''}` },
         body: JSON.stringify({ full_name: editLearnerName, notes: editLearnerNotes }),
       });
       if (res.ok) {
@@ -231,30 +233,19 @@ export default function LMSAdminPage() {
   const loadQuizForModule = async (moduleId: string, moduleTitle: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
     try {
-      // Try to get quiz from the admin quiz endpoint
-      const res = await fetch(`${API_URL}/api/lms/admin/quiz/${moduleId}`, {
-        headers: { 'X-Admin-Email': user?.email || '' }
+      // Admin module endpoint returns the module including its quiz
+      const res = await fetch(`${API_URL}/api/lms/admin/module/${moduleId}`, {
+        headers: { Authorization: `Bearer ${getLmsAdminToken() || ''}` }
       });
       if (res.ok) {
-        const quizData = await res.json();
-        setSelectedQuiz({ module_id: moduleId, module_title: moduleTitle, questions: quizData.questions || [] });
-      } else {
-        // Fallback - try to get module details
-        const moduleRes = await fetch(`${API_URL}/api/lms/module/${moduleId}`);
-        if (moduleRes.ok) {
-          const moduleData = await moduleRes.json();
-          if (moduleData.module?.quiz) {
-            setSelectedQuiz({ 
-              module_id: moduleId, 
-              module_title: moduleTitle, 
-              questions: moduleData.module.quiz.questions || [] 
-            });
-          } else {
-            alert('No quiz configured for this module');
-          }
+        const moduleData = await res.json();
+        if (moduleData.quiz?.questions?.length) {
+          setSelectedQuiz({ module_id: moduleId, module_title: moduleTitle, questions: moduleData.quiz.questions });
         } else {
-          alert('Could not load quiz for this module');
+          alert('No quiz configured for this module');
         }
+      } else {
+        alert('Could not load quiz for this module');
       }
     } catch (e) {
       alert('Could not load quiz for this module');
@@ -264,9 +255,9 @@ export default function LMSAdminPage() {
   const handleMarkAllAlertsRead = async () => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://veterans-support-api.onrender.com';
     try {
-      await fetch(`${API_URL}/api/lms/admin/alerts/mark-read`, {
+      await fetch(`${API_URL}/api/lms/admin/alerts/mark-all-read`, {
         method: 'POST',
-        headers: { 'X-Admin-Email': user?.email || '' }
+        headers: { Authorization: `Bearer ${getLmsAdminToken() || ''}` }
       });
       setAlerts(alerts.map(a => ({ ...a, read: true })));
       setUnreadAlertCount(0);
