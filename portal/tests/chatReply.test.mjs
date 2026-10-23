@@ -115,7 +115,7 @@ test('a modal-bearing body keeps its modal even if its reply is unusable', async
 // Wiring: the police chat uses the module; the old generic fallbacks are gone.
 test('src/app/police/page.tsx uses readChatReply and has no generic fallback', () => {
   const src = readFileSync(here('../src/app/police/page.tsx'), 'utf8');
-  assert.match(src, /import \{ readChatReply, chatFailureReply \} from '@\/lib\/chatReply';/);
+  assert.match(src, /import \{ readChatReply, chatFailureReply(, contextEligibleHistory)? \} from '@\/lib\/chatReply';/);
   assert.match(src, /await readChatReply\(res\)/);
   assert.match(src, /chatFailureReply\(\)/);
   for (const t of ["'Sorry, something went wrong.'", "'Connection error. Please try again.'"]) {
@@ -128,4 +128,116 @@ test('src/app/police/page.tsx uses readChatReply and has no generic fallback', (
 test('the app and portal copies of the module are identical', () => {
   assert.equal(readFileSync(here('../src/lib/chatReply.ts'), 'utf8'),
     readFileSync(here('../../frontend/src/utils/chatReply.ts'), 'utf8'));
+});
+
+// ---------------------------------------------------------------------------
+// #144 correction (Ant, 23 Oct 2026): the crisis-support fallback stays visible
+// and stored, but unsuccessful / unassessed assistant replies never enter the
+// conversation_context sent back to /api/ai-buddies/chat. These tests run the
+// REAL buildConversationContext from src/app/police/page.tsx (its body is
+// extracted from the source and executed), not a copy of it.
+// ---------------------------------------------------------------------------
+import { contextEligibleHistory, isUnassessedAssistantReply } from '../src/lib/chatReply.ts';
+
+const POLICE_SRC = readFileSync(here('../src/app/police/page.tsx'), 'utf8');
+
+function extractBody(src, signature) {
+  const start = src.indexOf(signature);
+  assert.ok(start >= 0, `not found: ${signature}`);
+  const open = src.indexOf('{', start + signature.length - 1);
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}' && --depth === 0) return src.slice(open + 1, i);
+  }
+  throw new Error('unbalanced braces');
+}
+
+const MAX_CONTEXT = Number(POLICE_SRC.match(/const MAX_CONTEXT_MESSAGES = (\d+)/)[1]);
+// eslint-disable-next-line no-new-func
+const policeBuild = new Function('history', 'personaName', 'contextEligibleHistory', 'MAX_CONTEXT_MESSAGES',
+  extractBody(POLICE_SRC, 'function buildConversationContext(history: Msg[], personaName: string): string {'));
+const build = (history) => policeBuild(history, 'Sam', contextEligibleHistory, MAX_CONTEXT);
+
+const u = (text) => ({ role: 'user', text, ts: '2026-10-23T22:00:00.000Z' });
+const a = (text) => ({ role: 'assistant', text, ts: '2026-10-23T22:00:01.000Z' });
+// What the pre-#144-correction builder sent: the same transcript, unfiltered.
+const transcriptOf = (msgs) => msgs.map(m => `${m.role === 'user' ? 'User' : 'Sam'}: ${m.text}`).join('\n');
+
+test('context: the crisis-support fallback is excluded, user turns and normal replies are kept', () => {
+  const ctx = build([u('rough week on shift'), a('Sounds heavy, mate. What happened?'),
+    u('cannot sleep after the RTC'), a(CRISIS_SUPPORT_FALLBACK)]);
+  assert.ok(ctx.includes('User: rough week on shift'));
+  assert.ok(ctx.includes('Sam: Sounds heavy, mate. What happened?'));
+  assert.ok(ctx.includes('User: cannot sleep after the RTC'), 'the veteran\'s own words are still context');
+  assert.ok(!ctx.includes(CRISIS_SUPPORT_FALLBACK), 'fallback must not reach the AI');
+  assert.ok(!ctx.includes('116 123'));
+});
+
+test('context: normal history (no failures) is exactly what it was before', () => {
+  const history = [u('hiya'), a('Alright. How was the shift?'), u('long'),
+    a('Right. I\'m not going to leave you with that... Samaritans: 116 123 ... 999')];
+  const ctx = build(history);
+  assert.ok(ctx.includes(`last time:\n\n${transcriptOf(history)}\n\n`), 'transcript unchanged');
+  assert.ok(ctx.startsWith('\n\n[RETURNING MATE'));
+});
+
+test('context: a real crisis reply that mentions Samaritans is NOT excluded', () => {
+  const crisis = a('Right. I\'m not going to leave you with that. Samaritans free on 116 123, or 999.');
+  assert.ok(build([u('x'), crisis]).includes(crisis.text));
+  // A normal reply that merely starts like the fallback is kept (exact match only).
+  const lookalike = a('Sorry, something went wrong with your day? Tell me about it, mate.');
+  assert.ok(build([u('x'), lookalike]).includes(`Sam: ${lookalike.text}`));
+});
+
+test('context: history that is only failed turns produces no context block', () => {
+  assert.equal(build([a(CRISIS_SUPPORT_FALLBACK), a(CRISIS_SUPPORT_FALLBACK)]), '');
+  assert.equal(build([]), '');
+});
+
+test('context: failed turns do not use up the recent-message window', () => {
+  const normal = [];
+  for (let i = 0; i < MAX_CONTEXT; i++) normal.push(i % 2 ? a(`reply ${i}`) : u(`msg ${i}`));
+  const mixed = [];
+  normal.forEach((m, i) => { mixed.push(m); if (i % 3 === 0) mixed.push(a(CRISIS_SUPPORT_FALLBACK)); });
+  assert.ok(build(mixed).includes(`last time:\n\n${transcriptOf(normal)}\n\n`));
+});
+
+test('context: a user who types the fallback wording is still context (only assistant turns are filtered)', () => {
+  assert.ok(build([u(CRISIS_SUPPORT_FALLBACK)]).includes(`User: ${CRISIS_SUPPORT_FALLBACK}`));
+});
+
+test('end to end: outage, HTTP failure and network failure replies are shown, stored, and kept out of the next context', async () => {
+  const stored = [u('first message')];
+  for (const url of [`${base}/outage-holding`, `${base}/500-text`, 'http://127.0.0.1:1/x']) {
+    const { reply } = await clientFlow(url);
+    assert.equal(reply, CRISIS_SUPPORT_FALLBACK, 'veteran still sees the approved wording');
+    stored.push(u('are you there?'), a(reply)); // the police page saves exactly this
+  }
+  const { reply } = await clientFlow(`${base}/normal`);
+  stored.push(u('back again'), a(reply));
+  assert.equal(stored.filter(m => m.text === CRISIS_SUPPORT_FALLBACK).length, 3, 'stored history unchanged');
+  const ctx = build(stored);
+  assert.ok(!ctx.includes(CRISIS_SUPPORT_FALLBACK));
+  assert.ok(ctx.includes(`Sam: ${NORMAL.reply}`));
+  assert.equal((ctx.match(/User: are you there\?/g) || []).length, 3);
+});
+
+test('helper: exact (trimmed) assistant match only; never throws', () => {
+  assert.equal(isUnassessedAssistantReply(true, CRISIS_SUPPORT_FALLBACK), true);
+  assert.equal(isUnassessedAssistantReply(true, `  ${CRISIS_SUPPORT_FALLBACK}\n`), true);
+  assert.equal(isUnassessedAssistantReply(false, CRISIS_SUPPORT_FALLBACK), false);
+  assert.equal(isUnassessedAssistantReply(true, CRISIS_SUPPORT_FALLBACK.slice(0, -1)), false);
+  assert.equal(isUnassessedAssistantReply(true, null), false);
+  assert.deepEqual(contextEligibleHistory(null, () => true), []);
+  assert.deepEqual(contextEligibleHistory([null, u('x')], m => m.role === 'assistant'), [null, u('x')]);
+  const throwing = [u('x')];
+  assert.deepEqual(contextEligibleHistory(throwing, () => { throw new Error('boom'); }), throwing);
+});
+
+test('wiring: only the context builder filters; display and storage paths are untouched', () => {
+  assert.equal((POLICE_SRC.match(/contextEligibleHistory\(/g) || []).length, 1);
+  assert.match(POLICE_SRC, /setMessages\(\[\.\.\.history, returning\]\)/, 'stored history still shown in full');
+  assert.match(POLICE_SRC, /freshStored\[persona\.id\] = updated;/, 'stored as before');
+  assert.match(POLICE_SRC, /const conversation_context = buildConversationContext\(priorHistory, persona\.name\);/);
 });

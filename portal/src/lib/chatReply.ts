@@ -59,3 +59,35 @@ export async function readChatReply(response: ResponseLike | null | undefined): 
 export function chatFailureReply(): string {
   return CRISIS_SUPPORT_FALLBACK;
 }
+
+// #144 correction (Ant, 23 Oct 2026): the crisis-support wording is shown to the
+// veteran and kept in local history exactly as before, but an unsuccessful or
+// unassessed assistant turn must never be fed back to the AI as conversation
+// context. Every such turn carries exactly CRISIS_SUPPORT_FALLBACK: the client
+// fallback (HTTP error, network failure, unusable body) and every server
+// riskLevel "UNKNOWN" reply (F2_HOLDING_RESPONSE, kept identical to this
+// constant by backend/tests/test_144_pre_assessment_outage.py). Matching the
+// text, rather than a new stored flag, leaves the stored message shape
+// unchanged and also excludes fallback messages saved before this change.
+
+/** true for an assistant message whose text is the crisis-support fallback. */
+export function isUnassessedAssistantReply(isAssistant: boolean, text: unknown): boolean {
+  return isAssistant === true && typeof text === 'string' && text.trim() === CRISIS_SUPPORT_FALLBACK;
+}
+
+/** History eligible for AI conversation context: everything except
+ *  unsuccessful/unassessed assistant replies. Order and all other messages
+ *  (user turns included) are preserved. Never throws. */
+export function contextEligibleHistory<T extends { text?: unknown }>(
+  history: T[] | null | undefined,
+  isAssistant: (m: T) => boolean,
+): T[] {
+  if (!Array.isArray(history)) return [];
+  return history.filter(m => {
+    try {
+      return !(m && isUnassessedAssistantReply(isAssistant(m), m.text));
+    } catch {
+      return true;
+    }
+  });
+}

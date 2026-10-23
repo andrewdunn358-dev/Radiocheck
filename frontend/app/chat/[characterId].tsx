@@ -72,7 +72,7 @@ import { useLocationPermission } from '../../src/context/LocationPermissionConte
 import SafeguardingCallModal from '../../src/components/SafeguardingCallModal';
 import { resolveMediaUrl } from '../../src/utils/media';
 import { goBack } from '../../src/utils/navigation';
-import { readChatReply, chatFailureReply } from '../../src/utils/chatReply';
+import { readChatReply, chatFailureReply, contextEligibleHistory } from '../../src/utils/chatReply';
 
 interface Message {
   id: string;
@@ -277,10 +277,12 @@ export default function DynamicAIChat() {
 
   // Build conversation context for AI (summary of previous conversations)
   const buildConversationContext = () => {
-    if (previousConversations.length === 0) return '';
-    
+    // #144: unsuccessful/unassessed assistant replies stay visible but never enter AI context.
+    const eligible = contextEligibleHistory(previousConversations, msg => msg.sender !== 'user');
+    if (eligible.length === 0) return '';
+
     // Get the last 15 messages from previous conversations for better context
-    const recentPrevious = previousConversations.slice(-15);
+    const recentPrevious = eligible.slice(-15);
     
     // Format as a conversation transcript for the AI
     const transcript = recentPrevious.map(msg => 

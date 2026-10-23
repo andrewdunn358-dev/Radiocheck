@@ -122,7 +122,7 @@ for (const [file, oldTexts] of [
 ]) {
   test(`${file} uses readChatReply and has no generic fallback`, () => {
     const src = readFileSync(here(file), 'utf8');
-    assert.match(src, /import \{ readChatReply, chatFailureReply \} from '\.\.\/(\.\.\/)?src\/utils\/chatReply';/);
+    assert.match(src, /import \{ readChatReply, chatFailureReply(, contextEligibleHistory)? \} from '\.\.\/(\.\.\/)?src\/utils\/chatReply';/);
     assert.match(src, /await readChatReply\((response|resp)\)/);
     assert.match(src, /chatFailureReply\(\)/);
     for (const t of oldTexts) assert.ok(!src.includes(t), `old text still present: ${t}`);
@@ -134,4 +134,116 @@ for (const [file, oldTexts] of [
 test('the app and portal copies of the module are identical', () => {
   assert.equal(readFileSync(here('../src/utils/chatReply.ts'), 'utf8'),
     readFileSync(here('../../portal/src/lib/chatReply.ts'), 'utf8'));
+});
+
+// ---------------------------------------------------------------------------
+// #144 correction (Ant, 23 Oct 2026): the crisis-support fallback stays visible
+// and stored on the device, but unsuccessful / unassessed assistant replies
+// never enter the conversation_context sent back to /api/ai-buddies/chat.
+// These tests run the REAL buildConversationContext from
+// app/chat/[characterId].tsx (its body is extracted from the source and
+// executed against device-stored history), not a copy of it.
+// ---------------------------------------------------------------------------
+import { contextEligibleHistory, isUnassessedAssistantReply } from '../src/utils/chatReply.ts';
+
+const CHAT_SRC = readFileSync(here('../app/chat/[characterId].tsx'), 'utf8');
+
+function extractBody(src, signature) {
+  const start = src.indexOf(signature);
+  assert.ok(start >= 0, `not found: ${signature}`);
+  const open = src.indexOf('{', start + signature.length - 1);
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}' && --depth === 0) return src.slice(open + 1, i);
+  }
+  throw new Error('unbalanced braces');
+}
+
+// eslint-disable-next-line no-new-func
+const appBuild = new Function('previousConversations', 'character', 'contextEligibleHistory',
+  extractBody(CHAT_SRC, 'const buildConversationContext = () => {'));
+const build = (history) => appBuild(history, { name: 'Tommy' }, contextEligibleHistory);
+const WINDOW = 15;
+
+let n = 0;
+const u = (text) => ({ id: `u${n++}`, text, sender: 'user', timestamp: new Date() });
+const b = (text) => ({ id: `b${n++}`, text, sender: 'buddy', timestamp: new Date() });
+const transcriptOf = (msgs) => msgs.map(m => `${m.sender === 'user' ? 'User' : 'Tommy'}: ${m.text}`).join('\n');
+
+test('context: the crisis-support fallback is excluded, user turns and normal replies are kept', () => {
+  const ctx = build([u('rough week'), b('Sounds heavy, mate. What happened?'),
+    u('cannot sleep'), b(CRISIS_SUPPORT_FALLBACK)]);
+  assert.ok(ctx.includes('User: rough week'));
+  assert.ok(ctx.includes('Tommy: Sounds heavy, mate. What happened?'));
+  assert.ok(ctx.includes('User: cannot sleep'), 'the veteran\'s own words are still context');
+  assert.ok(!ctx.includes(CRISIS_SUPPORT_FALLBACK), 'fallback must not reach the AI');
+  assert.ok(!ctx.includes('116 123'));
+});
+
+test('context: normal history (no failures) is exactly what it was before', () => {
+  const history = [u('hiya'), b('Alright. How was the allotment?'), u('grand'),
+    b('Right. I\'m not going to leave you with that... Samaritans: 116 123 ... 999')];
+  const ctx = build(history);
+  assert.ok(ctx.includes(`last time:\n\n${transcriptOf(history)}\n\n`), 'transcript unchanged');
+  assert.ok(ctx.startsWith('\n\n[RETURNING MATE'));
+});
+
+test('context: a real crisis reply that mentions Samaritans is NOT excluded', () => {
+  const crisis = b('Right. I\'m not going to leave you with that. Samaritans free on 116 123, or 999.');
+  assert.ok(build([u('x'), crisis]).includes(crisis.text));
+  // A normal reply that merely starts like the fallback is kept (exact match only).
+  const lookalike = b('Sorry, something went wrong with your day? Tell me about it, mate.');
+  assert.ok(build([u('x'), lookalike]).includes(`Tommy: ${lookalike.text}`));
+});
+
+test('context: history that is only failed turns produces no context block', () => {
+  assert.equal(build([b(CRISIS_SUPPORT_FALLBACK), b(CRISIS_SUPPORT_FALLBACK)]), '');
+  assert.equal(build([]), '');
+});
+
+test('context: failed turns do not use up the 15-message window', () => {
+  const normal = [];
+  for (let i = 0; i < WINDOW; i++) normal.push(i % 2 ? b(`reply ${i}`) : u(`msg ${i}`));
+  const mixed = [];
+  normal.forEach((m, i) => { mixed.push(m); if (i % 3 === 0) mixed.push(b(CRISIS_SUPPORT_FALLBACK)); });
+  assert.ok(build(mixed).includes(`last time:\n\n${transcriptOf(normal)}\n\n`));
+});
+
+test('context: a user who types the fallback wording is still context (only buddy turns are filtered)', () => {
+  assert.ok(build([u(CRISIS_SUPPORT_FALLBACK)]).includes(`User: ${CRISIS_SUPPORT_FALLBACK}`));
+});
+
+test('end to end: outage, HTTP failure and network failure replies are shown, stored, and kept out of the next context', async () => {
+  const stored = [u('first message')];
+  for (const url of [`${base}/outage-holding`, `${base}/500-text`, 'http://127.0.0.1:1/x']) {
+    const { reply } = await clientFlow(url);
+    assert.equal(reply, CRISIS_SUPPORT_FALLBACK, 'veteran still sees the approved wording');
+    stored.push(u('are you there?'), b(reply)); // the screen stores exactly this on the device
+  }
+  const { reply } = await clientFlow(`${base}/normal`);
+  stored.push(u('back again'), b(reply));
+  // Round-trip through device storage as the screen does (JSON, dates revived).
+  const reloaded = JSON.parse(JSON.stringify(stored)).map(m => ({ ...m, timestamp: new Date(m.timestamp) }));
+  assert.equal(reloaded.filter(m => m.text === CRISIS_SUPPORT_FALLBACK).length, 3, 'stored history unchanged');
+  const ctx = build(reloaded);
+  assert.ok(!ctx.includes(CRISIS_SUPPORT_FALLBACK));
+  assert.ok(ctx.includes('Tommy: Alright mate'));
+  assert.equal((ctx.match(/User: are you there\?/g) || []).length, 3);
+});
+
+test('helper: exact (trimmed) assistant match only; never throws', () => {
+  assert.equal(isUnassessedAssistantReply(true, CRISIS_SUPPORT_FALLBACK), true);
+  assert.equal(isUnassessedAssistantReply(true, ` ${CRISIS_SUPPORT_FALLBACK} `), true);
+  assert.equal(isUnassessedAssistantReply(false, CRISIS_SUPPORT_FALLBACK), false);
+  assert.equal(isUnassessedAssistantReply(true, 'Lost you for a second there'), false);
+  assert.deepEqual(contextEligibleHistory(undefined, () => true), []);
+});
+
+test('wiring: only the context builder filters; display and storage paths are untouched', () => {
+  assert.equal((CHAT_SRC.match(/contextEligibleHistory\(/g) || []).length, 1);
+  assert.match(CHAT_SRC, /const allMessages = \[\.\.\.previousConversations, \.\.\.currentNewMessages\];/, 'stored as before');
+  assert.match(CHAT_SRC, /conversation_context: conversationContext,/);
+  const grace = readFileSync(here('../app/grace-welcome.tsx'), 'utf8');
+  assert.ok(!grace.includes('conversation_context'), 'Grace sends no history, so needs no filter');
 });
